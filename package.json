@@ -1,0 +1,23 @@
+{
+  "name": "sy-greece-website",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite --open /src-entry.html",
+    "build": "vite build && node scripts/finalize-build.mjs",
+    "preview": "vite preview",
+    "server": "node server.mjs",
+    "start": "npm run build && node server.mjs"
+  },
+  "dependencies": {
+    "@vitejs/plugin-react": "latest",
+    "lucide-react": "latest",
+    "vite": "latest",
+    "react": "latest",
+    "react-dom": "latest",
+    "react-router-dom": "latest",
+    "vite-plugin-singlefile": "latest"
+  },
+  "devDependencies": {}
+}
