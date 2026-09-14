@@ -424,7 +424,7 @@ h1, h2, h3, p { margin-top: 0; }
 }
 
 /* Content admin */
-.footer-admin-link { color: var(--gold-light); margin-top: 8px; }
+
 .admin-login { min-height: 100vh; display: grid; place-items: center; padding: 20px; background: linear-gradient(135deg, #082f49, #0b4965 55%, #c89c4b); }
 .admin-login-card { width: min(420px, 100%); padding: 40px; background: #fff; border-radius: 20px; box-shadow: 0 25px 70px rgba(0,0,0,.24); }
 .admin-mark { display: flex; align-items: center; gap: 10px; color: var(--blue); }
