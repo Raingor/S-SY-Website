@@ -30,7 +30,9 @@ function miniProgramConfigReady() { return Boolean(process.env.WX_APPID && proce
 function encodeTokenPart(value) { return Buffer.from(JSON.stringify(value)).toString('base64url') }
 function createMiniProgramToken(userId) { const now = Math.floor(Date.now() / 1000); const payload = { sub: userId, iat: now, exp: now + 30 * 24 * 60 * 60 }; const encoded = encodeTokenPart(payload); const signature = crypto.createHmac('sha256', miniProgramTokenSecret).update(encoded).digest('base64url'); return `mpv1.${encoded}.${signature}` }
 function verifyMiniProgramToken(token) { try { const [version, encoded, signature] = String(token || '').split('.'); if (version !== 'mpv1' || !encoded || !signature || !miniProgramTokenSecret) return null; const expected = crypto.createHmac('sha256', miniProgramTokenSecret).update(encoded).digest('base64url'); const actualBuffer = Buffer.from(signature); const expectedBuffer = Buffer.from(expected); if (actualBuffer.length !== expectedBuffer.length || !crypto.timingSafeEqual(actualBuffer, expectedBuffer)) return null; const payload = JSON.parse(Buffer.from(encoded, 'base64url').toString('utf8')); return payload.exp > Math.floor(Date.now() / 1000) ? payload : null } catch { return null } }
-function publicMiniProgramUser(user) { return { id: user.id, phoneBound: Boolean(user.phone), phoneMasked: user.phone ? maskPhone(user.phone) : null } }
+function miniProfile(input = {}) { const nickname = String(input.nickname || '').trim().slice(0, 64); const avatarUrl = String(input.avatarUrl || '').trim().slice(0, 500); return { nickname, avatarUrl: /^https:\/\//i.test(avatarUrl) ? avatarUrl : '' } }
+function fallbackMiniNickname() { return `用户${crypto.randomInt(1000, 10000)}` }
+function publicMiniProgramUser(user) { return { id: user.id, phoneBound: Boolean(user.phone), phoneMasked: user.phone ? maskPhone(user.phone) : null, nickname: user.nickname || fallbackMiniNickname(), avatarUrl: user.avatarUrl || '' } }
 function maskPhone(phone) { const value = String(phone || ''); return value.length > 7 ? `${value.slice(0, 3)}****${value.slice(-4)}` : '****' }
 function miniProgramUserFromRequest(req, data) { const auth = req.headers.authorization || ''; if (!auth.startsWith('Bearer ')) return null; const payload = verifyMiniProgramToken(auth.slice(7)); if (!payload) return null; return (data.miniprogramUsers || []).find((user) => user.id === payload.sub) || null }
 function id(prefix = 'item') { return `${prefix}-${Date.now().toString(36)}-${crypto.randomBytes(3).toString('hex')}` }
@@ -129,10 +131,15 @@ const server = http.createServer(async (req, res) => {
       const input = await body(req)
       if (!input.code) return json(res, 422, { code: 'WX_LOGIN_CODE_REQUIRED', error: '缺少微信登录 code' })
       try {
-        const session = await exchangeMiniProgramCode(String(input.code))
+        const session = await exchangeMiniProgramCode(String(input.code)); const profile = miniProfile(input)
         const data = readData(); data.miniprogramUsers = data.miniprogramUsers || []
         let user = data.miniprogramUsers.find((item) => item.openid === session.openid)
-        if (!user) { user = { id: id('mpu'), openid: session.openid, unionid: session.unionid || '', phone: '', createdAt: new Date().toISOString() }; data.miniprogramUsers.push(user) } else if (session.unionid && user.unionid !== session.unionid) user.unionid = session.unionid
+        if (!user) { user = { id: id('mpu'), openid: session.openid, unionid: session.unionid || '', phone: '', nickname: profile.nickname || fallbackMiniNickname(), avatarUrl: profile.avatarUrl, createdAt: new Date().toISOString() }; data.miniprogramUsers.push(user) } else {
+          if (session.unionid && user.unionid !== session.unionid) user.unionid = session.unionid
+          if (profile.nickname) user.nickname = profile.nickname
+          if (profile.avatarUrl) user.avatarUrl = profile.avatarUrl
+          if (!user.nickname) user.nickname = fallbackMiniNickname()
+        }
         user.updatedAt = new Date().toISOString(); saveData(data)
         return json(res, 200, { accessToken: createMiniProgramToken(user.id), tokenType: 'Bearer', expiresIn: 30 * 24 * 60 * 60, user: publicMiniProgramUser(user) })
       } catch (error) { return json(res, error.message === '小程序登录服务尚未配置' ? 503 : 502, { code: 'WECHAT_LOGIN_FAILED', error: error.message }) }
@@ -140,6 +147,7 @@ const server = http.createServer(async (req, res) => {
     if (url.pathname === '/api/miniprogram/auth/me' && method === 'GET') {
       const data = readData(); const user = miniProgramUserFromRequest(req, data)
       if (!user) return json(res, 401, { code: 'MINIPROGRAM_LOGIN_REQUIRED', error: '请先微信登录' })
+      if (!user.nickname) { user.nickname = fallbackMiniNickname(); saveData(data) }
       return json(res, 200, { user: publicMiniProgramUser(user) })
     }
     if (url.pathname === '/api/miniprogram/auth/phone' && method === 'POST') {
