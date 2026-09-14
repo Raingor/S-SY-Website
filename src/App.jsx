@@ -4,7 +4,7 @@ import {
   ArrowRight, BusFront, CalendarDays, Check, ChevronRight, CircleDollarSign,
   Clock3, CloudSun, Compass, Euro, Heart, Landmark, Mail, Map, MapPin,
   Menu, MessageCircle, Phone, Plane, Search, ShipWheel, Sparkles, SunMedium,
-  Users, Waves, X,
+  Users, Waves, X, Headphones, LockKeyhole,
 } from 'lucide-react'
 import AdminPage from './admin'
 import { LanguageSwitcher, translate, useLanguage } from './i18n'
@@ -140,9 +140,9 @@ const destinations = [
 const fallbackSeoSettings = {
   siteName: 'SY 希腊蔚蓝海岸',
   siteUrl: 'https://sy-greece.com',
-  defaultTitle: 'SY 希腊蔚蓝海岸｜希腊私人定制旅行',
-  defaultDescription: 'SY 希腊蔚蓝海岸，为中文游客提供雅典、圣托里尼及希腊全境的中高端私人定制旅行、中文司导与在地管家服务。',
-  keywords: '希腊旅游,希腊私人定制,圣托里尼旅行,雅典旅游,希腊地接,中文司导',
+  defaultTitle: 'SY 希腊蔚蓝海岸｜希腊人文与行程咨询',
+  defaultDescription: 'SY 希腊蔚蓝海岸，为访客提供雅典、圣托里尼及希腊全境的人文资讯、行程策划与语言陪同咨询。',
+  keywords: '希腊人文咨询,希腊行程策划,圣托里尼文化,雅典历史,中文司导咨询',
   ogImage: 'images/santorini.webp',
   googleVerification: '',
   robotsPolicy: 'index,follow',
@@ -180,10 +180,15 @@ function SEO() {
     const destMatch = path.match(/^\/destinations\/([^/]+)$/)
     const matchedDestination = destMatch ? destinations.find((item) => item.slug === destMatch[1]) : null
     const pages = {
-      '/': ['希腊私人定制旅行｜雅典 · 圣托里尼 · 全境地接', config.defaultDescription],
-      '/customize': ['希腊私人定制｜免费获取专属行程方案', '告诉我们出行时间、人数与预算，24 小时内获得希腊私人定制旅行首版方案。'],
+      '/': ['希腊行程咨询｜雅典 · 圣托里尼 · 全境人文', config.defaultDescription],
+      '/customize': ['希腊行程咨询｜提交需求沟通方案', '告诉我们出行时间、人数与偏好，先沟通需求范围与行程规划方式。'],
       '/search': [`搜索${query ? `“${query}”` : '希腊旅行'}｜SY Greece`, `搜索希腊路线、目的地和私人定制旅行灵感。${query ? `当前关键词：${query}。` : ''}`],
-      '/tools': ['希腊旅行工具箱｜签证 · 汇率 · 天气 · 行程日历', '出发前准备希腊申根签证、欧元汇率、天气和每日行程的实用工具箱。'],
+      '/tools': ['希腊行前信息工具箱｜签证 · 汇率 · 天气 · 行程日历', '出发前准备希腊申根签证、欧元汇率、天气和每日行程的信息工具箱。'],
+      '/heritage-guidance': ['古迹人文讲解预约｜希腊文化咨询', '预约雅典、德尔斐与克里特等古迹的人文知识讲解。'],
+      '/vehicle-consultation': ['在地用车资源对接咨询｜希腊出行信息', '咨询希腊本地车型、司导资质与用车资源对接方式。'],
+      '/knowledge-base': ['景点付费文史知识库｜免费预览', '浏览希腊景点的历史、神话与建筑知识预览。'],
+      '/business-travel': ['希腊商旅随行咨询｜商务语言与行程规划', '提供商务陪同、语言翻译、企业拜访与人文行程的咨询。'],
+
       '/guides/richard-li': ['Richard 李名人导游｜希腊私人深度旅行与预约', '认识 Richard 李：武汉大学双学士、英国澳洲双硕士，提供希腊历史人文、小众秘境与私人摄影导览。'],
       '/manage-9f3k7': ['网站管理后台｜SY 希腊蔚蓝海岸', 'SY 希腊蔚蓝海岸网站内容与 SEO 管理后台'],
     }
@@ -217,13 +222,13 @@ function SEO() {
       if (!verification) { verification = document.createElement('meta'); verification.name = 'google-site-verification'; document.head.appendChild(verification) }
       verification.content = config.googleVerification
     } else if (verification) verification.remove()
-    const graph = [{ '@context': 'https://schema.org', '@type': 'TravelAgency', name: config.siteName, url: baseUrl, logo: ogImage, description: config.defaultDescription, telephone: config.phone, email: config.email, areaServed: 'GR', knowsLanguage: ['zh-CN', 'en'] }, { '@context': 'https://schema.org', '@type': 'WebSite', name: config.siteName, url: baseUrl, inLanguage: 'zh-CN', potentialAction: { '@type': 'SearchAction', target: `${baseUrl}/search?q={search_term_string}`, 'query-input': 'required name=search_term_string' } }]
+    const graph = [{ '@context': 'https://schema.org', '@type': 'Organization', name: config.siteName, url: baseUrl, logo: ogImage, description: config.defaultDescription, telephone: config.phone, email: config.email, areaServed: 'GR', knowsLanguage: ['zh-CN', 'en'] }, { '@context': 'https://schema.org', '@type': 'WebSite', name: config.siteName, url: baseUrl, inLanguage: 'zh-CN', potentialAction: { '@type': 'SearchAction', target: `${baseUrl}/search?q={search_term_string}`, 'query-input': 'required name=search_term_string' } }]
     if (path === '/') {
       graph.push({ '@context': 'https://schema.org', '@type': 'ItemList', name: '希腊精选主题路线', itemListElement: routes.map((route, index) => ({ '@type': 'ListItem', position: index + 1, name: route.title, description: route.desc, url: `${baseUrl}/routes/${route.slug}` })) })
       graph.push({ '@context': 'https://schema.org', '@type': 'FAQPage', mainEntity: [{ '@type': 'Question', name: '希腊私人定制旅行多久可以出方案？', acceptedAnswer: { '@type': 'Answer', text: '提交出行时间、人数与预算后，定制师会在 24 小时内提供首版方案。' } }, { '@type': 'Question', name: '希腊旅行是否提供中文服务？', acceptedAnswer: { '@type': 'Answer', text: '雅典在地团队提供一对一中文定制师、中文司导和出行中的中文应急管家。' } }, { '@type': 'Question', name: '可以只定制圣托里尼或雅典吗？', acceptedAnswer: { '@type': 'Answer', text: '可以按目的地、天数、预算和旅行主题灵活定制单岛或多城行程。' } }] })
     }
     if (matchedDestination) graph.push({ '@context': 'https://schema.org', '@type': 'TouristDestination', name: matchedDestination.name, description, touristType: ['情侣', '家庭', '蜜月旅行'], containedInPlace: { '@type': 'Country', name: '希腊' } })
-    if (matchedRoute) graph.push({ '@context': 'https://schema.org', '@type': 'TouristTrip', name: matchedRoute.title, description: matchedRoute.desc, itinerary: { '@type': 'ItemList', itemListElement: matchedRoute.itinerary.map(([day, title], index) => ({ '@type': 'ListItem', position: index + 1, name: `${day} ${title}` })) }, provider: { '@type': 'TravelAgency', name: config.siteName, url: baseUrl } })
+    if (matchedRoute) graph.push({ '@context': 'https://schema.org', '@type': 'TouristTrip', name: matchedRoute.title, description: matchedRoute.desc, itinerary: { '@type': 'ItemList', itemListElement: matchedRoute.itinerary.map(([day, title], index) => ({ '@type': 'ListItem', position: index + 1, name: `${day} ${title}` })) }, provider: { '@type': 'Organization', name: config.siteName, url: baseUrl } })
     let schema = document.head.querySelector('#sy-seo-schema')
     if (!schema) { schema = document.createElement('script'); schema.id = 'sy-seo-schema'; schema.type = 'application/ld+json'; document.head.appendChild(schema) }
     schema.textContent = JSON.stringify({ '@context': 'https://schema.org', '@graph': graph })
@@ -320,7 +325,7 @@ function RouteCard({ route, compact = false }) {
         <h3><Link to={routePath(route)}>{route.title}</Link></h3>
         <div className="route-tags">{route.tags}</div>
         <p>{route.desc}</p>
-        <div className="price-row"><span>价格电询</span><Link to="/customize">一对一顾问报价 <ArrowRight size={13} /></Link></div>
+        <div className="price-row"><span>咨询费用沟通</span><Link to="/customize">一对一顾问沟通 <ArrowRight size={13} /></Link></div>
       </div>
     </article>
   )
@@ -358,7 +363,7 @@ function GoldCTA() {
       <div className="container gold-cta-inner">
         <div>
           <h2>{language === 'en' ? 'Tell us what you have in mind. We know Greece.' : language === 'ja' ? 'あなたの想いを、ギリシャへ。' : language === 'el' ? 'Πείτε μας το όραμά σας. Αναλαμβάνουμε την Ελλάδα.' : '告诉我你的想法，希腊交给我们'}</h2>
-          <p>1v1 · 24h · {language === 'en' ? 'No planning fee' : language === 'ja' ? 'プラン作成無料' : language === 'el' ? 'χωρίς χρέωση σχεδιασμού' : '定制不收方案费'}</p>
+          <p>1v1 · 24h · {language === 'en' ? 'Scope and service fee discussed first' : language === 'ja' ? '内容と費用を先にご相談' : language === 'el' ? 'Πρώτα συζητάμε το αντικείμενο και την αμοιβή' : '先沟通需求范围与咨询费用'}</p>
         </div>
         <div className="gold-actions">
           <Link className="button button-deep" to="/customize">{t('common.customize')}</Link>
@@ -378,10 +383,10 @@ function Footer() {
       <div className="container footer-grid">
         <div className="footer-brand"><Logo /><p>{t('footer.brand')}</p><strong>sy-greece.com</strong></div>
         <div><h3>{t('footer.routes')}</h3><Link to="/routes/athens-3d">{routeLabels[0]}</Link><Link to="/routes/honeymoon-5d">{routeLabels[1]}</Link><Link to="/routes/family-7d">{routeLabels[2]}</Link><Link to="/routes/heritage-9d">{routeLabels[3]}</Link></div>
-        <div><h3>{t('footer.services')}</h3><Link to="/customize">{language === 'en' ? 'Private planning' : language === 'ja' ? 'プライベート旅行' : language === 'el' ? 'Ιδιωτικός σχεδιασμός' : '私人定制'}</Link><a href="#services">{language === 'en' ? 'Private transfers' : language === 'ja' ? '専用車' : language === 'el' ? 'Ιδιωτικές μετακινήσεις' : '专属用车'}</a><a href="#experiences">{language === 'en' ? 'Yachts & private flights' : language === 'ja' ? 'ヨット / プライベートフライト' : language === 'el' ? 'Yacht / private flights' : '私人包机 / 游艇出海'}</a><Link to="/tools">{t('nav.tools')}</Link></div>
+        <div><h3>{t('footer.services')}</h3><Link to="/customize">{language === 'en' ? 'Private planning' : language === 'ja' ? 'プライベート旅行' : language === 'el' ? 'Ιδιωτικός σχεδιασμός' : '私人定制'}</Link><a href="#services">{language === 'en' ? 'Private transfers' : language === 'ja' ? '専用車' : language === 'el' ? 'Ιδιωτικές μετακινήσεις' : '专属用车'}</a><a href="#experiences">{language === 'en' ? 'Yachts & private flights' : language === 'ja' ? 'ヨット / プライベートフライト' : language === 'el' ? 'Yacht / private flights' : '私人包机 / 游艇出海'}</a><Link to="/knowledge-base">景点文史知识库</Link><Link to="/business-travel">商旅随行咨询</Link><Link to="/tools">{t('nav.tools')}</Link></div>
         <div><h3>{t('footer.contact')}</h3><span>{t('footer.wechat')}</span><span>{t('footer.phone')}</span><span>{t('footer.email')}</span><Link className="footer-admin-link" to="/manage-9f3k7">{language === 'en' ? 'Admin' : language === 'ja' ? '管理画面' : language === 'el' ? 'Διαχείριση' : '后台管理'}</Link></div>
       </div>
-      <div className="container copyright"><span>2026 SY Greece · {language === 'en' ? 'All rights reserved' : language === 'ja' ? '無断転載禁止' : language === 'el' ? 'Με επιφύλαξη παντός δικαιώματος' : '希腊蔚蓝海岸 · 版权所有'}</span><span>沪ICP备 XXXXXXXX 号</span></div>
+      <div className="container copyright"><span>2026 SY Greece · {language === 'en' ? 'All rights reserved' : language === 'ja' ? '無断転載禁止' : language === 'el' ? 'Με επιφύλαξη παντός δικαιώματος' : '希腊蔚蓝海岸 · 版权所有'}</span><span>仅提供文化咨询、行程策划、知识付费与商务语言陪同咨询</span></div><div className="container footer-disclaimer"><ComplianceNotice /></div>
     </footer>
   )
 }
@@ -396,11 +401,13 @@ function Home() {
     }).catch(() => {})
   }, [])
   const services = [
-    [Waves, '蔚蓝海岸', '圣托里尼、米克诺斯跳岛度假与海岛酒店，一价打包'],
-    [Compass, '私人定制', '1v1 中文定制师，按预算与主题逐日打磨专属行程'],
-    [BusFront, '专属用车', '华人司导全程服务，机场接送与城际包车自由安排'],
-    [Map, '旅行工具', '签证指引、汇率换算、天气与行程日历，行前一站备齐'],
+    [Compass, '行程定制咨询', '围绕历史文明、海岛、餐厅与特别安排，沟通一份专属行程规划'],
+    [Landmark, '古迹人文讲解预约', '预约 Richard 李的中文 / 英文文史讲解，先理解，再看见遗址细节'],
+    [BusFront, '在地用车资源对接咨询', '咨询车型、司导资质、机场与城际移动等实际用车信息'],
+    [Map, '景点付费文史知识库', '免费预览景点背景，音频与图文深度内容待真实支付能力接入'],
+    [Users, '希腊商旅一站式随行服务', '商务陪同、语言翻译、企业拜访与人文行程的综合咨询'],
   ]
+  const serviceLinks = ['/customize', '/heritage-guidance', '/vehicle-consultation', '/knowledge-base', '/business-travel']
   return (
     <>
       <div className="home-hero">
@@ -408,17 +415,17 @@ function Home() {
         <div className="container hero-content">
           <Eyebrow dark>SY GREECE · TAILOR-MADE JOURNEYS</Eyebrow>
           <h1>把希腊，交给懂它的人</h1>
-          <p>深耕希腊本土 · 中高端私人定制地接服务商。雅典在地团队，<br />一对一中文定制师，行程、用车、海岛跳岛，全程管家式服务。</p>
+          <p>希腊在地人文与行程咨询服务。雅典在地团队，<br />一对一中文顾问，提供文化、行程与语言陪同咨询。</p>
           <SearchBox />
-          <div className="hero-actions"><Link className="button button-primary" to="/customize">免费获取定制方案</Link><a className="button button-ghost" href="#routes">浏览甄选路线</a></div>
-          <div className="trust-row"><span><Check size={14} />免费出方案</span><span><Check size={14} />24 小时内回复</span><span><Check size={14} />全程中文管家服务</span></div>
+          <div className="hero-actions"><Link className="button button-primary" to="/customize">提交行程咨询</Link><a className="button button-ghost" href="#routes">浏览甄选路线</a></div>
+          <div className="trust-row"><span><Check size={14} />先沟通需求范围</span><span><Check size={14} />24 小时内回复</span><span><Check size={14} />中文 / English 咨询</span></div>
         </div>
       </div>
 
       <section id="services" className="section services-section">
         <div className="container">
           <SectionTitle eyebrow="OUR SERVICES" title="不只是行程，更是在地服务" action={{ to: '/customize', label: '了解全部服务' }} />
-          <div className="service-grid">{services.map(([Icon, title, desc]) => <Link to={title === '旅行工具' ? '/tools' : '/customize'} className="service-card" key={title}><Icon /><h3>{title}</h3><p>{desc}</p><ArrowRight size={17} /></Link>)}</div>
+          <div className="service-grid">{services.map(([Icon, title, desc], index) => <Link to={serviceLinks[index]} className="service-card" key={title}><Icon /><h3>{title}</h3><p>{desc}</p><ArrowRight size={17} /></Link>)}</div>
           <GuideTeaser />
         </div>
       </section>
@@ -477,7 +484,7 @@ function RouteDetail() {
   return (
     <>
       <InnerHero image={route.image} eyebrow={route.eyebrow} title={route.title} subtitle={`${route.days} · ${route.kicker} · ${route.tags} · 2 人即成行`} breadcrumb={`甄选路线 / ${route.title}`}>
-        <div className="detail-hero-actions"><strong>价格电询</strong><Link className="button button-primary" to="/customize">咨询这条线路</Link></div>
+        <div className="detail-hero-actions"><strong>咨询费用沟通</strong><Link className="button button-primary" to="/customize">咨询这条线路</Link></div>
       </InnerHero>
       <main className="detail-page section">
         <div className="container detail-layout">
@@ -492,25 +499,91 @@ function RouteDetail() {
               </section>
             )}
           </div>
-          <aside className="trip-aside"><div className="summary-card"><h2>行程速览</h2><dl>{route.summary.map(([term, value]) => <div key={term}><dt>{term}</dt><dd>{value}</dd></div>)}</dl><div className="aside-price"><strong>价格电询</strong><small>按人数 / 日期报价</small></div><Link className="button button-primary button-block" to="/customize">咨询这条线路 · 免费报价</Link></div><div className="wechat-tip"><MessageCircle /><span>加定制师微信直接沟通<br /><strong>平均 3 分钟回复 · 方案免费</strong></span></div></aside>
+          <aside className="trip-aside"><div className="summary-card"><h2>行程速览</h2><dl>{route.summary.map(([term, value]) => <div key={term}><dt>{term}</dt><dd>{value}</dd></div>)}</dl><div className="aside-price"><strong>咨询费用沟通</strong><small>按人数 / 日期报价</small></div><Link className="button button-primary button-block" to="/customize">咨询这条线路 · 沟通费用</Link></div><div className="wechat-tip"><MessageCircle /><span>加定制师微信直接沟通<br /><strong>平均 3 分钟回复 · 先沟通服务范围</strong></span></div></aside>
         </div>
       </main>
-      <div className="mobile-sticky-cta"><span>价格电询</span><Link to="/customize">免费咨询报价</Link></div>
+      <div className="mobile-sticky-cta"><span>咨询费用沟通</span><Link to="/customize">提交行程咨询</Link></div>
       <Footer />
     </>
   )
 }
 
-function Customize() {
-  const [themes, setThemes] = useState(['蜜月婚礼'])
+async function postLead(payload) {
+  const next = { ...payload, source: payload.source || 'website', platform: payload.platform || 'website', createdAt: payload.createdAt || new Date().toISOString(), status: 'new' }
+  try {
+    const response = await fetch('/api/leads', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(next) })
+    if (!response.ok) throw new Error('lead api failed')
+  } catch {
+    const local = JSON.parse(localStorage.getItem('sy-greece-leads') || '[]')
+    localStorage.setItem('sy-greece-leads', JSON.stringify([{ ...next, id: `${next.leadType || 'lead'}-${Date.now()}` }, ...local]))
+  }
+}
+
+function ComplianceNotice() {
+  return <p className="compliance-notice">免责声明：仅提供文化咨询、行程策划、知识付费、商务语言陪同咨询服务，不从事旅游业务。涉及交通、场地、劳务等事项，由客户与希腊本土主体直接确认和结算。</p>
+}
+
+function ServiceInquiryForm({ leadType, title = '提交咨询需求', intro = '留下基本信息，我们会先沟通需求范围与服务方式。', fields = [], submitLabel = '提交咨询' }) {
   const [sent, setSent] = useState(false)
   const [saving, setSaving] = useState(false)
-  const themeOptions = ['蜜月婚礼', '亲子家庭', '深度文化', '海岛度假', '美酒美食']
+  async function submit(event) {
+    event.preventDefault(); setSaving(true)
+    const form = event.currentTarget
+    await postLead({ ...Object.fromEntries(new FormData(form)), leadType })
+    form.reset(); setSaving(false); setSent(true); window.setTimeout(() => setSent(false), 5000)
+  }
+  return <form className="service-inquiry-form" onSubmit={submit}><h2>{title}</h2><p className="form-intro">{intro}</p><div className="field-grid">{fields.map((field) => <label key={field.name}>{field.label}{field.options ? <select name={field.name} defaultValue="" required={field.required}><option value="" disabled>{field.placeholder || '请选择'}</option>{field.options.map((option) => <option key={option}>{option}</option>)}</select> : <input name={field.name} type={field.type || 'text'} placeholder={field.placeholder} required={field.required} />}</label>)}</div><label className="service-form-wide">补充说明<textarea name="requirements" rows="4" placeholder="请写下希望了解的内容、时间和特殊要求" /></label><button className="button button-gold button-block submit-button" type="submit" disabled={saving}>{saving ? '正在提交…' : submitLabel}</button>{sent && <p className="success-inline" role="status"><Check size={15} />已收到，我们会尽快联系你沟通。</p>}</form>
+}
+
+function ConsultationDock() {
+  const { pathname } = useLocation()
+  const [open, setOpen] = useState(false)
+  const [sent, setSent] = useState(false)
+  if (pathname.startsWith('/manage-9f3k7')) return null
+  async function submit(event) {
+    event.preventDefault(); const form = event.currentTarget
+    await postLead({ ...Object.fromEntries(new FormData(form)), leadType: form.leadType.value || 'customization' })
+    form.reset(); setSent(true); window.setTimeout(() => { setSent(false); setOpen(false) }, 3500)
+  }
+  return <div className="consultation-dock">{open && <div className="consultation-popover"><button className="consultation-close" onClick={() => setOpen(false)} aria-label="关闭"><X size={17} /></button>{sent ? <div className="consultation-sent"><Check size={22} /><strong>咨询已收到</strong><span>我们会尽快与你沟通需求范围。</span></div> : <form onSubmit={submit}><Eyebrow>ONLINE CONSULTATION</Eyebrow><h3>先说说你想了解什么</h3><label>咨询类型<select name="leadType" defaultValue="customization"><option value="customization">行程定制咨询</option><option value="guide-booking">古迹人文讲解预约</option><option value="vehicle-consultation">在地用车资源对接咨询</option><option value="knowledge-base">景点文史知识库</option><option value="business-travel">商旅随行咨询</option></select></label><label>联系方式<input name="contact" required placeholder="微信 / 手机号 / 邮箱" /></label><label>一句话需求<textarea name="requirements" rows="3" placeholder="例如：想了解雅典古迹讲解或商务陪同"></textarea></label><button className="button button-primary button-block" type="submit">提交咨询</button></form>}</div>}<button className="consultation-trigger" onClick={() => setOpen((value) => !value)}><MessageCircle size={18} />在线咨询</button></div>
+}
+
+function HeritageGuidance() {
+  return <><InnerHero eyebrow="CULTURE CONSULTATION" title="古迹人文讲解预约" subtitle="在雅典卫城、古集市、德尔斐与克里特王宫，预约一段有背景、有脉络的现场文史讲解。" breadcrumb="古迹人文讲解" /><main className="service-page section"><div className="container service-page-grid"><div><SectionTitle eyebrow="RICHARD LI · CULTURAL GUIDE" title="把遗址读成一段故事" /><p className="service-lead">可咨询雅典卫城、古集市、德尔斐、克里特王宫等点位的中文或英文文史讲解，时长与人数按需求沟通。</p><div className="service-points"><div><strong>讲解范围</strong><span>历史背景、神话脉络、建筑细节与现场观察方法</span></div><div><strong>预约信息</strong><span>点位、日期、时长、语种和人数</span></div><div><strong>服务边界</strong><span>仅文史知识讲解，不含门票、交通或其他现场费用</span></div></div></div><ServiceInquiryForm leadType="guide-booking" title="预约文史讲解" submitLabel="提交讲解预约" fields={[{ name: 'bookingDate', label: '预约日期', type: 'date', required: true }, { name: 'serviceLength', label: '讲解时长', options: ['1 小时', '半日', '一日'], required: true }, { name: 'site', label: '意向点位', placeholder: '如：雅典卫城', required: true }, { name: 'language', label: '讲解语种', options: ['中文', 'English', '中文 + English'], required: true }, { name: 'travelers', label: '人数', placeholder: '如：2 位成人', required: true }, { name: 'contact', label: '联系方式', placeholder: '微信 / 手机号 / 邮箱', required: true }]} /></div></main><ComplianceNotice /><Footer /></>
+}
+
+function VehicleConsultation() {
+  return <><InnerHero eyebrow="LOCAL MOBILITY CONSULTATION" title="在地用车资源对接咨询" subtitle="咨询希腊本地用车信息与预约对接方式，先了解车型、司导资质、时间和费用边界。" breadcrumb="用车资源对接" /><main className="service-page section"><div className="container service-page-grid"><div><SectionTitle eyebrow="VEHICLE CONSULTATION" title="按实际场景沟通用车" /><p className="service-lead">可了解欧 6 豪华车型、宝马 SUV / 5 座选择、欧盟持证司导及机场、城际、商务拜访等场景的资源对接信息。</p><div className="service-points"><div><strong>可咨询范围</strong><span>日期、路线、车型、乘坐人数、行李和语言陪同需求</span></div><div><strong>对接边界</strong><span>仅提供信息咨询与预约对接，车辆和劳务由客户与希腊本土主体直接签约结算</span></div></div></div><ServiceInquiryForm leadType="vehicle-consultation" title="提交用车咨询" submitLabel="提交用车咨询" fields={[{ name: 'vehicleDate', label: '用车日期', type: 'date', required: true }, { name: 'vehicleNeed', label: '用车场景', options: ['机场 / 港口接送', '城际移动', '商务拜访', '古迹与城市移动'], required: true }, { name: 'travelers', label: '随行人数', placeholder: '如：4 人 + 行李', required: true }, { name: 'contact', label: '联系方式', placeholder: '微信 / 手机号 / 邮箱', required: true }]} /></div></main><ComplianceNotice /><Footer /></>
+}
+
+function BusinessTravel() {
+  return <><InnerHero eyebrow="BUSINESS TRAVEL CONSULTATION" title="希腊商旅一站式随行服务" subtitle="面向企业拜访、展会、会议和商务接待的行程策划、语言陪同与资源对接咨询。" breadcrumb="商旅随行服务" /><main className="service-page section"><div className="container service-page-grid"><div><SectionTitle eyebrow="BUSINESS TRAVEL" title="把商务沟通与人文体验放在同一条线上" /><p className="service-lead">Richard 李具备武汉大学及英澳双硕士背景，提供高阶中英双语翻译与商旅行程咨询。</p><div className="business-points"><span>涉外商务全程陪同咨询</span><span>商务会议口译、文件笔译需求沟通</span><span>企业拜访、展厅参观与商务晚宴安排咨询</span><span>商务间隙古迹人文深度解读</span><span>宝马 SUV 私享出行资源对接</span><span>商旅与人文融合的一站式方案咨询</span></div></div><ServiceInquiryForm leadType="business-travel" title="提交商旅咨询" intro="请填写商务周期、陪同时长、行业对接需求与随行人数，我们会先确认服务范围与沟通方式。" submitLabel="提交商旅咨询" fields={[{ name: 'businessPeriod', label: '商务周期', placeholder: '如：2026 年 10 月 12–16 日', required: true }, { name: 'companionDuration', label: '陪同时长', placeholder: '如：3 天 / 每天 8 小时', required: true }, { name: 'industryNeeds', label: '行业对接需求', placeholder: '如：医疗器械企业拜访 / 展会陪同', required: true }, { name: 'travelers', label: '随行人数', placeholder: '如：3 人', required: true }, { name: 'contact', label: '联系方式', placeholder: '微信 / 手机号 / 邮箱', required: true }]} /></div></main><ComplianceNotice /><Footer /></>
+}
+
+const knowledgeSpots = [
+  { slug: 'acropolis', name: '雅典卫城', en: 'ACROPOLIS', image: images.athens, preview: '免费预览：从山门、帕特农神庙到城市守护神，先建立一张古典雅典的地图。', audio: '1:00 试听片段占位', unlocked: ['历史与神话音频深度讲解', '建筑细节图文手册', '现场观看顺序与知识点'] },
+  { slug: 'delphi', name: '德尔斐', en: 'DELPHI', image: images.delphi, preview: '免费预览：为什么古希腊人把德尔斐称为世界中心？从神谕、圣路与山谷开始。', audio: '1:00 试听片段占位', unlocked: ['阿波罗神庙与神谕传统', '宝库、剧场与圣路图文', '一对一线上人文咨询入口'] },
+  { slug: 'santorini', name: '圣托里尼', en: 'SANTORINI', image: images.santorini, preview: '免费预览：火山岛、海风与葡萄酒，蓝顶之外的圣岛地质与聚落故事。', audio: '1:00 试听片段占位', unlocked: ['火山地质与岛屿历史音频', '村落、建筑与观景点手册', '行前人文主题咨询'] },
+  { slug: 'knossos', name: '克里特王宫', en: 'KNOSSOS', image: images.crete, preview: '免费预览：米诺斯文明的宫殿、迷宫传说与克里特岛的海上交流。', audio: '1:00 试听片段占位', unlocked: ['米诺斯文明时间线', '宫殿布局与神话图文', '深度阅读与视频咨询'] },
+]
+
+function KnowledgeBase() {
+  const { slug } = useParams()
+  const spot = knowledgeSpots.find((item) => item.slug === slug)
+  if (spot) return <><InnerHero image={spot.image} eyebrow={`KNOWLEDGE BASE · ${spot.en}`} title={spot.name} subtitle="免费预览一段景点背景，完整音频与图文内容将在真实支付/会员能力接入后开放。" breadcrumb={`景点文史知识库 / ${spot.name}`} /><main className="knowledge-detail section"><div className="container knowledge-detail-grid"><article className="knowledge-preview"><Eyebrow>FREE PREVIEW</Eyebrow><h2>{spot.name}：先听懂，再看见</h2><p>{spot.preview}</p><div className="audio-placeholder"><Headphones size={20} /><span>{spot.audio}</span><button type="button" disabled>试听占位</button></div><p className="knowledge-disclaimer">当前为内容结构与免费预览展示，未上线真实购买、支付或会员权益。</p></article><aside className="knowledge-unlock"><Eyebrow>UNLOCK LATER</Eyebrow><h3>付费解锁板块（占位）</h3>{spot.unlocked.map((item) => <div key={item}><Check size={15} />{item}</div>)}<button className="button button-deep button-block" type="button" disabled>支付 / 会员功能后续接入</button><Link className="text-link" to="/knowledge-base">返回知识库目录 <ChevronRight size={15} /></Link></aside></div></main><ComplianceNotice /><Footer /></>
+  return <><InnerHero eyebrow="KNOWLEDGE BASE" title="景点付费文史知识库" subtitle="先从免费预览认识雅典卫城、德尔斐、圣岛与克里特王宫，完整内容能力后续接入。" breadcrumb="景点文史知识库" /><main className="knowledge-index section"><div className="container"><SectionTitle eyebrow="GREEK HISTORY · AUDIO · GUIDE" title="把景点从打卡变成理解" /><div className="knowledge-grid">{knowledgeSpots.map((item) => <article className="knowledge-card" key={item.slug}><img src={item.image} alt={item.name} loading="lazy" decoding="async" /><div><Eyebrow>{item.en}</Eyebrow><h3>{item.name}</h3><p>{item.preview}</p><Link className="text-link" to={`/knowledge-base/${item.slug}`}>查看免费预览 <ArrowRight size={14} /></Link></div></article>)}</div><div className="knowledge-notice"><LockKeyhole size={18} /><span>音频深度讲解、图文手册和会员订阅目前仅做页面占位，真实支付与会员系统需后续接入，不代表已上线购买。</span></div></div></main><ComplianceNotice /><Footer /></>
+}
+
+function Customize() {
+  const [themes, setThemes] = useState(['历史文明'])
+  const [sent, setSent] = useState(false)
+  const [saving, setSaving] = useState(false)
+  const themeOptions = ['历史文明', '海滩海岛', '餐厅偏好', '特别安排', '体育活动', '高端私旅', '商务', '司导', '翻译']
   function toggleTheme(theme) { setThemes((current) => current.includes(theme) ? current.filter((t) => t !== theme) : [...current, theme]) }
   async function submit(e) {
     e.preventDefault(); setSaving(true)
     const form = e.currentTarget
-    const payload = { ...Object.fromEntries(new FormData(form)), themes, createdAt: new Date().toISOString(), status: 'new' }
+    const payload = { ...Object.fromEntries(new FormData(form)), themes, leadType: 'customization', createdAt: new Date().toISOString(), status: 'new' }
     try {
       const response = await fetch('/api/leads', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) })
       if (!response.ok) throw new Error('lead api failed')
@@ -518,25 +591,25 @@ function Customize() {
       const local = JSON.parse(localStorage.getItem('sy-greece-leads') || '[]')
       localStorage.setItem('sy-greece-leads', JSON.stringify([{ ...payload, id: `lead-${Date.now()}` }, ...local]))
     } finally {
-      setSaving(false); setSent(true); form.reset(); setThemes(['蜜月婚礼']); setTimeout(() => setSent(false), 5000)
+      setSaving(false); setSent(true); form.reset(); setThemes(['历史文明']); setTimeout(() => setSent(false), 5000)
     }
   }
   return (
     <>
-      <section className="custom-top"><Header solid /><div className="container custom-intro"><Eyebrow dark>TAILOR-MADE REQUEST</Eyebrow><h1>告诉我你的想法，希腊交给我们</h1><p>1v1 中文定制师 · 24 小时内出首版方案 · 定制不收取方案费</p></div></section>
+      <section className="custom-top"><Header solid /><div className="container custom-intro"><Eyebrow dark>ITINERARY CONSULTATION</Eyebrow><h1>把需求说清楚，再一起规划希腊</h1><p>行程资讯与方案咨询 · 提交后沟通服务范围与咨询费用 · 中文 / English</p></div></section>
       <main className="section form-section">
         <div className="container form-layout">
           <form className="custom-form" onSubmit={submit}>
-            <h2>免费获取定制方案</h2>
-            <div className="field-grid"><label>出行目的地<input name="destination" required placeholder="如：雅典 + 圣托里尼" /></label><label>预计出行时间<input name="travelMonth" type="month" required /></label><label>出行天数<input name="duration" required placeholder="如：7 天" /></label><label>出行人数<input name="travelers" required placeholder="如：2 大 1 小" /></label><label>人均预算<select name="budget" defaultValue=""><option value="" disabled>请选择预算范围</option><option>1 万元以内</option><option>1–2 万元 / 人</option><option>2–4 万元 / 人</option><option>4 万元以上 / 人</option></select></label></div>
-            <fieldset><legend>旅行主题（可多选）</legend><div className="theme-chips">{themeOptions.map((theme) => <button type="button" key={theme} className={themes.includes(theme) ? 'active' : ''} onClick={() => toggleTheme(theme)}>{themes.includes(theme) && <Check size={14} />}{theme}</button>)}</div></fieldset>
-            <label>需求描述<textarea name="requirements" rows="5" placeholder="想去的地方、特别的纪念日、饮食禁忌、酒店偏好……写得越细，方案越准" /></label>
-            <label>联系电话 / 微信<input name="contact" required placeholder="用于顾问联系你出方案" /></label>
-            <button className="button button-gold button-block submit-button" type="submit" disabled={saving}>{saving ? '正在提交…' : '提交需求 · 免费获取定制方案'}</button>
-            <p className="privacy">提交即表示同意我们通过电话 / 微信联系你，信息仅用于定制方案，绝不外泄</p>
+            <h2>行程定制咨询问卷</h2>
+            <div className="field-grid"><label>意向目的地<input name="destination" required placeholder="如：雅典 + 圣托里尼" /></label><label>出行日期<input name="travelDate" type="date" required /></label><label>预计天数<input name="duration" required placeholder="如：7 天" /></label><label>出行人数<input name="travelers" required placeholder="如：2 大 1 小" /></label><label>儿童年龄<input name="childAges" placeholder="如：4 岁、8 岁；无儿童可留空" /></label><label>单日车程上限<input name="maxDriveHours" type="number" min="0" max="12" placeholder="如：3 小时" /></label><label>预算范围<select name="budget" defaultValue=""><option value="">请选择预算范围</option><option>先沟通需求</option><option>1–2 万元 / 人</option><option>2–4 万元 / 人</option><option>4 万元以上 / 人</option></select></label></div>
+            <fieldset><legend>关注方向（可多选）</legend><div className="theme-chips">{themeOptions.map((theme) => <button type="button" key={theme} className={themes.includes(theme) ? 'active' : ''} onClick={() => toggleTheme(theme)}>{themes.includes(theme) && <Check size={14} />}{theme}</button>)}</div></fieldset>
+            <label>特别需求<textarea name="requirements" rows="5" placeholder="请补充历史兴趣、餐厅偏好、特别安排、体育活动或语言陪同需求" /></label>
+            <label>联系电话 / 微信<input name="contact" required placeholder="用于顾问联系你沟通" /></label>
+            <button className="button button-gold button-block submit-button" type="submit" disabled={saving}>{saving ? '正在提交…' : '提交行程咨询'}</button>
+            <p className="privacy">提交即表示同意我们通过电话 / 微信联系你，信息仅用于咨询沟通与方案规划。</p>
             {sent && <div className="success-message"><Check />需求已收到，定制师会在 24 小时内联系你。</div>}
           </form>
-          <aside className="custom-aside"><div className="advisor-card"><h2>更想直接聊？</h2><div className="advisor"><span><Users /></span><div><h3>雅典定制师 · 小蓝</h3><p>8 年希腊地接 · 服务 2000+ 组家庭</p></div></div><p>添加微信直接沟通，平均 3 分钟回复</p><div className="qr"><Sparkles size={36} /><span>微信二维码</span></div></div><div className="promise-card"><h2>定制服务承诺</h2><p>· 24 小时内出首版方案，免费修改 3 次</p><p>· 报价逐项透明，无隐蔽消费、不拼团</p><p>· 出行中 7×24 中文应急管家在线</p></div></aside>
+          <aside className="custom-aside"><div className="advisor-card"><h2>更想直接聊？</h2><div className="advisor"><span><Users /></span><div><h3>雅典定制师 · 小蓝</h3><p>希腊在地咨询经验 · 服务多元家庭与企业客户</p></div></div><p>添加微信直接沟通，平均 3 分钟回复</p><div className="qr"><Sparkles size={36} /><span>微信二维码</span></div></div><div className="promise-card"><h2>咨询流程</h2><p>· 提交问卷 → 需求沟通</p><p>· 输出行程规划建议 → 沟通咨询费用</p><p>· 交通、场地与劳务由客户与本土主体直接确认</p></div></aside>
         </div>
       </main>
       <Footer />
@@ -560,7 +633,7 @@ function DestinationDetail() {
             <section className="included-routes"><SectionTitle eyebrow="CURATED ROUTES" title={`含${item.name}的线路`} action={{ to: '/customize', label: `定制我的${item.name}行程` }} /><div className="route-grid">{relatedRoutes.map((route) => <RouteCard key={route.slug} route={route} />)}</div></section>
           )}
           {relatedRoutes.length === 0 && (
-            <section className="included-routes"><SectionTitle eyebrow="TAILOR-MADE" title={`${item.name}暂无固定线路`} action={{ to: '/customize', label: `定制我的${item.name}行程` }} /><div className="empty-state"><Compass /><h2>按你的节奏定制</h2><p>{item.name}目前以私人定制方式安排，告诉我们出行时间与偏好，24 小时内出首版方案。</p><Link className="button button-primary" to="/customize">免费获取定制方案</Link></div></section>
+            <section className="included-routes"><SectionTitle eyebrow="TAILOR-MADE" title={`${item.name}暂无固定线路`} action={{ to: '/customize', label: `定制我的${item.name}行程` }} /><div className="empty-state"><Compass /><h2>按你的节奏定制</h2><p>{item.name}目前以行程规划咨询方式沟通，告诉我们出行时间与偏好，我们会先确认需求范围与服务方式。</p><Link className="button button-primary" to="/customize">提交行程咨询</Link></div></section>
           )}
         </div>
       </main>
@@ -702,5 +775,5 @@ function LegacyAdminRedirect() {
 }
 
 export default function App() {
-  return <><ScrollToTop /><SEO /><Routes><Route path="/" element={<Home />} /><Route path="/routes/:slug" element={<RouteDetail />} /><Route path="/customize" element={<Customize />} /><Route path="/destinations/:slug" element={<DestinationDetail />} /><Route path="/guides/richard-li" element={<GuidePage />} /><Route path="/search" element={<SearchPage />} /><Route path="/tools" element={<ToolsPage />} /><Route path="/admin" element={<LegacyAdminRedirect />} /><Route path="/manage-9f3k7" element={<AdminPage />} /><Route path="*" element={<NotFound />} /></Routes></>
+  return <><ScrollToTop /><SEO /><Routes><Route path="/" element={<Home />} /><Route path="/routes/:slug" element={<RouteDetail />} /><Route path="/customize" element={<Customize />} /><Route path="/heritage-guidance" element={<HeritageGuidance />} /><Route path="/vehicle-consultation" element={<VehicleConsultation />} /><Route path="/knowledge-base" element={<KnowledgeBase />} /><Route path="/knowledge-base/:slug" element={<KnowledgeBase />} /><Route path="/business-travel" element={<BusinessTravel />} /><Route path="/destinations/:slug" element={<DestinationDetail />} /><Route path="/guides/richard-li" element={<GuidePage />} /><Route path="/search" element={<SearchPage />} /><Route path="/tools" element={<ToolsPage />} /><Route path="/admin" element={<LegacyAdminRedirect />} /><Route path="/manage-9f3k7" element={<AdminPage />} /><Route path="*" element={<NotFound />} /></Routes><ConsultationDock /></>
 }

@@ -2,9 +2,9 @@
   "settings": {
     "siteName": "SY 希腊蔚蓝海岸",
     "siteUrl": "https://sy-greece.com",
-    "defaultTitle": "SY 希腊蔚蓝海岸｜希腊私人定制旅行",
-    "defaultDescription": "SY 希腊蔚蓝海岸，为中文游客提供雅典、圣托里尼及希腊全境的中高端私人定制旅行、中文司导与在地管家服务。",
-    "keywords": "希腊旅游,希腊私人定制,圣托里尼旅行,雅典旅游,希腊地接,中文司导",
+    "defaultTitle": "SY 希腊蔚蓝海岸｜希腊人文与行程咨询",
+    "defaultDescription": "SY 希腊蔚蓝海岸，为访客提供雅典、圣托里尼及希腊全境的人文资讯、行程策划与语言陪同咨询。",
+    "keywords": "希腊人文咨询,希腊行程策划,圣托里尼文化,雅典历史,中文司导咨询",
     "ogImage": "images/santorini.webp",
     "googleVerification": "",
     "robotsPolicy": "index,follow",

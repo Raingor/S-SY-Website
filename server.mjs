@@ -20,6 +20,7 @@ function json(res, status, body) { res.writeHead(status, { ...corsHeaders(), 'Co
 function text(res, status, body, contentType) { res.writeHead(status, { 'Content-Type': contentType, 'Cache-Control': 'public, max-age=300' }); res.end(body) }
 function isGuideBooking(lead) { return lead.leadType === 'guide-booking' || Boolean(lead.guideSlug) }
 function isMiniProgramBooking(lead) { return ['miniprogram', 'wechat-miniprogram'].includes(lead.platform) || ['miniprogram', 'wechat-miniprogram'].includes(lead.source) || lead.leadType === 'mini-program-booking' }
+function leadsOfType(leads, leadType) { return leadType ? leads.filter((lead) => lead.leadType === leadType) : leads }
 function isAdmin(req) { const auth = req.headers.authorization || ''; return auth.startsWith('Bearer ') && tokens.has(auth.slice(7)) }
 function id(prefix = 'item') { return `${prefix}-${Date.now().toString(36)}-${crypto.randomBytes(3).toString('hex')}` }
 async function body(req) {
@@ -39,7 +40,7 @@ function siteBase(data, req) { return String(data.settings.siteUrl || `http://${
 function sitemap(data, req) {
   const base = siteBase(data, req)
   const paths = [
-    '/', '/customize', '/search', '/tools', '/guides/richard-li',
+    '/', '/customize', '/heritage-guidance', '/vehicle-consultation', '/knowledge-base', '/business-travel', '/search', '/tools', '/guides/richard-li',
     ...data.routes.filter((item) => item.status !== 'archived').map((item) => `/routes/${item.id}`),
     ...data.destinations.filter((item) => item.status !== 'archived').map((item) => `/destinations/${item.id}`),
   ]
@@ -48,22 +49,27 @@ function sitemap(data, req) {
 }
 function llms(data, req) {
   const base = siteBase(data, req)
-  const lines = [`# ${data.settings.siteName}`, '', `> ${data.settings.defaultDescription || ''}`, '', '## 官方入口', `- 网站：${base}/`, `- 定制：${base}/customize`, `- 路线：${base}/routes/honeymoon-5d`, `- 圣托里尼：${base}/destinations/santorini`, `- 名人导游 Richard 李：${base}/guides/richard-li`, `- 旅行工具：${base}/tools`, '', '## 服务范围', '- 雅典、圣托里尼及希腊全境私人定制旅行', '- 中文定制师、中文司导、机场接送、城际用车、海岛跳岛', '- 蜜月、亲子、文化、美酒美食与游艇出海等主题', '', '## 内容索引']
+  const lines = [`# ${data.settings.siteName}`, '', `> ${data.settings.defaultDescription || ''}`, '', '## 官方入口', `- 网站：${base}/`, `- 定制：${base}/customize`, `- 路线：${base}/routes/honeymoon-5d`, `- 圣托里尼：${base}/destinations/santorini`, `- 名人导游 Richard 李：${base}/guides/richard-li`, `- 古迹人文讲解：${base}/heritage-guidance`, `- 用车资源对接咨询：${base}/vehicle-consultation`, `- 景点文史知识库：${base}/knowledge-base`, `- 商旅随行咨询：${base}/business-travel`, `- 旅行工具：${base}/tools`, '', '## 服务范围', '- 雅典、圣托里尼及希腊全境的人文资讯与行程策划', '- 古迹讲解、用车资源对接、知识付费与商务语言陪同咨询', '- 历史文明、海岛、餐厅、体育活动与企业拜访等主题', '', '## 内容索引']
   data.routes.filter((item) => item.status !== 'archived').forEach((item) => lines.push(`- ${item.title}：${item.desc}`))
   lines.push('', '## 联系方式', `- 微信：${data.settings.wechat}`, `- 电话：${data.settings.phone}`, `- 邮箱：${data.settings.email}`, '')
   return lines.join('\n')
 }
 function htmlAttr(value) { return String(value || '').replace(/[&<>"]/g, (char) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[char])) }
 function pageSeo(data, pathname, search, req) {
-  const config = { siteName: 'SY 希腊蔚蓝海岸', siteUrl: siteBase(data, req), defaultTitle: 'SY 希腊蔚蓝海岸｜希腊私人定制旅行', defaultDescription: 'SY 希腊蔚蓝海岸，为中文游客提供雅典、圣托里尼及希腊全境的中高端私人定制旅行、中文司导与在地管家服务。', robotsPolicy: 'index,follow', ...data.settings }
+  const config = { siteName: 'SY 希腊蔚蓝海岸', siteUrl: siteBase(data, req), defaultTitle: 'SY 希腊蔚蓝海岸｜希腊人文与行程咨询', defaultDescription: 'SY 希腊蔚蓝海岸，为访客提供雅典、圣托里尼及希腊全境的人文资讯、行程策划与语言陪同咨询。', robotsPolicy: 'index,follow', ...data.settings }
   const query = new URLSearchParams(search || '').get('q')
   const pages = {
-    '/': ['希腊私人定制旅行｜雅典 · 圣托里尼 · 全境地接', config.defaultDescription],
+    '/': ['希腊行程咨询｜雅典 · 圣托里尼 · 全境人文', config.defaultDescription],
     '/routes/honeymoon': ['爱琴海蜜月之旅｜5天4晚希腊定制路线', '雅典 + 圣托里尼 5 天 4 晚蜜月路线，中文司导、悬崖酒店、双体船出海与伊亚日落旅拍。'],
-    '/customize': ['希腊私人定制｜免费获取专属行程方案', '告诉我们出行时间、人数与预算，24 小时内获得希腊私人定制旅行首版方案。'],
+    '/customize': ['希腊行程咨询｜提交需求沟通方案', '告诉我们出行时间、人数与偏好，先沟通需求范围与行程规划方式。'],
     '/destinations/santorini': ['圣托里尼旅行指南｜蓝顶教堂与爱琴海日落', '圣托里尼悬崖酒店、伊亚日落、火山温泉与双体船巡航的深度旅行指南。'],
     '/search': [`搜索${query ? `“${query}”` : '希腊旅行'}｜SY Greece`, '搜索希腊路线、目的地和私人定制旅行灵感。'],
-    '/tools': ['希腊旅行工具箱｜签证 · 汇率 · 天气 · 行程日历', '出发前准备希腊申根签证、欧元汇率、天气和每日行程的实用工具箱。'],
+    '/tools': ['希腊行前信息工具箱｜签证 · 汇率 · 天气 · 行程日历', '出发前准备希腊申根签证、欧元汇率、天气和每日行程的信息工具箱。'],
+    '/heritage-guidance': ['古迹人文讲解预约｜希腊文化咨询', '预约雅典、德尔斐与克里特等古迹的人文知识讲解。'],
+    '/vehicle-consultation': ['在地用车资源对接咨询｜希腊出行信息', '咨询希腊本地车型、司导资质与用车资源对接方式。'],
+    '/knowledge-base': ['景点付费文史知识库｜免费预览', '浏览希腊景点的历史、神话与建筑知识预览。'],
+    '/business-travel': ['希腊商旅随行咨询｜商务语言与行程规划', '提供商务陪同、语言翻译、企业拜访与人文行程的咨询。'],
+
     '/guides/richard-li': ['Richard 李名人导游｜希腊私人深度旅行与预约', '认识 Richard 李：武汉大学双学士、英国澳洲双硕士，提供希腊历史人文、小众秘境与私人摄影导览。'],
     '/manage-9f3k7': ['网站管理后台｜SY 希腊蔚蓝海岸', 'SY 希腊蔚蓝海岸网站内容与 SEO 管理后台'],
   }
@@ -105,7 +111,7 @@ const server = http.createServer(async (req, res) => {
     if (url.pathname === '/api/content' && method === 'GET') return json(res, 200, publicContent(readData()))
     if (url.pathname === '/api/leads' && method === 'POST') {
       const input = await body(req)
-      if (!input.destination || !input.contact) return json(res, 422, { error: '请填写目的地和联系方式' })
+      if (!input.contact) return json(res, 422, { error: '请填写联系方式' })
       const data = readData()
       const lead = { ...input, id: input.id || id('lead'), source: input.source || input.platform || 'website', platform: input.platform || input.source || 'website', leadType: input.leadType || 'customization', status: 'new', createdAt: input.createdAt || new Date().toISOString() }
       data.leads.unshift(lead); saveData(data)
@@ -114,13 +120,14 @@ const server = http.createServer(async (req, res) => {
     if (url.pathname.startsWith('/api/admin/')) {
       if (!isAdmin(req)) return json(res, 401, { error: '未授权，请先登录后台' })
       const data = readData()
-      if (url.pathname === '/api/admin/stats' && method === 'GET') return json(res, 200, { routes: data.routes.filter((x) => x.status !== 'archived').length, destinations: data.destinations.filter((x) => x.status !== 'archived').length, leads: data.leads.length, pendingLeads: data.leads.filter((x) => x.status === 'new').length, guideBookings: data.leads.filter(isGuideBooking).length, pendingGuideBookings: data.leads.filter((x) => isGuideBooking(x) && x.status === 'new').length, miniProgramBookings: data.leads.filter(isMiniProgramBooking).length })
+      if (url.pathname === '/api/admin/stats' && method === 'GET') return json(res, 200, { routes: data.routes.filter((x) => x.status !== 'archived').length, destinations: data.destinations.filter((x) => x.status !== 'archived').length, leads: data.leads.length, pendingLeads: data.leads.filter((x) => x.status === 'new').length, customizationLeads: data.leads.filter((x) => x.leadType === 'customization').length, guideBookings: data.leads.filter(isGuideBooking).length, pendingGuideBookings: data.leads.filter((x) => isGuideBooking(x) && x.status === 'new').length, miniProgramBookings: data.leads.filter(isMiniProgramBooking).length, vehicleConsultations: data.leads.filter((x) => x.leadType === 'vehicle-consultation').length, knowledgeBaseLeads: data.leads.filter((x) => x.leadType === 'knowledge-base').length, businessTravelLeads: data.leads.filter((x) => x.leadType === 'business-travel').length })
       if (url.pathname === '/api/admin/guide-bookings' && method === 'GET') return json(res, 200, data.leads.filter(isGuideBooking))
       if (url.pathname === '/api/admin/miniprogram-bookings' && method === 'GET') return json(res, 200, data.leads.filter(isMiniProgramBooking))
       if (url.pathname === '/api/admin/settings' && method === 'GET') return json(res, 200, data.settings)
       if (url.pathname === '/api/admin/settings' && method === 'PATCH') { data.settings = { ...data.settings, ...(await body(req)) }; saveData(data); return json(res, 200, data.settings) }
       const match = url.pathname.match(/^\/api\/admin\/(routes|destinations|leads)(?:\/([^/]+))?$/)
       if (match) {
+        if (match[1] === 'leads' && method === 'GET' && url.searchParams.has('leadType')) return json(res, 200, leadsOfType(data.leads, url.searchParams.get('leadType')))
         const payload = method === 'GET' || method === 'DELETE' ? {} : await body(req)
         const result = collectionHandler(data, match[1], method, match[2] ? `/api/admin/${match[1]}/${match[2]}` : url.pathname, payload)
         if (result.status === 204) return res.writeHead(204).end()
