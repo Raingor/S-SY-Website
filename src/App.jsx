@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import React, { useEffect, useMemo, useState } from 'react'
 import { Link, NavLink, Route, Routes, useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import {
   ArrowRight, BusFront, CalendarDays, Check, ChevronRight, CircleDollarSign,
@@ -7,6 +7,7 @@ import {
   Users, Waves, X,
 } from 'lucide-react'
 import AdminPage from './admin'
+import { LanguageSwitcher, translate, useLanguage } from './i18n'
 
 const isRootPortableFile = window.location.protocol === 'file:' && !window.location.pathname.includes('/dist/')
 const IMG = isRootPortableFile ? './public/images/' : '/images/'
@@ -24,6 +25,8 @@ const images = {
   yacht: `${IMG}yacht.png`,
   mykonos: `${IMG}mykonos.png`,
   zakynthos: `${IMG}zakynthos.png`,
+  richardAvatar: `${IMG}richard-avatar.png`,
+  richardProfile: `${IMG}richard-profile.png`,
   crete: `${IMG}crete.png`,
   corinth: `${IMG}corinth.png`,
 }
@@ -181,6 +184,7 @@ function SEO() {
       '/customize': ['希腊私人定制｜免费获取专属行程方案', '告诉我们出行时间、人数与预算，24 小时内获得希腊私人定制旅行首版方案。'],
       '/search': [`搜索${query ? `“${query}”` : '希腊旅行'}｜SY Greece`, `搜索希腊路线、目的地和私人定制旅行灵感。${query ? `当前关键词：${query}。` : ''}`],
       '/tools': ['希腊旅行工具箱｜签证 · 汇率 · 天气 · 行程日历', '出发前准备希腊申根签证、欧元汇率、天气和每日行程的实用工具箱。'],
+      '/guides/richard-li': ['Richard 李名人导游｜希腊私人深度旅行与预约', '认识 Richard 李：武汉大学双学士、英国澳洲双硕士，提供希腊历史人文、小众秘境与私人摄影导览。'],
       '/manage-9f3k7': ['网站管理后台｜SY 希腊蔚蓝海岸', 'SY 希腊蔚蓝海岸网站内容与 SEO 管理后台'],
     }
     const [pageTitle, description] = matchedRoute
@@ -246,11 +250,13 @@ function Logo() {
 
 function Header({ solid = false }) {
   const [open, setOpen] = useState(false)
+  const [language] = useLanguage()
+  const t = (key) => translate(key, language)
   const location = useLocation()
   useEffect(() => setOpen(false), [location.pathname])
   const links = [
-    ['/', '首页'], ['/routes/honeymoon-5d', '甄选路线'], ['/customize', '奢享体验'],
-    ['/destinations/santorini', '精选目的地'], ['/tools', '旅行工具'],
+    ['/', t('nav.home')], ['/routes/honeymoon-5d', t('nav.routes')], ['/customize', t('nav.experiences')],
+    ['/destinations/santorini', t('nav.destinations')], ['/guides/richard-li', t('nav.guide')], ['/tools', t('nav.tools')],
   ]
   return (
     <header className={`site-header ${solid ? 'solid' : ''}`}>
@@ -258,9 +264,10 @@ function Header({ solid = false }) {
         <Logo />
         <nav className={open ? 'nav-open' : ''} aria-label="主导航">
           {links.map(([to, label]) => <NavLink key={to} to={to}>{label}</NavLink>)}
-          <Link className="nav-mobile-cta" to="/customize">立即定制</Link>
+          <Link className="nav-mobile-cta" to="/customize">{t('nav.customize')}</Link>
         </nav>
-        <Link className="button button-gold nav-cta" to="/customize">立即定制</Link>
+        <LanguageSwitcher />
+        <Link className="button button-gold nav-cta" to="/customize">{t('nav.customize')}</Link>
         <button className="menu-button" onClick={() => setOpen(!open)} aria-expanded={open} aria-label="打开导航菜单">
           {open ? <X size={22} /> : <Menu size={22} />}
         </button>
@@ -328,17 +335,34 @@ function DestinationCard({ item }) {
   )
 }
 
+function GuideTeaser() {
+  return (
+    <article className="guide-teaser">
+      <div className="guide-teaser-avatar"><img src={images.richardAvatar} alt="Richard 李" /></div>
+      <div className="guide-teaser-copy">
+        <Eyebrow>Signature Guide · Richard Li</Eyebrow>
+        <h2>名人导游 · Richard 李</h2>
+        <p>武汉大学双学士、英国澳洲双硕士，旅居欧美多年，深耕希腊历史文化与小众秘境路线。</p>
+        <div className="guide-teaser-credentials"><span>名校教育</span><span>欧洲精品文旅金牌从业者</span><span>中英美驾照</span></div>
+      </div>
+      <Link className="button button-primary" to="/guides/richard-li">查看档案 / 预约时间 <ArrowRight size={15} /></Link>
+    </article>
+  )
+}
+
 function GoldCTA() {
+  const [language] = useLanguage()
+  const t = (key) => translate(key, language)
   return (
     <section className="gold-cta">
       <div className="container gold-cta-inner">
         <div>
-          <h2>告诉我你的想法，希腊交给我们</h2>
-          <p>1v1 中文定制师 · 24 小时内出首版方案 · 定制不收方案费</p>
+          <h2>{language === 'en' ? 'Tell us what you have in mind. We know Greece.' : language === 'ja' ? 'あなたの想いを、ギリシャへ。' : language === 'el' ? 'Πείτε μας το όραμά σας. Αναλαμβάνουμε την Ελλάδα.' : '告诉我你的想法，希腊交给我们'}</h2>
+          <p>1v1 · 24h · {language === 'en' ? 'No planning fee' : language === 'ja' ? 'プラン作成無料' : language === 'el' ? 'χωρίς χρέωση σχεδιασμού' : '定制不收方案费'}</p>
         </div>
         <div className="gold-actions">
-          <Link className="button button-deep" to="/customize">提交定制需求</Link>
-          <a className="button button-outline-light" href="#contact">添加定制师微信</a>
+          <Link className="button button-deep" to="/customize">{t('common.customize')}</Link>
+          <a className="button button-outline-light" href="#contact">{t('common.addWechat')}</a>
         </div>
       </div>
     </section>
@@ -346,15 +370,18 @@ function GoldCTA() {
 }
 
 function Footer() {
+  const [language] = useLanguage()
+  const t = (key) => translate(key, language)
+  const routeLabels = language === 'en' ? ['3 days · Athens highlights', '5 days · Athens + Santorini', '7 days · Family Greece', '9 days · Heritage circuit'] : language === 'ja' ? ['3日 · アテネの魅力', '5日 · アテネ + サントリーニ', '7日 · 家族で巡るギリシャ', '9日 · 世界遺産ルート'] : language === 'el' ? ['3 ημέρες · Αθήνα', '5 ημέρες · Αθήνα + Σαντορίνη', '7 ημέρες · Οικογενειακή Ελλάδα', '9 ημέρες · Πολιτιστική διαδρομή'] : ['3天2晚 · 雅典市区精华', '5天4晚 · 雅典 + 圣托里尼', '7天6晚 · 经典三城家庭游', '9天8晚 · 全遗产环游']
   return (
     <footer id="contact" className="site-footer">
       <div className="container footer-grid">
-        <div className="footer-brand"><Logo /><p>深耕希腊本土的中高端私人定制地接服务商。雅典在地团队，一对一中文定制师，全程管家式服务。</p><strong>sy-greece.com</strong></div>
-        <div><h3>甄选路线</h3><Link to="/routes/athens-3d">3天2晚 · 雅典市区精华</Link><Link to="/routes/honeymoon-5d">5天4晚 · 雅典 + 圣托里尼</Link><Link to="/routes/family-7d">7天6晚 · 经典三城家庭游</Link><Link to="/routes/heritage-9d">9天8晚 · 全遗产环游</Link></div>
-        <div><h3>服务</h3><Link to="/customize">私人定制</Link><a href="#services">专属用车</a><a href="#experiences">私人包机 / 游艇出海</a><Link to="/tools">旅行工具</Link></div>
-        <div><h3>联系我们</h3><span>定制师微信：SY-GREECE-01</span><span>咨询电话：+30 210 000 0000</span><span>邮箱：hello@sy-greece.com</span><Link className="footer-admin-link" to="/manage-9f3k7">后台管理</Link></div>
+        <div className="footer-brand"><Logo /><p>{t('footer.brand')}</p><strong>sy-greece.com</strong></div>
+        <div><h3>{t('footer.routes')}</h3><Link to="/routes/athens-3d">{routeLabels[0]}</Link><Link to="/routes/honeymoon-5d">{routeLabels[1]}</Link><Link to="/routes/family-7d">{routeLabels[2]}</Link><Link to="/routes/heritage-9d">{routeLabels[3]}</Link></div>
+        <div><h3>{t('footer.services')}</h3><Link to="/customize">{language === 'en' ? 'Private planning' : language === 'ja' ? 'プライベート旅行' : language === 'el' ? 'Ιδιωτικός σχεδιασμός' : '私人定制'}</Link><a href="#services">{language === 'en' ? 'Private transfers' : language === 'ja' ? '専用車' : language === 'el' ? 'Ιδιωτικές μετακινήσεις' : '专属用车'}</a><a href="#experiences">{language === 'en' ? 'Yachts & private flights' : language === 'ja' ? 'ヨット / プライベートフライト' : language === 'el' ? 'Yacht / private flights' : '私人包机 / 游艇出海'}</a><Link to="/tools">{t('nav.tools')}</Link></div>
+        <div><h3>{t('footer.contact')}</h3><span>{t('footer.wechat')}</span><span>{t('footer.phone')}</span><span>{t('footer.email')}</span><Link className="footer-admin-link" to="/manage-9f3k7">{language === 'en' ? 'Admin' : language === 'ja' ? '管理画面' : language === 'el' ? 'Διαχείριση' : '后台管理'}</Link></div>
       </div>
-      <div className="container copyright"><span>2026 SY Greece · 希腊蔚蓝海岸 · 版权所有</span><span>沪ICP备 XXXXXXXX 号</span></div>
+      <div className="container copyright"><span>2026 SY Greece · {language === 'en' ? 'All rights reserved' : language === 'ja' ? '無断転載禁止' : language === 'el' ? 'Με επιφύλαξη παντός δικαιώματος' : '希腊蔚蓝海岸 · 版权所有'}</span><span>沪ICP备 XXXXXXXX 号</span></div>
     </footer>
   )
 }
@@ -392,6 +419,7 @@ function Home() {
         <div className="container">
           <SectionTitle eyebrow="OUR SERVICES" title="不只是行程，更是在地服务" action={{ to: '/customize', label: '了解全部服务' }} />
           <div className="service-grid">{services.map(([Icon, title, desc]) => <Link to={title === '旅行工具' ? '/tools' : '/customize'} className="service-card" key={title}><Icon /><h3>{title}</h3><p>{desc}</p><ArrowRight size={17} /></Link>)}</div>
+          <GuideTeaser />
         </div>
       </section>
 
@@ -576,6 +604,93 @@ function ToolsPage() {
   )
 }
 
+function GuidePage() {
+  const [language] = useLanguage()
+  const copy = translate('guide', language)
+  const bookingLabel = translate('common.booking', language)
+  const [selectedDate, setSelectedDate] = useState('')
+  const [bookingMessage, setBookingMessage] = useState('')
+  const [submitting, setSubmitting] = useState(false)
+  const dateStates = { 8: 'booked', 9: 'booked', 12: 'pending', 16: 'available', 17: 'available', 21: 'pending', 24: 'available', 25: 'available' }
+  const calendarDays = [null, null, ...Array.from({ length: 30 }, (_, index) => index + 1)]
+  const signatureImages = [images.athens, images.meteora, images.zakynthos, images.delphi]
+  const signature = copy.signature.map((item, index) => [signatureImages[index], ...item])
+  const credentials = copy.credentials.map(([title, line1, line2], index) => [`0${index + 1}`, title, `${line1}\n${line2}`])
+  const quotes = copy.quotes
+  const services = copy.signature
+  async function submitBooking(event) {
+    event.preventDefault()
+    if (!selectedDate) { setBookingMessage(copy.chooseDate); return }
+    setSubmitting(true); setBookingMessage('')
+    const form = event.currentTarget
+    const payload = { ...Object.fromEntries(new FormData(form)), guide: 'Richard 李', guideSlug: 'richard-li', bookingDate: selectedDate, leadType: 'guide-booking', destination: 'Richard 李私人导游预约', createdAt: new Date().toISOString(), status: 'new' }
+    try {
+      const response = await fetch('/api/leads', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) })
+      if (!response.ok) throw new Error('booking api failed')
+    } catch {
+      const local = JSON.parse(localStorage.getItem('sy-greece-leads') || '[]')
+      localStorage.setItem('sy-greece-leads', JSON.stringify([{ ...payload, id: `guide-${Date.now()}` }, ...local]))
+    } finally {
+      setSubmitting(false); setBookingMessage(copy.success); form.reset(); setSelectedDate('')
+    }
+  }
+  return (
+    <>
+      <section className="guide-hero">
+        <Header />
+        <div className="container guide-hero-grid">
+          <div className="guide-hero-copy">
+            <Eyebrow dark>{copy.eyebrow}</Eyebrow>
+            <h1>{copy.title.split('|').map((line) => <React.Fragment key={line}>{line}<br /></React.Fragment>)}</h1>
+            <p className="guide-role">{copy.role}</p>
+            <p className="guide-hero-note">{copy.note}</p>
+            <div className="guide-hero-actions"><a className="button button-gold" href="#reserve">{bookingLabel} <ArrowRight size={15} /></a><a className="button button-ghost" href="#contact">{translate('common.addWechat', language)}</a></div>
+          </div>
+          <div className="guide-profile-card">
+            <div className="guide-avatar"><img src={images.richardAvatar} alt="Richard 李头像" /></div>
+            <h2>{copy.profileTitle}</h2><Eyebrow>{copy.profileEyebrow}</Eyebrow>
+            <div className="profile-rule" />
+            <p><strong>{copy.profileEducation}</strong><br />{copy.profileBio}</p>
+            <div className="profile-tags">{copy.profileTags.map((tag) => <span key={tag}>{tag}</span>)}</div>
+          </div>
+        </div>
+      </section>
+
+      <main>
+        <section className="guide-section guide-story-section">
+          <div className="container guide-story-grid">
+            <div className="guide-story-copy"><Eyebrow>{copy.storyEyebrow}</Eyebrow><h2>{copy.storyTitle.split('|').map((line) => <React.Fragment key={line}>{line}<br /></React.Fragment>)}</h2>{copy.storyParagraphs.map((paragraph) => <p key={paragraph}>{paragraph}</p>)}</div>
+            <blockquote className="guide-quote"><span>“</span><p>{copy.quote}</p><small>— Richard Li / SIGNATURE GUIDE</small></blockquote>
+          </div>
+        </section>
+
+        <section className="guide-section credentials-section">
+          <div className="container"><Eyebrow>{copy.credentialsEyebrow}</Eyebrow><h2>{copy.credentialsTitle}</h2><div className="credentials-grid">{credentials.map(([number, title, text]) => <article key={number} className="credential-card"><small>{number}</small><h3>{title}</h3><p>{text.split('\n').map((line) => <span key={line}>{line}</span>)}</p></article>)}</div></div>
+        </section>
+
+        <section className="guide-section signature-section">
+          <div className="container"><Eyebrow>{copy.signatureEyebrow}</Eyebrow><h2>{copy.signatureTitle}</h2><p className="section-lead">{copy.signatureLead}</p><div className="signature-grid">{services.map(([title, desc, duration, audience], index) => <article className={`signature-card ${index === 3 ? 'signature-gold' : ''}`} key={title}><img src={signature[index][0]} alt={title} /><div><h3>{title}</h3><p>{desc}</p><div><span>{duration}</span><small>{audience}</small></div></div></article>)}</div></div>
+        </section>
+
+        <section className="guide-section guestbook-section">
+          <div className="container"><Eyebrow dark>{copy.guestbookEyebrow}</Eyebrow><h2>{copy.guestbookTitle}</h2><div className="guestbook-grid">{quotes.map(([quote, author]) => <blockquote key={author}><p>{quote}</p><cite>— {author}</cite></blockquote>)}</div></div>
+        </section>
+
+        <section className="guide-section reserve-section" id="reserve">
+          <div className="container"><Eyebrow>{copy.reserveEyebrow}</Eyebrow><h2>{copy.reserveTitle}</h2><p className="section-lead">{copy.reserveLead}</p><div className="booking-layout">
+            <div className="calendar-card"><div className="calendar-head"><div><strong>{copy.calendarTitle}</strong><small>{copy.calendarMonth}</small></div><span>‹</span><span>›</span></div><div className="calendar-week">{(language === 'en' ? ['M', 'T', 'W', 'T', 'F', 'S', 'S'] : language === 'ja' ? ['月', '火', '水', '木', '金', '土', '日'] : language === 'el' ? ['Δ', 'Τ', 'Τ', 'Π', 'Π', 'Σ', 'Κ'] : language === 'zh-TW' ? ['一', '二', '三', '四', '五', '六', '日'] : ['一', '二', '三', '四', '五', '六', '日']).map((day, index) => <span key={`${day}-${index}`}>{day}</span>)}</div><div className="calendar-grid">{calendarDays.map((day, index) => day ? <button key={day} type="button" className={`calendar-day ${dateStates[day] || ''} ${selectedDate === `2026-09-${String(day).padStart(2, '0')}` ? 'selected' : ''}`} disabled={dateStates[day] !== 'available'} onClick={() => setSelectedDate(`2026-09-${String(day).padStart(2, '0')}`)}>{day}</button> : <span key={`blank-${index}`} />)}</div><div className="calendar-legend"><span><i className="available-dot" />{copy.available}</span><span><i className="pending-dot" />{copy.pending}</span><span><i className="booked-dot" />{copy.booked}</span></div></div>
+            <form className="booking-form" onSubmit={submitBooking}><div className="booking-form-head"><h3>{copy.formTitle}</h3><p>{copy.formLead}</p></div><label>{copy.duration}<select name="serviceLength" defaultValue={copy.durations[0]}>{copy.durations.map((option) => <option key={option}>{option}</option>)}</select></label><label>{copy.travelers}<select name="travelers" defaultValue={copy.travelerOptions[1]}>{copy.travelerOptions.map((option) => <option key={option}>{option}</option>)}</select></label><label>{copy.requirements}<input name="requirements" required placeholder={copy.requirementsPlaceholder} /></label><label>{copy.contact}<input name="contact" required placeholder={copy.contactPlaceholder} /></label><button className="button button-deep button-block" type="submit" disabled={submitting}>{submitting ? copy.submitting : copy.submit}</button>{bookingMessage && <p className={`booking-message ${bookingMessage === copy.success ? 'success' : ''}`} role="status">{bookingMessage}</p>}</form>
+
+          </div></div>
+        </section>
+      </main>
+      <section className="guide-final-cta"><div className="container"><h2>{copy.finalTitle}</h2><p>{copy.finalLead}</p><a className="button button-deep" href="#reserve">{bookingLabel} <ArrowRight size={15} /></a></div></section>
+      <Footer />
+      <div className="guide-mobile-cta"><span>{language === 'en' ? 'Tailored quote' : language === 'ja' ? '専属見積り' : language === 'el' ? 'Εξατομικευμένη προσφορά' : '专属报价'}</span><a href="#reserve">{bookingLabel}</a></div>
+    </>
+  )
+}
+
 function NotFound() {
   return <main className="not-found"><Logo /><h1>这片海域还没有航线</h1><p>回到首页，继续探索你的希腊旅程。</p><Link className="button button-primary" to="/">返回首页</Link></main>
 }
@@ -587,5 +702,5 @@ function LegacyAdminRedirect() {
 }
 
 export default function App() {
-  return <><ScrollToTop /><SEO /><Routes><Route path="/" element={<Home />} /><Route path="/routes/:slug" element={<RouteDetail />} /><Route path="/customize" element={<Customize />} /><Route path="/destinations/:slug" element={<DestinationDetail />} /><Route path="/search" element={<SearchPage />} /><Route path="/tools" element={<ToolsPage />} /><Route path="/admin" element={<LegacyAdminRedirect />} /><Route path="/manage-9f3k7" element={<AdminPage />} /><Route path="*" element={<NotFound />} /></Routes></>
+  return <><ScrollToTop /><SEO /><Routes><Route path="/" element={<Home />} /><Route path="/routes/:slug" element={<RouteDetail />} /><Route path="/customize" element={<Customize />} /><Route path="/destinations/:slug" element={<DestinationDetail />} /><Route path="/guides/richard-li" element={<GuidePage />} /><Route path="/search" element={<SearchPage />} /><Route path="/tools" element={<ToolsPage />} /><Route path="/admin" element={<LegacyAdminRedirect />} /><Route path="/manage-9f3k7" element={<AdminPage />} /><Route path="*" element={<NotFound />} /></Routes></>
 }

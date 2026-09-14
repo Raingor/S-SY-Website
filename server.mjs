@@ -14,8 +14,11 @@ const mime = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; cha
 
 function readData() { return JSON.parse(readFileSync(dataPath, 'utf8')) }
 function saveData(data) { writeFileSync(dataPath, `${JSON.stringify(data, null, 2)}\n`) }
-function json(res, status, body) { res.writeHead(status, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' }); res.end(JSON.stringify(body)) }
+function corsHeaders() { return { 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Methods': 'GET,POST,PATCH,DELETE,OPTIONS', 'Access-Control-Allow-Headers': 'Content-Type, Authorization' } }
+function json(res, status, body) { res.writeHead(status, { ...corsHeaders(), 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' }); res.end(JSON.stringify(body)) }
 function text(res, status, body, contentType) { res.writeHead(status, { 'Content-Type': contentType, 'Cache-Control': 'public, max-age=300' }); res.end(body) }
+function isGuideBooking(lead) { return lead.leadType === 'guide-booking' || Boolean(lead.guideSlug) }
+function isMiniProgramBooking(lead) { return ['miniprogram', 'wechat-miniprogram'].includes(lead.platform) || ['miniprogram', 'wechat-miniprogram'].includes(lead.source) || lead.leadType === 'mini-program-booking' }
 function isAdmin(req) { const auth = req.headers.authorization || ''; return auth.startsWith('Bearer ') && tokens.has(auth.slice(7)) }
 function id(prefix = 'item') { return `${prefix}-${Date.now().toString(36)}-${crypto.randomBytes(3).toString('hex')}` }
 async function body(req) {
@@ -35,7 +38,7 @@ function siteBase(data, req) { return String(data.settings.siteUrl || `http://${
 function sitemap(data, req) {
   const base = siteBase(data, req)
   const paths = [
-    '/', '/customize', '/search', '/tools',
+    '/', '/customize', '/search', '/tools', '/guides/richard-li',
     ...data.routes.filter((item) => item.status !== 'archived').map((item) => `/routes/${item.id}`),
     ...data.destinations.filter((item) => item.status !== 'archived').map((item) => `/destinations/${item.id}`),
   ]
@@ -44,7 +47,7 @@ function sitemap(data, req) {
 }
 function llms(data, req) {
   const base = siteBase(data, req)
-  const lines = [`# ${data.settings.siteName}`, '', `> ${data.settings.defaultDescription || ''}`, '', '## 官方入口', `- 网站：${base}/`, `- 定制：${base}/customize`, `- 路线：${base}/routes/honeymoon-5d`, `- 圣托里尼：${base}/destinations/santorini`, `- 旅行工具：${base}/tools`, '', '## 服务范围', '- 雅典、圣托里尼及希腊全境私人定制旅行', '- 中文定制师、中文司导、机场接送、城际用车、海岛跳岛', '- 蜜月、亲子、文化、美酒美食与游艇出海等主题', '', '## 内容索引']
+  const lines = [`# ${data.settings.siteName}`, '', `> ${data.settings.defaultDescription || ''}`, '', '## 官方入口', `- 网站：${base}/`, `- 定制：${base}/customize`, `- 路线：${base}/routes/honeymoon-5d`, `- 圣托里尼：${base}/destinations/santorini`, `- 名人导游 Richard 李：${base}/guides/richard-li`, `- 旅行工具：${base}/tools`, '', '## 服务范围', '- 雅典、圣托里尼及希腊全境私人定制旅行', '- 中文定制师、中文司导、机场接送、城际用车、海岛跳岛', '- 蜜月、亲子、文化、美酒美食与游艇出海等主题', '', '## 内容索引']
   data.routes.filter((item) => item.status !== 'archived').forEach((item) => lines.push(`- ${item.title}：${item.desc}`))
   lines.push('', '## 联系方式', `- 微信：${data.settings.wechat}`, `- 电话：${data.settings.phone}`, `- 邮箱：${data.settings.email}`, '')
   return lines.join('\n')
@@ -60,6 +63,7 @@ function pageSeo(data, pathname, search, req) {
     '/destinations/santorini': ['圣托里尼旅行指南｜蓝顶教堂与爱琴海日落', '圣托里尼悬崖酒店、伊亚日落、火山温泉与双体船巡航的深度旅行指南。'],
     '/search': [`搜索${query ? `“${query}”` : '希腊旅行'}｜SY Greece`, '搜索希腊路线、目的地和私人定制旅行灵感。'],
     '/tools': ['希腊旅行工具箱｜签证 · 汇率 · 天气 · 行程日历', '出发前准备希腊申根签证、欧元汇率、天气和每日行程的实用工具箱。'],
+    '/guides/richard-li': ['Richard 李名人导游｜希腊私人深度旅行与预约', '认识 Richard 李：武汉大学双学士、英国澳洲双硕士，提供希腊历史人文、小众秘境与私人摄影导览。'],
     '/manage-9f3k7': ['网站管理后台｜SY 希腊蔚蓝海岸', 'SY 希腊蔚蓝海岸网站内容与 SEO 管理后台'],
   }
   const [title, description] = pages[pathname] || [config.defaultTitle, config.defaultDescription]
@@ -86,6 +90,7 @@ const server = http.createServer(async (req, res) => {
   try {
     const url = new URL(req.url, `http://${req.headers.host || 'localhost'}`)
     const method = req.method || 'GET'
+    if (method === 'OPTIONS' && url.pathname.startsWith('/api/')) return res.writeHead(204, corsHeaders()).end()
     if (url.pathname === '/api/health') return json(res, 200, { ok: true, service: 'sy-greece-admin', time: new Date().toISOString() })
     if (url.pathname === '/robots.txt' && method === 'GET') { const data = readData(); const base = siteBase(data, req); return text(res, 200, `User-agent: *\nAllow: /\nDisallow: /manage-9f3k7\nDisallow: /api/\nSitemap: ${base}/sitemap.xml\n`, 'text/plain; charset=utf-8') }
     if (url.pathname === '/sitemap.xml' && method === 'GET') return text(res, 200, sitemap(readData(), req), 'application/xml; charset=utf-8')
@@ -101,14 +106,16 @@ const server = http.createServer(async (req, res) => {
       const input = await body(req)
       if (!input.destination || !input.contact) return json(res, 422, { error: '请填写目的地和联系方式' })
       const data = readData()
-      const lead = { ...input, id: input.id || id('lead'), status: 'new', createdAt: input.createdAt || new Date().toISOString() }
+      const lead = { ...input, id: input.id || id('lead'), source: input.source || input.platform || 'website', platform: input.platform || input.source || 'website', leadType: input.leadType || 'customization', status: 'new', createdAt: input.createdAt || new Date().toISOString() }
       data.leads.unshift(lead); saveData(data)
       return json(res, 201, lead)
     }
     if (url.pathname.startsWith('/api/admin/')) {
       if (!isAdmin(req)) return json(res, 401, { error: '未授权，请先登录后台' })
       const data = readData()
-      if (url.pathname === '/api/admin/stats' && method === 'GET') return json(res, 200, { routes: data.routes.filter((x) => x.status !== 'archived').length, destinations: data.destinations.filter((x) => x.status !== 'archived').length, leads: data.leads.length, pendingLeads: data.leads.filter((x) => x.status === 'new').length })
+      if (url.pathname === '/api/admin/stats' && method === 'GET') return json(res, 200, { routes: data.routes.filter((x) => x.status !== 'archived').length, destinations: data.destinations.filter((x) => x.status !== 'archived').length, leads: data.leads.length, pendingLeads: data.leads.filter((x) => x.status === 'new').length, guideBookings: data.leads.filter(isGuideBooking).length, pendingGuideBookings: data.leads.filter((x) => isGuideBooking(x) && x.status === 'new').length, miniProgramBookings: data.leads.filter(isMiniProgramBooking).length })
+      if (url.pathname === '/api/admin/guide-bookings' && method === 'GET') return json(res, 200, data.leads.filter(isGuideBooking))
+      if (url.pathname === '/api/admin/miniprogram-bookings' && method === 'GET') return json(res, 200, data.leads.filter(isMiniProgramBooking))
       if (url.pathname === '/api/admin/settings' && method === 'GET') return json(res, 200, data.settings)
       if (url.pathname === '/api/admin/settings' && method === 'PATCH') { data.settings = { ...data.settings, ...(await body(req)) }; saveData(data); return json(res, 200, data.settings) }
       const match = url.pathname.match(/^\/api\/admin\/(routes|destinations|leads)(?:\/([^/]+))?$/)
