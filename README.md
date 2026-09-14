@@ -107,6 +107,7 @@ SY_MINIPROGRAM_TOKEN_SECRET='用于签发小程序用户 Token 的随机密钥'
 - `POST /api/miniprogram/auth/wx-login`：请求 `{ "code": "wx.login 返回的 code", "nickname": "可选微信昵称", "avatarUrl": "可选 HTTPS 头像地址" }`，服务端调用微信 `jscode2session`，返回 `accessToken`、`tokenType`、`expiresIn` 和包含 `nickname`、`avatarUrl` 的 `user`；缺少昵称时生成 `用户+随机数`，已有资料不会被空值覆盖。
 - `GET /api/miniprogram/auth/me`：需要 `Authorization: Bearer <accessToken>`，返回 `nickname`、`avatarUrl`、`phoneBound` 与脱敏手机号。
 - `POST /api/miniprogram/auth/phone`：需要 Bearer Token，请求 `{ "code": "wx.getPhoneNumber 回调中的 code" }`，服务端调用微信手机号接口并保存绑定手机号。
+- `GET /api/miniprogram/leads`：需要 Bearer Token，只返回当前用户自己的线索，响应 `{ "items": [...] }`；可用 `leadType`、`status` 查询参数筛选，不返回 openid、unionid 或其他用户数据。
 
 小程序提交表单时继续使用 `POST /api/leads`，并携带 Bearer Token 及 `platform: "wechat-miniprogram"`（或 `source` 同值）。未登录返回 `401 MINIPROGRAM_LOGIN_REQUIRED`，未绑定手机号返回 `403 PHONE_BIND_REQUIRED`；绑定后服务端从用户记录写入联系方式，不信任客户端传入的手机号。小程序用户记录保存在 `data/site-data.json` 的 `miniprogramUsers` 中，微信 `openid` 不会通过 API 返回。
 

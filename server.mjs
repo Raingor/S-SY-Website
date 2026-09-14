@@ -160,6 +160,13 @@ const server = http.createServer(async (req, res) => {
         return json(res, 200, { user: publicMiniProgramUser(user) })
       } catch (error) { return json(res, error.message === '小程序登录服务尚未配置' ? 503 : 502, { code: 'WECHAT_PHONE_BIND_FAILED', error: error.message }) }
     }
+    if (url.pathname === '/api/miniprogram/leads' && method === 'GET') {
+      const data = readData(); const user = miniProgramUserFromRequest(req, data)
+      if (!user) return json(res, 401, { code: 'MINIPROGRAM_LOGIN_REQUIRED', error: '请先微信登录' })
+      const leadType = url.searchParams.get('leadType'); const status = url.searchParams.get('status')
+      const items = data.leads.filter((lead) => lead.userId === user.id && (!leadType || lead.leadType === leadType) && (!status || lead.status === status)).map((lead) => { const { openid, unionid, ...safeLead } = lead; return safeLead })
+      return json(res, 200, { items })
+    }
     if (url.pathname === '/api/leads' && method === 'POST') {
       const input = await body(req)
       const data = readData(); let miniProgramUser = null
