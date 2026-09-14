@@ -31,12 +31,13 @@ function AdminLogin({ onLogin }) {
       const response = await callApi('/auth/login', { method: 'POST', body: JSON.stringify({ password }) })
       sessionStorage.setItem(TOKEN_KEY, response.token); onLogin(response.token, false)
     } catch (requestError) {
-      if (password === 'sy-greece-admin') {
+      const isLocalHost = ['localhost', '127.0.0.1', '::1'].includes(window.location.hostname)
+      if (isLocalHost && password === 'sy-greece-admin') {
         sessionStorage.removeItem(TOKEN_KEY); onLogin('local-demo-token', true)
       } else setError(requestError.message === 'Failed to fetch' ? '管理服务尚未启动，请运行 npm run start' : requestError.message)
     }
   }
-  return <main className="admin-login"><div className="admin-login-card"><div className="admin-mark"><span>SY</span><small>GREECE ADMIN</small></div><h1>网站管理后台</h1><p>管理路线、目的地、线索和站点配置</p><form onSubmit={submit}><label>管理员密码<input type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="请输入管理密码" autoFocus /></label><button className="admin-primary" type="submit">进入后台 <ChevronRight size={16} /></button>{error && <div className="admin-error">{error}</div>}</form><small className="admin-hint">本地初始密码：sy-greece-admin</small></div></main>
+  return <main className="admin-login"><div className="admin-login-card"><div className="admin-mark"><span>SY</span><small>GREECE ADMIN</small></div><h1>网站管理后台</h1><p>管理路线、目的地、线索和站点配置</p><form onSubmit={submit}><label>管理员密码<input type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="请输入管理密码" autoFocus /></label><button className="admin-primary" type="submit">进入后台 <ChevronRight size={16} /></button>{error && <div className="admin-error">{error}</div>}</form>{['localhost', '127.0.0.1', '::1'].includes(window.location.hostname) && <small className="admin-hint">本地初始密码：sy-greece-admin</small>}</div></main>
 }
 
 function StatCard({ icon: Icon, label, value, tone = '' }) { return <div className={`admin-stat ${tone}`}><Icon /><span>{label}</span><strong>{value}</strong></div> }
