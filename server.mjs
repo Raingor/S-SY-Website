@@ -65,6 +65,9 @@ function publicContent(data) {
     settings: data.settings,
     routes: data.routes.filter((item) => item.status !== 'archived').map((item) => ({ ...item, image: `./images/${item.image}` })),
     destinations: data.destinations.filter((item) => item.status !== 'archived').map((item) => ({ ...item, image: `./images/${item.image}` })),
+    attractions: (data.attractions || []).filter((item) => item.status !== 'archived').map((item) => ({ ...item, image: `./images/${item.image}`, exhibits: (item.exhibits || []).map((exhibit) => ({ ...exhibit, image: exhibit.image ? `./images/${exhibit.image}` : '' })), articles: (item.articles || []).map((article) => ({ ...article, cover: `./images/${article.cover}` })) })),
+    sampleItineraries: (data.sampleItineraries || []).filter((item) => item.status !== 'archived').map((item) => ({ ...item, cover: `./images/${item.cover}` })),
+    cities: (data.cities || []).filter((item) => item.status !== 'archived').map((item) => ({ ...item, mosaic: (item.mosaic || []).map((image) => `./images/${image}`) })),
   }
 }
 function xml(value) { return String(value).replace(/[<>&'\"]/g, (char) => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;', "'": '&apos;', '"': '&quot;' }[char])) }
@@ -75,6 +78,9 @@ function sitemap(data, req) {
     '/', '/customize', '/heritage-guidance', '/vehicle-consultation', '/knowledge-base', '/business-travel', '/search', '/tools', '/guides/richard-li',
     ...data.routes.filter((item) => item.status !== 'archived').map((item) => `/routes/${item.id}`),
     ...data.destinations.filter((item) => item.status !== 'archived').map((item) => `/destinations/${item.id}`),
+    ...(data.attractions || []).filter((item) => item.status !== 'archived').map((item) => `/attractions/${item.id}`),
+    ...(data.cities || []).filter((item) => item.status !== 'archived').map((item) => `/attractions/city/${item.id}`),
+    ...(data.sampleItineraries || []).filter((item) => item.status !== 'archived').map((item) => `/itineraries/${item.id}`),
   ]
   const lastmod = new Date().toISOString().slice(0, 10)
   return `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">${paths.map((path) => `<url><loc>${xml(`${base}${path}`)}</loc><lastmod>${lastmod}</lastmod><changefreq>${path === '/' ? 'weekly' : 'monthly'}</changefreq><priority>${path === '/' ? '1.0' : '0.8'}</priority></url>`).join('')}</urlset>`
@@ -90,6 +96,14 @@ function htmlAttr(value) { return String(value || '').replace(/[&<>"]/g, (char) 
 function pageSeo(data, pathname, search, req) {
   const config = { siteName: 'SY 希腊蔚蓝海岸', siteUrl: siteBase(data, req), defaultTitle: '只为一生美好回忆｜SY 希腊蔚蓝海岸', defaultDescription: '只为一生美好回忆。SY 希腊蔚蓝海岸提供雅典、圣托里尼及希腊全境的人文与行程咨询。', robotsPolicy: 'index,follow', ...data.settings }
   const query = new URLSearchParams(search || '').get('q')
+  const attractionMatch = pathname.match(/^\/attractions\/([^/]+)$/)
+  const matchedAttraction = attractionMatch ? (data.attractions || []).find((item) => item.id === decodeURIComponent(attractionMatch[1])) : null
+  const cityMatch = pathname.match(/^\/attractions\/city\/([^/]+)$/)
+  const matchedCity = cityMatch ? (data.cities || []).find((item) => item.id === cityMatch[1]) : null
+  const itineraryMatch = pathname.match(/^\/itineraries\/([^/]+)$/)
+  const matchedItinerary = itineraryMatch ? (data.sampleItineraries || []).find((item) => item.id === decodeURIComponent(itineraryMatch[1])) : null
+  const tripMatch = pathname.match(/^\/trip\/([^/]+)$/)
+  const matchedTrip = tripMatch ? (data.customTrips || []).find((item) => item.token === tripMatch[1]) : null
   const pages = {
     '/': ['只为一生美好回忆｜SY 希腊蔚蓝海岸', `只为一生美好回忆。${config.defaultDescription}`],
     '/routes/honeymoon': ['爱琴海蜜月之旅｜5天4晚希腊定制路线', '雅典 + 圣托里尼 5 天 4 晚蜜月路线，中文司导、悬崖酒店、双体船出海与伊亚日落旅拍。'],
@@ -97,6 +111,8 @@ function pageSeo(data, pathname, search, req) {
     '/destinations/santorini': ['圣托里尼旅行指南｜蓝顶教堂与爱琴海日落', '圣托里尼悬崖酒店、伊亚日落、火山温泉与双体船巡航的深度旅行指南。'],
     '/search': [`搜索${query ? `“${query}”` : '希腊旅行'}｜SY Greece`, '搜索希腊路线、目的地和私人定制旅行灵感。'],
     '/tools': ['希腊行前信息工具箱｜签证 · 汇率 · 天气 · 行程日历', '出发前准备希腊申根签证、欧元汇率、天气和每日行程的信息工具箱。'],
+    '/attractions': ['希腊景点导览｜景点 · 博物馆 · 展品讲解', '按城市浏览雅典、圣托里尼、德尔斐等地的景点与博物馆，含参观指南与展品讲解。'],
+    '/itineraries': ['参考行程｜SY 希腊蔚蓝海岸', '雅典、圣托里尼与世界遗产环线的参考行程，可按需定制。'],
     '/heritage-guidance': ['古迹人文讲解预约｜希腊文化咨询', '预约雅典、德尔斐与克里特等古迹的人文知识讲解。'],
     '/vehicle-consultation': ['在地用车资源对接咨询｜希腊出行信息', '咨询希腊本地车型、司导资质与用车资源对接方式。'],
     '/knowledge-base': ['景点付费文史知识库｜免费预览', '浏览希腊景点的历史、神话与建筑知识预览。'],
@@ -105,9 +121,18 @@ function pageSeo(data, pathname, search, req) {
     '/guides/richard-li': ['Richard 李名人导游｜希腊私人深度旅行与预约', '认识 Richard 李：武汉大学双学士、英国澳洲双硕士，提供希腊历史人文、小众秘境与私人摄影导览。'],
     '/manage-9f3k7': ['网站管理后台｜SY 希腊蔚蓝海岸', 'SY 希腊蔚蓝海岸网站内容与 SEO 管理后台'],
   }
-  const [title, description] = pages[pathname] || [config.defaultTitle, config.defaultDescription]
+  const dynamicPage = matchedTrip
+    ? [`${matchedTrip.title}｜${matchedTrip.client}`, `${matchedTrip.period} 定制旅程，${matchedTrip.travelers}，${matchedTrip.vehicle}。`]
+    : matchedCity
+      ? [`${matchedCity.name}景点导览｜${matchedCity.subtitle || matchedCity.country}`, `${matchedCity.name}：${matchedCity.description || ''}含 ${matchedCity.museumCount} 个景点与 ${matchedCity.guidePointCount} 个讲解点。`]
+      : matchedAttraction
+        ? [`${matchedAttraction.name}参观指南｜${matchedAttraction.en}`, `${matchedAttraction.name}：${matchedAttraction.summary || ''}开放时间、门票、交通与展品讲解。`]
+        : matchedItinerary
+          ? [`${matchedItinerary.title}｜参考行程`, `${matchedItinerary.title}，${matchedItinerary.days} 天参考行程，${matchedItinerary.summary || ''}`]
+          : null
+  const [title, description] = dynamicPage || pages[pathname] || [config.defaultTitle, config.defaultDescription]
   const isAdmin = pathname === '/manage-9f3k7'
-  return { title: title.includes('SY') ? title : `${title} | ${config.siteName}`, description, canonical: `${config.siteUrl.replace(/\/$/, '')}${pathname === '/' ? '/' : pathname}`, robots: isAdmin ? 'noindex,nofollow' : config.robotsPolicy }
+  return { title: title.includes('SY') ? title : `${title} | ${config.siteName}`, description, canonical: `${config.siteUrl.replace(/\/$/, '')}${pathname === '/' ? '/' : pathname}`, robots: (isAdmin || matchedTrip) ? 'noindex,nofollow' : config.robotsPolicy }
 }
 function injectSeoHtml(html, seo) {
   const title = htmlAttr(seo.title); const description = htmlAttr(seo.description); const canonical = htmlAttr(seo.canonical); const robots = htmlAttr(seo.robots)
@@ -141,6 +166,13 @@ const server = http.createServer(async (req, res) => {
       return json(res, 200, { token, user: { name: 'SY Admin', role: 'editor' } })
     }
     if (url.pathname === '/api/content' && method === 'GET') return json(res, 200, publicContent(readData()))
+    const tripApiMatch = url.pathname.match(/^\/api\/trip\/([^/]+)$/)
+    if (tripApiMatch && method === 'GET') {
+      const data = readData()
+      const trip = (data.customTrips || []).find((item) => item.token === tripApiMatch[1])
+      if (!trip || trip.status === 'archived') return json(res, 404, { error: '行程链接无效或已失效' })
+      return json(res, 200, trip)
+    }
     if (url.pathname === '/api/miniprogram/auth/wx-login' && method === 'POST') {
       const input = await body(req)
       if (!input.code) return json(res, 422, { code: 'WX_LOGIN_CODE_REQUIRED', error: '缺少微信登录 code' })
@@ -237,7 +269,7 @@ const server = http.createServer(async (req, res) => {
     if (url.pathname.startsWith('/api/admin/')) {
       if (!isAdmin(req)) return json(res, 401, { error: '未授权，请先登录后台' })
       const data = readData()
-      if (url.pathname === '/api/admin/stats' && method === 'GET') return json(res, 200, { routes: data.routes.filter((x) => x.status !== 'archived').length, destinations: data.destinations.filter((x) => x.status !== 'archived').length, leads: data.leads.length, pendingLeads: data.leads.filter((x) => x.status === 'new').length, customizationLeads: data.leads.filter((x) => x.leadType === 'customization').length, guideBookings: data.leads.filter(isGuideBooking).length, pendingGuideBookings: data.leads.filter((x) => isGuideBooking(x) && x.status === 'new').length, miniProgramBookings: data.leads.filter(isMiniProgramBooking).length, vehicleConsultations: data.leads.filter((x) => x.leadType === 'vehicle-consultation').length, knowledgeBaseLeads: data.leads.filter((x) => x.leadType === 'knowledge-base').length, businessTravelLeads: data.leads.filter((x) => x.leadType === 'business-travel').length })
+      if (url.pathname === '/api/admin/stats' && method === 'GET') return json(res, 200, { routes: data.routes.filter((x) => x.status !== 'archived').length, destinations: data.destinations.filter((x) => x.status !== 'archived').length, leads: data.leads.length, pendingLeads: data.leads.filter((x) => x.status === 'new').length, customizationLeads: data.leads.filter((x) => x.leadType === 'customization').length, guideBookings: data.leads.filter(isGuideBooking).length, pendingGuideBookings: data.leads.filter((x) => isGuideBooking(x) && x.status === 'new').length, miniProgramBookings: data.leads.filter(isMiniProgramBooking).length, vehicleConsultations: data.leads.filter((x) => x.leadType === 'vehicle-consultation').length, knowledgeBaseLeads: data.leads.filter((x) => x.leadType === 'knowledge-base').length, businessTravelLeads: data.leads.filter((x) => x.leadType === 'business-travel').length, attractions: (data.attractions || []).filter((x) => x.status !== 'archived').length, sampleItineraries: (data.sampleItineraries || []).filter((x) => x.status !== 'archived').length, customTrips: (data.customTrips || []).filter((x) => x.status !== 'archived').length })
       if (url.pathname === '/api/admin/guide-bookings' && method === 'GET') return json(res, 200, data.leads.filter(isGuideBooking))
       if (url.pathname === '/api/admin/miniprogram-bookings' && method === 'GET') return json(res, 200, data.leads.filter(isMiniProgramBooking))
       if (url.pathname === '/api/admin/settings' && method === 'GET') return json(res, 200, data.settings)
@@ -282,8 +314,17 @@ const server = http.createServer(async (req, res) => {
         if (!payload) return json(res, 422, { error: '缺少必填字段' })
         Object.assign(found.item, payload, { updatedAt: new Date().toISOString() }); saveData(data); return json(res, 200, { ...(collection === 'travelers' ? safeTraveler(found.item, true) : collection === 'documents' ? safeDocument(found.item, true) : serializer(found.item)), userId: found.user.id, userNickname: found.user.nickname || found.user.id })
       }
-      const match = url.pathname.match(/^\/api\/admin\/(routes|destinations|leads)(?:\/([^/]+))?$/)
+      const match = url.pathname.match(/^\/api\/admin\/(routes|destinations|attractions|sampleItineraries|customTrips|leads)(?:\/([^/]+))?$/)
       if (match) {
+        if (!data[match[1]]) data[match[1]] = []
+        if (match[1] === 'customTrips' && method === 'POST') {
+          const input = await body(req)
+          if (!input.client || !input.period) return json(res, 422, { error: '请填写客户称呼与行程日期' })
+          const now = new Date().toISOString()
+          const trip = { ...input, id: input.id || id('customTrip'), token: input.token || `${(input.orderNo || 'trip').toLowerCase().replace(/[^a-z0-9]/g, '')}${crypto.randomBytes(4).toString('hex')}`, status: input.status || 'active', createdAt: input.createdAt || now, updatedAt: now }
+          data.customTrips.unshift(trip); saveData(data)
+          return json(res, 201, trip)
+        }
         if (match[1] === 'leads' && method === 'GET' && url.searchParams.has('leadType')) return json(res, 200, leadsOfType(data.leads, url.searchParams.get('leadType')))
         const payload = method === 'GET' || method === 'DELETE' ? {} : await body(req)
         const result = collectionHandler(data, match[1], method, match[2] ? `/api/admin/${match[1]}/${match[2]}` : url.pathname, payload)

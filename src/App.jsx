@@ -1,35 +1,15 @@
 import React, { useEffect, useMemo, useState } from 'react'
-import { Link, NavLink, Route, Routes, useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom'
+import { Link, Route, Routes, useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import {
   ArrowRight, BusFront, CalendarDays, Check, ChevronRight, CircleDollarSign,
   Clock3, CloudSun, Compass, Euro, Heart, Landmark, Mail, Map, MapPin,
-  Menu, MessageCircle, Phone, Plane, Search, ShipWheel, Sparkles, SunMedium,
+  MessageCircle, Phone, Plane, Search, ShipWheel, Sparkles, SunMedium,
   Users, Waves, X, Headphones, LockKeyhole,
 } from 'lucide-react'
 import AdminPage from './admin'
-import { LanguageSwitcher, translate, useLanguage } from './i18n'
-
-const isRootPortableFile = window.location.protocol === 'file:' && !window.location.pathname.includes('/dist/')
-const IMG = isRootPortableFile ? './public/images/' : '/images/'
-
-const images = {
-  santorini: `${IMG}santorini.webp`,
-  athens: `${IMG}athens.webp`,
-  plaka: `${IMG}plaka.webp`,
-  delphi: `${IMG}delphi.webp`,
-  meteora: `${IMG}meteora.webp`,
-  meteoraSquare: `${IMG}meteora-square.webp`,
-  nafplio: `${IMG}nafplio.webp`,
-  couple: `${IMG}couple.webp`,
-  jet: `${IMG}jet.webp`,
-  yacht: `${IMG}yacht.webp`,
-  mykonos: `${IMG}mykonos.webp`,
-  zakynthos: `${IMG}zakynthos.webp`,
-  richardAvatar: `${IMG}richard-avatar.webp`,
-  richardProfile: `${IMG}richard-profile.webp`,
-  crete: `${IMG}crete.webp`,
-  corinth: `${IMG}corinth.webp`,
-}
+import { AttractionsIndex, AttractionDetail, CityGuidePage, ItinerariesIndex, ItineraryDetail, CustomTripPage } from './attractions'
+import { ComplianceNotice, Eyebrow, Footer, GoldCTA, Header, InnerHero, Logo, SectionTitle, images } from './chrome'
+import { translate, useLanguage } from './i18n'
 
 const routes = [
   {
@@ -165,10 +145,12 @@ function upsertLink(rel, href) {
 function SEO() {
   const { pathname, search } = useLocation()
   const [settings, setSettings] = useState(fallbackSeoSettings)
+  const [dynamicContent, setDynamicContent] = useState({ attractions: [], cities: [], sampleItineraries: [] })
   useEffect(() => {
     if (window.location.protocol === 'file:') return
     fetch('/api/content').then((response) => response.ok ? response.json() : null).then((payload) => {
       if (payload?.settings) setSettings((current) => ({ ...current, ...payload.settings }))
+      if (payload) setDynamicContent({ attractions: payload.attractions || [], cities: payload.cities || [], sampleItineraries: payload.sampleItineraries || [] })
     }).catch(() => {})
   }, [])
   useEffect(() => {
@@ -179,6 +161,12 @@ function SEO() {
     const matchedRoute = routeMatch ? routes.find((item) => item.slug === routeMatch[1]) : null
     const destMatch = path.match(/^\/destinations\/([^/]+)$/)
     const matchedDestination = destMatch ? destinations.find((item) => item.slug === destMatch[1]) : null
+    const attractionMatch = path.match(/^\/attractions\/([^/]+)$/)
+    const matchedAttraction = attractionMatch ? dynamicContent.attractions.find((item) => item.id === decodeURIComponent(attractionMatch[1])) : null
+    const cityMatch = path.match(/^\/attractions\/city\/([^/]+)$/)
+    const matchedCity = cityMatch ? dynamicContent.cities.find((item) => item.id === cityMatch[1]) : null
+    const itineraryMatch = path.match(/^\/itineraries\/([^/]+)$/)
+    const matchedItinerary = itineraryMatch ? dynamicContent.sampleItineraries.find((item) => item.id === decodeURIComponent(itineraryMatch[1])) : null
     const pages = {
       '/': ['只为一生美好回忆｜SY 希腊蔚蓝海岸', `只为一生美好回忆。${config.defaultDescription}`],
       '/customize': ['希腊行程咨询｜提交需求沟通方案', '告诉我们出行时间、人数与偏好，先沟通需求范围与行程规划方式。'],
@@ -187,6 +175,8 @@ function SEO() {
       '/heritage-guidance': ['古迹人文讲解预约｜希腊文化咨询', '预约雅典、德尔斐与克里特等古迹的人文知识讲解。'],
       '/vehicle-consultation': ['在地用车资源对接咨询｜希腊出行信息', '咨询希腊本地车型、司导资质与用车资源对接方式。'],
       '/knowledge-base': ['景点付费文史知识库｜免费预览', '浏览希腊景点的历史、神话与建筑知识预览。'],
+      '/attractions': ['希腊景点导览｜景点 · 博物馆 · 参观指南', '按城市浏览雅典、圣托里尼、德尔斐等地的景点与博物馆，含展品讲解与参观指南 12 项。'],
+      '/itineraries': ['参考行程｜雅典 · 圣托里尼 · 世界遗产环线', '浏览参考行程框架，正式行程按需求定制后通过专属链接发送。'],
       '/business-travel': ['希腊商旅随行咨询｜商务语言与行程规划', '提供商务陪同、语言翻译、企业拜访与人文行程的咨询。'],
 
       '/guides/richard-li': ['Richard 李名人导游｜希腊私人深度旅行与预约', '认识 Richard 李：武汉大学双学士、英国澳洲双硕士，提供希腊历史人文、小众秘境与私人摄影导览。'],
@@ -196,7 +186,14 @@ function SEO() {
       ? [`${matchedRoute.title}｜${matchedRoute.days}希腊定制路线`, matchedRoute.desc]
       : matchedDestination
         ? [`${matchedDestination.name}旅行指南｜${matchedDestination.headline}`, matchedDestination.intro[0]]
-        : (pages[path] || [config.defaultTitle, config.defaultDescription])
+        : matchedCity
+          ? [`${matchedCity.name}景点导览｜${matchedCity.subtitle || matchedCity.country}`, `${matchedCity.name}：${matchedCity.description || ''}`]
+          : matchedAttraction
+            ? [`${matchedAttraction.name}参观指南｜${matchedAttraction.en}`, matchedAttraction.summary || '']
+            : matchedItinerary
+              ? [`${matchedItinerary.title}｜参考行程`, matchedItinerary.summary || '']
+              : (pages[path] || [config.defaultTitle, config.defaultDescription])
+    const isPrivate = path.startsWith('/trip/')
     const isAdmin = path === '/manage-9f3k7'
     const title = pageTitle.includes('SY') ? pageTitle : `${pageTitle} | ${config.siteName}`
     const baseUrl = String(config.siteUrl || window.location.origin).replace(/\/$/, '')
@@ -205,7 +202,7 @@ function SEO() {
     document.title = title
     upsertMeta('name', 'description', description)
     upsertMeta('name', 'keywords', config.keywords)
-    upsertMeta('name', 'robots', isAdmin ? 'noindex,nofollow' : (config.robotsPolicy || 'index,follow'))
+    upsertMeta('name', 'robots', isPrivate || isAdmin ? 'noindex,nofollow' : (config.robotsPolicy || 'index,follow'))
     upsertMeta('property', 'og:title', title)
     upsertMeta('property', 'og:description', description)
     upsertMeta('property', 'og:url', canonical)
@@ -232,7 +229,7 @@ function SEO() {
     let schema = document.head.querySelector('#sy-seo-schema')
     if (!schema) { schema = document.createElement('script'); schema.id = 'sy-seo-schema'; schema.type = 'application/ld+json'; document.head.appendChild(schema) }
     schema.textContent = JSON.stringify({ '@context': 'https://schema.org', '@graph': graph })
-  }, [pathname, search, settings])
+  }, [pathname, search, settings, dynamicContent])
   return null
 }
 
@@ -242,56 +239,6 @@ function ScrollToTop() {
     window.scrollTo({ top: 0, behavior: 'instant' })
   }, [pathname])
   return null
-}
-
-function Logo() {
-  return (
-    <Link className="logo" to="/" aria-label="SY 希腊蔚蓝海岸首页">
-      <span className="temple" aria-hidden="true"><i /><i /><i /></span>
-      <span>SY 希腊蔚蓝海岸</span>
-    </Link>
-  )
-}
-
-function Header({ solid = false }) {
-  const [open, setOpen] = useState(false)
-  const [language] = useLanguage()
-  const t = (key) => translate(key, language)
-  const location = useLocation()
-  useEffect(() => setOpen(false), [location.pathname])
-  const links = [
-    ['/', t('nav.home')], ['/routes/honeymoon-5d', t('nav.routes')], ['/customize', t('nav.experiences')],
-    ['/destinations/santorini', t('nav.destinations')], ['/guides/richard-li', t('nav.guide')], ['/tools', t('nav.tools')],
-  ]
-  return (
-    <header className={`site-header ${solid ? 'solid' : ''}`}>
-      <div className="nav-shell">
-        <Logo />
-        <nav className={open ? 'nav-open' : ''} aria-label="主导航">
-          {links.map(([to, label]) => <NavLink key={to} to={to}>{label}</NavLink>)}
-          <Link className="nav-mobile-cta" to="/customize">{t('nav.customize')}</Link>
-        </nav>
-        <LanguageSwitcher />
-        <Link className="button button-gold nav-cta" to="/customize">{t('nav.customize')}</Link>
-        <button className="menu-button" onClick={() => setOpen(!open)} aria-expanded={open} aria-label="打开导航菜单">
-          {open ? <X size={22} /> : <Menu size={22} />}
-        </button>
-      </div>
-    </header>
-  )
-}
-
-function Eyebrow({ children, dark = false }) {
-  return <div className={`eyebrow ${dark ? 'eyebrow-dark' : ''}`}>{children}</div>
-}
-
-function SectionTitle({ eyebrow, title, action, dark = false }) {
-  return (
-    <div className={`section-heading ${dark ? 'on-dark' : ''}`}>
-      <div><Eyebrow dark={dark}>{eyebrow}</Eyebrow><h2>{title}</h2></div>
-      {action && <Link className="text-link" to={action.to}>{action.label}<ChevronRight size={15} /></Link>}
-    </div>
-  )
 }
 
 function SearchBox({ initial = '', large = false }) {
@@ -352,42 +299,6 @@ function GuideTeaser() {
       </div>
       <Link className="button button-primary" to="/guides/richard-li">查看档案 / 预约时间 <ArrowRight size={15} /></Link>
     </article>
-  )
-}
-
-function GoldCTA() {
-  const [language] = useLanguage()
-  const t = (key) => translate(key, language)
-  return (
-    <section className="gold-cta">
-      <div className="container gold-cta-inner">
-        <div>
-          <h2>只为一生美好回忆</h2>
-          <p>1v1 · 24h · {language === 'en' ? 'Scope and service fee discussed first' : language === 'ja' ? '内容と費用を先にご相談' : language === 'el' ? 'Πρώτα συζητάμε το αντικείμενο και την αμοιβή' : '先沟通需求范围与咨询费用'}</p>
-        </div>
-        <div className="gold-actions">
-          <Link className="button button-deep" to="/customize">{t('common.customize')}</Link>
-          <a className="button button-outline-light" href="#contact">{t('common.addWechat')}</a>
-        </div>
-      </div>
-    </section>
-  )
-}
-
-function Footer() {
-  const [language] = useLanguage()
-  const t = (key) => translate(key, language)
-  const routeLabels = language === 'en' ? ['3 days · Athens highlights', '5 days · Athens + Santorini', '7 days · Family Greece', '9 days · Heritage circuit'] : language === 'ja' ? ['3日 · アテネの魅力', '5日 · アテネ + サントリーニ', '7日 · 家族で巡るギリシャ', '9日 · 世界遺産ルート'] : language === 'el' ? ['3 ημέρες · Αθήνα', '5 ημέρες · Αθήνα + Σαντορίνη', '7 ημέρες · Οικογενειακή Ελλάδα', '9 ημέρες · Πολιτιστική διαδρομή'] : ['3天2晚 · 雅典市区精华', '5天4晚 · 雅典 + 圣托里尼', '7天6晚 · 经典三城家庭游', '9天8晚 · 全遗产环游']
-  return (
-    <footer id="contact" className="site-footer">
-      <div className="container footer-grid">
-        <div className="footer-brand"><Logo /><p>{t('footer.brand')}</p><strong>sy-greece.com</strong></div>
-        <div><h3>{t('footer.routes')}</h3><Link to="/routes/athens-3d">{routeLabels[0]}</Link><Link to="/routes/honeymoon-5d">{routeLabels[1]}</Link><Link to="/routes/family-7d">{routeLabels[2]}</Link><Link to="/routes/heritage-9d">{routeLabels[3]}</Link></div>
-        <div><h3>{t('footer.services')}</h3><Link to="/customize">{language === 'en' ? 'Private planning' : language === 'ja' ? 'プライベート旅行' : language === 'el' ? 'Ιδιωτικός σχεδιασμός' : '私人定制'}</Link><a href="#services">{language === 'en' ? 'Private transfers' : language === 'ja' ? '専用車' : language === 'el' ? 'Ιδιωτικές μετακινήσεις' : '专属用车'}</a><a href="#experiences">{language === 'en' ? 'Yachts & private flights' : language === 'ja' ? 'ヨット / プライベートフライト' : language === 'el' ? 'Yacht / private flights' : '私人包机 / 游艇出海'}</a><Link to="/knowledge-base">景点文史知识库</Link><Link to="/business-travel">商旅随行咨询</Link><Link to="/tools">{t('nav.tools')}</Link></div>
-        <div><h3>{t('footer.contact')}</h3><span>{t('footer.wechat')}</span><span>{t('footer.phone')}</span><span>{t('footer.email')}</span></div>
-      </div>
-      <div className="container copyright"><span>2026 SY Greece · {language === 'en' ? 'All rights reserved' : language === 'ja' ? '無断転載禁止' : language === 'el' ? 'Με επιφύλαξη παντός δικαιώματος' : '希腊蔚蓝海岸 · 版权所有'}</span><span>仅提供文化咨询、行程策划、知识付费与商务语言陪同咨询</span></div><div className="container footer-disclaimer"><ComplianceNotice /></div>
-    </footer>
   )
 }
 
@@ -461,21 +372,6 @@ function Home() {
   )
 }
 
-function InnerHero({ eyebrow, title, subtitle, breadcrumb, image = images.santorini, children, short = false }) {
-  return (
-    <section className={`inner-hero ${short ? 'short' : ''}`} style={{ '--hero-image': `url(${image})` }}>
-      <Header />
-      <div className="container inner-hero-content">
-        {breadcrumb && <div className="breadcrumb">首页 / {breadcrumb}</div>}
-        <Eyebrow dark>{eyebrow}</Eyebrow>
-        <h1>{title}</h1>
-        {subtitle && <p>{subtitle}</p>}
-        {children}
-      </div>
-    </section>
-  )
-}
-
 function RouteDetail() {
   const { slug } = useParams()
   const route = routes.find((item) => item.slug === slug)
@@ -517,10 +413,6 @@ async function postLead(payload) {
     const local = JSON.parse(localStorage.getItem('sy-greece-leads') || '[]')
     localStorage.setItem('sy-greece-leads', JSON.stringify([{ ...next, id: `${next.leadType || 'lead'}-${Date.now()}` }, ...local]))
   }
-}
-
-function ComplianceNotice() {
-  return <p className="compliance-notice">免责声明：仅提供文化咨询、行程策划、知识付费、商务语言陪同咨询服务，不从事旅游业务。涉及交通、场地、劳务等事项，由客户与希腊本土主体直接确认和结算。</p>
 }
 
 function ServiceInquiryForm({ leadType, title = '提交咨询需求', intro = '留下基本信息，我们会先沟通需求范围与服务方式。', fields = [], submitLabel = '提交咨询' }) {
@@ -775,5 +667,5 @@ function LegacyAdminRedirect() {
 }
 
 export default function App() {
-  return <><ScrollToTop /><SEO /><Routes><Route path="/" element={<Home />} /><Route path="/routes/:slug" element={<RouteDetail />} /><Route path="/customize" element={<Customize />} /><Route path="/heritage-guidance" element={<HeritageGuidance />} /><Route path="/vehicle-consultation" element={<VehicleConsultation />} /><Route path="/knowledge-base" element={<KnowledgeBase />} /><Route path="/knowledge-base/:slug" element={<KnowledgeBase />} /><Route path="/business-travel" element={<BusinessTravel />} /><Route path="/destinations/:slug" element={<DestinationDetail />} /><Route path="/guides/richard-li" element={<GuidePage />} /><Route path="/search" element={<SearchPage />} /><Route path="/tools" element={<ToolsPage />} /><Route path="/admin" element={<LegacyAdminRedirect />} /><Route path="/manage-9f3k7" element={<AdminPage />} /><Route path="*" element={<NotFound />} /></Routes><ConsultationDock /></>
+  return <><ScrollToTop /><SEO /><Routes><Route path="/" element={<Home />} /><Route path="/routes/:slug" element={<RouteDetail />} /><Route path="/customize" element={<Customize />} /><Route path="/heritage-guidance" element={<HeritageGuidance />} /><Route path="/vehicle-consultation" element={<VehicleConsultation />} /><Route path="/knowledge-base" element={<KnowledgeBase />} /><Route path="/knowledge-base/:slug" element={<KnowledgeBase />} /><Route path="/attractions" element={<AttractionsIndex />} /><Route path="/attractions/city/:cityId" element={<CityGuidePage />} /><Route path="/attractions/:id" element={<AttractionDetail />} /><Route path="/itineraries" element={<ItinerariesIndex />} /><Route path="/itineraries/:id" element={<ItineraryDetail />} /><Route path="/trip/:token" element={<CustomTripPage />} /><Route path="/business-travel" element={<BusinessTravel />} /><Route path="/destinations/:slug" element={<DestinationDetail />} /><Route path="/guides/richard-li" element={<GuidePage />} /><Route path="/search" element={<SearchPage />} /><Route path="/tools" element={<ToolsPage />} /><Route path="/admin" element={<LegacyAdminRedirect />} /><Route path="/manage-9f3k7" element={<AdminPage />} /><Route path="*" element={<NotFound />} /></Routes><ConsultationDock /></>
 }
