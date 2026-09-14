@@ -32,7 +32,7 @@ function AdminLogin({ onLogin }) {
       sessionStorage.setItem(TOKEN_KEY, response.token); onLogin(response.token, false)
     } catch (requestError) {
       if (password === 'sy-greece-admin') {
-        sessionStorage.setItem(TOKEN_KEY, 'local-demo-token'); onLogin('local-demo-token', true)
+        sessionStorage.removeItem(TOKEN_KEY); onLogin('local-demo-token', true)
       } else setError(requestError.message === 'Failed to fetch' ? '管理服务尚未启动，请运行 npm run start' : requestError.message)
     }
   }
@@ -43,7 +43,7 @@ function StatCard({ icon: Icon, label, value, tone = '' }) { return <div classNa
 function AdminModal({ title, children, onClose }) { return <div className="admin-modal-backdrop"><div className="admin-modal"><div className="admin-modal-head"><h2>{title}</h2><button onClick={onClose} aria-label="关闭"><X size={18} /></button></div>{children}</div></div> }
 
 export default function AdminPage() {
-  const [token, setToken] = useState(sessionStorage.getItem(TOKEN_KEY))
+  const [token, setToken] = useState(() => { const stored = sessionStorage.getItem(TOKEN_KEY); if (stored === 'local-demo-token') { sessionStorage.removeItem(TOKEN_KEY); return null } return stored })
   const [offline, setOffline] = useState(false)
   const [tab, setTab] = useState('overview')
   const [stats, setStats] = useState({ routes: 0, destinations: 0, leads: 0, pendingLeads: 0, customizationLeads: 0, guideBookings: 0, pendingGuideBookings: 0, miniProgramBookings: 0, vehicleConsultations: 0, knowledgeBaseLeads: 0, businessTravelLeads: 0 })
@@ -68,7 +68,7 @@ export default function AdminPage() {
       const auth = { Authorization: `Bearer ${token}` }
       const [nextStats, nextRoutes, nextDestinations, nextLeads, nextGuideBookings, nextMiniProgramBookings, nextSettings] = await Promise.all(['/admin/stats', '/admin/routes', '/admin/destinations', '/admin/leads', '/admin/guide-bookings', '/admin/miniprogram-bookings', '/admin/settings'].map((path) => callApi(path, { headers: auth })))
       setStats(nextStats); setRoutes(nextRoutes); setDestinations(nextDestinations); setLeads(nextLeads); setGuideBookings(nextGuideBookings); setMiniProgramBookings(nextMiniProgramBookings); setSettings(nextSettings)
-    } catch (error) { setOffline(true); notify(`管理服务不可用，已切换本地演示：${error.message}`) }
+    } catch (error) { if (error.message.includes('未授权')) { sessionStorage.removeItem(TOKEN_KEY); setToken(null); setOffline(false); return } setOffline(true); notify(`管理服务不可用，已切换本地演示：${error.message}`) }
   }
   useEffect(() => { if (token) load() }, [token, offline])
   function login(nextToken, isOffline) { setOffline(isOffline); setToken(nextToken) }
