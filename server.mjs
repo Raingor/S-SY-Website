@@ -41,6 +41,12 @@ async function exchangeMiniProgramCode(code) { if (!miniProgramConfigReady()) th
 async function getWechatAccessToken() { if (wechatAccessToken.value && wechatAccessToken.expiresAt > Date.now() + 60_000) return wechatAccessToken.value; const params = new URLSearchParams({ grant_type: 'client_credential', appid: process.env.WX_APPID, secret: process.env.WX_APP_SECRET }); const payload = await wechatRequest(`/cgi-bin/token?${params}`); if (!payload.access_token) throw new Error('微信服务凭证获取失败'); wechatAccessToken = { value: payload.access_token, expiresAt: Date.now() + Number(payload.expires_in || 7200) * 1000 }; return wechatAccessToken.value }
 async function exchangePhoneCode(code) { const accessToken = await getWechatAccessToken(); return wechatRequest(`/wxa/business/getuserphonenumber?access_token=${encodeURIComponent(accessToken)}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ code }) }) }
 function normalizedPhone(phoneInfo = {}) { const raw = phoneInfo.phoneNumber || (phoneInfo.countryCode && phoneInfo.purePhoneNumber ? `+${phoneInfo.countryCode}${phoneInfo.purePhoneNumber}` : phoneInfo.purePhoneNumber); const phone = String(raw || '').replace(/[^\d+]/g, ''); if (!/^\+?\d{7,20}$/.test(phone)) throw new Error('微信未返回有效手机号'); return phone.startsWith('+') ? phone : `+${phone}` }
+function ensureMiniCollections(user) { user.travelers = Array.isArray(user.travelers) ? user.travelers : []; user.documents = Array.isArray(user.documents) ? user.documents : []; user.coupons = Array.isArray(user.coupons) ? user.coupons : []; return user }
+function safeTraveler(item) { return { id: item.id, name: item.name, relation: item.relation || '', passportNo: item.passportNo || '', createdAt: item.createdAt, updatedAt: item.updatedAt } }
+function safeDocument(item) { return { id: item.id, name: item.name, passportNo: item.passportNo || '', expiry: item.expiry || '', visaStatus: item.visaStatus || '', createdAt: item.createdAt, updatedAt: item.updatedAt } }
+function travelerPayload(input = {}, current = {}) { const name = String(input.name ?? current.name ?? '').trim().slice(0, 64); if (!name) return null; return { name, relation: String(input.relation ?? current.relation ?? '').trim().slice(0, 32), passportNo: String(input.passportNo ?? current.passportNo ?? '').trim().slice(0, 64) } }
+function documentPayload(input = {}, current = {}) { const name = String(input.name ?? current.name ?? '').trim().slice(0, 64); if (!name) return null; return { name, passportNo: String(input.passportNo ?? current.passportNo ?? '').trim().slice(0, 64), expiry: String(input.expiry ?? current.expiry ?? '').trim().slice(0, 32), visaStatus: String(input.visaStatus ?? current.visaStatus ?? '').trim().slice(0, 32) } }
+function miniProgramProfile(data, user) { ensureMiniCollections(user); const leads = data.leads.filter((lead) => lead.userId === user.id); const appointments = leads.filter((lead) => ['guide-booking', 'vehicle-consultation'].includes(lead.leadType)).length; const trips = leads.filter((lead) => ['customization', 'business-travel'].includes(lead.leadType)).length; return { user: publicMiniProgramUser(user), stats: { appointments, trips, coupons: user.coupons.length, profiles: user.travelers.length + user.documents.length } } }
 async function body(req, limit = 1024 * 1024) {
   let raw = ''
   for await (const chunk of req) { raw += chunk; if (raw.length > limit) throw new Error('payload too large') }
@@ -160,12 +166,44 @@ const server = http.createServer(async (req, res) => {
         return json(res, 200, { user: publicMiniProgramUser(user) })
       } catch (error) { return json(res, error.message === '小程序登录服务尚未配置' ? 503 : 502, { code: 'WECHAT_PHONE_BIND_FAILED', error: error.message }) }
     }
+    if (url.pathname === '/api/miniprogram/profile' && method === 'GET') {
+      const data = readData(); const user = miniProgramUserFromRequest(req, data)
+      if (!user) return json(res, 401, { code: 'MINIPROGRAM_LOGIN_REQUIRED', error: '请先微信登录' })
+      return json(res, 200, miniProgramProfile(data, user))
+    }
     if (url.pathname === '/api/miniprogram/leads' && method === 'GET') {
       const data = readData(); const user = miniProgramUserFromRequest(req, data)
       if (!user) return json(res, 401, { code: 'MINIPROGRAM_LOGIN_REQUIRED', error: '请先微信登录' })
       const leadType = url.searchParams.get('leadType'); const status = url.searchParams.get('status')
       const items = data.leads.filter((lead) => lead.userId === user.id && (!leadType || lead.leadType === leadType) && (!status || lead.status === status)).map((lead) => { const { openid, unionid, ...safeLead } = lead; return safeLead })
       return json(res, 200, { items })
+    }
+    if (url.pathname === '/api/miniprogram/coupons' && method === 'GET') {
+      const data = readData(); const user = miniProgramUserFromRequest(req, data)
+      if (!user) return json(res, 401, { code: 'MINIPROGRAM_LOGIN_REQUIRED', error: '请先微信登录' })
+      ensureMiniCollections(user); return json(res, 200, { items: user.coupons })
+    }
+    const miniCollectionMatch = url.pathname.match(/^\/api\/miniprogram\/(travelers|documents)(?:\/([^/]+))?$/)
+    if (miniCollectionMatch && ['GET', 'POST', 'PATCH', 'DELETE'].includes(method)) {
+      const data = readData(); const user = miniProgramUserFromRequest(req, data)
+      if (!user) return json(res, 401, { code: 'MINIPROGRAM_LOGIN_REQUIRED', error: '请先微信登录' })
+      ensureMiniCollections(user)
+      const collection = miniCollectionMatch[1]; const itemId = miniCollectionMatch[2]; const items = user[collection]; const serializer = collection === 'travelers' ? safeTraveler : safeDocument
+      if (method === 'GET') {
+        if (itemId) { const item = items.find((entry) => entry.id === itemId); return item ? json(res, 200, serializer(item)) : json(res, 404, { error: 'not found' }) }
+        return json(res, 200, { items: items.map(serializer) })
+      }
+      if (method === 'POST') {
+        const input = await body(req); const payload = collection === 'travelers' ? travelerPayload(input) : documentPayload(input)
+        if (!payload) return json(res, 422, { error: '缺少必填字段 name' })
+        const now = new Date().toISOString(); const item = { ...payload, id: id(collection === 'travelers' ? 'traveler' : 'document'), createdAt: now, updatedAt: now }; items.push(item); saveData(data); return json(res, 201, serializer(item))
+      }
+      const index = items.findIndex((entry) => entry.id === itemId)
+      if (index < 0) return json(res, 404, { error: 'not found' })
+      if (method === 'DELETE') { items.splice(index, 1); saveData(data); return res.writeHead(204).end() }
+      const input = await body(req); const payload = collection === 'travelers' ? travelerPayload(input, items[index]) : documentPayload(input, items[index])
+      if (!payload) return json(res, 422, { error: '缺少必填字段 name' })
+      items[index] = { ...items[index], ...payload, updatedAt: new Date().toISOString() }; saveData(data); return json(res, 200, serializer(items[index]))
     }
     if (url.pathname === '/api/leads' && method === 'POST') {
       const input = await body(req)
