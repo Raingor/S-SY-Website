@@ -47,6 +47,11 @@ function safeDocument(item) { return { id: item.id, name: item.name, passportNo:
 function travelerPayload(input = {}, current = {}) { const name = String(input.name ?? current.name ?? '').trim().slice(0, 64); if (!name) return null; return { name, relation: String(input.relation ?? current.relation ?? '').trim().slice(0, 32), passportNo: String(input.passportNo ?? current.passportNo ?? '').trim().slice(0, 64) } }
 function documentPayload(input = {}, current = {}) { const name = String(input.name ?? current.name ?? '').trim().slice(0, 64); if (!name) return null; return { name, passportNo: String(input.passportNo ?? current.passportNo ?? '').trim().slice(0, 64), expiry: String(input.expiry ?? current.expiry ?? '').trim().slice(0, 32), visaStatus: String(input.visaStatus ?? current.visaStatus ?? '').trim().slice(0, 32) } }
 function miniProgramProfile(data, user) { ensureMiniCollections(user); const leads = data.leads.filter((lead) => lead.userId === user.id); const appointments = leads.filter((lead) => ['guide-booking', 'vehicle-consultation'].includes(lead.leadType)).length; const trips = leads.filter((lead) => ['customization', 'business-travel'].includes(lead.leadType)).length; return { user: publicMiniProgramUser(user), stats: { appointments, trips, coupons: user.coupons.length, profiles: user.travelers.length + user.documents.length } } }
+function couponPayload(input = {}, current = {}) { const title = String(input.title ?? current.title ?? '').trim().slice(0, 80); if (!title) return null; return { title, description: String(input.description ?? current.description ?? '').trim().slice(0, 240), code: String(input.code ?? current.code ?? '').trim().slice(0, 64), expiresAt: String(input.expiresAt ?? current.expiresAt ?? '').trim().slice(0, 32), status: String(input.status ?? current.status ?? 'active').trim().slice(0, 24) } }
+function safeCoupon(item) { return { id: item.id, title: item.title, description: item.description || '', code: item.code || '', expiresAt: item.expiresAt || '', status: item.status || 'active', createdAt: item.createdAt, updatedAt: item.updatedAt } }
+function adminMiniUserSummary(data, user) { const profile = miniProgramProfile(data, user); const leads = data.leads.filter((lead) => lead.userId === user.id); return { ...profile.user, stats: profile.stats, leadCount: leads.length, createdAt: user.createdAt, updatedAt: user.updatedAt } }
+function adminMiniRecords(data, collection) { return (data.miniprogramUsers || []).flatMap((user) => { ensureMiniCollections(user); return user[collection].map((item) => ({ ...((collection === 'travelers' ? safeTraveler : collection === 'documents' ? safeDocument : safeCoupon)(item)), userId: user.id, userNickname: user.nickname || user.id })) }) }
+function findMiniRecord(data, collection, itemId) { for (const user of data.miniprogramUsers || []) { ensureMiniCollections(user); const item = user[collection].find((entry) => entry.id === itemId); if (item) return { user, items: user[collection], item } } return null }
 async function body(req, limit = 1024 * 1024) {
   let raw = ''
   for await (const chunk of req) { raw += chunk; if (raw.length > limit) throw new Error('payload too large') }
@@ -239,6 +244,32 @@ const server = http.createServer(async (req, res) => {
         data.settings = { ...data.settings, ogImage: `images/${filename}` }
         saveData(data)
         return json(res, 201, { path: `images/${filename}`, url: `/${`images/${filename}`}` })
+      }
+      if (url.pathname === '/api/admin/miniprogram-users' && method === 'GET') return json(res, 200, { items: (data.miniprogramUsers || []).map((user) => adminMiniUserSummary(data, user)) })
+      const miniUserMatch = url.pathname.match(/^\/api\/admin\/miniprogram-users\/([^/]+)$/)
+      if (miniUserMatch && method === 'GET') {
+        const user = (data.miniprogramUsers || []).find((item) => item.id === miniUserMatch[1])
+        if (!user) return json(res, 404, { error: 'not found' })
+        ensureMiniCollections(user)
+        return json(res, 200, { ...adminMiniUserSummary(data, user), travelers: user.travelers.map(safeTraveler), documents: user.documents.map(safeDocument), coupons: user.coupons.map(safeCoupon) })
+      }
+      const miniCollectionAdminMatch = url.pathname.match(/^\/api\/admin\/miniprogram-(travelers|documents|coupons)(?:\/([^/]+))?$/)
+      if (miniCollectionAdminMatch && ['GET', 'POST', 'PATCH', 'DELETE'].includes(method)) {
+        const collection = miniCollectionAdminMatch[1]; const itemId = miniCollectionAdminMatch[2]; const serializer = collection === 'travelers' ? safeTraveler : collection === 'documents' ? safeDocument : safeCoupon
+        if (method === 'GET') return json(res, 200, { items: adminMiniRecords(data, collection) })
+        if (method === 'POST') {
+          const input = await body(req); const user = (data.miniprogramUsers || []).find((item) => item.id === input.userId)
+          if (!user) return json(res, 404, { error: 'user not found' })
+          ensureMiniCollections(user); const payload = collection === 'travelers' ? travelerPayload(input) : collection === 'documents' ? documentPayload(input) : couponPayload(input)
+          if (!payload) return json(res, 422, { error: '缺少必填字段' })
+          const now = new Date().toISOString(); const item = { ...payload, id: id(collection === 'travelers' ? 'traveler' : collection === 'documents' ? 'document' : 'coupon'), createdAt: now, updatedAt: now }; user[collection].push(item); saveData(data); return json(res, 201, { ...serializer(item), userId: user.id, userNickname: user.nickname || user.id })
+        }
+        const found = findMiniRecord(data, collection, itemId)
+        if (!found) return json(res, 404, { error: 'not found' })
+        if (method === 'DELETE') { found.items.splice(found.items.indexOf(found.item), 1); saveData(data); return res.writeHead(204).end() }
+        const input = await body(req); const payload = collection === 'travelers' ? travelerPayload(input, found.item) : collection === 'documents' ? documentPayload(input, found.item) : couponPayload(input, found.item)
+        if (!payload) return json(res, 422, { error: '缺少必填字段' })
+        Object.assign(found.item, payload, { updatedAt: new Date().toISOString() }); saveData(data); return json(res, 200, { ...serializer(found.item), userId: found.user.id, userNickname: found.user.nickname || found.user.id })
       }
       const match = url.pathname.match(/^\/api\/admin\/(routes|destinations|leads)(?:\/([^/]+))?$/)
       if (match) {
