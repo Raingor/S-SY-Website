@@ -140,7 +140,7 @@ const destinations = [
 const fallbackSeoSettings = {
   siteName: 'SY 希腊蔚蓝海岸',
   siteUrl: 'https://sy-greece.com',
-  defaultTitle: 'SY 希腊蔚蓝海岸｜希腊人文与行程咨询',
+  defaultTitle: '只为一生美好回忆｜SY 希腊蔚蓝海岸',
   defaultDescription: 'SY 希腊蔚蓝海岸，为访客提供雅典、圣托里尼及希腊全境的人文资讯、行程策划与语言陪同咨询。',
   keywords: '希腊人文咨询,希腊行程策划,圣托里尼文化,雅典历史,中文司导咨询',
   ogImage: 'images/santorini.webp',
@@ -180,7 +180,7 @@ function SEO() {
     const destMatch = path.match(/^\/destinations\/([^/]+)$/)
     const matchedDestination = destMatch ? destinations.find((item) => item.slug === destMatch[1]) : null
     const pages = {
-      '/': ['希腊行程咨询｜雅典 · 圣托里尼 · 全境人文', config.defaultDescription],
+      '/': ['只为一生美好回忆｜SY 希腊蔚蓝海岸', `只为一生美好回忆。${config.defaultDescription}`],
       '/customize': ['希腊行程咨询｜提交需求沟通方案', '告诉我们出行时间、人数与偏好，先沟通需求范围与行程规划方式。'],
       '/search': [`搜索${query ? `“${query}”` : '希腊旅行'}｜SY Greece`, `搜索希腊路线、目的地和私人定制旅行灵感。${query ? `当前关键词：${query}。` : ''}`],
       '/tools': ['希腊行前信息工具箱｜签证 · 汇率 · 天气 · 行程日历', '出发前准备希腊申根签证、欧元汇率、天气和每日行程的信息工具箱。'],
@@ -362,7 +362,7 @@ function GoldCTA() {
     <section className="gold-cta">
       <div className="container gold-cta-inner">
         <div>
-          <h2>{language === 'en' ? 'Tell us what you have in mind. We know Greece.' : language === 'ja' ? 'あなたの想いを、ギリシャへ。' : language === 'el' ? 'Πείτε μας το όραμά σας. Αναλαμβάνουμε την Ελλάδα.' : '告诉我你的想法，希腊交给我们'}</h2>
+          <h2>只为一生美好回忆</h2>
           <p>1v1 · 24h · {language === 'en' ? 'Scope and service fee discussed first' : language === 'ja' ? '内容と費用を先にご相談' : language === 'el' ? 'Πρώτα συζητάμε το αντικείμενο και την αμοιβή' : '先沟通需求范围与咨询费用'}</p>
         </div>
         <div className="gold-actions">
@@ -414,7 +414,7 @@ function Home() {
         <Header />
         <div className="container hero-content">
           <Eyebrow dark>SY GREECE · TAILOR-MADE JOURNEYS</Eyebrow>
-          <h1>把希腊，交给懂它的人</h1>
+          <h1>只为一生美好回忆</h1>
           <p>希腊在地人文与行程咨询服务。雅典在地团队，<br />一对一中文顾问，提供文化、行程与语言陪同咨询。</p>
           <SearchBox />
           <div className="hero-actions"><Link className="button button-primary" to="/customize">提交行程咨询</Link><a className="button button-ghost" href="#routes">浏览甄选路线</a></div>

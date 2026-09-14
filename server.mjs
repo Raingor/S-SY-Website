@@ -80,17 +80,17 @@ function sitemap(data, req) {
 }
 function llms(data, req) {
   const base = siteBase(data, req)
-  const lines = [`# ${data.settings.siteName}`, '', `> ${data.settings.defaultDescription || ''}`, '', '## 官方入口', `- 网站：${base}/`, `- 定制：${base}/customize`, `- 路线：${base}/routes/honeymoon-5d`, `- 圣托里尼：${base}/destinations/santorini`, `- 名人导游 Richard 李：${base}/guides/richard-li`, `- 古迹人文讲解：${base}/heritage-guidance`, `- 用车资源对接咨询：${base}/vehicle-consultation`, `- 景点文史知识库：${base}/knowledge-base`, `- 商旅随行咨询：${base}/business-travel`, `- 旅行工具：${base}/tools`, '', '## 服务范围', '- 雅典、圣托里尼及希腊全境的人文资讯与行程策划', '- 古迹讲解、用车资源对接、知识付费与商务语言陪同咨询', '- 历史文明、海岛、餐厅、体育活动与企业拜访等主题', '', '## 内容索引']
+  const lines = [`# ${data.settings.siteName}`, '', `> ${data.settings.defaultDescription || '只为一生美好回忆。'}`, '', '## 官方入口', `- 网站：${base}/`, `- 定制：${base}/customize`, `- 路线：${base}/routes/honeymoon-5d`, `- 圣托里尼：${base}/destinations/santorini`, `- 名人导游 Richard 李：${base}/guides/richard-li`, `- 古迹人文讲解：${base}/heritage-guidance`, `- 用车资源对接咨询：${base}/vehicle-consultation`, `- 景点文史知识库：${base}/knowledge-base`, `- 商旅随行咨询：${base}/business-travel`, `- 旅行工具：${base}/tools`, '', '## 服务范围', '- 雅典、圣托里尼及希腊全境的人文资讯与行程策划', '- 古迹讲解、用车资源对接、知识付费与商务语言陪同咨询', '- 历史文明、海岛、餐厅、体育活动与企业拜访等主题', '', '## 内容索引']
   data.routes.filter((item) => item.status !== 'archived').forEach((item) => lines.push(`- ${item.title}：${item.desc}`))
   lines.push('', '## 联系方式', `- 微信：${data.settings.wechat}`, `- 电话：${data.settings.phone}`, `- 邮箱：${data.settings.email}`, '')
   return lines.join('\n')
 }
 function htmlAttr(value) { return String(value || '').replace(/[&<>"]/g, (char) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[char])) }
 function pageSeo(data, pathname, search, req) {
-  const config = { siteName: 'SY 希腊蔚蓝海岸', siteUrl: siteBase(data, req), defaultTitle: 'SY 希腊蔚蓝海岸｜希腊人文与行程咨询', defaultDescription: 'SY 希腊蔚蓝海岸，为访客提供雅典、圣托里尼及希腊全境的人文资讯、行程策划与语言陪同咨询。', robotsPolicy: 'index,follow', ...data.settings }
+  const config = { siteName: 'SY 希腊蔚蓝海岸', siteUrl: siteBase(data, req), defaultTitle: '只为一生美好回忆｜SY 希腊蔚蓝海岸', defaultDescription: '只为一生美好回忆。SY 希腊蔚蓝海岸提供雅典、圣托里尼及希腊全境的人文与行程咨询。', robotsPolicy: 'index,follow', ...data.settings }
   const query = new URLSearchParams(search || '').get('q')
   const pages = {
-    '/': ['希腊行程咨询｜雅典 · 圣托里尼 · 全境人文', config.defaultDescription],
+    '/': ['只为一生美好回忆｜SY 希腊蔚蓝海岸', `只为一生美好回忆。${config.defaultDescription}`],
     '/routes/honeymoon': ['爱琴海蜜月之旅｜5天4晚希腊定制路线', '雅典 + 圣托里尼 5 天 4 晚蜜月路线，中文司导、悬崖酒店、双体船出海与伊亚日落旅拍。'],
     '/customize': ['希腊行程咨询｜提交需求沟通方案', '告诉我们出行时间、人数与偏好，先沟通需求范围与行程规划方式。'],
     '/destinations/santorini': ['圣托里尼旅行指南｜蓝顶教堂与爱琴海日落', '圣托里尼悬崖酒店、伊亚日落、火山温泉与双体船巡航的深度旅行指南。'],
