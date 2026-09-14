@@ -221,7 +221,7 @@ function SEO() {
     } else if (verification) verification.remove()
     const graph = [{ '@context': 'https://schema.org', '@type': 'Organization', name: config.siteName, url: baseUrl, logo: ogImage, description: config.defaultDescription, telephone: config.phone, email: config.email, areaServed: 'GR', knowsLanguage: ['zh-CN', 'en'] }, { '@context': 'https://schema.org', '@type': 'WebSite', name: config.siteName, url: baseUrl, inLanguage: 'zh-CN', potentialAction: { '@type': 'SearchAction', target: `${baseUrl}/search?q={search_term_string}`, 'query-input': 'required name=search_term_string' } }]
     if (path === '/') {
-      graph.push({ '@context': 'https://schema.org', '@type': 'ItemList', name: '希腊精选主题路线', itemListElement: routes.map((route, index) => ({ '@type': 'ListItem', position: index + 1, name: route.title, description: route.desc, url: `${baseUrl}/routes/${route.slug}` })) })
+      graph.push({ '@context': 'https://schema.org', '@type': 'ItemList', name: '希腊精选主题路线', itemListElement: routes.map((route, index) => ({ '@type': 'ListItem', position: index + 1, name: route.title, description: route.desc, url: `${baseUrl}${routePath(route)}` })) })
       graph.push({ '@context': 'https://schema.org', '@type': 'FAQPage', mainEntity: [{ '@type': 'Question', name: '希腊私人定制旅行多久可以出方案？', acceptedAnswer: { '@type': 'Answer', text: '提交出行时间、人数与预算后，定制师会在 24 小时内提供首版方案。' } }, { '@type': 'Question', name: '希腊旅行是否提供中文服务？', acceptedAnswer: { '@type': 'Answer', text: '雅典在地团队提供一对一中文定制师、中文司导和出行中的中文应急管家。' } }, { '@type': 'Question', name: '可以只定制圣托里尼或雅典吗？', acceptedAnswer: { '@type': 'Answer', text: '可以按目的地、天数、预算和旅行主题灵活定制单岛或多城行程。' } }] })
     }
     if (matchedDestination) graph.push({ '@context': 'https://schema.org', '@type': 'TouristDestination', name: matchedDestination.name, description, touristType: ['情侣', '家庭', '蜜月旅行'], containedInPlace: { '@type': 'Country', name: '希腊' } })
@@ -257,8 +257,16 @@ function SearchBox({ initial = '', large = false }) {
   )
 }
 
+const ROUTE_TO_SAMPLE = {
+  'athens-3d': 'sample-athens-3d',
+  'honeymoon-5d': 'sample-ae-5d',
+  'family-7d': 'sample-family-7d',
+  'heritage-9d': 'sample-heritage-9d',
+}
+
 function routePath(route) {
-  return `/routes/${route.slug || 'honeymoon-5d'}`
+  const slug = route.slug || route.id || 'honeymoon-5d'
+  return ROUTE_TO_SAMPLE[slug] ? `/itineraries/${ROUTE_TO_SAMPLE[slug]}` : `/routes/${slug}`
 }
 
 function RouteCard({ route, compact = false }) {
@@ -272,7 +280,7 @@ function RouteCard({ route, compact = false }) {
         <h3><Link to={routePath(route)}>{route.title}</Link></h3>
         <div className="route-tags">{route.tags}</div>
         <p>{route.desc}</p>
-        <div className="price-row"><span>咨询费用沟通</span><Link to="/customize">一对一顾问沟通 <ArrowRight size={13} /></Link></div>
+        <div className="price-row"><span>参考行程 · 免费浏览</span><Link to={routePath(route)}>查看简版行程 <ArrowRight size={13} /></Link></div>
       </div>
     </article>
   )
@@ -343,8 +351,15 @@ function Home() {
 
       <section id="routes" className="section routes-section">
         <div className="container">
-          <SectionTitle eyebrow="CURATED PACKAGES" title="甄选主题路线" action={{ to: '/routes/heritage-9d', label: '查看全部路线' }} />
+          <SectionTitle eyebrow="CURATED PACKAGES" title="甄选主题路线" action={{ to: '/itineraries', label: '查看全部参考行程' }} />
           <div className="route-grid">{content.routes.map((route) => <RouteCard key={route.id || route.title} route={route} />)}</div>
+          <div className="customize-entry-banner">
+            <div>
+              <strong>定制行程 · 填写需求，获取专属方案</strong>
+              <span>提交出行时间、人数与偏好，顾问 24 小时内一对一沟通；确认后定制行程将通过专属链接单独发送给你。</span>
+            </div>
+            <Link className="button button-gold" to="/customize">定制行程 · 填写需求 <ArrowRight size={15} /></Link>
+          </div>
         </div>
       </section>
 

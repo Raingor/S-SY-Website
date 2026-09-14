@@ -1570,6 +1570,220 @@
           "attractionIds": []
         }
       ]
+    },
+    {
+      "id": "sample-family-7d",
+      "title": "经典三城家庭游",
+      "days": 7,
+      "cover": "nafplio.webp",
+      "status": "published",
+      "summary": "雅典、纳夫普利翁与伯罗奔尼撒的神话遗迹连成一线，每天车程控制在两小时内，节奏松紧由家庭自己定。",
+      "itinerary": [
+        {
+          "day": 1,
+          "title": "抵达雅典 · 适应时差",
+          "city": "雅典",
+          "desc": "接机入住适合家庭的公寓式酒店，傍晚宪法广场看换岗、国家花园散步，早睡倒时差。",
+          "attractionIds": [
+            "athens-landmarks"
+          ]
+        },
+        {
+          "day": 2,
+          "title": "卫城亲子寻宝 · 普拉卡",
+          "city": "雅典",
+          "desc": "上午深度游览卫城与卫城博物馆，下午普拉卡老城亲子寻宝游戏，晚餐希腊烤肉家庭餐。",
+          "attractionIds": [
+            "acropolis",
+            "acropolis-museum"
+          ]
+        },
+        {
+          "day": 3,
+          "title": "科林斯运河 · 纳夫普利翁",
+          "city": "纳夫普利翁",
+          "desc": "跨越科林斯运河抵达海边老城，帕拉米迪城堡俯瞰海湾，傍晚老城漫步与冰淇淋时间。",
+          "attractionIds": [
+            "nafplio"
+          ]
+        },
+        {
+          "day": 4,
+          "title": "迈锡尼 · 埃皮达鲁斯古剧场",
+          "city": "纳夫普利翁",
+          "desc": "上午探秘狮子门与阿伽门农墓（神话现场课），下午古剧场测试 2400 年前的传声奇迹，孩子可在剧场中心朗读体验。",
+          "attractionIds": [
+            "epidaurus"
+          ]
+        },
+        {
+          "day": 5,
+          "title": "波罗斯岛跳岛 · 海滩下午",
+          "city": "纳夫普利翁",
+          "desc": "乘船登波罗斯岛，钟楼与柠檬林漫步，海鲜午餐后海滩自由活动与游泳。",
+          "attractionIds": []
+        },
+        {
+          "day": 6,
+          "title": "返回雅典 · 告别晚宴",
+          "city": "雅典",
+          "desc": "上午返回雅典，下午利卡维多斯山看全城日落，晚上普拉卡告别晚宴与民俗歌舞。",
+          "attractionIds": [
+            "likavitos"
+          ]
+        },
+        {
+          "day": 7,
+          "title": "国家考古博物馆 · 送机",
+          "city": "雅典",
+          "desc": "上午看阿伽门农黄金面具（衔接迈锡尼行程），专车送机返程。",
+          "attractionIds": [
+            "national-archaeological-museum"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "sample-ae-5d",
+      "title": "雅典 + 圣托里尼五日",
+      "days": 5,
+      "cover": "santorini.webp",
+      "status": "published",
+      "summary": "蜜月经典：两天雅典看文明，两天圣岛住悬崖酒店看日落，节奏从容。",
+      "itinerary": [
+        {
+          "day": 1,
+          "title": "抵达雅典 · 地标巡礼",
+          "city": "雅典",
+          "desc": "上午·雅典国际机场接机，入住市区酒店休整；下午·雅典地标巡礼：宪法广场换岗仪式、皇家花园、泛雅典娜体育场",
+          "attractionIds": [
+            "athens-landmarks"
+          ]
+        },
+        {
+          "day": 2,
+          "title": "卫城深度 · 温泉湖晚餐",
+          "city": "雅典",
+          "desc": "上午·雅典卫城深度游览（以实际购票时间为准）；下午·普拉卡老城与国家考古博物馆；晚上·Lake Vouliagmeni 天然温泉湖畔餐厅晚餐（须预订）",
+          "attractionIds": [
+            "acropolis",
+            "national-archaeological-museum"
+          ]
+        },
+        {
+          "day": 3,
+          "title": "飞抵圣托里尼 · 悬崖酒店",
+          "city": "圣托里尼",
+          "desc": "上午·飞往圣托里尼，入住伊亚悬崖酒店；下午·酒店休整或悬崖步道漫步；晚上·悬崖海景餐厅晚餐，静享爱琴海暮色",
+          "attractionIds": []
+        },
+        {
+          "day": 4,
+          "title": "伊亚 · 费拉小镇",
+          "city": "圣托里尼",
+          "desc": "上午·伊亚小镇：蓝顶教堂、风车观景台与悬崖步道；下午·费拉小镇：主教堂、三钟教堂与悬崖咖啡馆；晚上·知名悬崖餐厅晚餐（须预订）",
+          "attractionIds": [
+            "fira",
+            "oia"
+          ]
+        },
+        {
+          "day": 5,
+          "title": "返回雅典 · 回国",
+          "city": "雅典",
+          "desc": "上午·圣托里尼机场返回雅典，转乘回国航班",
+          "attractionIds": []
+        }
+      ]
+    },
+    {
+      "id": "sample-heritage-9d",
+      "title": "全遗产环游九日",
+      "days": 9,
+      "cover": "delphi.webp",
+      "status": "published",
+      "summary": "雅典、德尔斐、梅黛奥拉、圣托里尼与克里特连线，全希腊世界遗产一次走完。",
+      "itinerary": [
+        {
+          "day": 1,
+          "title": "抵达雅典 · 地标与夜景",
+          "city": "雅典",
+          "desc": "上午·雅典国际机场接机，入住市区酒店休整；下午·雅典地标巡礼，傍晚利卡维多斯山夜景",
+          "attractionIds": [
+            "athens-landmarks"
+          ]
+        },
+        {
+          "day": 2,
+          "title": "雅典考古核心",
+          "city": "雅典",
+          "desc": "上午·雅典卫城深度游览；下午·国家考古博物馆",
+          "attractionIds": [
+            "acropolis",
+            "national-archaeological-museum"
+          ]
+        },
+        {
+          "day": 3,
+          "title": "德尔斐 · 卡兰巴卡",
+          "city": "卡兰巴卡",
+          "desc": "上午·前往德尔斐：阿波罗神庙与\"世界之脐\"；晚上·穿越山脉抵达卡兰巴卡小镇入住",
+          "attractionIds": [
+            "delphi"
+          ]
+        },
+        {
+          "day": 4,
+          "title": "梅黛奥拉修道院",
+          "city": "雅典",
+          "desc": "上午·梅黛奥拉修道院群：悬于岩柱之巅的信仰奇观；晚上·返回雅典休整",
+          "attractionIds": [
+            "meteora"
+          ]
+        },
+        {
+          "day": 5,
+          "title": "飞抵圣托里尼 · 伊亚",
+          "city": "圣托里尼",
+          "desc": "上午·飞往圣托里尼，入住悬崖酒店；下午·伊亚小镇蓝顶教堂与风车观景台",
+          "attractionIds": [
+            "oia"
+          ]
+        },
+        {
+          "day": 6,
+          "title": "皮尔戈斯 · 黑沙滩",
+          "city": "圣托里尼",
+          "desc": "上午·皮尔戈斯山城小镇与 Kasteli 城堡；下午·黑沙滩海滩休闲与水上活动",
+          "attractionIds": [
+            "black-beach",
+            "pyrgos"
+          ]
+        },
+        {
+          "day": 7,
+          "title": "克里特 · 克诺索斯王宫",
+          "city": "克里特",
+          "desc": "上午·飞往克里特岛，探访克诺索斯王宫迷宫；下午·伊拉克利翁考古博物馆",
+          "attractionIds": [
+            "knossos"
+          ]
+        },
+        {
+          "day": 8,
+          "title": "干尼亚威尼斯老港",
+          "city": "克里特",
+          "desc": "上午·干尼亚老城威尼斯港漫步；晚上·海滨晚餐后返回酒店",
+          "attractionIds": []
+        },
+        {
+          "day": 9,
+          "title": "返回雅典 · 送机",
+          "city": "雅典",
+          "desc": "上午·返回雅典，专车送机回国",
+          "attractionIds": []
+        }
+      ]
     }
   ],
   "cities": [

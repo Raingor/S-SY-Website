@@ -41,7 +41,7 @@ export function Header({ solid = false }) {
   const location = useLocation()
   useEffect(() => setOpen(false), [location.pathname])
   const links = [
-    ['/', t('nav.home')], ['/routes/honeymoon-5d', t('nav.routes')], ['/customize', t('nav.experiences')],
+    ['/', t('nav.home')], ['/itineraries/sample-ae-6d', t('nav.routes')], ['/customize', t('nav.experiences')],
     ['/destinations/santorini', t('nav.destinations')], ['/attractions', t('nav.attractions')], ['/guides/richard-li', t('nav.guide')], ['/tools', t('nav.tools')],
   ]
   return (
@@ -121,7 +121,7 @@ export function Footer() {
     <footer id="contact" className="site-footer">
       <div className="container footer-grid">
         <div className="footer-brand"><Logo /><p>{t('footer.brand')}</p><strong>sy-greece.com</strong></div>
-        <div><h3>{t('footer.routes')}</h3><Link to="/routes/athens-3d">{routeLabels[0]}</Link><Link to="/routes/honeymoon-5d">{routeLabels[1]}</Link><Link to="/routes/family-7d">{routeLabels[2]}</Link><Link to="/routes/heritage-9d">{routeLabels[3]}</Link><Link to="/itineraries">参考行程</Link></div>
+        <div><h3>{t('footer.routes')}</h3><Link to="/itineraries">参考行程</Link><Link to="/itineraries/sample-athens-3d">{routeLabels[0]}</Link><Link to="/itineraries/sample-ae-6d">{routeLabels[1]}</Link><Link to="/itineraries/sample-family-7d">{routeLabels[2]}</Link><Link to="/itineraries/sample-heritage-7d">{routeLabels[3]}</Link></div>
         <div><h3>{t('footer.services')}</h3><Link to="/customize">{language === 'en' ? 'Private planning' : language === 'ja' ? 'プライベート旅行' : language === 'el' ? 'Ιδιωτικός σχεδιασμός' : '私人定制'}</Link><a href="#services">{language === 'en' ? 'Private transfers' : language === 'ja' ? '専用車' : language === 'el' ? 'Ιδιωτικές μετακινήσεις' : '专属用车'}</a><a href="#experiences">{language === 'en' ? 'Yachts & private flights' : language === 'ja' ? 'ヨット / プライベートフライト' : language === 'el' ? 'Yacht / private flights' : '私人包机 / 游艇出海'}</a><Link to="/attractions">景点导览</Link><Link to="/knowledge-base">景点文史知识库</Link><Link to="/business-travel">商旅随行咨询</Link><Link to="/tools">{t('nav.tools')}</Link></div>
         <div><h3>{t('footer.contact')}</h3><span>{t('footer.wechat')}</span><span>{t('footer.phone')}</span><span>{t('footer.email')}</span></div>
       </div>

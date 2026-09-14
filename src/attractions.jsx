@@ -334,10 +334,12 @@ export function ItinerariesIndex() {
   const { sampleItineraries } = useSiteContent()
   return (
     <>
-      <InnerHero image={images.santorini} eyebrow="SAMPLE ITINERARIES" title="参考行程" subtitle="几种经典玩法框架，正式行程按你的需求定制后通过专属链接发送。" breadcrumb="参考行程" />
-      <main className="section">
+      <InnerHero image={images.santorini} eyebrow="SAMPLE ITINERARIES" title="参考行程" subtitle="几种经典玩法框架，正式行程按你的需求定制后通过专属链接发送。" breadcrumb="参考行程">
+        <div className="hero-actions"><Link className="button button-gold" to="/customize">定制行程 · 填写需求，获取专属方案</Link><a className="button button-ghost" href="#list">浏览全部参考行程</a></div>
+      </InnerHero>
+      <main className="section" id="list">
         <div className="container">
-          <div className="itinerary-notice"><Info size={16} /><span>以下为参考行程框架，用于了解节奏与组合方式；每一段正式行程都会按出行时间、人数与偏好单独定制。</span></div>
+          <div className="itinerary-notice"><Info size={16} /><span>以下为参考行程框架（简版），用于了解节奏与组合方式；每一段正式行程都会按出行时间、人数与偏好单独定制，并通过专属链接发送。行程中的景点可直接点击查看详情。</span></div>
           <div className="itinerary-list">
             {sampleItineraries.map((trip) => (
               <article className="itinerary-row-card" key={trip.id}>
