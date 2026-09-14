@@ -9,7 +9,10 @@ const distDir = resolve(root, 'dist')
 const dataPath = resolve(root, 'data/site-data.json')
 const port = Number(process.env.PORT || 4173)
 const adminPassword = process.env.SY_ADMIN_PASSWORD || 'sy-greece-admin'
+const miniProgramTokenSecret = process.env.SY_MINIPROGRAM_TOKEN_SECRET || ''
+const wechatApiBase = String(process.env.WX_API_BASE_URL || 'https://api.weixin.qq.com').replace(/\/$/, '')
 const tokens = new Set()
+let wechatAccessToken = { value: '', expiresAt: 0 }
 const mime = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8', '.json': 'application/json; charset=utf-8', '.png': 'image/png', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.webp': 'image/webp', '.svg': 'image/svg+xml', '.ico': 'image/x-icon' }
 const immutableExtensions = new Set(['.png', '.jpg', '.jpeg', '.webp', '.svg', '.ico', '.woff', '.woff2'])
 
@@ -22,7 +25,20 @@ function isGuideBooking(lead) { return lead.leadType === 'guide-booking' || Bool
 function isMiniProgramBooking(lead) { return ['miniprogram', 'wechat-miniprogram'].includes(lead.platform) || ['miniprogram', 'wechat-miniprogram'].includes(lead.source) || lead.leadType === 'mini-program-booking' }
 function leadsOfType(leads, leadType) { return leadType ? leads.filter((lead) => lead.leadType === leadType) : leads }
 function isAdmin(req) { const auth = req.headers.authorization || ''; return auth.startsWith('Bearer ') && tokens.has(auth.slice(7)) }
+function isMiniProgramLead(input) { return ['wechat-miniprogram', 'miniprogram'].includes(input.platform) || ['wechat-miniprogram', 'miniprogram'].includes(input.source) }
+function miniProgramConfigReady() { return Boolean(process.env.WX_APPID && process.env.WX_APP_SECRET && miniProgramTokenSecret) }
+function encodeTokenPart(value) { return Buffer.from(JSON.stringify(value)).toString('base64url') }
+function createMiniProgramToken(userId) { const now = Math.floor(Date.now() / 1000); const payload = { sub: userId, iat: now, exp: now + 30 * 24 * 60 * 60 }; const encoded = encodeTokenPart(payload); const signature = crypto.createHmac('sha256', miniProgramTokenSecret).update(encoded).digest('base64url'); return `mpv1.${encoded}.${signature}` }
+function verifyMiniProgramToken(token) { try { const [version, encoded, signature] = String(token || '').split('.'); if (version !== 'mpv1' || !encoded || !signature || !miniProgramTokenSecret) return null; const expected = crypto.createHmac('sha256', miniProgramTokenSecret).update(encoded).digest('base64url'); const actualBuffer = Buffer.from(signature); const expectedBuffer = Buffer.from(expected); if (actualBuffer.length !== expectedBuffer.length || !crypto.timingSafeEqual(actualBuffer, expectedBuffer)) return null; const payload = JSON.parse(Buffer.from(encoded, 'base64url').toString('utf8')); return payload.exp > Math.floor(Date.now() / 1000) ? payload : null } catch { return null } }
+function publicMiniProgramUser(user) { return { id: user.id, phoneBound: Boolean(user.phone), phoneMasked: user.phone ? maskPhone(user.phone) : null } }
+function maskPhone(phone) { const value = String(phone || ''); return value.length > 7 ? `${value.slice(0, 3)}****${value.slice(-4)}` : '****' }
+function miniProgramUserFromRequest(req, data) { const auth = req.headers.authorization || ''; if (!auth.startsWith('Bearer ')) return null; const payload = verifyMiniProgramToken(auth.slice(7)); if (!payload) return null; return (data.miniprogramUsers || []).find((user) => user.id === payload.sub) || null }
 function id(prefix = 'item') { return `${prefix}-${Date.now().toString(36)}-${crypto.randomBytes(3).toString('hex')}` }
+async function wechatRequest(path, options = {}) { const response = await fetch(`${wechatApiBase}${path}`, { ...options, signal: AbortSignal.timeout(8000) }); const payload = await response.json(); if (!response.ok || payload.errcode) throw new Error(payload.errmsg || '微信接口请求失败'); return payload }
+async function exchangeMiniProgramCode(code) { if (!miniProgramConfigReady()) throw new Error('小程序登录服务尚未配置'); const params = new URLSearchParams({ appid: process.env.WX_APPID, secret: process.env.WX_APP_SECRET, js_code: code, grant_type: 'authorization_code' }); const payload = await wechatRequest(`/sns/jscode2session?${params}`); if (!payload.openid) throw new Error('微信登录 code 无效'); return payload }
+async function getWechatAccessToken() { if (wechatAccessToken.value && wechatAccessToken.expiresAt > Date.now() + 60_000) return wechatAccessToken.value; const params = new URLSearchParams({ grant_type: 'client_credential', appid: process.env.WX_APPID, secret: process.env.WX_APP_SECRET }); const payload = await wechatRequest(`/cgi-bin/token?${params}`); if (!payload.access_token) throw new Error('微信服务凭证获取失败'); wechatAccessToken = { value: payload.access_token, expiresAt: Date.now() + Number(payload.expires_in || 7200) * 1000 }; return wechatAccessToken.value }
+async function exchangePhoneCode(code) { const accessToken = await getWechatAccessToken(); return wechatRequest(`/wxa/business/getuserphonenumber?access_token=${encodeURIComponent(accessToken)}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ code }) }) }
+function normalizedPhone(phoneInfo = {}) { const raw = phoneInfo.phoneNumber || (phoneInfo.countryCode && phoneInfo.purePhoneNumber ? `+${phoneInfo.countryCode}${phoneInfo.purePhoneNumber}` : phoneInfo.purePhoneNumber); const phone = String(raw || '').replace(/[^\d+]/g, ''); if (!/^\+?\d{7,20}$/.test(phone)) throw new Error('微信未返回有效手机号'); return phone.startsWith('+') ? phone : `+${phone}` }
 async function body(req, limit = 1024 * 1024) {
   let raw = ''
   for await (const chunk of req) { raw += chunk; if (raw.length > limit) throw new Error('payload too large') }
@@ -109,11 +125,43 @@ const server = http.createServer(async (req, res) => {
       return json(res, 200, { token, user: { name: 'SY Admin', role: 'editor' } })
     }
     if (url.pathname === '/api/content' && method === 'GET') return json(res, 200, publicContent(readData()))
+    if (url.pathname === '/api/miniprogram/auth/wx-login' && method === 'POST') {
+      const input = await body(req)
+      if (!input.code) return json(res, 422, { code: 'WX_LOGIN_CODE_REQUIRED', error: '缺少微信登录 code' })
+      try {
+        const session = await exchangeMiniProgramCode(String(input.code))
+        const data = readData(); data.miniprogramUsers = data.miniprogramUsers || []
+        let user = data.miniprogramUsers.find((item) => item.openid === session.openid)
+        if (!user) { user = { id: id('mpu'), openid: session.openid, unionid: session.unionid || '', phone: '', createdAt: new Date().toISOString() }; data.miniprogramUsers.push(user) } else if (session.unionid && user.unionid !== session.unionid) user.unionid = session.unionid
+        user.updatedAt = new Date().toISOString(); saveData(data)
+        return json(res, 200, { accessToken: createMiniProgramToken(user.id), tokenType: 'Bearer', expiresIn: 30 * 24 * 60 * 60, user: publicMiniProgramUser(user) })
+      } catch (error) { return json(res, error.message === '小程序登录服务尚未配置' ? 503 : 502, { code: 'WECHAT_LOGIN_FAILED', error: error.message }) }
+    }
+    if (url.pathname === '/api/miniprogram/auth/me' && method === 'GET') {
+      const data = readData(); const user = miniProgramUserFromRequest(req, data)
+      if (!user) return json(res, 401, { code: 'MINIPROGRAM_LOGIN_REQUIRED', error: '请先微信登录' })
+      return json(res, 200, { user: publicMiniProgramUser(user) })
+    }
+    if (url.pathname === '/api/miniprogram/auth/phone' && method === 'POST') {
+      const input = await body(req); const data = readData(); const user = miniProgramUserFromRequest(req, data)
+      if (!user) return json(res, 401, { code: 'MINIPROGRAM_LOGIN_REQUIRED', error: '请先微信登录' })
+      if (!input.code) return json(res, 422, { code: 'WX_PHONE_CODE_REQUIRED', error: '缺少微信手机号 code' })
+      try {
+        const result = await exchangePhoneCode(String(input.code)); const phone = normalizedPhone(result.phone_info)
+        user.phone = phone; user.phoneBoundAt = new Date().toISOString(); user.updatedAt = new Date().toISOString(); saveData(data)
+        return json(res, 200, { user: publicMiniProgramUser(user) })
+      } catch (error) { return json(res, error.message === '小程序登录服务尚未配置' ? 503 : 502, { code: 'WECHAT_PHONE_BIND_FAILED', error: error.message }) }
+    }
     if (url.pathname === '/api/leads' && method === 'POST') {
       const input = await body(req)
-      if (!input.contact) return json(res, 422, { error: '请填写联系方式' })
-      const data = readData()
+      const data = readData(); let miniProgramUser = null
+      if (isMiniProgramLead(input)) {
+        miniProgramUser = miniProgramUserFromRequest(req, data)
+        if (!miniProgramUser) return json(res, 401, { code: 'MINIPROGRAM_LOGIN_REQUIRED', error: '请先微信登录' })
+        if (!miniProgramUser.phone) return json(res, 403, { code: 'PHONE_BIND_REQUIRED', error: '提交前请先绑定手机号' })
+      } else if (!input.contact) return json(res, 422, { error: '请填写联系方式' })
       const lead = { ...input, id: input.id || id('lead'), source: input.source || input.platform || 'website', platform: input.platform || input.source || 'website', leadType: input.leadType || 'customization', status: 'new', createdAt: input.createdAt || new Date().toISOString() }
+      if (miniProgramUser) { lead.userId = miniProgramUser.id; lead.contact = miniProgramUser.phone; lead.contactType = 'phone' }
       data.leads.unshift(lead); saveData(data)
       return json(res, 201, lead)
     }

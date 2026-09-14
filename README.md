@@ -91,3 +91,21 @@ npm run dev
 - 站点与 SEO 配置
 
 预约统一写入 `data/site-data.json`，并通过 `/api/leads` 接收。后台 API 使用登录后 Bearer Token 鉴权。
+
+## 小程序登录与手机号绑定 API
+
+小程序用户默认未登录，Website 不接收小程序端的微信 AppSecret。上线前需在服务端环境配置：
+
+```bash
+WX_APPID='微信小程序 AppID'
+WX_APP_SECRET='微信小程序 AppSecret'
+SY_MINIPROGRAM_TOKEN_SECRET='用于签发小程序用户 Token 的随机密钥'
+```
+
+接口：
+
+- `POST /api/miniprogram/auth/wx-login`：请求 `{ "code": "wx.login 返回的 code" }`，服务端调用微信 `jscode2session`，返回 `accessToken`、`tokenType`、`expiresIn` 和 `user`。
+- `GET /api/miniprogram/auth/me`：需要 `Authorization: Bearer <accessToken>`，返回 `phoneBound` 与脱敏手机号。
+- `POST /api/miniprogram/auth/phone`：需要 Bearer Token，请求 `{ "code": "wx.getPhoneNumber 回调中的 code" }`，服务端调用微信手机号接口并保存绑定手机号。
+
+小程序提交表单时继续使用 `POST /api/leads`，并携带 Bearer Token 及 `platform: "wechat-miniprogram"`（或 `source` 同值）。未登录返回 `401 MINIPROGRAM_LOGIN_REQUIRED`，未绑定手机号返回 `403 PHONE_BIND_REQUIRED`；绑定后服务端从用户记录写入联系方式，不信任客户端传入的手机号。小程序用户记录保存在 `data/site-data.json` 的 `miniprogramUsers` 中，微信 `openid` 不会通过 API 返回。
