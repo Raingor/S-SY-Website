@@ -339,7 +339,7 @@
       "sizeLabel": "大型"
     },
     {
-      "id": "national-museum",
+      "id": "national-archaeological-museum",
       "name": "雅典国家考古博物馆",
       "en": "National Archaeological Museum",
       "city": "athens",
@@ -1436,7 +1436,7 @@
           "city": "雅典",
           "desc": "上午在国家考古博物馆看阿伽门农黄金面具，中午逛蒙纳斯提拉奇跳蚤市场，专车送机。",
           "attractionIds": [
-            "national-museum"
+            "national-archaeological-museum"
           ]
         }
       ]
@@ -1559,7 +1559,7 @@
           "city": "雅典",
           "desc": "上午博物馆精讲，黄昏驱车阿提加最南端波塞冬神庙看爱琴海日落。",
           "attractionIds": [
-            "national-museum"
+            "national-archaeological-museum"
           ]
         },
         {
