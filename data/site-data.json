@@ -247,8 +247,8 @@
           "现场观看顺序与知识点"
         ]
       },
-      "scale": "超大型",
-      "originalName": "Ακρόπολη Αθηνών"
+      "originalName": "Ακρόπολη Αθηνών",
+      "sizeLabel": "超大型"
     },
     {
       "id": "acropolis-museum",
@@ -360,8 +360,8 @@
           "策展动线深度解读"
         ]
       },
-      "scale": "大型",
-      "originalName": "Μουσείο Ακρόπολης"
+      "originalName": "Μουσείο Ακρόπολης",
+      "sizeLabel": "大型"
     },
     {
       "id": "benaki-museum",
@@ -372,7 +372,6 @@
       "cityName": "雅典",
       "type": "museum",
       "category": "私人博物馆",
-      "scale": "大型",
       "tags": [
         "博物馆",
         "艺术",
@@ -459,10 +458,11 @@
           "分馆导览手册",
           "近现代希腊史专题"
         ]
-      }
+      },
+      "sizeLabel": "大型"
     },
     {
-      "id": "national-archaeological-museum",
+      "id": "national-museum",
       "name": "雅典国家考古博物馆",
       "en": "National Archaeological Museum",
       "city": "athens",
@@ -571,8 +571,96 @@
           "神话人物识别指南"
         ]
       },
-      "scale": "超大型",
-      "originalName": "Εθνικό Αρχαιολογικό Μουσείο"
+      "originalName": "Εθνικό Αρχαιολογικό Μουσείο",
+      "sizeLabel": "超大型"
+    },
+    {
+      "id": "athens-landmarks",
+      "name": "雅典地标巡礼",
+      "en": "SYNTAGMA & CITY LANDMARKS",
+      "originalName": "Σύνταγμα & Κέντρο Αθηνών",
+      "city": "athens",
+      "cityName": "雅典",
+      "type": "landmark",
+      "category": "首都地标",
+      "sizeLabel": "大型",
+      "tags": [],
+      "image": "athens.webp",
+      "status": "published",
+      "summary": "宪法广场、国家议会大厦（原皇宫）、无名英雄纪念碑、皇家花园、扎皮翁宫与第一届现代奥运会体育场，一条动线读懂现代希腊的国家叙事。",
+      "highlights": [
+        {
+          "name": "总统卫队换岗仪式",
+          "desc": "每逢整点在无名英雄纪念碑前举行，身着传统裙装护卫的标志性一幕；周日 11:00 的大换岗更为隆重。"
+        },
+        {
+          "name": "泛雅典娜体育场",
+          "desc": "第一届现代奥林匹克运动会主场馆，也是奥运圣火交接仪式场地，全大理石建造。"
+        },
+        {
+          "name": "皇家花园与扎皮翁宫",
+          "desc": "市中心难得的绿荫，散步至扎皮翁宫，看新古典主义的雅典。"
+        },
+        {
+          "name": "国家议会大厦",
+          "desc": "原为皇宫，门前宪法广场是雅典人集会与庆典的中心。"
+        }
+      ],
+      "exhibits": [],
+      "guide": {
+        "hours": "广场与外部地标全天开放；换岗仪式每整点一次，周日 11:00 为大换岗。",
+        "tickets": "广场、花园与纪念碑免费；泛雅典娜体育场参观约 €10，以现场为准。",
+        "transport": "地铁 Syntagma 站出站即达；各地标步行皆在 15 分钟圈内。",
+        "worth": "把换岗仪式安排在整点前 10 分钟到场占位；傍晚沿皇家花园走向体育场一路舒适。",
+        "services": "宪法广场周边咖啡与餐饮密集，适合中途休息。",
+        "family": "换岗仪式的慢动作正步对孩子极具吸引力；皇家花园是跑放电的好去处。",
+        "faq": "拍摄卫队请保持距离，勿使用闪光灯；大型集会活动日广场可能管制。"
+      },
+      "articles": []
+    },
+    {
+      "id": "likavitos",
+      "name": "利卡维多斯山",
+      "en": "LIKAVITOS HILL",
+      "originalName": "Λυκαβηττός",
+      "city": "athens",
+      "cityName": "雅典",
+      "type": "landmark",
+      "category": "城市观景",
+      "sizeLabel": "中型",
+      "tags": [],
+      "image": "athens.webp",
+      "status": "published",
+      "summary": "雅典都会区最高自然观景点（277米），从狼山之巅360°俯瞰无与伦比的雅典都会区和爱琴海全景，全面领略\"众神眷顾之城\"的浪漫与壮丽。",
+      "highlights": [
+        {
+          "name": "山顶全景平台",
+          "desc": "360°俯瞰雅典全城、卫城与远处的爱琴海，日落与夜景时段最佳。"
+        },
+        {
+          "name": "圣乔治小教堂",
+          "desc": "白色小教堂是山顶地标，攀登至此的传统终点。"
+        },
+        {
+          "name": "山顶缆车",
+          "desc": "从 Kolonaki 区乘缆车登顶，坡道穿越山体与城市屋檐。"
+        },
+        {
+          "name": "夜景餐厅",
+          "desc": "山顶知名餐厅需预订，晚餐后专车送回酒店最从容。"
+        }
+      ],
+      "exhibits": [],
+      "guide": {
+        "hours": "山体全天开放；缆车约 09:00–次日 02:30 运行，天气恶劣可能停运。",
+        "tickets": "登山步道免费；缆车单程约 €10、往返约 €15，以现场为准。",
+        "transport": "缆车站位于 Kolonaki 区 Aristippou 街；自驾可沿山路直达山顶停车场。",
+        "worth": "日落前 1 小时登顶，一次看完白天、日落与夜景三种雅典。",
+        "services": "山顶有餐厅与咖啡座，傍晚风大建议带外套。",
+        "family": "缆车体验深受孩子喜爱；步道较陡，儿童建议缆车上下。",
+        "faq": "夏季傍晚山顶拥挤，晚餐务必提前预订。"
+      },
+      "articles": []
     },
     {
       "id": "oia",
@@ -684,8 +772,8 @@
           "一日动线深度规划"
         ]
       },
-      "scale": "大型",
-      "originalName": "Οία"
+      "originalName": "Οία",
+      "sizeLabel": "大型"
     },
     {
       "id": "pyrgos",
@@ -782,8 +870,96 @@
           "环线自驾攻略"
         ]
       },
-      "scale": "中型",
-      "originalName": "Πύργος Καλλίστης"
+      "originalName": "Πύργος Καλλίστης",
+      "sizeLabel": "中型"
+    },
+    {
+      "id": "fira",
+      "name": "费拉小镇",
+      "en": "FIRA",
+      "originalName": "Φηρά",
+      "city": "santorini",
+      "cityName": "圣托里尼",
+      "type": "landmark",
+      "category": "岛屿首府",
+      "sizeLabel": "中型",
+      "tags": [],
+      "image": "santorini.webp",
+      "status": "published",
+      "summary": "圣托里尼首府，面朝爱琴海的悬崖都会。大都会圣母报喜主教堂、三钟教堂等地标与网红悬崖咖啡馆、精品店和艺术画廊，深入感受圣托里尼的生活脉搏。",
+      "highlights": [
+        {
+          "name": "大都会圣母报喜主教堂",
+          "desc": "费拉地标性的白色大教堂与钟楼，米白与香草色的典雅组合。"
+        },
+        {
+          "name": "三钟教堂",
+          "desc": "三口钟悬挂于蓝色穹顶之下，明信片上的费拉符号。"
+        },
+        {
+          "name": "悬崖咖啡馆",
+          "desc": "面朝爱琴海的网红咖啡馆，海风与咖啡一起慢慢来。"
+        },
+        {
+          "name": "旧港缆车",
+          "desc": "连接费拉与旧港的缆车与骡道，悬崖上下的经典体验。"
+        }
+      ],
+      "exhibits": [],
+      "guide": {
+        "hours": "小镇全天开放；商店与咖啡馆多为 10:00–23:00。",
+        "tickets": "免费开放；缆车单程约 €6，以现场为准。",
+        "transport": "岛上巴士枢纽所在地，往返各镇均在此换乘；机场乘车约 15 分钟。",
+        "worth": "傍晚沿悬崖主路散步，把精品店、画廊与日落一次逛完。",
+        "services": "银行、药房、超市与诊所齐备，是岛上生活机能中心。",
+        "family": "缆车与骡道是孩子的最爱；悬崖主路推车基本可行。",
+        "faq": "游轮停靠日（约 08:00–17:00）小镇拥挤，错峰体验更佳。"
+      },
+      "articles": []
+    },
+    {
+      "id": "black-beach",
+      "name": "圣托里尼黑沙滩",
+      "en": "PERISSA BLACK BEACH",
+      "originalName": "Παραλία Περίσσας",
+      "city": "santorini",
+      "cityName": "圣托里尼",
+      "type": "landmark",
+      "category": "海滩休闲",
+      "sizeLabel": "中型",
+      "tags": [],
+      "image": "santorini.webp",
+      "status": "published",
+      "summary": "火山造就的黑色沙滩。东南岛黑沙滩海滩游泳、躺椅休闲、近海划船等海滩活动和休闲，是蓝白小镇之外另一种圣岛打开方式。",
+      "highlights": [
+        {
+          "name": "黑色火山沙滩",
+          "desc": "火山碎屑形成的细黑沙滩，海水清澈见底。"
+        },
+        {
+          "name": "Mesa Vouno 岩山",
+          "desc": "沙滩尽头的巨岩山体，山顶有古阿波罗神庙遗址。"
+        },
+        {
+          "name": "海滩俱乐部",
+          "desc": "躺椅、水上运动与沙滩酒吧一线排开，躺平一下午。"
+        },
+        {
+          "name": "近海划船与桨板",
+          "desc": "平静的近海水域适合划船、SUP 等水上活动。"
+        }
+      ],
+      "exhibits": [],
+      "guide": {
+        "hours": "海滩全天开放；海滩俱乐部躺椅约 09:00–19:00 运营。",
+        "tickets": "海滩免费；躺椅与水上项目按项目收费（约 €10–40）。",
+        "transport": "从费拉乘车约 25 分钟；夏季有海滩巴士直达。",
+        "worth": "上午水面最平静适合水上活动；午后沙滩吸热，注意烫脚。",
+        "services": "淋浴、更衣与餐饮在海滩俱乐部内，消费即可使用。",
+        "family": "近海浅水区适合孩子玩水，提前准备泳衣泳具与遮阳。",
+        "faq": "黑色沙滩正午吸热极烫，建议穿沙滩鞋；随身物品勿离人。"
+      },
+      "articles": []
     },
     {
       "id": "delphi",
@@ -895,8 +1071,8 @@
           "雅典–德尔斐环线规划"
         ]
       },
-      "scale": "超大型",
-      "originalName": "Δελφοί"
+      "originalName": "Δελφοί",
+      "sizeLabel": "超大型"
     },
     {
       "id": "meteora",
@@ -1008,8 +1184,8 @@
           "摄影机位与光线指南"
         ]
       },
-      "scale": "大型",
-      "originalName": "Μετέωρα"
+      "originalName": "Μετέωρα",
+      "sizeLabel": "大型"
     },
     {
       "id": "knossos",
@@ -1121,11 +1297,11 @@
           "神话与考古对照指南"
         ]
       },
-      "scale": "大型",
-      "originalName": "Κνωσός"
+      "originalName": "Κνωσός",
+      "sizeLabel": "大型"
     },
     {
-      "id": "nafplio-attraction",
+      "id": "nafplio",
       "name": "纳夫普利翁老城",
       "en": "Old Town of Nafplio",
       "originalName": "Παλιά Πόλη Ναυπλίου",
@@ -1133,7 +1309,6 @@
       "cityName": "纳夫普利翁",
       "type": "landmark",
       "category": "历史老城",
-      "scale": "大型",
       "tags": [
         "老城",
         "海港",
@@ -1235,7 +1410,8 @@
           "城堡与要塞手册",
           "伯罗奔尼撒环线规划"
         ]
-      }
+      },
+      "sizeLabel": "大型"
     },
     {
       "id": "epidaurus",
@@ -1383,7 +1559,7 @@
           "city": "雅典",
           "desc": "上午在国家考古博物馆看阿伽门农黄金面具，中午逛蒙纳斯提拉奇跳蚤市场，专车送机。",
           "attractionIds": [
-            "national-archaeological-museum"
+            "national-museum"
           ]
         }
       ]
@@ -1506,7 +1682,7 @@
           "city": "雅典",
           "desc": "上午博物馆精讲，黄昏驱车阿提加最南端波塞冬神庙看爱琴海日落。",
           "attractionIds": [
-            "national-archaeological-museum"
+            "national-museum"
           ]
         },
         {
