@@ -30,7 +30,8 @@ function miniProgramConfigReady() { return Boolean(process.env.WX_APPID && proce
 function encodeTokenPart(value) { return Buffer.from(JSON.stringify(value)).toString('base64url') }
 function createMiniProgramToken(userId) { const now = Math.floor(Date.now() / 1000); const payload = { sub: userId, iat: now, exp: now + 30 * 24 * 60 * 60 }; const encoded = encodeTokenPart(payload); const signature = crypto.createHmac('sha256', miniProgramTokenSecret).update(encoded).digest('base64url'); return `mpv1.${encoded}.${signature}` }
 function verifyMiniProgramToken(token) { try { const [version, encoded, signature] = String(token || '').split('.'); if (version !== 'mpv1' || !encoded || !signature || !miniProgramTokenSecret) return null; const expected = crypto.createHmac('sha256', miniProgramTokenSecret).update(encoded).digest('base64url'); const actualBuffer = Buffer.from(signature); const expectedBuffer = Buffer.from(expected); if (actualBuffer.length !== expectedBuffer.length || !crypto.timingSafeEqual(actualBuffer, expectedBuffer)) return null; const payload = JSON.parse(Buffer.from(encoded, 'base64url').toString('utf8')); return payload.exp > Math.floor(Date.now() / 1000) ? payload : null } catch { return null } }
-function miniProfile(input = {}) { const nickname = String(input.nickname || '').trim().slice(0, 64); const avatarUrl = String(input.avatarUrl || '').trim().slice(0, 500); return { nickname, avatarUrl: /^https:\/\//i.test(avatarUrl) ? avatarUrl : '' } }
+function validMiniNickname(value) { const nickname = String(value || '').trim(); if (!nickname || nickname.length > 64 || /^(微信用户|微信用户\d+|用户|用户\d{4})$/u.test(nickname)) return ''; return nickname }
+function miniProfile(input = {}) { const nickname = validMiniNickname(input.nickname); const avatarUrl = String(input.avatarUrl || '').trim().slice(0, 500); return { nickname, avatarUrl: /^https:\/\//i.test(avatarUrl) ? avatarUrl : '' } }
 function fallbackMiniNickname() { return `用户${crypto.randomInt(1000, 10000)}` }
 function publicMiniProgramUser(user) { return { id: user.id, phoneBound: Boolean(user.phone), phoneMasked: user.phone ? maskPhone(user.phone) : null, nickname: user.nickname || fallbackMiniNickname(), avatarUrl: user.avatarUrl || '' } }
 function maskPhone(phone) { const value = String(phone || ''); return value.length > 7 ? `${value.slice(0, 3)}****${value.slice(-4)}` : '****' }
@@ -149,7 +150,7 @@ const server = http.createServer(async (req, res) => {
         let user = data.miniprogramUsers.find((item) => item.openid === session.openid)
         if (!user) { user = { id: id('mpu'), openid: session.openid, unionid: session.unionid || '', phone: '', nickname: profile.nickname || fallbackMiniNickname(), avatarUrl: profile.avatarUrl, createdAt: new Date().toISOString() }; data.miniprogramUsers.push(user) } else {
           if (session.unionid && user.unionid !== session.unionid) user.unionid = session.unionid
-          if (profile.nickname) user.nickname = profile.nickname
+          if (!user.nickname && profile.nickname) user.nickname = profile.nickname
           if (profile.avatarUrl) user.avatarUrl = profile.avatarUrl
           if (!user.nickname) user.nickname = fallbackMiniNickname()
         }
@@ -177,6 +178,14 @@ const server = http.createServer(async (req, res) => {
       const data = readData(); const user = miniProgramUserFromRequest(req, data)
       if (!user) return json(res, 401, { code: 'MINIPROGRAM_LOGIN_REQUIRED', error: '请先微信登录' })
       return json(res, 200, miniProgramProfile(data, user))
+    }
+    if (url.pathname === '/api/miniprogram/profile' && method === 'PATCH') {
+      const data = readData(); const user = miniProgramUserFromRequest(req, data)
+      if (!user) return json(res, 401, { code: 'MINIPROGRAM_LOGIN_REQUIRED', error: '请先微信登录' })
+      const input = await body(req); const nickname = validMiniNickname(input.nickname)
+      if (!nickname) return json(res, 422, { code: 'INVALID_NICKNAME', error: '昵称不能为空或使用无效昵称' })
+      user.nickname = nickname; user.updatedAt = new Date().toISOString(); saveData(data)
+      return json(res, 200, { user: publicMiniProgramUser(user) })
     }
     if (url.pathname === '/api/miniprogram/leads' && method === 'GET') {
       const data = readData(); const user = miniProgramUserFromRequest(req, data)
