@@ -109,3 +109,23 @@ SY_MINIPROGRAM_TOKEN_SECRET='用于签发小程序用户 Token 的随机密钥'
 - `POST /api/miniprogram/auth/phone`：需要 Bearer Token，请求 `{ "code": "wx.getPhoneNumber 回调中的 code" }`，服务端调用微信手机号接口并保存绑定手机号。
 
 小程序提交表单时继续使用 `POST /api/leads`，并携带 Bearer Token 及 `platform: "wechat-miniprogram"`（或 `source` 同值）。未登录返回 `401 MINIPROGRAM_LOGIN_REQUIRED`，未绑定手机号返回 `403 PHONE_BIND_REQUIRED`；绑定后服务端从用户记录写入联系方式，不信任客户端传入的手机号。小程序用户记录保存在 `data/site-data.json` 的 `miniprogramUsers` 中，微信 `openid` 不会通过 API 返回。
+
+### 本地 Mock 联调
+
+启动 Mock 微信接口（监听 `127.0.0.1:18080`）：
+
+```bash
+npm run mock:wechat
+```
+
+另开终端启动 Website API（监听 `127.0.0.1:4174`）：
+
+```bash
+WX_APPID=mock-appid \\
+WX_APP_SECRET=mock-secret \\
+SY_MINIPROGRAM_TOKEN_SECRET=local-mock-token-secret \\
+WX_API_BASE_URL=http://127.0.0.1:18080 \\
+PORT=4174 npm run server
+```
+
+MpApp 联调 API 根地址使用 `http://127.0.0.1:4174`。Mock 接受任意登录 code 和手机号 code，测试 code 可使用 `mock-login-code`、`mock-phone-code`；手机号返回 `+8613812345678`。Mock 仅用于本地联调，不可用于生产。
