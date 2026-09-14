@@ -66,9 +66,20 @@ export default function AdminPage() {
     if (localMode) return applyData(localData)
     try {
       const auth = { Authorization: `Bearer ${token}` }
-      const [nextStats, nextRoutes, nextDestinations, nextLeads, nextGuideBookings, nextMiniProgramBookings, nextSettings] = await Promise.all(['/admin/stats', '/admin/routes', '/admin/destinations', '/admin/leads', '/admin/guide-bookings', '/admin/miniprogram-bookings', '/admin/settings'].map((path) => callApi(path, { headers: auth })))
-      setStats(nextStats); setRoutes(nextRoutes); setDestinations(nextDestinations); setLeads(nextLeads); setGuideBookings(nextGuideBookings); setMiniProgramBookings(nextMiniProgramBookings); setSettings(nextSettings)
-    } catch (error) { if (error.message.includes('未授权')) { sessionStorage.removeItem(TOKEN_KEY); setToken(null); setOffline(false); return } setOffline(true); notify(`管理服务不可用，已切换本地演示：${error.message}`) }
+      const results = await Promise.allSettled(['/admin/stats', '/admin/routes', '/admin/destinations', '/admin/leads', '/admin/guide-bookings', '/admin/miniprogram-bookings', '/admin/settings'].map((path) => callApi(path, { headers: auth })))
+      const unauthorized = results.find((result) => result.status === 'rejected' && result.reason?.message?.includes('未授权'))
+      if (unauthorized) { sessionStorage.removeItem(TOKEN_KEY); setToken(null); setOffline(false); return }
+      const [nextStats, nextRoutes, nextDestinations, nextLeads, nextGuideBookings, nextMiniProgramBookings, nextSettings] = results.map((result) => result.status === 'fulfilled' ? result.value : null)
+      if (nextStats) setStats(nextStats)
+      if (nextRoutes) setRoutes(nextRoutes)
+      if (nextDestinations) setDestinations(nextDestinations)
+      if (nextLeads) setLeads(nextLeads)
+      if (nextGuideBookings) setGuideBookings(nextGuideBookings)
+      if (nextMiniProgramBookings) setMiniProgramBookings(nextMiniProgramBookings)
+      if (nextSettings) setSettings(nextSettings)
+      const failed = results.find((result) => result.status === 'rejected')
+      if (failed) notify(`部分管理数据加载失败：${failed.reason?.message || '请求失败'}`)
+    } catch (error) { notify(`管理数据加载失败：${error.message}`) }
   }
   useEffect(() => { if (token) load() }, [token, offline])
   function login(nextToken, isOffline) { setOffline(isOffline); setToken(nextToken) }
