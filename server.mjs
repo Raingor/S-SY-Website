@@ -1,5 +1,5 @@
 import http from 'node:http'
-import { existsSync, readFileSync, writeFileSync } from 'node:fs'
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { dirname, extname, join, normalize, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import crypto from 'node:crypto'
@@ -23,9 +23,9 @@ function isMiniProgramBooking(lead) { return ['miniprogram', 'wechat-miniprogram
 function leadsOfType(leads, leadType) { return leadType ? leads.filter((lead) => lead.leadType === leadType) : leads }
 function isAdmin(req) { const auth = req.headers.authorization || ''; return auth.startsWith('Bearer ') && tokens.has(auth.slice(7)) }
 function id(prefix = 'item') { return `${prefix}-${Date.now().toString(36)}-${crypto.randomBytes(3).toString('hex')}` }
-async function body(req) {
+async function body(req, limit = 1024 * 1024) {
   let raw = ''
-  for await (const chunk of req) { raw += chunk; if (raw.length > 1024 * 1024) throw new Error('payload too large') }
+  for await (const chunk of req) { raw += chunk; if (raw.length > limit) throw new Error('payload too large') }
   return raw ? JSON.parse(raw) : {}
 }
 function publicContent(data) {
@@ -125,6 +125,20 @@ const server = http.createServer(async (req, res) => {
       if (url.pathname === '/api/admin/miniprogram-bookings' && method === 'GET') return json(res, 200, data.leads.filter(isMiniProgramBooking))
       if (url.pathname === '/api/admin/settings' && method === 'GET') return json(res, 200, data.settings)
       if (url.pathname === '/api/admin/settings' && method === 'PATCH') { data.settings = { ...data.settings, ...(await body(req)) }; saveData(data); return json(res, 200, data.settings) }
+      if (url.pathname === '/api/admin/upload-image' && method === 'POST') {
+        const input = await body(req, 8 * 1024 * 1024)
+        const match = String(input.data || '').match(/^data:(image\/(?:png|jpeg|webp));base64,(.+)$/)
+        if (!match) return json(res, 422, { error: '仅支持 PNG、JPG 或 WebP 图片' })
+        const buffer = Buffer.from(match[2], 'base64')
+        if (!buffer.length || buffer.length > 6 * 1024 * 1024) return json(res, 413, { error: '图片大小需在 6MB 以内' })
+        const extension = match[1] === 'image/jpeg' ? 'jpg' : match[1].split('/')[1]
+        const filename = `og-${Date.now().toString(36)}-${crypto.randomBytes(3).toString('hex')}.${extension}`
+        const imageDirs = [resolve(root, 'public/images'), join(distDir, 'images')]
+        imageDirs.forEach((directory) => { mkdirSync(directory, { recursive: true }); writeFileSync(join(directory, filename), buffer) })
+        data.settings = { ...data.settings, ogImage: `images/${filename}` }
+        saveData(data)
+        return json(res, 201, { path: `images/${filename}`, url: `/${`images/${filename}`}` })
+      }
       const match = url.pathname.match(/^\/api\/admin\/(routes|destinations|leads)(?:\/([^/]+))?$/)
       if (match) {
         if (match[1] === 'leads' && method === 'GET' && url.searchParams.has('leadType')) return json(res, 200, leadsOfType(data.leads, url.searchParams.get('leadType')))
