@@ -10,7 +10,8 @@ const dataPath = resolve(root, 'data/site-data.json')
 const port = Number(process.env.PORT || 4173)
 const adminPassword = process.env.SY_ADMIN_PASSWORD || 'sy-greece-admin'
 const tokens = new Set()
-const mime = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8', '.json': 'application/json; charset=utf-8', '.png': 'image/png', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.svg': 'image/svg+xml', '.ico': 'image/x-icon' }
+const mime = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8', '.json': 'application/json; charset=utf-8', '.png': 'image/png', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.webp': 'image/webp', '.svg': 'image/svg+xml', '.ico': 'image/x-icon' }
+const immutableExtensions = new Set(['.png', '.jpg', '.jpeg', '.webp', '.svg', '.ico', '.woff', '.woff2'])
 
 function readData() { return JSON.parse(readFileSync(dataPath, 'utf8')) }
 function saveData(data) { writeFileSync(dataPath, `${JSON.stringify(data, null, 2)}\n`) }
@@ -133,7 +134,9 @@ const server = http.createServer(async (req, res) => {
     const filePath = join(distDir, safePath)
     const fallback = join(distDir, 'index.html')
     const target = existsSync(filePath) ? filePath : fallback
-    res.writeHead(200, { 'Content-Type': mime[extname(target)] || 'application/octet-stream' })
+    const extension = extname(target)
+    const cacheControl = immutableExtensions.has(extension) ? 'public, max-age=31536000, immutable' : extension === '.html' ? 'no-cache' : 'public, max-age=300'
+    res.writeHead(200, { 'Content-Type': mime[extension] || 'application/octet-stream', 'Cache-Control': cacheControl })
     const page = extname(target) === '.html' && method === 'GET' ? injectSeoHtml(readFileSync(target), pageSeo(readData(), url.pathname, url.search, req)) : readFileSync(target)
     res.end(page)
   } catch (error) {

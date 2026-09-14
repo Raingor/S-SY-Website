@@ -13,22 +13,22 @@ const isRootPortableFile = window.location.protocol === 'file:' && !window.locat
 const IMG = isRootPortableFile ? './public/images/' : '/images/'
 
 const images = {
-  santorini: `${IMG}santorini.png`,
-  athens: `${IMG}athens.png`,
-  plaka: `${IMG}plaka.png`,
-  delphi: `${IMG}delphi.png`,
-  meteora: `${IMG}meteora.png`,
-  meteoraSquare: `${IMG}meteora-square.png`,
-  nafplio: `${IMG}nafplio.png`,
-  couple: `${IMG}couple.png`,
-  jet: `${IMG}jet.png`,
-  yacht: `${IMG}yacht.png`,
-  mykonos: `${IMG}mykonos.png`,
-  zakynthos: `${IMG}zakynthos.png`,
-  richardAvatar: `${IMG}richard-avatar.png`,
-  richardProfile: `${IMG}richard-profile.png`,
-  crete: `${IMG}crete.png`,
-  corinth: `${IMG}corinth.png`,
+  santorini: `${IMG}santorini.webp`,
+  athens: `${IMG}athens.webp`,
+  plaka: `${IMG}plaka.webp`,
+  delphi: `${IMG}delphi.webp`,
+  meteora: `${IMG}meteora.webp`,
+  meteoraSquare: `${IMG}meteora-square.webp`,
+  nafplio: `${IMG}nafplio.webp`,
+  couple: `${IMG}couple.webp`,
+  jet: `${IMG}jet.webp`,
+  yacht: `${IMG}yacht.webp`,
+  mykonos: `${IMG}mykonos.webp`,
+  zakynthos: `${IMG}zakynthos.webp`,
+  richardAvatar: `${IMG}richard-avatar.webp`,
+  richardProfile: `${IMG}richard-profile.webp`,
+  crete: `${IMG}crete.webp`,
+  corinth: `${IMG}corinth.webp`,
 }
 
 const routes = [
@@ -143,7 +143,7 @@ const fallbackSeoSettings = {
   defaultTitle: 'SY 希腊蔚蓝海岸｜希腊私人定制旅行',
   defaultDescription: 'SY 希腊蔚蓝海岸，为中文游客提供雅典、圣托里尼及希腊全境的中高端私人定制旅行、中文司导与在地管家服务。',
   keywords: '希腊旅游,希腊私人定制,圣托里尼旅行,雅典旅游,希腊地接,中文司导',
-  ogImage: 'images/santorini.png',
+  ogImage: 'images/santorini.webp',
   googleVerification: '',
   robotsPolicy: 'index,follow',
   phone: '+30 210 000 0000',
@@ -313,7 +313,7 @@ function RouteCard({ route, compact = false }) {
   return (
     <article className={`route-card ${compact ? 'compact' : ''}`}>
       <Link className="route-image" to={routePath(route)} aria-label={`查看${route.title}`}>
-        <img src={route.image} alt={route.title} />
+        <img src={route.image} alt={route.title} loading="lazy" decoding="async" />
       </Link>
       <div className="route-copy">
         <Eyebrow>{route.days} · {route.kicker}</Eyebrow>
@@ -329,7 +329,7 @@ function RouteCard({ route, compact = false }) {
 function DestinationCard({ item }) {
   return (
     <Link to={`/destinations/${item.slug || item.id || 'santorini'}`} className="destination-card">
-      <img src={item.image} alt={`${item.name}风光`} />
+      <img src={item.image} alt={`${item.name}风光`} loading="lazy" decoding="async" />
       <span><strong>{item.name}</strong><small>{item.en}</small></span>
     </Link>
   )
@@ -338,7 +338,7 @@ function DestinationCard({ item }) {
 function GuideTeaser() {
   return (
     <article className="guide-teaser">
-      <div className="guide-teaser-avatar"><img src={images.richardAvatar} alt="Richard 李" /></div>
+      <div className="guide-teaser-avatar"><img src={images.richardAvatar} alt="Richard 李" loading="lazy" decoding="async" /></div>
       <div className="guide-teaser-copy">
         <Eyebrow>Signature Guide · Richard Li</Eyebrow>
         <h2>名人导游 · Richard 李</h2>
@@ -437,7 +437,7 @@ function Home() {
             {[
               [images.jet, '私人包机', '雅典往返圣托里尼 / 米克诺斯，跳过轮渡排队，清晨出发，落地即开始假期。'],
               [images.yacht, '游艇出海', '私人游艇 + 船长 + 轻食下午茶，火山湖浮潜、隐秘海湾与海面落日。'],
-            ].map(([image, title, desc]) => <article className="experience-card" key={title}><div className="experience-image"><img src={image} alt={title} /><span>高端定制</span></div><div><h3>{title}</h3><p>{desc}</p><Link to="/customize">咨询{title}方案 <ArrowRight size={14} /></Link></div></article>)}
+            ].map(([image, title, desc]) => <article className="experience-card" key={title}><div className="experience-image"><img src={image} alt={title} loading="lazy" decoding="async" /><span>高端定制</span></div><div><h3>{title}</h3><p>{desc}</p><Link to="/customize">咨询{title}方案 <ArrowRight size={14} /></Link></div></article>)}
           </div>
         </div>
       </section>
@@ -647,7 +647,7 @@ function GuidePage() {
             <div className="guide-hero-actions"><a className="button button-gold" href="#reserve">{bookingLabel} <ArrowRight size={15} /></a><a className="button button-ghost" href="#contact">{translate('common.addWechat', language)}</a></div>
           </div>
           <div className="guide-profile-card">
-            <div className="guide-avatar"><img src={images.richardAvatar} alt="Richard 李头像" /></div>
+            <div className="guide-avatar"><img src={images.richardAvatar} alt="Richard 李头像" loading="lazy" decoding="async" /></div>
             <h2>{copy.profileTitle}</h2><Eyebrow>{copy.profileEyebrow}</Eyebrow>
             <div className="profile-rule" />
             <p><strong>{copy.profileEducation}</strong><br />{copy.profileBio}</p>
@@ -669,7 +669,7 @@ function GuidePage() {
         </section>
 
         <section className="guide-section signature-section">
-          <div className="container"><Eyebrow>{copy.signatureEyebrow}</Eyebrow><h2>{copy.signatureTitle}</h2><p className="section-lead">{copy.signatureLead}</p><div className="signature-grid">{services.map(([title, desc, duration, audience], index) => <article className={`signature-card ${index === 3 ? 'signature-gold' : ''}`} key={title}><img src={signature[index][0]} alt={title} /><div><h3>{title}</h3><p>{desc}</p><div><span>{duration}</span><small>{audience}</small></div></div></article>)}</div></div>
+          <div className="container"><Eyebrow>{copy.signatureEyebrow}</Eyebrow><h2>{copy.signatureTitle}</h2><p className="section-lead">{copy.signatureLead}</p><div className="signature-grid">{services.map(([title, desc, duration, audience], index) => <article className={`signature-card ${index === 3 ? 'signature-gold' : ''}`} key={title}><img src={signature[index][0]} alt={title} loading="lazy" decoding="async" /><div><h3>{title}</h3><p>{desc}</p><div><span>{duration}</span><small>{audience}</small></div></div></article>)}</div></div>
         </section>
 
         <section className="guide-section guestbook-section">
