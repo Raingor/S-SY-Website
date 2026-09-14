@@ -134,3 +134,7 @@ PORT=4174 npm run server
 ```
 
 MpApp 联调 API 根地址使用 `http://127.0.0.1:4174`。Mock 接受任意登录 code 和手机号 code，测试 code 可使用 `mock-login-code`、`mock-phone-code`；手机号返回 `+8613812345678`。Mock 仅用于本地联调，不可用于生产。
+
+## 小程序后台管理
+
+后台左侧将共同数据、网站管理、小程序管理分组。小程序管理包含用户、预约、行程、出行人、签证资料和优惠券页面，对应管理员 API 为 `/api/admin/miniprogram-users`、`/api/admin/miniprogram-travelers`、`/api/admin/miniprogram-documents`、`/api/admin/miniprogram-coupons`。这些 API 仅接受后台 Bearer Token；出行人和签证资料列表、详情中的护照号均脱敏显示，后台编辑提交脱敏值不会覆盖原始资料。
