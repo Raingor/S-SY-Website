@@ -411,6 +411,13 @@ h1, h2, h3, p { margin-top: 0; }
 }
 
 .admin-subeditor { display: grid; gap: 16px; margin-top: 6px; padding: 22px; border: 1px solid rgba(16,56,68,.1); border-radius: 16px; background: linear-gradient(145deg, #f7fafb, #fbf8f2); }
+.admin-template-guide-actions { display: flex; align-items: center; gap: 9px; flex-wrap: wrap; justify-content: flex-end; }
+.admin-template-fill { min-height: 32px; padding: 0 12px; color: #fff; background: var(--blue); border: 0; border-radius: 8px; cursor: pointer; font: inherit; font-size: 11px; font-weight: 700; box-shadow: 0 5px 14px rgba(25,112,135,.18); transition: transform .18s ease, background .18s ease; }
+.admin-template-fill:hover { background: #155f72; transform: translateY(-1px); }
+.admin-field-with-action { display: flex; align-items: stretch; gap: 8px; }
+.admin-field-with-action input { flex: 1; min-width: 0; }
+.admin-field-with-action .admin-secondary { flex: 0 0 auto; white-space: nowrap; }
+.admin-code-field small { display: block; margin-top: 6px; color: var(--muted); font-size: 10px; }
 .admin-subeditor-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 20px; }
 .admin-subeditor-head h3 { margin: 7px 0 5px; color: var(--ink); font: 600 21px var(--serif); }
 .admin-subeditor-head h3 small { margin-left: 8px; color: var(--blue); font: 600 11px var(--sans); }
@@ -453,6 +460,8 @@ h1, h2, h3, p { margin-top: 0; }
   .admin-guide-grid { grid-template-columns: 1fr; }
   .admin-array-card { padding: 15px; }
   .admin-slot-list { padding-left: 8px; }
+  .admin-field-with-action { display: grid; grid-template-columns: 1fr; }
+  .admin-field-with-action .admin-secondary { justify-self: start; }
 }
 
 @media (max-width: 390px) {
