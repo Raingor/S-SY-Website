@@ -175,6 +175,10 @@ function SEO() {
       '/heritage-guidance': ['古迹人文讲解预约｜希腊文化咨询', '预约雅典、德尔斐与克里特等古迹的人文知识讲解。'],
       '/vehicle-consultation': ['在地用车资源对接咨询｜希腊出行信息', '咨询希腊本地车型、司导资质与用车资源对接方式。'],
       '/knowledge-base': ['景点付费文史知识库｜免费预览', '浏览希腊景点的历史、神话与建筑知识预览。'],
+      '/knowledge-base/acropolis': ['雅典卫城文史知识库｜免费预览', '预览雅典卫城的历史、神话、建筑与参观知识。'],
+      '/knowledge-base/delphi': ['德尔斐文史知识库｜免费预览', '预览德尔斐的神谕、圣路、宝库与古剧场知识。'],
+      '/knowledge-base/santorini': ['圣托里尼文史知识库｜免费预览', '预览圣托里尼的火山地质、聚落与葡萄酒文化。'],
+      '/knowledge-base/knossos': ['克里特王宫文史知识库｜免费预览', '预览克诺索斯王宫、米诺斯文明与迷宫传说。'],
       '/attractions': ['希腊景点导览｜景点 · 博物馆 · 参观指南', '按城市浏览雅典、圣托里尼、德尔斐等地的景点与博物馆，含展品讲解与参观指南 12 项。'],
       '/itineraries': ['参考行程｜雅典 · 圣托里尼 · 世界遗产环线', '浏览参考行程框架，正式行程按需求定制后通过专属链接发送。'],
       '/business-travel': ['希腊商旅随行咨询｜商务语言与行程规划', '提供商务陪同、语言翻译、企业拜访与人文行程的咨询。'],
@@ -244,9 +248,11 @@ function ScrollToTop() {
 function SearchBox({ initial = '', large = false }) {
   const [value, setValue] = useState(initial)
   const navigate = useNavigate()
+  useEffect(() => setValue(initial), [initial])
   function submit(e) {
     e.preventDefault()
-    navigate(`/search?q=${encodeURIComponent(value || '圣托里尼')}`)
+    const query = value.trim()
+    navigate(query ? `/search?q=${encodeURIComponent(query)}` : '/search')
   }
   return (
     <form className={`search-box ${large ? 'search-large' : ''}`} onSubmit={submit} role="search">
@@ -485,6 +491,7 @@ function KnowledgeBase() {
 }
 
 function Customize() {
+  const [language] = useLanguage()
   const [themes, setThemes] = useState(['历史文明'])
   const [sent, setSent] = useState(false)
   const [saving, setSaving] = useState(false)
@@ -519,7 +526,7 @@ function Customize() {
             <p className="privacy">提交即表示同意我们通过电话 / 微信联系你，信息仅用于咨询沟通与方案规划。</p>
             {sent && <div className="success-message"><Check />需求已收到，定制师会在 24 小时内联系你。</div>}
           </form>
-          <aside className="custom-aside"><div className="advisor-card"><h2>{language === 'en' ? 'Prefer a direct conversation?' : language === 'zh-TW' ? '想直接聊聊？' : '更想直接聊？'}</h2><div className="advisor"><img className="advisor-avatar" src={images.consultantAvatar} alt="Jenny" /><div><h3>{language === 'en' ? 'Jenny · Greece Trip Planner' : language === 'zh-TW' ? 'Jenny · 希臘行程規劃師' : 'Jenny · 希腊行程规划师'}</h3><p>{language === 'en' ? 'Local Greece planning for families and businesses' : language === 'zh-TW' ? '希臘在地行程規劃，服務家庭與企業客戶' : '希腊在地行程规划，服务家庭与企业客户'}</p></div></div><p>{language === 'en' ? 'WeChat: SYGJ1130 · replies within 24 hours' : language === 'zh-TW' ? '微信號：SYGJ1130 · 24 小時內回覆' : '微信号：SYGJ1130 · 24 小时内回复'}</p><div className="qr"><img src={images.consultantQr} alt="Jenny WeChat QR code" /><span>{language === 'en' ? 'Scan to add WeChat' : language === 'zh-TW' ? '掃碼添加微信' : '扫码添加微信'}</span></div><a className="advisor-phone" href="tel:+8615071465661">{language === 'en' ? 'Call Jenny · +86 150 7146 5661' : language === 'zh-TW' ? '致電 Jenny · +86 150 7146 5661' : '致电 Jenny · +86 150 7146 5661'}</a></div><div className="promise-card"><h2>咨询流程</h2><p>· 提交问卷 → 需求沟通</p><p>· 输出行程规划建议 → 沟通咨询费用</p><p>· 交通、场地与劳务由客户与本土主体直接确认</p></div></aside>
+          <aside className="custom-aside"><div className="advisor-card"><h2>{language === 'en' ? 'Prefer a direct conversation?' : language === 'zh-TW' ? '想直接聊聊？' : '更想直接聊？'}</h2><div className="advisor"><img className="advisor-avatar" src={images.consultantAvatar} alt="Jenny" /><div><h3>{language === 'en' ? 'Jenny · Greece Trip Planner' : language === 'zh-TW' ? 'Jenny · 希臘行程規劃師' : 'Jenny · 希腊行程规划师'}</h3><p>{language === 'en' ? 'Local Greece planning for families and businesses' : language === 'zh-TW' ? '希臘在地行程規劃，服務家庭與企業客戶' : '希腊在地行程规划，服务家庭与企业客户'}</p></div></div><p className="advisor-wechat">{language === 'en' ? 'WeChat: SYGJ1130 · replies within 24 hours' : language === 'zh-TW' ? '微信號：SYGJ1130 · 24 小時內回覆' : '微信号：SYGJ1130 · 24 小时内回复'}</p><div className="qr"><img src={images.consultantQr} alt="Jenny WeChat QR code" /><span>{language === 'en' ? 'Scan to add WeChat' : language === 'zh-TW' ? '掃碼添加微信' : '扫码添加微信'}</span></div><a className="advisor-phone" href="tel:+8615071465661">{language === 'en' ? 'Call Jenny · +86 150 7146 5661' : language === 'zh-TW' ? '致電 Jenny · +86 150 7146 5661' : '致电 Jenny · +86 150 7146 5661'}</a></div><div className="promise-card"><h2>咨询流程</h2><p>· 提交问卷 → 需求沟通</p><p>· 输出行程规划建议 → 沟通咨询费用</p><p>· 交通、场地与劳务由客户与本土主体直接确认</p></div></aside>
         </div>
       </main>
       <Footer />
@@ -552,19 +559,71 @@ function DestinationDetail() {
   )
 }
 
+const SEARCH_EXPERIENCES = [
+  { id: 'private-flight', title: '私人包机', desc: '雅典往返圣托里尼 / 米克诺斯，跳过轮渡排队，清晨出发，落地即开始假期。', image: images.jet },
+  { id: 'private-yacht', title: '游艇出海', desc: '私人游艇、火山湖浮潜、隐秘海湾与爱琴海日落，按日期和人数专属报价。', image: images.yacht },
+]
+
+function searchText(item) {
+  return Object.values(item).flat(Infinity).filter((value) => typeof value === 'string' || typeof value === 'number').join(' ').toLocaleLowerCase()
+}
+
+function SearchAttractionCard({ item }) {
+  return <Link className="search-attraction-card" to={`/attractions/${item.id}`}><img src={assetPath(item.image)} alt={item.name} loading="lazy" decoding="async" /><div><Eyebrow>{item.en || item.cityName || 'ATTRACTION'}</Eyebrow><h3>{item.name}</h3><p>{item.summary}</p><span className="text-link">查看景点详情 <ArrowRight size={14} /></span></div></Link>
+}
+
+function SearchExperienceCard({ item }) {
+  return <article className="experience-card"><div className="experience-image"><img src={assetPath(item.image)} alt={item.title} loading="lazy" decoding="async" /><span>高端定制</span></div><div><h3>{item.title}</h3><p>{item.desc}</p><Link to="/customize">咨询{item.title}方案 <ArrowRight size={14} /></Link></div></article>
+}
+
 function SearchPage() {
   const [params] = useSearchParams()
-  const keyword = params.get('q') || '圣托里尼'
+  const keyword = (params.get('q') || '').trim()
   const [filter, setFilter] = useState('all')
-  const filters = [['all', '全部 8'], ['route', '路线 3'], ['destination', '目的地 3'], ['experience', '奢享体验 2']]
+  const [content, setContent] = useState({ routes, destinations, attractions: [] })
+  useEffect(() => {
+    if (window.location.protocol === 'file:') return
+    fetch('/api/content').then((response) => response.ok ? response.json() : null).then((payload) => {
+      if (!payload) return
+      setContent({
+        routes: payload.routes?.length ? payload.routes : routes,
+        destinations: payload.destinations?.length ? payload.destinations : destinations,
+        attractions: payload.attractions || [],
+      })
+    }).catch(() => {})
+  }, [])
+  const results = useMemo(() => {
+    const records = [
+      ...content.routes.map((item) => ({ type: 'route', item })),
+      ...content.destinations.map((item) => ({ type: 'destination', item })),
+      ...content.attractions.map((item) => ({ type: 'attraction', item })),
+      ...SEARCH_EXPERIENCES.map((item) => ({ type: 'experience', item })),
+    ]
+    if (!keyword) return records
+    const normalized = keyword.toLocaleLowerCase()
+    return records.filter(({ item }) => searchText(item).includes(normalized))
+  }, [content, keyword])
+  const counts = useMemo(() => Object.fromEntries(['route', 'destination', 'attraction', 'experience'].map((type) => [type, results.filter((entry) => entry.type === type).length])), [results])
+  const filters = [['all', `全部 ${results.length}`], ['route', `路线 ${counts.route}`], ['destination', `目的地 ${counts.destination}`], ['attraction', `景点 ${counts.attraction}`], ['experience', `奢享体验 ${counts.experience}`]].filter(([id]) => id === 'all' || counts[id] > 0)
+  useEffect(() => {
+    if (!filters.some(([id]) => id === filter)) setFilter('all')
+  }, [keyword, results.length])
+  const visible = filter === 'all' ? results : results.filter(({ type }) => type === filter)
+  const visibleOf = (type) => visible.filter((entry) => entry.type === type).map(({ item }) => item)
+  const routeResults = visibleOf('route')
+  const destinationResults = visibleOf('destination')
+  const attractionResults = visibleOf('attraction')
+  const experienceResults = visibleOf('experience')
   return (
     <>
       <section className="search-top"><Header solid /><div className="container search-intro"><Eyebrow dark>SEARCH GREECE TRAVEL BUTLER</Eyebrow><h1>搜索希腊灵感</h1><SearchBox initial={keyword} large /></div></section>
       <main className="search-results section">
-        <div className="container"><p className="result-summary">“{keyword}” 的相关结果</p><div className="filter-chips">{filters.map(([id, label]) => <button key={id} className={filter === id ? 'active' : ''} aria-pressed={filter === id} onClick={() => setFilter(id)}>{label}</button>)}</div>
-          {(filter === 'all' || filter === 'route') && <section><SectionTitle eyebrow="CURATED ROUTES" title="相关路线" /><div className="route-grid">{routes.slice(0, 3).map((route) => <RouteCard compact key={route.title} route={route} />)}</div></section>}
-          {(filter === 'all' || filter === 'destination') && <section className="search-destinations"><SectionTitle eyebrow="DESTINATIONS" title="相关目的地" /><div className="destination-grid">{destinations.slice(4, 7).map((item) => <DestinationCard key={item.name} item={item} />)}</div></section>}
-          {(filter === 'experience') && <section className="empty-state"><ShipWheel /><h2>两项专属体验</h2><p>圣岛双体船日落巡航与私人包机服务，需要根据日期和人数专属报价。</p><Link className="button button-primary" to="/customize">咨询奢享体验</Link></section>}
+        <div className="container"><p className="result-summary">{keyword ? `“${keyword}” 的相关结果` : '全部可探索内容'} · 共 {results.length} 条</p><div className="filter-chips">{filters.map(([id, label]) => <button key={id} className={filter === id ? 'active' : ''} aria-pressed={filter === id} onClick={() => setFilter(id)}>{label}</button>)}</div>
+          {routeResults.length > 0 && <section><SectionTitle eyebrow="CURATED ROUTES" title="相关路线" /><div className="route-grid">{routeResults.map((route) => <RouteCard compact key={route.id || route.slug || route.title} route={route} />)}</div></section>}
+          {destinationResults.length > 0 && <section className="search-destinations"><SectionTitle eyebrow="DESTINATIONS" title="相关目的地" /><div className="destination-grid">{destinationResults.map((item) => <DestinationCard key={item.id || item.slug || item.name} item={item} />)}</div></section>}
+          {attractionResults.length > 0 && <section className="search-attractions"><SectionTitle eyebrow="ATTRACTIONS & MUSEUMS" title="相关景点" /><div className="search-attraction-grid">{attractionResults.map((item) => <SearchAttractionCard key={item.id} item={item} />)}</div></section>}
+          {experienceResults.length > 0 && <section className="search-experiences"><SectionTitle eyebrow="SIGNATURE EXPERIENCES" title="相关奢享体验" /><div className="experience-grid">{experienceResults.map((item) => <SearchExperienceCard key={item.id} item={item} />)}</div></section>}
+          {results.length === 0 && <section className="empty-state"><Search /><h2>没有找到相关内容</h2><p>试试搜索“雅典”“圣托里尼”“古迹”或“蜜月”。</p><Link className="button button-primary" to="/customize">告诉我们你的需求</Link></section>}
         </div>
       </main><Footer />
     </>
