@@ -4,8 +4,6 @@ export const LANGUAGE_OPTIONS = [
   ['zh-CN', '简体中文'],
   ['zh-TW', '繁體中文'],
   ['en', 'English'],
-  ['ja', '日本語'],
-  ['el', 'Ελληνικά'],
 ]
 
 const fallback = {
@@ -46,7 +44,8 @@ let activeLanguage = 'zh-CN'
 if (typeof window !== 'undefined') {
   try {
     const requested = new URLSearchParams(window.location.search).get('lang')
-    activeLanguage = languageCodes.has(requested) ? requested : (window.localStorage.getItem('sy-greece-language') || 'zh-CN')
+    const stored = window.localStorage.getItem('sy-greece-language')
+    activeLanguage = languageCodes.has(requested) ? requested : (languageCodes.has(stored) ? stored : 'zh-CN')
   } catch { /* storage may be unavailable */ }
 }
 const listeners = new Set()

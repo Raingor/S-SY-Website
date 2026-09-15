@@ -611,10 +611,10 @@ function GuidePage() {
       const response = await fetch('/api/leads', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) })
       if (!response.ok) throw new Error('booking api failed')
     } catch {
-      const local = JSON.parse(localStorage.getItem('sy-greece-leads') || '[]')
-      localStorage.setItem('sy-greece-leads', JSON.stringify([{ ...payload, id: `guide-${Date.now()}` }, ...local]))
+      setBookingMessage('提交失败，请稍后重试或直接联系我们。')
+      return
     } finally {
-      setSubmitting(false); setBookingMessage(copy.success); form.reset(); setSelectedDate('')
+      setSubmitting(false)
     }
   }
   return (

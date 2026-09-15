@@ -3,6 +3,8 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { dirname, extname, join, normalize, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import crypto from 'node:crypto'
+import { setTimeout as delay } from 'node:timers/promises'
+import tls from 'node:tls'
 import { closeStorage, initStorage, readData, saveData, storageStatus } from './storage.mjs'
 
 const root = dirname(fileURLToPath(import.meta.url))
@@ -12,6 +14,11 @@ const adminPassword = String(process.env.SY_ADMIN_PASSWORD || '')
 const miniProgramTokenSecret = process.env.SY_MINIPROGRAM_TOKEN_SECRET || ''
 const wechatApiBase = String(process.env.WX_API_BASE_URL || 'https://api.weixin.qq.com').replace(/\/$/, '')
 const allowedOrigin = String(process.env.SY_ALLOWED_ORIGIN || '').replace(/\/$/, '')
+const notificationRecipient = '19908621956@163.com'
+const smtpHost = String(process.env.SY_SMTP_HOST || 'smtp.qq.com')
+const smtpPort = Number(process.env.SY_SMTP_PORT || 465)
+const smtpUser = String(process.env.SY_SMTP_USER || 'ro_ye@foxmail.com')
+const smtpPassword = String(process.env.SY_SMTP_PASSWORD || '')
 const tokens = new Map()
 const adminTokenTtlMs = 8 * 60 * 60 * 1000
 let wechatAccessToken = { value: '', expiresAt: 0 }
@@ -67,6 +74,56 @@ async function body(req, limit = 1024 * 1024) {
   let raw = ''
   for await (const chunk of req) { raw += chunk; if (raw.length > limit) throw new Error('payload too large') }
   return raw ? JSON.parse(raw) : {}
+}
+function redact(value) {
+  return String(value ?? '').replace(/Bearer\s+[^\s]+/gi, 'Bearer [REDACTED]').replace(/(password|secret|token|authorization)\s*[:=]\s*[^,\s]+/gi, '$1=[REDACTED]')
+}
+function leadNotificationText(lead) {
+  const fields = Object.entries(lead).filter(([key]) => !['id', 'status'].includes(key)).map(([key, value]) => `${key}: ${redact(Array.isArray(value) ? value.join(', ') : value)}`)
+  return fields.join('\n').slice(0, 12000)
+}
+function smtpCommand(socket, command, expected = /^2|^3/) {
+  return new Promise((resolve, reject) => {
+    const onData = (chunk) => {
+      const lines = String(chunk).split(/\r?\n/).filter(Boolean)
+      const line = lines.at(-1) || ''
+      if (!expected.test(line)) { socket.off('data', onData); reject(new Error(`SMTP ${line.slice(0, 120)}`)); return }
+      if (!line.startsWith(`${line.slice(0, 3)}-`)) { socket.off('data', onData); resolve(line) }
+    }
+    socket.on('data', onData)
+    if (command) socket.write(`${command}\r\n`)
+  })
+}
+async function sendSmtpMail(lead) {
+  if (!smtpPassword) { console.warn('[mail] notification skipped: SMTP password is not configured'); return { sent: false, reason: 'not_configured' } }
+  const subject = `[SY Website] 新表单提交 · ${lead.leadType || '咨询'}`
+  const message = [`From: ${smtpUser}`, `To: ${notificationRecipient}`, `Subject: =?UTF-8?B?${Buffer.from(subject).toString('base64')}?=`, 'Content-Type: text/plain; charset=UTF-8', 'MIME-Version: 1.0', '', leadNotificationText(lead)].join('\r\n')
+  const socket = tls.connect({ host: smtpHost, port: smtpPort, servername: smtpHost, timeout: 8000 })
+  await new Promise((resolve, reject) => { socket.once('secureConnect', resolve); socket.once('error', reject); socket.once('timeout', () => reject(new Error('SMTP connection timeout'))) })
+  await smtpCommand(socket, null)
+  await smtpCommand(socket, 'EHLO sy-greece.com')
+  await smtpCommand(socket, 'AUTH LOGIN')
+  await smtpCommand(socket, Buffer.from(smtpUser).toString('base64'))
+  await smtpCommand(socket, Buffer.from(smtpPassword).toString('base64'))
+  await smtpCommand(socket, `MAIL FROM:<${smtpUser}>`)
+  await smtpCommand(socket, `RCPT TO:<${notificationRecipient}>`)
+  await smtpCommand(socket, 'DATA')
+  await smtpCommand(socket, `${message}\r\n.`)
+  await smtpCommand(socket, 'QUIT')
+  socket.end()
+  return { sent: true }
+}
+async function sendLeadNotification(lead) {
+  let lastError
+  for (let attempt = 1; attempt <= 3; attempt += 1) {
+    try {
+      await sendSmtpMail(lead)
+      console.info(`[mail] notification sent lead=${lead.id}`)
+      return { sent: true }
+    } catch (error) { lastError = error; if (attempt < 3) await delay(attempt * 500) }
+  }
+  console.error(`[mail] notification failed lead=${lead.id} attempts=3 error=${redact(lastError?.message || lastError)}`)
+  return { sent: false, reason: 'delivery_failed' }
 }
 async function multipartImage(req, limit = 6 * 1024 * 1024) {
   const contentType = String(req.headers['content-type'] || '')
@@ -333,7 +390,7 @@ const server = http.createServer(async (req, res) => {
       } else if (!input.contact) return json(res, 422, { error: '请填写联系方式' })
       const lead = { ...input, id: input.id || id('lead'), source: input.source || input.platform || 'website', platform: input.platform || input.source || 'website', leadType: input.leadType || 'customization', status: 'new', createdAt: input.createdAt || new Date().toISOString() }
       if (miniProgramUser) { lead.userId = miniProgramUser.id; lead.contact = miniProgramUser.phone; lead.contactType = 'phone' }
-      data.leads.unshift(lead); await saveData(data)
+      data.leads.unshift(lead); await saveData(data); void sendLeadNotification(lead)
       return json(res, 201, lead)
     }
     if (url.pathname.startsWith('/api/admin/')) {
