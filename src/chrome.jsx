@@ -9,7 +9,9 @@ export const IMG = isRootPortableFile ? './public/images/' : '/images/'
 export function assetPath(source) {
   if (!source) return ''
   if (/^(?:https?:|data:|\/)/.test(source)) return source
-  return `/${String(source).replace(/^\.\//, '').replace(/^\//, '')}`
+  const normalized = String(source).replace(/^\.\//, '').replace(/^\//, '')
+  const filename = normalized.replace(/^(?:public\/)?images\//, '')
+  return isRootPortableFile ? `./public/images/${filename}` : `/images/${filename}`
 }
 
 export const images = {
