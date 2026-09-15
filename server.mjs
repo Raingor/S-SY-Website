@@ -70,10 +70,10 @@ async function body(req, limit = 1024 * 1024) {
 function publicContent(data) {
   return {
     settings: data.settings,
-    routes: data.routes.filter((item) => item.status !== 'archived').map((item) => ({ ...item, image: `./images/${item.image}` })),
-    destinations: data.destinations.filter((item) => item.status !== 'archived').map((item) => ({ ...item, image: `./images/${item.image}` })),
-    attractions: (data.attractions || []).filter((item) => item.status !== 'archived').map((item) => ({ ...item, image: `./images/${item.image}`, exhibits: (item.exhibits || []).map((exhibit) => ({ ...exhibit, image: exhibit.image ? `./images/${exhibit.image}` : '' })), articles: (item.articles || []).map((article) => ({ ...article, cover: `./images/${article.cover}` })) })),
-    sampleItineraries: (data.sampleItineraries || []).filter((item) => item.status !== 'archived').map((item) => ({ ...item, cover: `./images/${item.cover}` })),
+    routes: data.routes.filter((item) => item.status === 'published').map((item) => ({ ...item, image: `./images/${item.image}` })),
+    destinations: data.destinations.filter((item) => item.status === 'published').map((item) => ({ ...item, image: `./images/${item.image}` })),
+    attractions: (data.attractions || []).filter((item) => item.status === 'published').map((item) => ({ ...item, image: `./images/${item.image}`, exhibits: (item.exhibits || []).map((exhibit) => ({ ...exhibit, image: exhibit.image ? `./images/${exhibit.image}` : '' })), articles: (item.articles || []).map((article) => ({ ...article, cover: `./images/${article.cover}` })) })),
+    sampleItineraries: (data.sampleItineraries || []).filter((item) => item.status === 'published').map((item) => ({ ...item, cover: `./images/${item.cover}` })),
     cities: (data.cities || []).filter((item) => item.status !== 'archived').map((item) => ({ ...item, mosaic: (item.mosaic || []).map((image) => `./images/${image}`) })),
   }
 }
@@ -92,11 +92,11 @@ function sitemap(data, req) {
   const base = siteBase(data, req)
   const paths = [
     '/', '/customize', '/heritage-guidance', '/vehicle-consultation', '/knowledge-base', '/business-travel', '/search', '/tools', '/guides/richard-li',
-    ...data.routes.filter((item) => item.status !== 'archived').map((item) => `/routes/${item.id}`),
-    ...data.destinations.filter((item) => item.status !== 'archived').map((item) => `/destinations/${item.id}`),
-    ...(data.attractions || []).filter((item) => item.status !== 'archived').map((item) => `/attractions/${item.id}`),
+    ...data.routes.filter((item) => item.status === 'published').map((item) => `/routes/${item.id}`),
+    ...data.destinations.filter((item) => item.status === 'published').map((item) => `/destinations/${item.id}`),
+    ...(data.attractions || []).filter((item) => item.status === 'published').map((item) => `/attractions/${item.id}`),
     ...(data.cities || []).filter((item) => item.status !== 'archived').map((item) => `/attractions/city/${item.id}`),
-    ...(data.sampleItineraries || []).filter((item) => item.status !== 'archived').map((item) => `/itineraries/${item.id}`),
+    ...(data.sampleItineraries || []).filter((item) => item.status === 'published').map((item) => `/itineraries/${item.id}`),
   ]
   const lastmod = new Date().toISOString().slice(0, 10)
   return `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">${paths.map((path) => `<url><loc>${xml(`${base}${path}`)}</loc><lastmod>${lastmod}</lastmod><changefreq>${path === '/' ? 'weekly' : 'monthly'}</changefreq><priority>${path === '/' ? '1.0' : '0.8'}</priority></url>`).join('')}</urlset>`
@@ -104,7 +104,7 @@ function sitemap(data, req) {
 function llms(data, req) {
   const base = siteBase(data, req)
   const lines = [`# ${data.settings.siteName}`, '', `> ${data.settings.defaultDescription || '只为一生美好回忆。'}`, '', '## 官方入口', `- 网站：${base}/`, `- 定制：${base}/customize`, `- 路线：${base}/routes/honeymoon-5d`, `- 圣托里尼：${base}/destinations/santorini`, `- 名人导游 Richard 李：${base}/guides/richard-li`, `- 古迹人文讲解：${base}/heritage-guidance`, `- 用车资源对接咨询：${base}/vehicle-consultation`, `- 景点文史知识库：${base}/knowledge-base`, `- 商旅随行咨询：${base}/business-travel`, `- 旅行工具：${base}/tools`, '', '## 服务范围', '- 雅典、圣托里尼及希腊全境的人文资讯与行程策划', '- 古迹讲解、用车资源对接、知识付费与商务语言陪同咨询', '- 历史文明、海岛、餐厅、体育活动与企业拜访等主题', '', '## 内容索引']
-  data.routes.filter((item) => item.status !== 'archived').forEach((item) => lines.push(`- ${item.title}：${item.desc}`))
+  data.routes.filter((item) => item.status === 'published').forEach((item) => lines.push(`- ${item.title}：${item.desc}`))
   lines.push('', '## 联系方式', `- 微信：${data.settings.wechat}`, `- 电话：${data.settings.phone}`, `- 邮箱：${data.settings.email}`, '')
   return lines.join('\n')
 }
@@ -287,7 +287,7 @@ const server = http.createServer(async (req, res) => {
     if (url.pathname.startsWith('/api/admin/')) {
       if (!isAdmin(req)) return json(res, 401, { error: '未授权，请先登录后台' })
       const data = readData()
-      if (url.pathname === '/api/admin/stats' && method === 'GET') return json(res, 200, { routes: data.routes.filter((x) => x.status !== 'archived').length, destinations: data.destinations.filter((x) => x.status !== 'archived').length, leads: data.leads.length, pendingLeads: data.leads.filter((x) => x.status === 'new').length, customizationLeads: data.leads.filter((x) => x.leadType === 'customization').length, guideBookings: data.leads.filter(isGuideBooking).length, pendingGuideBookings: data.leads.filter((x) => isGuideBooking(x) && x.status === 'new').length, miniProgramBookings: data.leads.filter(isMiniProgramBooking).length, vehicleConsultations: data.leads.filter((x) => x.leadType === 'vehicle-consultation').length, knowledgeBaseLeads: data.leads.filter((x) => x.leadType === 'knowledge-base').length, businessTravelLeads: data.leads.filter((x) => x.leadType === 'business-travel').length, attractions: (data.attractions || []).filter((x) => x.status !== 'archived').length, sampleItineraries: (data.sampleItineraries || []).filter((x) => x.status !== 'archived').length, customTrips: (data.customTrips || []).filter((x) => x.status !== 'archived').length })
+      if (url.pathname === '/api/admin/stats' && method === 'GET') return json(res, 200, { routes: data.routes.filter((x) => x.status === 'published').length, destinations: data.destinations.filter((x) => x.status === 'published').length, leads: data.leads.length, pendingLeads: data.leads.filter((x) => x.status === 'new').length, customizationLeads: data.leads.filter((x) => x.leadType === 'customization').length, guideBookings: data.leads.filter(isGuideBooking).length, pendingGuideBookings: data.leads.filter((x) => isGuideBooking(x) && x.status === 'new').length, miniProgramBookings: data.leads.filter(isMiniProgramBooking).length, vehicleConsultations: data.leads.filter((x) => x.leadType === 'vehicle-consultation').length, knowledgeBaseLeads: data.leads.filter((x) => x.leadType === 'knowledge-base').length, businessTravelLeads: data.leads.filter((x) => x.leadType === 'business-travel').length, attractions: (data.attractions || []).filter((x) => x.status === 'published').length, sampleItineraries: (data.sampleItineraries || []).filter((x) => x.status === 'published').length, customTrips: (data.customTrips || []).filter((x) => x.status !== 'archived').length })
       if (url.pathname === '/api/admin/guide-bookings' && method === 'GET') return json(res, 200, data.leads.filter(isGuideBooking))
       if (url.pathname === '/api/admin/miniprogram-bookings' && method === 'GET') return json(res, 200, data.leads.filter(isMiniProgramBooking))
       if (url.pathname === '/api/admin/settings' && method === 'GET') return json(res, 200, data.settings)
