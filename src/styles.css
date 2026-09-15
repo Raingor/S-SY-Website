@@ -1147,3 +1147,14 @@ body { background: var(--paper); }
   .consultation-popover { right: 0; bottom: 60px; width: 100%; }
   .admin-topbar { position: relative; }
 }
+
+/* Interaction polish */
+.status-select.unpublished { color: var(--muted); background: #edf0f2; }
+.admin-image-field { transition: transform .2s, filter .2s; }
+.admin-image-field.is-dragging { transform: translateY(-2px); filter: drop-shadow(0 8px 14px rgba(21,103,168,.16)); }
+.admin-editor-card .admin-form > .admin-primary { position: sticky; bottom: 16px; justify-self: end; z-index: 5; box-shadow: 0 8px 20px rgba(11,60,93,.18); }
+.admin-primary:disabled, .status-select:disabled { opacity: .62; cursor: wait; }
+button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible { outline: 3px solid rgba(198,161,91,.72); outline-offset: 3px; }
+.nav-menu-open { overflow: hidden; }
+.search-box .search-clear { width: 28px; height: 28px; flex: 0 0 28px; padding: 0; display: grid; place-items: center; color: var(--muted); background: transparent; box-shadow: none; }
+.search-box .search-clear:hover { color: var(--blue); background: #eef6fb; transform: none; }

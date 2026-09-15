@@ -252,6 +252,7 @@ function SearchBox({ initial = '', large = false }) {
     <form className={`search-box ${large ? 'search-large' : ''}`} onSubmit={submit} role="search">
       <Search size={18} />
       <input name="query" value={value} onChange={(e) => setValue(e.target.value)} aria-label="搜索" placeholder="搜索路线 / 景点 / 定制需求" />
+      {value && <button className="search-clear" type="button" aria-label="清除搜索内容" onClick={() => setValue('')}><X size={16} /></button>}
       <button type="submit">搜索</button>
     </form>
   )
@@ -560,7 +561,7 @@ function SearchPage() {
     <>
       <section className="search-top"><Header solid /><div className="container search-intro"><Eyebrow dark>SEARCH SY GREECE</Eyebrow><h1>搜索希腊灵感</h1><SearchBox initial={keyword} large /></div></section>
       <main className="search-results section">
-        <div className="container"><p className="result-summary">“{keyword}” 的相关结果</p><div className="filter-chips">{filters.map(([id, label]) => <button key={id} className={filter === id ? 'active' : ''} onClick={() => setFilter(id)}>{label}</button>)}</div>
+        <div className="container"><p className="result-summary">“{keyword}” 的相关结果</p><div className="filter-chips">{filters.map(([id, label]) => <button key={id} className={filter === id ? 'active' : ''} aria-pressed={filter === id} onClick={() => setFilter(id)}>{label}</button>)}</div>
           {(filter === 'all' || filter === 'route') && <section><SectionTitle eyebrow="CURATED ROUTES" title="相关路线" /><div className="route-grid">{routes.slice(0, 3).map((route) => <RouteCard compact key={route.title} route={route} />)}</div></section>}
           {(filter === 'all' || filter === 'destination') && <section className="search-destinations"><SectionTitle eyebrow="DESTINATIONS" title="相关目的地" /><div className="destination-grid">{destinations.slice(4, 7).map((item) => <DestinationCard key={item.name} item={item} />)}</div></section>}
           {(filter === 'experience') && <section className="empty-state"><ShipWheel /><h2>两项专属体验</h2><p>圣岛双体船日落巡航与私人包机服务，需要根据日期和人数专属报价。</p><Link className="button button-primary" to="/customize">咨询奢享体验</Link></section>}

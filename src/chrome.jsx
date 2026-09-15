@@ -49,6 +49,10 @@ export function Header({ solid = false }) {
   const location = useLocation()
   useEffect(() => setOpen(false), [location.pathname, location.search])
   useEffect(() => {
+    document.body.classList.toggle('nav-menu-open', open)
+    return () => document.body.classList.remove('nav-menu-open')
+  }, [open])
+  useEffect(() => {
     function closeOnEscape(event) {
       if (event.key === 'Escape') setOpen(false)
     }
