@@ -38,6 +38,7 @@ function encodeTokenPart(value) { return Buffer.from(JSON.stringify(value)).toSt
 function createMiniProgramToken(userId) { const now = Math.floor(Date.now() / 1000); const payload = { sub: userId, iat: now, exp: now + 30 * 24 * 60 * 60 }; const encoded = encodeTokenPart(payload); const signature = crypto.createHmac('sha256', miniProgramTokenSecret).update(encoded).digest('base64url'); return `mpv1.${encoded}.${signature}` }
 function verifyMiniProgramToken(token) { try { const [version, encoded, signature] = String(token || '').split('.'); if (version !== 'mpv1' || !encoded || !signature || !miniProgramTokenSecret) return null; const expected = crypto.createHmac('sha256', miniProgramTokenSecret).update(encoded).digest('base64url'); const actualBuffer = Buffer.from(signature); const expectedBuffer = Buffer.from(expected); if (actualBuffer.length !== expectedBuffer.length || !crypto.timingSafeEqual(actualBuffer, expectedBuffer)) return null; const payload = JSON.parse(Buffer.from(encoded, 'base64url').toString('utf8')); return payload.exp > Math.floor(Date.now() / 1000) ? payload : null } catch { return null } }
 function validMiniNickname(value) { const nickname = String(value || '').trim(); if (!nickname || nickname.length > 64 || /^(微信用户|微信用户\d+|用户|用户\d{4})$/u.test(nickname)) return ''; return nickname }
+function adminMiniUserPayload(input = {}, current = {}) { const nickname = validMiniNickname(input.nickname ?? current.nickname); if (!nickname) return null; const rawPhone = String(input.phone ?? '').trim(); if (rawPhone && !/^\+?[\d\s()-]{7,24}$/.test(rawPhone)) return null; return { nickname, ...(rawPhone ? { phone: rawPhone.replace(/[^\d+]/g, '') } : {}) } }
 function miniProfile(input = {}) { const nickname = validMiniNickname(input.nickname); const avatarUrl = String(input.avatarUrl || '').trim().slice(0, 500); return { nickname, avatarUrl: /^https:\/\//i.test(avatarUrl) ? avatarUrl : '' } }
 function fallbackMiniNickname() { return `用户${crypto.randomInt(1000, 10000)}` }
 function publicMiniProgramUser(user) { return { id: user.id, phoneBound: Boolean(user.phone), phoneMasked: user.phone ? maskPhone(user.phone) : null, nickname: user.nickname || fallbackMiniNickname(), avatarUrl: user.avatarUrl || '' } }
@@ -316,6 +317,14 @@ const server = http.createServer(async (req, res) => {
         if (!user) return json(res, 404, { error: 'not found' })
         ensureMiniCollections(user)
         return json(res, 200, { ...adminMiniUserSummary(data, user), travelers: user.travelers.map((item) => safeTraveler(item, true)), documents: user.documents.map((item) => safeDocument(item, true)), coupons: user.coupons.map(safeCoupon) })
+      }
+      if (miniUserMatch && method === 'PATCH') {
+        const user = (data.miniprogramUsers || []).find((item) => item.id === miniUserMatch[1])
+        if (!user) return json(res, 404, { error: 'not found' })
+        const payload = adminMiniUserPayload(await body(req), user)
+        if (!payload) return json(res, 422, { error: '请输入有效昵称；手机号应为 7–20 位数字' })
+        Object.assign(user, payload, { updatedAt: new Date().toISOString() }); await saveData(data)
+        return json(res, 200, adminMiniUserSummary(data, user))
       }
       const miniCollectionAdminMatch = url.pathname.match(/^\/api\/admin\/miniprogram-(travelers|documents|coupons)(?:\/([^/]+))?$/)
       if (miniCollectionAdminMatch && ['GET', 'POST', 'PATCH', 'DELETE'].includes(method)) {
