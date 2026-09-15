@@ -443,7 +443,7 @@ export function CustomTripPage() {
       if (payload) { setTrip(payload); setState('ready') } else setState('missing')
     }).catch(() => setState('missing'))
   }, [token])
-  useEffect(() => { if (trip) document.title = `${trip.title}｜${trip.client} · SY希旅人` }, [trip])
+  useEffect(() => { if (trip) document.title = `${trip.title}｜${trip.client} · 希腊旅行管家` }, [trip])
 
   if (state === 'loading') return <main className="trip-loading"><Header solid /><div className="container section"><p>正在加载行程…</p></div></main>
   if (state === 'missing') return (
@@ -538,7 +538,7 @@ export function CustomTripPage() {
 
           <div className="trip-contact">
             <div><Headphones size={20} /><div><strong>行程服务群</strong><span>签约后将建立微信专属服务群，行程确认信息即时同步</span></div></div>
-            <div><Ship size={20} /><div><strong>SY希旅人</strong><span>Ikoniou 94, Nea Smyrni 17123, Athens · 手机 +30-6973573863</span></div></div>
+            <div><Ship size={20} /><div><strong>希腊旅行管家</strong><span>Ikoniou 94, Nea Smyrni 17123, Athens · 手机 +30-6973573863</span></div></div>
             <Link className="button button-gold" to="/customize">联系顾问调整行程</Link>
           </div>
           <ComplianceNotice />

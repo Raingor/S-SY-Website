@@ -35,9 +35,9 @@ export const images = {
 
 export function Logo() {
   return (
-    <Link className="logo" to="/" aria-label="SY希旅人首页">
+    <Link className="logo" to="/" aria-label="希腊旅行管家首页">
       <span className="temple" aria-hidden="true"><i /><i /><i /></span>
-      <span>SY希旅人</span>
+      <span>希腊旅行管家</span>
     </Link>
   )
 }
@@ -117,7 +117,7 @@ export function GoldCTA() {
       <div className="container gold-cta-inner">
         <div>
           <h2>只为一生美好回忆</h2>
-          <p>1v1 · 24h · {language === 'en' ? 'Scope and service fee discussed first' : language === 'ja' ? '内容と費用を先にご相談' : language === 'el' ? 'Πρώτα συζητάμε το αντικείμενο και την αμοιβή' : '先沟通需求范围与咨询费用'}</p>
+          <p>1v1 · 24h · {language === 'en' ? 'Scope and service fee discussed first' : language === 'zh-TW' ? '先溝通需求範圍與諮詢費用' : '先沟通需求范围与咨询费用'}</p>
         </div>
         <div className="gold-actions">
           <Link className="button button-deep" to="/customize">{t('common.customize')}</Link>
@@ -135,16 +135,16 @@ export function ComplianceNotice() {
 export function Footer() {
   const [language] = useLanguage()
   const t = (key) => translate(key, language)
-  const routeLabels = language === 'en' ? ['3 days · Athens highlights', '5 days · Athens + Santorini', '7 days · Family Greece', '9 days · Heritage circuit'] : language === 'ja' ? ['3日 · アテネの魅力', '5日 · アテネ + サントリーニ', '7日 · 家族で巡るギリシャ', '9日 · 世界遺産ルート'] : language === 'el' ? ['3 ημέρες · Αθήνα', '5 ημέρες · Αθήνα + Σαντορίνη', '7 ημέρες · Οικογενειακή Ελλάδα', '9 ημέρες · Πολιτιστική διαδρομή'] : ['3天2晚 · 雅典市区精华', '5天4晚 · 雅典 + 圣托里尼', '7天6晚 · 经典三城家庭游', '9天8晚 · 全遗产环游']
+  const routeLabels = language === 'en' ? ['3 days · Athens highlights', '5 days · Athens + Santorini', '7 days · Family Greece', '9 days · Heritage circuit'] : language === 'zh-TW' ? ['3天2晚 · 雅典市區精華', '5天4晚 · 雅典 + 聖托里尼', '7天6晚 · 經典三城家庭遊', '9天8晚 · 全遺產環遊'] : ['3天2晚 · 雅典市区精华', '5天4晚 · 雅典 + 圣托里尼', '7天6晚 · 经典三城家庭游', '9天8晚 · 全遗产环游']
   return (
     <footer id="contact" className="site-footer">
       <div className="container footer-grid">
         <div className="footer-brand"><Logo /><p>{t('footer.brand')}</p><strong>sy-greece.com</strong></div>
         <div><h3>{t('footer.routes')}</h3><Link to="/itineraries">参考行程</Link><Link to="/itineraries/sample-athens-3d">{routeLabels[0]}</Link><Link to="/itineraries/sample-ae-6d">{routeLabels[1]}</Link><Link to="/itineraries/sample-family-7d">{routeLabels[2]}</Link><Link to="/itineraries/sample-heritage-7d">{routeLabels[3]}</Link></div>
-        <div><h3>{t('footer.services')}</h3><Link to="/customize">{language === 'en' ? 'Private planning' : language === 'ja' ? 'プライベート旅行' : language === 'el' ? 'Ιδιωτικός σχεδιασμός' : '私人定制'}</Link><a href="#services">{language === 'en' ? 'Private transfers' : language === 'ja' ? '専用車' : language === 'el' ? 'Ιδιωτικές μετακινήσεις' : '专属用车'}</a><a href="#experiences">{language === 'en' ? 'Yachts & private flights' : language === 'ja' ? 'ヨット / プライベートフライト' : language === 'el' ? 'Yacht / private flights' : '私人包机 / 游艇出海'}</a><Link to="/attractions">景点导览</Link><Link to="/knowledge-base">景点文史知识库</Link><Link to="/business-travel">商旅随行咨询</Link><Link to="/tools">{t('nav.tools')}</Link></div>
+        <div><h3>{t('footer.services')}</h3><Link to="/customize">{language === 'en' ? 'Private planning' : language === 'zh-TW' ? '私人定制' : '私人定制'}</Link><a href="#services">{language === 'en' ? 'Private transfers' : language === 'zh-TW' ? '專屬用車' : '专属用车'}</a><a href="#experiences">{language === 'en' ? 'Yachts & private flights' : language === 'zh-TW' ? '私人包機 / 遊艇出海' : '私人包机 / 游艇出海'}</a><Link to="/attractions">景点导览</Link><Link to="/knowledge-base">景点文史知识库</Link><Link to="/business-travel">商旅随行咨询</Link><Link to="/tools">{t('nav.tools')}</Link></div>
         <div><h3>{t('footer.contact')}</h3><span>{t('footer.wechat')}</span><span>{t('footer.phone')}</span><span>{t('footer.email')}</span></div>
       </div>
-      <div className="container copyright"><span>2026 SY Traveler · {language === 'en' ? 'All rights reserved' : language === 'ja' ? '無断転載禁止' : language === 'el' ? 'Με επιφύλαξη παντός δικαιώματος' : 'SY希旅人 · 版权所有'}</span><span>仅提供文化咨询、行程策划、知识付费与商务语言陪同咨询</span></div><div className="container footer-disclaimer"><ComplianceNotice /></div>
+      <div className="container copyright"><span>2026 {language === 'en' ? 'Greece Travel Butler · All rights reserved' : language === 'zh-TW' ? '希臘旅行管家 · 版權所有' : '希腊旅行管家 · 版权所有'}</span><span>{language === 'en' ? 'Cultural consultation, itinerary planning and business language support' : language === 'zh-TW' ? '提供文化諮詢、行程策劃、知識付費與商務語言陪同諮詢' : '提供文化咨询、行程策划、知识付费与商务语言陪同咨询'}</span></div><div className="container footer-disclaimer"><ComplianceNotice /></div>
     </footer>
   )
 }

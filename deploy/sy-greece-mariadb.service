@@ -1,5 +1,5 @@
 [Unit]
-Description=SY Traveler Website MariaDB
+Description=Greece Travel Butler Website MariaDB
 After=network.target
 
 [Service]

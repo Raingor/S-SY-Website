@@ -118,10 +118,10 @@ const destinations = [
 ]
 
 const fallbackSeoSettings = {
-  siteName: 'SY希旅人',
+  siteName: '希腊旅行管家',
   siteUrl: 'https://sy-greece.com',
-  defaultTitle: '只为一生美好回忆｜SY希旅人',
-  defaultDescription: 'SY希旅人，为访客提供雅典、圣托里尼及希腊全境的人文资讯、行程策划与语言陪同咨询。',
+  defaultTitle: '只为一生美好回忆｜希腊旅行管家',
+  defaultDescription: '希腊旅行管家，为访客提供雅典、圣托里尼及希腊全境的人文资讯、行程策划与语言陪同咨询。',
   keywords: '希腊人文咨询,希腊行程策划,圣托里尼文化,雅典历史,中文司导咨询',
   ogImage: 'images/santorini.webp',
   googleVerification: '',
@@ -168,9 +168,9 @@ function SEO() {
     const itineraryMatch = path.match(/^\/itineraries\/([^/]+)$/)
     const matchedItinerary = itineraryMatch ? dynamicContent.sampleItineraries.find((item) => item.id === decodeURIComponent(itineraryMatch[1])) : null
     const pages = {
-      '/': ['只为一生美好回忆｜SY希旅人', `只为一生美好回忆。${config.defaultDescription}`],
+      '/': ['只为一生美好回忆｜希腊旅行管家', `只为一生美好回忆。${config.defaultDescription}`],
       '/customize': ['希腊行程咨询｜提交需求沟通方案', '告诉我们出行时间、人数与偏好，先沟通需求范围与行程规划方式。'],
-      '/search': [`搜索${query ? `“${query}”` : '希腊旅行'}｜SY Traveler`, `搜索希腊路线、目的地和私人定制旅行灵感。${query ? `当前关键词：${query}。` : ''}`],
+      '/search': [`搜索${query ? `“${query}”` : '希腊旅行'}｜Greece Travel Butler`, `搜索希腊路线、目的地和私人定制旅行灵感。${query ? `当前关键词：${query}。` : ''}`],
       '/tools': ['希腊行前信息工具箱｜签证 · 汇率 · 天气 · 行程日历', '出发前准备希腊申根签证、欧元汇率、天气和每日行程的信息工具箱。'],
       '/heritage-guidance': ['古迹人文讲解预约｜希腊文化咨询', '预约雅典、德尔斐与克里特等古迹的人文知识讲解。'],
       '/vehicle-consultation': ['在地用车资源对接咨询｜希腊出行信息', '咨询希腊本地车型、司导资质与用车资源对接方式。'],
@@ -180,7 +180,7 @@ function SEO() {
       '/business-travel': ['希腊商旅随行咨询｜商务语言与行程规划', '提供商务陪同、语言翻译、企业拜访与人文行程的咨询。'],
 
       '/guides/richard-li': ['Richard 李名人导游｜希腊私人深度旅行与预约', '认识 Richard 李：武汉大学双学士、英国澳洲双硕士，提供希腊历史人文、小众秘境与私人摄影导览。'],
-      '/manage-9f3k7': ['网站管理后台｜SY希旅人', 'SY希旅人网站内容与 SEO 管理后台'],
+      '/manage-9f3k7': ['网站管理后台｜希腊旅行管家', '希腊旅行管家网站内容与 SEO 管理后台'],
     }
     const [pageTitle, description] = matchedRoute
       ? [`${matchedRoute.title}｜${matchedRoute.days}希腊定制路线`, matchedRoute.desc]
@@ -334,7 +334,7 @@ function Home() {
       <div className="home-hero">
         <Header />
         <div className="container hero-content">
-          <Eyebrow dark>SY TRAVELER · TAILOR-MADE JOURNEYS</Eyebrow>
+          <Eyebrow dark>GREECE TRAVEL BUTLER · TAILOR-MADE JOURNEYS</Eyebrow>
           <h1>只为一生美好回忆</h1>
           <p>希腊在地人文与行程咨询服务。雅典在地团队，<br />一对一中文顾问，提供文化、行程与语言陪同咨询。</p>
           <SearchBox />
@@ -559,7 +559,7 @@ function SearchPage() {
   const filters = [['all', '全部 8'], ['route', '路线 3'], ['destination', '目的地 3'], ['experience', '奢享体验 2']]
   return (
     <>
-      <section className="search-top"><Header solid /><div className="container search-intro"><Eyebrow dark>SEARCH SY TRAVELER</Eyebrow><h1>搜索希腊灵感</h1><SearchBox initial={keyword} large /></div></section>
+      <section className="search-top"><Header solid /><div className="container search-intro"><Eyebrow dark>SEARCH GREECE TRAVEL BUTLER</Eyebrow><h1>搜索希腊灵感</h1><SearchBox initial={keyword} large /></div></section>
       <main className="search-results section">
         <div className="container"><p className="result-summary">“{keyword}” 的相关结果</p><div className="filter-chips">{filters.map(([id, label]) => <button key={id} className={filter === id ? 'active' : ''} aria-pressed={filter === id} onClick={() => setFilter(id)}>{label}</button>)}</div>
           {(filter === 'all' || filter === 'route') && <section><SectionTitle eyebrow="CURATED ROUTES" title="相关路线" /><div className="route-grid">{routes.slice(0, 3).map((route) => <RouteCard compact key={route.title} route={route} />)}</div></section>}
@@ -661,7 +661,7 @@ function GuidePage() {
 
         <section className="guide-section reserve-section" id="reserve">
           <div className="container"><Eyebrow>{copy.reserveEyebrow}</Eyebrow><h2>{copy.reserveTitle}</h2><p className="section-lead">{copy.reserveLead}</p><div className="booking-layout">
-            <div className="calendar-card"><div className="calendar-head"><div><strong>{copy.calendarTitle}</strong><small>{copy.calendarMonth}</small></div><span>‹</span><span>›</span></div><div className="calendar-week">{(language === 'en' ? ['M', 'T', 'W', 'T', 'F', 'S', 'S'] : language === 'ja' ? ['月', '火', '水', '木', '金', '土', '日'] : language === 'el' ? ['Δ', 'Τ', 'Τ', 'Π', 'Π', 'Σ', 'Κ'] : language === 'zh-TW' ? ['一', '二', '三', '四', '五', '六', '日'] : ['一', '二', '三', '四', '五', '六', '日']).map((day, index) => <span key={`${day}-${index}`}>{day}</span>)}</div><div className="calendar-grid">{calendarDays.map((day, index) => day ? <button key={day} type="button" className={`calendar-day ${dateStates[day] || ''} ${selectedDate === `2026-09-${String(day).padStart(2, '0')}` ? 'selected' : ''}`} disabled={dateStates[day] !== 'available'} onClick={() => setSelectedDate(`2026-09-${String(day).padStart(2, '0')}`)}>{day}</button> : <span key={`blank-${index}`} />)}</div><div className="calendar-legend"><span><i className="available-dot" />{copy.available}</span><span><i className="pending-dot" />{copy.pending}</span><span><i className="booked-dot" />{copy.booked}</span></div></div>
+            <div className="calendar-card"><div className="calendar-head"><div><strong>{copy.calendarTitle}</strong><small>{copy.calendarMonth}</small></div><span>‹</span><span>›</span></div><div className="calendar-week">{(language === 'en' ? ['M', 'T', 'W', 'T', 'F', 'S', 'S'] : language === 'zh-TW' ? ['一', '二', '三', '四', '五', '六', '日'] : ['一', '二', '三', '四', '五', '六', '日']).map((day, index) => <span key={`${day}-${index}`}>{day}</span>)}</div><div className="calendar-grid">{calendarDays.map((day, index) => day ? <button key={day} type="button" className={`calendar-day ${dateStates[day] || ''} ${selectedDate === `2026-09-${String(day).padStart(2, '0')}` ? 'selected' : ''}`} disabled={dateStates[day] !== 'available'} onClick={() => setSelectedDate(`2026-09-${String(day).padStart(2, '0')}`)}>{day}</button> : <span key={`blank-${index}`} />)}</div><div className="calendar-legend"><span><i className="available-dot" />{copy.available}</span><span><i className="pending-dot" />{copy.pending}</span><span><i className="booked-dot" />{copy.booked}</span></div></div>
             <form className="booking-form" onSubmit={submitBooking}><div className="booking-form-head"><h3>{copy.formTitle}</h3><p>{copy.formLead}</p></div><label>{copy.duration}<select name="serviceLength" defaultValue={copy.durations[0]}>{copy.durations.map((option) => <option key={option}>{option}</option>)}</select></label><label>{copy.travelers}<select name="travelers" defaultValue={copy.travelerOptions[1]}>{copy.travelerOptions.map((option) => <option key={option}>{option}</option>)}</select></label><label>{copy.requirements}<input name="requirements" required placeholder={copy.requirementsPlaceholder} /></label><label>{copy.contact}<input name="contact" required placeholder={copy.contactPlaceholder} /></label><button className="button button-deep button-block" type="submit" disabled={submitting}>{submitting ? copy.submitting : copy.submit}</button>{bookingMessage && <p className={`booking-message ${bookingMessage === copy.success ? 'success' : ''}`} role="status">{bookingMessage}</p>}</form>
 
           </div></div>
@@ -669,7 +669,7 @@ function GuidePage() {
       </main>
       <section className="guide-final-cta"><div className="container"><h2>{copy.finalTitle}</h2><p>{copy.finalLead}</p><a className="button button-deep" href="#reserve">{bookingLabel} <ArrowRight size={15} /></a></div></section>
       <Footer />
-      <div className="guide-mobile-cta"><span>{language === 'en' ? 'Tailored quote' : language === 'ja' ? '専属見積り' : language === 'el' ? 'Εξατομικευμένη προσφορά' : '专属报价'}</span><a href="#reserve">{bookingLabel}</a></div>
+      <div className="guide-mobile-cta"><span>{language === 'en' ? 'Tailored quote' : language === 'zh-TW' ? '專屬報價' : '专属报价'}</span><a href="#reserve">{bookingLabel}</a></div>
     </>
   )
 }
