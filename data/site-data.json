@@ -1532,9 +1532,11 @@
     {
       "id": "sample-athens-3d",
       "title": "雅典经典三日",
+      "tag": "短途 · 中转",
       "days": 3,
       "cover": "athens.webp",
       "status": "published",
+      "crowd": "适合：中转停留 / 商务出行",
       "summary": "卫城、博物馆与老城的黄金组合，适合转机、商务间隙或首次到访。",
       "itinerary": [
         {
@@ -1568,9 +1570,11 @@
     {
       "id": "sample-ae-6d",
       "title": "雅典 + 圣托里尼六日",
+      "tag": "经典 · 双城",
       "days": 6,
       "cover": "santorini.webp",
       "status": "published",
+      "crowd": "适合：首次到访 / 轻松节奏",
       "summary": "经典蓝白组合：两天雅典看文明，三天圣岛住悬崖酒店看日落，节奏从容。",
       "itinerary": [
         {
@@ -1628,9 +1632,11 @@
     {
       "id": "sample-heritage-7d",
       "title": "文明溯源七日",
+      "tag": "文明 · 溯源",
       "days": 7,
       "cover": "delphi.webp",
       "status": "published",
+      "crowd": "适合：世遗深度 / 人文爱好者",
       "summary": "雅典、德尔斐、梅黛奥拉三大世界遗产连线，中文向导随行把神话讲成故事。",
       "itinerary": [
         {
@@ -1698,9 +1704,11 @@
     {
       "id": "sample-family-7d",
       "title": "经典三城家庭游",
+      "tag": "亲子 · 家庭",
       "days": 7,
       "cover": "nafplio.webp",
       "status": "published",
+      "crowd": "适合：亲子家庭 / 轻松度假",
       "summary": "雅典、纳夫普利翁与伯罗奔尼撒的神话遗迹连成一线，每天车程控制在两小时内，节奏松紧由家庭自己定。",
       "itinerary": [
         {
@@ -1770,9 +1778,11 @@
     {
       "id": "sample-ae-5d",
       "title": "雅典 + 圣托里尼五日",
+      "tag": "蜜月 · 情侣",
       "days": 5,
       "cover": "santorini.webp",
       "status": "published",
+      "crowd": "适合：蜜月婚礼 / 浪漫之旅",
       "summary": "蜜月经典：两天雅典看文明，两天圣岛住悬崖酒店看日落，节奏从容。",
       "itinerary": [
         {
@@ -1823,9 +1833,11 @@
     {
       "id": "sample-heritage-9d",
       "title": "全遗产环游九日",
+      "tag": "深度 · 定制",
       "days": 9,
       "cover": "delphi.webp",
       "status": "published",
+      "crowd": "适合：深度文化 / 沉浸体验",
       "summary": "雅典、德尔斐、梅黛奥拉、圣托里尼与克里特连线，全希腊世界遗产一次走完。",
       "itinerary": [
         {
