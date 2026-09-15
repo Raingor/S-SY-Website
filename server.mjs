@@ -299,12 +299,15 @@ const server = http.createServer(async (req, res) => {
         const buffer = Buffer.from(match[2], 'base64')
         if (!buffer.length || buffer.length > 6 * 1024 * 1024) return json(res, 413, { error: '图片大小需在 6MB 以内' })
         const extension = match[1] === 'image/jpeg' ? 'jpg' : match[1].split('/')[1]
-        const filename = `og-${Date.now().toString(36)}-${crypto.randomBytes(3).toString('hex')}.${extension}`
+        const prefix = String(input.prefix || 'og').replace(/[^a-z0-9-]/gi, '').slice(0, 20) || 'image'
+        const filename = `${prefix}-${Date.now().toString(36)}-${crypto.randomBytes(3).toString('hex')}.${extension}`
         const imageDirs = [resolve(root, 'public/images'), join(distDir, 'images')]
         imageDirs.forEach((directory) => { mkdirSync(directory, { recursive: true }); writeFileSync(join(directory, filename), buffer) })
-        data.settings = { ...data.settings, ogImage: `images/${filename}` }
-        await saveData(data)
-        return json(res, 201, { path: `images/${filename}`, url: `/${`images/${filename}`}` })
+        if (input.updateSettings !== false) {
+          data.settings = { ...data.settings, ogImage: `images/${filename}` }
+          await saveData(data)
+        }
+        return json(res, 201, { path: input.updateSettings === false ? filename : `images/${filename}`, url: `/${`images/${filename}`}` })
       }
       if (url.pathname === '/api/admin/miniprogram-users' && method === 'GET') return json(res, 200, { items: (data.miniprogramUsers || []).map((user) => adminMiniUserSummary(data, user)) })
       const miniUserMatch = url.pathname.match(/^\/api\/admin\/miniprogram-users\/([^/]+)$/)
