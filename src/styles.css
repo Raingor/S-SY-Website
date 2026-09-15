@@ -1158,3 +1158,29 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 .nav-menu-open { overflow: hidden; }
 .search-box .search-clear { width: 28px; height: 28px; flex: 0 0 28px; padding: 0; display: grid; place-items: center; color: var(--muted); background: transparent; box-shadow: none; }
 .search-box .search-clear:hover { color: var(--blue); background: #eef6fb; transform: none; }
+
+/* Keep long admin tables inside their own panel instead of growing the page. */
+@media (min-width: 821px) {
+  .admin-shell { height: 100vh; overflow: hidden; }
+  .admin-sidebar { min-height: 0; overflow-y: auto; }
+  .admin-main { min-height: 0; overflow-y: auto; }
+  .admin-content > .collection-panel {
+    max-height: calc(100vh - 150px);
+    display: flex;
+    flex-direction: column;
+  }
+  .admin-content > .collection-panel .admin-table-wrap {
+    flex: 1;
+    min-height: 0;
+    overflow-x: auto;
+    overflow-y: auto;
+    scrollbar-gutter: stable;
+  }
+  .admin-content > .collection-panel .admin-table thead {
+    position: sticky;
+    top: 0;
+    z-index: 2;
+    background: #fff;
+  }
+  .admin-content:has(.admin-editor-page) > .collection-panel { display: none; }
+}
