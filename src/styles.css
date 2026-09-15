@@ -436,6 +436,7 @@ h1, h2, h3, p { margin-top: 0; }
 .admin-login label, .admin-form label { display: grid; gap: 8px; font-size: 12px; font-weight: 600; }
 .admin-login input, .admin-form input, .admin-form select, .admin-form textarea { width: 100%; min-height: 44px; padding: 0 13px; border: 1px solid #dbe5eb; border-radius: 9px; background: #f7fafb; color: var(--ink); outline: 0; font: inherit; }
 .admin-form textarea { padding-top: 12px; }
+.settings-panel .admin-form-grid { align-items: start; }
 .admin-login input:focus, .admin-form input:focus, .admin-form select:focus, .admin-form textarea:focus { border-color: var(--blue); background: #fff; }
 .admin-primary { min-height: 42px; padding: 0 18px; display: inline-flex; align-items: center; justify-content: center; gap: 7px; border: 0; border-radius: 999px; background: var(--blue); color: #fff; cursor: pointer; font-weight: 600; }
 .admin-primary.small { min-height: 37px; font-size: 12px; }
