@@ -90,7 +90,22 @@ npm run dev
 - 预约状态：待处理、已联系、已报价、已完成
 - 站点与 SEO 配置
 
-预约统一写入 `data/site-data.json`，并通过 `/api/leads` 接收。后台 API 使用登录后 Bearer Token 鉴权。
+生产环境使用 MariaDB 持久化站点数据，数据库连接由服务端环境变量注入；本地未配置数据库时才回退到 `data/site-data.json`。预约统一通过 `/api/leads` 接收，后台 API 使用登录后 Bearer Token 鉴权。
+
+### MariaDB 配置
+
+生产服务需要配置以下变量：
+
+```bash
+SY_STORAGE=mariadb
+SY_DB_HOST=127.0.0.1
+SY_DB_PORT=3307
+SY_DB_NAME=sygreece_website
+SY_DB_USER=sygreece_web
+SY_DB_PASSWORD='MariaDB 应用账号密码'
+```
+
+服务首次启动时会自动创建 `sy_site_data` 表；如果表为空，会从 `data/site-data.json` 导入初始内容。迁移前应先备份生产 JSON，迁移后 JSON 只作为回滚种子，不再作为生产写入源。
 
 ## 小程序登录与手机号绑定 API
 
@@ -114,7 +129,7 @@ SY_MINIPROGRAM_TOKEN_SECRET='用于签发小程序用户 Token 的随机密钥'
 - `GET/POST/PATCH/DELETE /api/miniprogram/documents[/:id]`：当前用户的护照/签证资料，字段 `name`、`passportNo`、`expiry`、`visaStatus`。
 - `GET /api/miniprogram/coupons`：需要 Bearer Token，返回真实优惠券 `{ "items": [] }`；当前没有优惠券时保持空数组，不生成演示数据。
 
-小程序提交表单时继续使用 `POST /api/leads`，并携带 Bearer Token 及 `platform: "wechat-miniprogram"`（或 `source` 同值）。未登录返回 `401 MINIPROGRAM_LOGIN_REQUIRED`，未绑定手机号返回 `403 PHONE_BIND_REQUIRED`；绑定后服务端从用户记录写入联系方式，不信任客户端传入的手机号。小程序用户记录保存在 `data/site-data.json` 的 `miniprogramUsers` 中，微信 `openid` 不会通过 API 返回。
+小程序提交表单时继续使用 `POST /api/leads`，并携带 Bearer Token 及 `platform: "wechat-miniprogram"`（或 `source` 同值）。未登录返回 `401 MINIPROGRAM_LOGIN_REQUIRED`，未绑定手机号返回 `403 PHONE_BIND_REQUIRED`；绑定后服务端从用户记录写入联系方式，不信任客户端传入的手机号。小程序用户记录保存在 MariaDB 的站点数据文档中，微信 `openid` 不会通过 API 返回。
 
 ### 本地 Mock 联调
 

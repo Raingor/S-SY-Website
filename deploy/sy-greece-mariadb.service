@@ -1,0 +1,15 @@
+[Unit]
+Description=SY Greece Website MariaDB
+After=network.target
+
+[Service]
+Type=simple
+User=mysql
+Group=mysql
+ExecStart=/usr/sbin/mariadbd --defaults-file=/etc/sy-greece-mariadb.cnf
+Restart=on-failure
+RestartSec=5s
+LimitNOFILE=65535
+
+[Install]
+WantedBy=multi-user.target

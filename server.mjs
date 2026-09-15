@@ -1,12 +1,12 @@
 import http from 'node:http'
-import { existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from 'node:fs'
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { dirname, extname, join, normalize, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import crypto from 'node:crypto'
+import { closeStorage, initStorage, readData, saveData, storageStatus } from './storage.mjs'
 
 const root = dirname(fileURLToPath(import.meta.url))
 const distDir = resolve(root, 'dist')
-const dataPath = resolve(root, 'data/site-data.json')
 const port = Number(process.env.PORT || 4173)
 const adminPassword = String(process.env.SY_ADMIN_PASSWORD || '')
 const miniProgramTokenSecret = process.env.SY_MINIPROGRAM_TOKEN_SECRET || ''
@@ -18,12 +18,6 @@ let wechatAccessToken = { value: '', expiresAt: 0 }
 const mime = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8', '.json': 'application/json; charset=utf-8', '.png': 'image/png', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.webp': 'image/webp', '.svg': 'image/svg+xml', '.ico': 'image/x-icon' }
 const immutableExtensions = new Set(['.png', '.jpg', '.jpeg', '.webp', '.svg', '.ico', '.woff', '.woff2'])
 
-function readData() { return JSON.parse(readFileSync(dataPath, 'utf8')) }
-function saveData(data) {
-  const tempPath = `${dataPath}.${process.pid}.${crypto.randomBytes(4).toString('hex')}.tmp`
-  writeFileSync(tempPath, `${JSON.stringify(data, null, 2)}\n`, { encoding: 'utf8', mode: 0o600 })
-  renameSync(tempPath, dataPath)
-}
 function corsHeaders() { return { ...(allowedOrigin ? { 'Access-Control-Allow-Origin': allowedOrigin, Vary: 'Origin' } : {}), 'Access-Control-Allow-Methods': 'GET,POST,PATCH,DELETE,OPTIONS', 'Access-Control-Allow-Headers': 'Content-Type, Authorization' } }
 function json(res, status, body) { res.writeHead(status, { ...corsHeaders(), 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' }); res.end(JSON.stringify(body)) }
 function text(res, status, body, contentType) { res.writeHead(status, { 'Content-Type': contentType, 'Cache-Control': 'public, max-age=300' }); res.end(body) }
@@ -86,10 +80,11 @@ function publicContent(data) {
 function readiness(data) {
   const requiredCollections = ['routes', 'destinations', 'cities', 'attractions', 'sampleItineraries', 'customTrips', 'leads', 'miniprogramUsers']
   const missing = requiredCollections.filter((key) => !Array.isArray(data[key]))
+  if (!storageStatus().ready) missing.push(`storage.${storageStatus().mode}`)
   if (!adminPassword) missing.push('SY_ADMIN_PASSWORD')
   if (!miniProgramConfigReady()) missing.push('WX_APPID/WX_APP_SECRET/SY_MINIPROGRAM_TOKEN_SECRET')
   if (!data.settings?.siteUrl) missing.push('settings.siteUrl')
-  return { ok: missing.length === 0, missing, content: { cities: data.cities?.length || 0, attractions: data.attractions?.length || 0, sampleItineraries: data.sampleItineraries?.length || 0 } }
+  return { ok: missing.length === 0, missing, storage: storageStatus(), content: { cities: data.cities?.length || 0, attractions: data.attractions?.length || 0, sampleItineraries: data.sampleItineraries?.length || 0 } }
 }
 function xml(value) { return String(value).replace(/[<>&'\"]/g, (char) => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;', "'": '&apos;', '"': '&quot;' }[char])) }
 function siteBase(data, req) { return String(data.settings.siteUrl || `http://${req.headers.host || '127.0.0.1:4173'}`).replace(/\/$/, '') }
@@ -159,15 +154,15 @@ function injectSeoHtml(html, seo) {
   const title = htmlAttr(seo.title); const description = htmlAttr(seo.description); const canonical = htmlAttr(seo.canonical); const robots = htmlAttr(seo.robots)
   return html.toString().replace(/<title>[^<]*<\/title>/, `<title>${title}</title>`).replace(/<meta name="robots" content="[^"]*" \/>/, `<meta name="robots" content="${robots}" />`).replace(/<meta name="description" content="[^"]*" \/>/, `<meta name="description" content="${description}" />`).replace(/<link rel="canonical" href="[^"]*" \/>/, `<link rel="canonical" href="${canonical}" />`).replace(/<meta property="og:title" content="[^"]*" \/>/, `<meta property="og:title" content="${title}" />`).replace(/<meta property="og:description" content="[^"]*" \/>/, `<meta property="og:description" content="${description}" />`).replace(/<meta property="og:url" content="[^"]*" \/>/, `<meta property="og:url" content="${canonical}" />`)
 }
-function collectionHandler(data, collection, method, pathname, payload) {
+async function collectionHandler(data, collection, method, pathname, payload) {
   const items = data[collection]
   const itemId = pathname.split('/').pop()
   if (method === 'GET') return { status: 200, body: items }
-  if (method === 'POST') { const next = { ...payload, id: payload.id || id(collection.slice(0, -1)) }; items.push(next); saveData(data); return { status: 201, body: next } }
+  if (method === 'POST') { const next = { ...payload, id: payload.id || id(collection.slice(0, -1)) }; items.push(next); await saveData(data); return { status: 201, body: next } }
   const index = items.findIndex((item) => item.id === itemId)
   if (index < 0) return { status: 404, body: { error: 'not found' } }
-  if (method === 'PATCH') { items[index] = { ...items[index], ...payload, id: itemId }; saveData(data); return { status: 200, body: items[index] } }
-  if (method === 'DELETE') { items.splice(index, 1); saveData(data); return { status: 204, body: null } }
+  if (method === 'PATCH') { items[index] = { ...items[index], ...payload, id: itemId }; await saveData(data); return { status: 200, body: items[index] } }
+  if (method === 'DELETE') { items.splice(index, 1); await saveData(data); return { status: 204, body: null } }
   return { status: 405, body: { error: 'method not allowed' } }
 }
 
@@ -209,14 +204,14 @@ const server = http.createServer(async (req, res) => {
           if (profile.avatarUrl) user.avatarUrl = profile.avatarUrl
           if (!user.nickname) user.nickname = fallbackMiniNickname()
         }
-        user.updatedAt = new Date().toISOString(); saveData(data)
+        user.updatedAt = new Date().toISOString(); await saveData(data)
         return json(res, 200, { accessToken: createMiniProgramToken(user.id), tokenType: 'Bearer', expiresIn: 30 * 24 * 60 * 60, user: publicMiniProgramUser(user) })
       } catch (error) { return json(res, error.message === '小程序登录服务尚未配置' ? 503 : 502, { code: 'WECHAT_LOGIN_FAILED', error: error.message }) }
     }
     if (url.pathname === '/api/miniprogram/auth/me' && method === 'GET') {
       const data = readData(); const user = miniProgramUserFromRequest(req, data)
       if (!user) return json(res, 401, { code: 'MINIPROGRAM_LOGIN_REQUIRED', error: '请先微信登录' })
-      if (!user.nickname) { user.nickname = fallbackMiniNickname(); saveData(data) }
+      if (!user.nickname) { user.nickname = fallbackMiniNickname(); await saveData(data) }
       return json(res, 200, { user: publicMiniProgramUser(user) })
     }
     if (url.pathname === '/api/miniprogram/auth/phone' && method === 'POST') {
@@ -225,7 +220,7 @@ const server = http.createServer(async (req, res) => {
       if (!input.code) return json(res, 422, { code: 'WX_PHONE_CODE_REQUIRED', error: '缺少微信手机号 code' })
       try {
         const result = await exchangePhoneCode(String(input.code)); const phone = normalizedPhone(result.phone_info)
-        user.phone = phone; user.phoneBoundAt = new Date().toISOString(); user.updatedAt = new Date().toISOString(); saveData(data)
+        user.phone = phone; user.phoneBoundAt = new Date().toISOString(); user.updatedAt = new Date().toISOString(); await saveData(data)
         return json(res, 200, { user: publicMiniProgramUser(user) })
       } catch (error) { return json(res, error.message === '小程序登录服务尚未配置' ? 503 : 502, { code: 'WECHAT_PHONE_BIND_FAILED', error: error.message }) }
     }
@@ -239,7 +234,7 @@ const server = http.createServer(async (req, res) => {
       if (!user) return json(res, 401, { code: 'MINIPROGRAM_LOGIN_REQUIRED', error: '请先微信登录' })
       const input = await body(req); const nickname = validMiniNickname(input.nickname)
       if (!nickname) return json(res, 422, { code: 'INVALID_NICKNAME', error: '昵称不能为空或使用无效昵称' })
-      user.nickname = nickname; user.updatedAt = new Date().toISOString(); saveData(data)
+      user.nickname = nickname; user.updatedAt = new Date().toISOString(); await saveData(data)
       return json(res, 200, { user: publicMiniProgramUser(user) })
     }
     if (url.pathname === '/api/miniprogram/leads' && method === 'GET') {
@@ -267,14 +262,14 @@ const server = http.createServer(async (req, res) => {
       if (method === 'POST') {
         const input = await body(req); const payload = collection === 'travelers' ? travelerPayload(input) : documentPayload(input)
         if (!payload) return json(res, 422, { error: '缺少必填字段 name' })
-        const now = new Date().toISOString(); const item = { ...payload, id: id(collection === 'travelers' ? 'traveler' : 'document'), createdAt: now, updatedAt: now }; items.push(item); saveData(data); return json(res, 201, serializer(item))
+        const now = new Date().toISOString(); const item = { ...payload, id: id(collection === 'travelers' ? 'traveler' : 'document'), createdAt: now, updatedAt: now }; items.push(item); await saveData(data); return json(res, 201, serializer(item))
       }
       const index = items.findIndex((entry) => entry.id === itemId)
       if (index < 0) return json(res, 404, { error: 'not found' })
-      if (method === 'DELETE') { items.splice(index, 1); saveData(data); return res.writeHead(204).end() }
+      if (method === 'DELETE') { items.splice(index, 1); await saveData(data); return res.writeHead(204).end() }
       const input = await body(req); const payload = collection === 'travelers' ? travelerPayload(input, items[index]) : documentPayload(input, items[index])
       if (!payload) return json(res, 422, { error: '缺少必填字段 name' })
-      items[index] = { ...items[index], ...payload, updatedAt: new Date().toISOString() }; saveData(data); return json(res, 200, serializer(items[index]))
+      items[index] = { ...items[index], ...payload, updatedAt: new Date().toISOString() }; await saveData(data); return json(res, 200, serializer(items[index]))
     }
     if (url.pathname === '/api/leads' && method === 'POST') {
       const input = await body(req)
@@ -286,7 +281,7 @@ const server = http.createServer(async (req, res) => {
       } else if (!input.contact) return json(res, 422, { error: '请填写联系方式' })
       const lead = { ...input, id: input.id || id('lead'), source: input.source || input.platform || 'website', platform: input.platform || input.source || 'website', leadType: input.leadType || 'customization', status: 'new', createdAt: input.createdAt || new Date().toISOString() }
       if (miniProgramUser) { lead.userId = miniProgramUser.id; lead.contact = miniProgramUser.phone; lead.contactType = 'phone' }
-      data.leads.unshift(lead); saveData(data)
+      data.leads.unshift(lead); await saveData(data)
       return json(res, 201, lead)
     }
     if (url.pathname.startsWith('/api/admin/')) {
@@ -296,7 +291,7 @@ const server = http.createServer(async (req, res) => {
       if (url.pathname === '/api/admin/guide-bookings' && method === 'GET') return json(res, 200, data.leads.filter(isGuideBooking))
       if (url.pathname === '/api/admin/miniprogram-bookings' && method === 'GET') return json(res, 200, data.leads.filter(isMiniProgramBooking))
       if (url.pathname === '/api/admin/settings' && method === 'GET') return json(res, 200, data.settings)
-      if (url.pathname === '/api/admin/settings' && method === 'PATCH') { data.settings = { ...data.settings, ...(await body(req)) }; saveData(data); return json(res, 200, data.settings) }
+      if (url.pathname === '/api/admin/settings' && method === 'PATCH') { data.settings = { ...data.settings, ...(await body(req)) }; await saveData(data); return json(res, 200, data.settings) }
       if (url.pathname === '/api/admin/upload-image' && method === 'POST') {
         const input = await body(req, 8 * 1024 * 1024)
         const match = String(input.data || '').match(/^data:(image\/(?:png|jpeg|webp));base64,(.+)$/)
@@ -308,7 +303,7 @@ const server = http.createServer(async (req, res) => {
         const imageDirs = [resolve(root, 'public/images'), join(distDir, 'images')]
         imageDirs.forEach((directory) => { mkdirSync(directory, { recursive: true }); writeFileSync(join(directory, filename), buffer) })
         data.settings = { ...data.settings, ogImage: `images/${filename}` }
-        saveData(data)
+        await saveData(data)
         return json(res, 201, { path: `images/${filename}`, url: `/${`images/${filename}`}` })
       }
       if (url.pathname === '/api/admin/miniprogram-users' && method === 'GET') return json(res, 200, { items: (data.miniprogramUsers || []).map((user) => adminMiniUserSummary(data, user)) })
@@ -328,14 +323,14 @@ const server = http.createServer(async (req, res) => {
           if (!user) return json(res, 404, { error: 'user not found' })
           ensureMiniCollections(user); const payload = collection === 'travelers' ? travelerPayload(input) : collection === 'documents' ? documentPayload(input) : couponPayload(input)
           if (!payload) return json(res, 422, { error: '缺少必填字段' })
-          const now = new Date().toISOString(); const item = { ...payload, id: id(collection === 'travelers' ? 'traveler' : collection === 'documents' ? 'document' : 'coupon'), createdAt: now, updatedAt: now }; user[collection].push(item); saveData(data); return json(res, 201, { ...(collection === 'travelers' ? safeTraveler(item, true) : collection === 'documents' ? safeDocument(item, true) : serializer(item)), userId: user.id, userNickname: user.nickname || user.id })
+          const now = new Date().toISOString(); const item = { ...payload, id: id(collection === 'travelers' ? 'traveler' : collection === 'documents' ? 'document' : 'coupon'), createdAt: now, updatedAt: now }; user[collection].push(item); await saveData(data); return json(res, 201, { ...(collection === 'travelers' ? safeTraveler(item, true) : collection === 'documents' ? safeDocument(item, true) : serializer(item)), userId: user.id, userNickname: user.nickname || user.id })
         }
         const found = findMiniRecord(data, collection, itemId)
         if (!found) return json(res, 404, { error: 'not found' })
-        if (method === 'DELETE') { found.items.splice(found.items.indexOf(found.item), 1); saveData(data); return res.writeHead(204).end() }
+        if (method === 'DELETE') { found.items.splice(found.items.indexOf(found.item), 1); await saveData(data); return res.writeHead(204).end() }
         const input = await body(req); const payload = collection === 'travelers' ? travelerPayload(input, found.item) : collection === 'documents' ? documentPayload(input, found.item) : couponPayload(input, found.item)
         if (!payload) return json(res, 422, { error: '缺少必填字段' })
-        Object.assign(found.item, payload, { updatedAt: new Date().toISOString() }); saveData(data); return json(res, 200, { ...(collection === 'travelers' ? safeTraveler(found.item, true) : collection === 'documents' ? safeDocument(found.item, true) : serializer(found.item)), userId: found.user.id, userNickname: found.user.nickname || found.user.id })
+        Object.assign(found.item, payload, { updatedAt: new Date().toISOString() }); await saveData(data); return json(res, 200, { ...(collection === 'travelers' ? safeTraveler(found.item, true) : collection === 'documents' ? safeDocument(found.item, true) : serializer(found.item)), userId: found.user.id, userNickname: found.user.nickname || found.user.id })
       }
       const match = url.pathname.match(/^\/api\/admin\/(routes|destinations|attractions|sampleItineraries|customTrips|leads)(?:\/([^/]+))?$/)
       if (match) {
@@ -345,12 +340,12 @@ const server = http.createServer(async (req, res) => {
           if (!input.client || !input.period) return json(res, 422, { error: '请填写客户称呼与行程日期' })
           const now = new Date().toISOString()
           const trip = { ...input, id: input.id || id('customTrip'), token: input.token || `${(input.orderNo || 'trip').toLowerCase().replace(/[^a-z0-9]/g, '')}${crypto.randomBytes(4).toString('hex')}`, status: input.status || 'active', createdAt: input.createdAt || now, updatedAt: now }
-          data.customTrips.unshift(trip); saveData(data)
+          data.customTrips.unshift(trip); await saveData(data)
           return json(res, 201, trip)
         }
         if (match[1] === 'leads' && method === 'GET' && url.searchParams.has('leadType')) return json(res, 200, leadsOfType(data.leads, url.searchParams.get('leadType')))
         const payload = method === 'GET' || method === 'DELETE' ? {} : await body(req)
-        const result = collectionHandler(data, match[1], method, match[2] ? `/api/admin/${match[1]}/${match[2]}` : url.pathname, payload)
+        const result = await collectionHandler(data, match[1], method, match[2] ? `/api/admin/${match[1]}/${match[2]}` : url.pathname, payload)
         if (result.status === 204) return res.writeHead(204).end()
         return json(res, result.status, result.body)
       }
@@ -372,4 +367,16 @@ const server = http.createServer(async (req, res) => {
   }
 })
 
-server.listen(port, '127.0.0.1', () => console.log(`SY Greece server: http://127.0.0.1:${port}/ (console: /manage-9f3k7)`))
+async function start() {
+  try {
+    await initStorage()
+    server.listen(port, '127.0.0.1', () => console.log(`SY Greece server: http://127.0.0.1:${port}/ (console: /manage-9f3k7)`))
+  } catch (error) {
+    console.error(`Storage initialization failed: ${error.message}`)
+    process.exitCode = 1
+  }
+}
+
+process.once('SIGTERM', async () => { await closeStorage(); process.exit(0) })
+process.once('SIGINT', async () => { await closeStorage(); process.exit(0) })
+start()
