@@ -35,9 +35,9 @@ export const images = {
 
 export function Logo() {
   return (
-    <Link className="logo" to="/" aria-label="SY 希腊蔚蓝海岸首页">
+    <Link className="logo" to="/" aria-label="SY希旅人首页">
       <span className="temple" aria-hidden="true"><i /><i /><i /></span>
-      <span>SY 希腊蔚蓝海岸</span>
+      <span>SY希旅人</span>
     </Link>
   )
 }
@@ -144,7 +144,7 @@ export function Footer() {
         <div><h3>{t('footer.services')}</h3><Link to="/customize">{language === 'en' ? 'Private planning' : language === 'ja' ? 'プライベート旅行' : language === 'el' ? 'Ιδιωτικός σχεδιασμός' : '私人定制'}</Link><a href="#services">{language === 'en' ? 'Private transfers' : language === 'ja' ? '専用車' : language === 'el' ? 'Ιδιωτικές μετακινήσεις' : '专属用车'}</a><a href="#experiences">{language === 'en' ? 'Yachts & private flights' : language === 'ja' ? 'ヨット / プライベートフライト' : language === 'el' ? 'Yacht / private flights' : '私人包机 / 游艇出海'}</a><Link to="/attractions">景点导览</Link><Link to="/knowledge-base">景点文史知识库</Link><Link to="/business-travel">商旅随行咨询</Link><Link to="/tools">{t('nav.tools')}</Link></div>
         <div><h3>{t('footer.contact')}</h3><span>{t('footer.wechat')}</span><span>{t('footer.phone')}</span><span>{t('footer.email')}</span></div>
       </div>
-      <div className="container copyright"><span>2026 SY Greece · {language === 'en' ? 'All rights reserved' : language === 'ja' ? '無断転載禁止' : language === 'el' ? 'Με επιφύλαξη παντός δικαιώματος' : '希腊蔚蓝海岸 · 版权所有'}</span><span>仅提供文化咨询、行程策划、知识付费与商务语言陪同咨询</span></div><div className="container footer-disclaimer"><ComplianceNotice /></div>
+      <div className="container copyright"><span>2026 SY Traveler · {language === 'en' ? 'All rights reserved' : language === 'ja' ? '無断転載禁止' : language === 'el' ? 'Με επιφύλαξη παντός δικαιώματος' : 'SY希旅人 · 版权所有'}</span><span>仅提供文化咨询、行程策划、知识付费与商务语言陪同咨询</span></div><div className="container footer-disclaimer"><ComplianceNotice /></div>
     </footer>
   )
 }

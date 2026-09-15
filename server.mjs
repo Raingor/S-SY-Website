@@ -110,7 +110,7 @@ function llms(data, req) {
 }
 function htmlAttr(value) { return String(value || '').replace(/[&<>"]/g, (char) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[char])) }
 function pageSeo(data, pathname, search, req) {
-  const config = { siteName: 'SY 希腊蔚蓝海岸', siteUrl: siteBase(data, req), defaultTitle: '只为一生美好回忆｜SY 希腊蔚蓝海岸', defaultDescription: '只为一生美好回忆。SY 希腊蔚蓝海岸提供雅典、圣托里尼及希腊全境的人文与行程咨询。', robotsPolicy: 'index,follow', ...data.settings }
+  const config = { siteName: 'SY希旅人', siteUrl: siteBase(data, req), defaultTitle: '只为一生美好回忆｜SY希旅人', defaultDescription: '只为一生美好回忆。SY希旅人提供雅典、圣托里尼及希腊全境的人文与行程咨询。', robotsPolicy: 'index,follow', ...data.settings }
   const query = new URLSearchParams(search || '').get('q')
   const attractionMatch = pathname.match(/^\/attractions\/([^/]+)$/)
   const matchedAttraction = attractionMatch ? (data.attractions || []).find((item) => item.id === decodeURIComponent(attractionMatch[1])) : null
@@ -121,21 +121,21 @@ function pageSeo(data, pathname, search, req) {
   const tripMatch = pathname.match(/^\/trip\/([^/]+)$/)
   const matchedTrip = tripMatch ? (data.customTrips || []).find((item) => item.token === tripMatch[1]) : null
   const pages = {
-    '/': ['只为一生美好回忆｜SY 希腊蔚蓝海岸', `只为一生美好回忆。${config.defaultDescription}`],
+    '/': ['只为一生美好回忆｜SY希旅人', `只为一生美好回忆。${config.defaultDescription}`],
     '/routes/honeymoon': ['爱琴海蜜月之旅｜5天4晚希腊定制路线', '雅典 + 圣托里尼 5 天 4 晚蜜月路线，中文司导、悬崖酒店、双体船出海与伊亚日落旅拍。'],
     '/customize': ['希腊行程咨询｜提交需求沟通方案', '告诉我们出行时间、人数与偏好，先沟通需求范围与行程规划方式。'],
     '/destinations/santorini': ['圣托里尼旅行指南｜蓝顶教堂与爱琴海日落', '圣托里尼悬崖酒店、伊亚日落、火山温泉与双体船巡航的深度旅行指南。'],
-    '/search': [`搜索${query ? `“${query}”` : '希腊旅行'}｜SY Greece`, '搜索希腊路线、目的地和私人定制旅行灵感。'],
+    '/search': [`搜索${query ? `“${query}”` : '希腊旅行'}｜SY Traveler`, '搜索希腊路线、目的地和私人定制旅行灵感。'],
     '/tools': ['希腊行前信息工具箱｜签证 · 汇率 · 天气 · 行程日历', '出发前准备希腊申根签证、欧元汇率、天气和每日行程的信息工具箱。'],
     '/attractions': ['希腊景点导览｜景点 · 博物馆 · 展品讲解', '按城市浏览雅典、圣托里尼、德尔斐等地的景点与博物馆，含参观指南与展品讲解。'],
-    '/itineraries': ['参考行程｜SY 希腊蔚蓝海岸', '雅典、圣托里尼与世界遗产环线的参考行程，可按需定制。'],
+    '/itineraries': ['参考行程｜SY希旅人', '雅典、圣托里尼与世界遗产环线的参考行程，可按需定制。'],
     '/heritage-guidance': ['古迹人文讲解预约｜希腊文化咨询', '预约雅典、德尔斐与克里特等古迹的人文知识讲解。'],
     '/vehicle-consultation': ['在地用车资源对接咨询｜希腊出行信息', '咨询希腊本地车型、司导资质与用车资源对接方式。'],
     '/knowledge-base': ['景点付费文史知识库｜免费预览', '浏览希腊景点的历史、神话与建筑知识预览。'],
     '/business-travel': ['希腊商旅随行咨询｜商务语言与行程规划', '提供商务陪同、语言翻译、企业拜访与人文行程的咨询。'],
 
     '/guides/richard-li': ['Richard 李名人导游｜希腊私人深度旅行与预约', '认识 Richard 李：武汉大学双学士、英国澳洲双硕士，提供希腊历史人文、小众秘境与私人摄影导览。'],
-    '/manage-9f3k7': ['网站管理后台｜SY 希腊蔚蓝海岸', 'SY 希腊蔚蓝海岸网站内容与 SEO 管理后台'],
+    '/manage-9f3k7': ['网站管理后台｜SY希旅人', 'SY希旅人网站内容与 SEO 管理后台'],
   }
   const dynamicPage = matchedTrip
     ? [`${matchedTrip.title}｜${matchedTrip.client}`, `${matchedTrip.period} 定制旅程，${matchedTrip.travelers}，${matchedTrip.vehicle}。`]
@@ -373,7 +373,7 @@ const server = http.createServer(async (req, res) => {
 async function start() {
   try {
     await initStorage()
-    server.listen(port, '127.0.0.1', () => console.log(`SY Greece server: http://127.0.0.1:${port}/ (console: /manage-9f3k7)`))
+    server.listen(port, '127.0.0.1', () => console.log(`SY Traveler server: http://127.0.0.1:${port}/ (console: /manage-9f3k7)`))
   } catch (error) {
     console.error(`Storage initialization failed: ${error.message}`)
     process.exitCode = 1
