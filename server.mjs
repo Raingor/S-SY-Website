@@ -117,9 +117,9 @@ async function sendLeadNotification(lead) {
   let lastError
   for (let attempt = 1; attempt <= 3; attempt += 1) {
     try {
-      await sendSmtpMail(lead)
-      console.info(`[mail] notification sent lead=${lead.id}`)
-      return { sent: true }
+      const result = await sendSmtpMail(lead)
+      if (result.sent) console.info(`[mail] notification sent lead=${lead.id}`)
+      return result
     } catch (error) { lastError = error; if (attempt < 3) await delay(attempt * 500) }
   }
   console.error(`[mail] notification failed lead=${lead.id} attempts=3 error=${redact(lastError?.message || lastError)}`)
