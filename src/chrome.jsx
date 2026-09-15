@@ -29,6 +29,8 @@ export const images = {
   zakynthos: `${IMG}zakynthos.webp`,
   richardAvatar: `${IMG}richard-avatar.webp`,
   richardProfile: `${IMG}richard-profile.webp`,
+  consultantAvatar: `${IMG}jenny-avatar.jpg`,
+  consultantQr: `${IMG}jenny-wechat-qr.png`,
   crete: `${IMG}crete.webp`,
   corinth: `${IMG}corinth.webp`,
 }
