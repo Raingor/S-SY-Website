@@ -123,6 +123,7 @@ SY_MINIPROGRAM_TOKEN_SECRET='用于签发小程序用户 Token 的随机密钥'
 - `GET /api/miniprogram/auth/me`：需要 `Authorization: Bearer <accessToken>`，返回 `nickname`、`avatarUrl`、`phoneBound` 与脱敏手机号。
 - `POST /api/miniprogram/auth/phone`：需要 Bearer Token，请求 `{ "code": "wx.getPhoneNumber 回调中的 code" }`，服务端调用微信手机号接口并保存绑定手机号。
 - `GET /api/miniprogram/profile`：需要 Bearer Token，返回当前用户资料以及真实统计 `{ user, stats: { appointments, trips, coupons, profiles } }`；预约统计包含导游/用车，行程统计包含定制/商旅，资料统计为常用出行人与证件资料数量。
+- `POST /api/miniprogram/profile/avatar`：需要 Bearer Token，以 `multipart/form-data` 上传字段 `file`，支持 PNG、JPG、WebP，单文件不超过 6MB；成功返回新的脱敏 `user.avatarUrl`。
 - `PATCH /api/miniprogram/profile`：需要 Bearer Token，仅允许修改当前用户 `nickname`；空昵称及“微信用户”等通用无效昵称返回 `422 INVALID_NICKNAME`，成功返回脱敏 `user`。登录接口只在已有昵称为空时接受新的昵称。
 - `GET /api/miniprogram/leads`：需要 Bearer Token，只返回当前用户自己的线索，响应 `{ "items": [...] }`；可用 `leadType`、`status` 查询参数筛选，不返回 openid、unionid 或其他用户数据。
 - `GET/POST/PATCH/DELETE /api/miniprogram/travelers[/:id]`：当前用户的常用出行人资料，字段 `name`、`relation`、`passportNo`。

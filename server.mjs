@@ -68,6 +68,43 @@ async function body(req, limit = 1024 * 1024) {
   for await (const chunk of req) { raw += chunk; if (raw.length > limit) throw new Error('payload too large') }
   return raw ? JSON.parse(raw) : {}
 }
+async function multipartImage(req, limit = 6 * 1024 * 1024) {
+  const contentType = String(req.headers['content-type'] || '')
+  const boundaryMatch = contentType.match(/boundary=(?:"([^"]+)"|([^;]+))/i)
+  if (!boundaryMatch) throw new Error('头像上传格式无效')
+  const boundary = Buffer.from(`--${boundaryMatch[1] || boundaryMatch[2]}`)
+  const chunks = []
+  let size = 0
+  for await (const chunk of req) {
+    const buffer = Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk)
+    size += buffer.length
+    if (size > limit) throw new Error('头像文件不能超过 6MB')
+    chunks.push(buffer)
+  }
+  const payload = Buffer.concat(chunks)
+  const headerEnd = payload.indexOf(Buffer.from('\r\n\r\n'))
+  if (headerEnd < 0) throw new Error('头像上传内容无效')
+  const fileStart = headerEnd + 4
+  const fileEnd = payload.indexOf(Buffer.concat([Buffer.from('\r\n'), boundary]), fileStart)
+  if (fileEnd < 0) throw new Error('头像上传内容不完整')
+  const header = payload.slice(0, headerEnd).toString('utf8')
+  const typeMatch = header.match(/\r\nContent-Type:\s*([^\r\n]+)/i)
+  const mimeType = String(typeMatch?.[1] || '').trim().toLowerCase()
+  if (!['image/png', 'image/jpeg', 'image/webp'].includes(mimeType)) throw new Error('仅支持 PNG、JPG 或 WebP 头像')
+  const image = payload.slice(fileStart, fileEnd)
+  if (!image.length) throw new Error('头像文件为空')
+  return { image, mimeType }
+}
+function saveMiniProgramAvatar(data, req, image, mimeType) {
+  const extension = mimeType === 'image/jpeg' ? 'jpg' : mimeType.split('/')[1]
+  const filename = `mp-avatar-${Date.now().toString(36)}-${crypto.randomBytes(3).toString('hex')}.${extension}`
+  const imageDirs = [resolve(root, 'public/images'), join(distDir, 'images')]
+  imageDirs.forEach((directory) => {
+    mkdirSync(directory, { recursive: true })
+    writeFileSync(join(directory, filename), image)
+  })
+  return `${siteBase(data, req)}/images/${filename}`
+}
 function publicContent(data) {
   return {
     settings: data.settings,
@@ -229,6 +266,20 @@ const server = http.createServer(async (req, res) => {
       const data = readData(); const user = miniProgramUserFromRequest(req, data)
       if (!user) return json(res, 401, { code: 'MINIPROGRAM_LOGIN_REQUIRED', error: '请先微信登录' })
       return json(res, 200, miniProgramProfile(data, user))
+    }
+    if (url.pathname === '/api/miniprogram/profile/avatar' && method === 'POST') {
+      const data = readData(); const user = miniProgramUserFromRequest(req, data)
+      if (!user) return json(res, 401, { code: 'MINIPROGRAM_LOGIN_REQUIRED', error: '请先微信登录' })
+      try {
+        const upload = await multipartImage(req)
+        user.avatarUrl = saveMiniProgramAvatar(data, req, upload.image, upload.mimeType)
+        user.updatedAt = new Date().toISOString()
+        await saveData(data)
+        return json(res, 200, { user: publicMiniProgramUser(user) })
+      } catch (error) {
+        const status = error.message === 'payload too large' || error.message.includes('不能超过') ? 413 : 422
+        return json(res, status, { code: 'MINIPROGRAM_AVATAR_UPLOAD_FAILED', error: error.message })
+      }
     }
     if (url.pathname === '/api/miniprogram/profile' && method === 'PATCH') {
       const data = readData(); const user = miniProgramUserFromRequest(req, data)
