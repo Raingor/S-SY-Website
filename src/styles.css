@@ -1162,10 +1162,13 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 /* Keep long admin tables inside their own panel instead of growing the page. */
 @media (min-width: 821px) {
   .admin-shell { height: 100vh; overflow: hidden; }
-  .admin-sidebar { min-height: 0; overflow-y: auto; }
-  .admin-main { min-height: 0; overflow-y: auto; }
+  .admin-sidebar { min-height: 0; overflow: hidden; }
+  .admin-sidebar nav { min-height: 0; overflow-y: auto; }
+  .admin-main { min-height: 0; overflow: hidden; display: flex; flex-direction: column; }
+  .admin-content { flex: 1; min-height: 0; overflow: hidden; }
   .admin-content > .collection-panel {
-    max-height: calc(100vh - 150px);
+    height: calc(100vh - 150px);
+    max-height: none;
     display: flex;
     flex-direction: column;
   }
@@ -1181,6 +1184,12 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
     top: 0;
     z-index: 2;
     background: #fff;
+  }
+  .admin-content > .admin-editor-page,
+  .admin-content > .settings-panel {
+    max-height: calc(100vh - 84px);
+    overflow-y: auto;
+    scrollbar-gutter: stable;
   }
   .admin-content:has(.admin-editor-page) > .collection-panel { display: none; }
 }
