@@ -6,6 +6,12 @@ import { LanguageSwitcher, translate, useLanguage } from './i18n'
 export const isRootPortableFile = window.location.protocol === 'file:' && !window.location.pathname.includes('/dist/')
 export const IMG = isRootPortableFile ? './public/images/' : '/images/'
 
+export function assetPath(source) {
+  if (!source) return ''
+  if (/^(?:https?:|data:|\/)/.test(source)) return source
+  return `/${String(source).replace(/^\.\//, '').replace(/^\//, '')}`
+}
+
 export const images = {
   santorini: `${IMG}santorini.webp`,
   athens: `${IMG}athens.webp`,
@@ -39,7 +45,14 @@ export function Header({ solid = false }) {
   const [language] = useLanguage()
   const t = (key) => translate(key, language)
   const location = useLocation()
-  useEffect(() => setOpen(false), [location.pathname])
+  useEffect(() => setOpen(false), [location.pathname, location.search])
+  useEffect(() => {
+    function closeOnEscape(event) {
+      if (event.key === 'Escape') setOpen(false)
+    }
+    window.addEventListener('keydown', closeOnEscape)
+    return () => window.removeEventListener('keydown', closeOnEscape)
+  }, [])
   const links = [
     ['/', t('nav.home')], ['/itineraries/sample-ae-6d', t('nav.routes')], ['/customize', t('nav.experiences')],
     ['/destinations/santorini', t('nav.destinations')], ['/attractions', t('nav.attractions')], ['/guides/richard-li', t('nav.guide')], ['/tools', t('nav.tools')],
@@ -54,7 +67,7 @@ export function Header({ solid = false }) {
         </nav>
         <LanguageSwitcher />
         <Link className="button button-gold nav-cta" to="/customize">{t('nav.customize')}</Link>
-        <button className="menu-button" onClick={() => setOpen(!open)} aria-expanded={open} aria-label="打开导航菜单">
+        <button className="menu-button" onClick={() => setOpen(!open)} aria-expanded={open} aria-label={open ? '关闭导航菜单' : '打开导航菜单'}>
           {open ? <X size={22} /> : <Menu size={22} />}
         </button>
       </div>
@@ -77,7 +90,7 @@ export function SectionTitle({ eyebrow, title, action, dark = false }) {
 
 export function InnerHero({ eyebrow, title, subtitle, breadcrumb, image = images.santorini, children, short = false }) {
   return (
-    <section className={`inner-hero ${short ? 'short' : ''}`} style={{ '--hero-image': `url(${image})` }}>
+    <section className={`inner-hero ${short ? 'short' : ''}`} style={{ '--hero-image': `url(${assetPath(image)})` }}>
       <Header />
       <div className="container inner-hero-content">
         {breadcrumb && <div className="breadcrumb">首页 / {breadcrumb}</div>}

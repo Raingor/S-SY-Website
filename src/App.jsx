@@ -8,7 +8,7 @@ import {
 } from 'lucide-react'
 import AdminPage from './admin'
 import { AttractionsIndex, AttractionDetail, CityGuidePage, ItinerariesIndex, ItineraryDetail, CustomTripPage } from './attractions'
-import { ComplianceNotice, Eyebrow, Footer, GoldCTA, Header, InnerHero, Logo, SectionTitle, images } from './chrome'
+import { assetPath, ComplianceNotice, Eyebrow, Footer, GoldCTA, Header, InnerHero, Logo, SectionTitle, images } from './chrome'
 import { translate, useLanguage } from './i18n'
 
 const routes = [
@@ -273,9 +273,10 @@ function RouteCard({ route, compact = false }) {
   return (
     <article className={`route-card ${compact ? 'compact' : ''}`}>
       <Link className="route-image" to={routePath(route)} aria-label={`查看${route.title}`}>
-        <img src={route.image} alt={route.title} loading="lazy" decoding="async" />
+        <img src={assetPath(route.image)} alt={route.title} loading="lazy" decoding="async" />
       </Link>
       <div className="route-copy">
+        <span className="route-index" aria-hidden="true">{String((route.days || '').match(/\d+/)?.[0] || '01').padStart(2, '0')}</span>
         <Eyebrow>{route.days} · {route.kicker}</Eyebrow>
         <h3><Link to={routePath(route)}>{route.title}</Link></h3>
         <div className="route-tags">{route.tags}</div>
@@ -289,7 +290,7 @@ function RouteCard({ route, compact = false }) {
 function DestinationCard({ item }) {
   return (
     <Link to={`/destinations/${item.slug || item.id || 'santorini'}`} className="destination-card">
-      <img src={item.image} alt={`${item.name}风光`} loading="lazy" decoding="async" />
+      <img src={assetPath(item.image)} alt={`${item.name}风光`} loading="lazy" decoding="async" />
       <span><strong>{item.name}</strong><small>{item.en}</small></span>
     </Link>
   )
@@ -344,7 +345,7 @@ function Home() {
       <section id="services" className="section services-section">
         <div className="container">
           <SectionTitle eyebrow="OUR SERVICES" title="不只是行程，更是在地服务" action={{ to: '/customize', label: '了解全部服务' }} />
-          <div className="service-grid">{services.map(([Icon, title, desc], index) => <Link to={serviceLinks[index]} className="service-card" key={title}><Icon /><h3>{title}</h3><p>{desc}</p><ArrowRight size={17} /></Link>)}</div>
+          <div className="service-grid">{services.map(([Icon, title, desc], index) => <Link to={serviceLinks[index]} className="service-card" key={title}><span className="service-index" aria-hidden="true">0{index + 1}</span><Icon /><h3>{title}</h3><p>{desc}</p><ArrowRight size={17} /></Link>)}</div>
           <GuideTeaser />
         </div>
       </section>
@@ -370,7 +371,7 @@ function Home() {
             {[
               [images.jet, '私人包机', '雅典往返圣托里尼 / 米克诺斯，跳过轮渡排队，清晨出发，落地即开始假期。'],
               [images.yacht, '游艇出海', '私人游艇 + 船长 + 轻食下午茶，火山湖浮潜、隐秘海湾与海面落日。'],
-            ].map(([image, title, desc]) => <article className="experience-card" key={title}><div className="experience-image"><img src={image} alt={title} loading="lazy" decoding="async" /><span>高端定制</span></div><div><h3>{title}</h3><p>{desc}</p><Link to="/customize">咨询{title}方案 <ArrowRight size={14} /></Link></div></article>)}
+            ].map(([image, title, desc]) => <article className="experience-card" key={title}><div className="experience-image"><img src={assetPath(image)} alt={title} loading="lazy" decoding="async" /><span>高端定制</span></div><div><h3>{title}</h3><p>{desc}</p><Link to="/customize">咨询{title}方案 <ArrowRight size={14} /></Link></div></article>)}
           </div>
         </div>
       </section>
@@ -447,12 +448,13 @@ function ConsultationDock() {
   const [open, setOpen] = useState(false)
   const [sent, setSent] = useState(false)
   if (pathname.startsWith('/manage-9f3k7')) return null
+  const context = pathname.startsWith('/guides/') ? '预约 Richard' : pathname.startsWith('/heritage-guidance') ? '咨询古迹讲解' : pathname.startsWith('/attractions') ? '咨询景点导览' : pathname.startsWith('/business-travel') ? '咨询商旅方案' : pathname.startsWith('/knowledge-base') ? '咨询知识库' : '在线咨询'
   async function submit(event) {
     event.preventDefault(); const form = event.currentTarget
     await postLead({ ...Object.fromEntries(new FormData(form)), leadType: form.leadType.value || 'customization' })
     form.reset(); setSent(true); window.setTimeout(() => { setSent(false); setOpen(false) }, 3500)
   }
-  return <div className="consultation-dock">{open && <div className="consultation-popover"><button className="consultation-close" onClick={() => setOpen(false)} aria-label="关闭"><X size={17} /></button>{sent ? <div className="consultation-sent"><Check size={22} /><strong>咨询已收到</strong><span>我们会尽快与你沟通需求范围。</span></div> : <form onSubmit={submit}><Eyebrow>ONLINE CONSULTATION</Eyebrow><h3>先说说你想了解什么</h3><label>咨询类型<select name="leadType" defaultValue="customization"><option value="customization">行程定制咨询</option><option value="guide-booking">古迹人文讲解预约</option><option value="vehicle-consultation">在地用车资源对接咨询</option><option value="knowledge-base">景点文史知识库</option><option value="business-travel">商旅随行咨询</option></select></label><label>联系方式<input name="contact" required placeholder="微信 / 手机号 / 邮箱" /></label><label>一句话需求<textarea name="requirements" rows="3" placeholder="例如：想了解雅典古迹讲解或商务陪同"></textarea></label><button className="button button-primary button-block" type="submit">提交咨询</button></form>}</div>}<button className="consultation-trigger" onClick={() => setOpen((value) => !value)}><MessageCircle size={18} />在线咨询</button></div>
+  return <div className="consultation-dock">{open && <div id="consultation-form" className="consultation-popover"><button className="consultation-close" onClick={() => setOpen(false)} aria-label="关闭"><X size={17} /></button>{sent ? <div className="consultation-sent"><Check size={22} /><strong>咨询已收到</strong><span>我们会尽快与你沟通需求范围。</span></div> : <form onSubmit={submit}><Eyebrow>ONLINE CONSULTATION</Eyebrow><h3>先说说你想了解什么</h3><p className="consultation-context">当前页面：{context}</p><label>咨询类型<select name="leadType" defaultValue="customization"><option value="customization">行程定制咨询</option><option value="guide-booking">古迹人文讲解预约</option><option value="vehicle-consultation">在地用车资源对接咨询</option><option value="knowledge-base">景点文史知识库</option><option value="business-travel">商旅随行咨询</option></select></label><label>联系方式<input name="contact" required placeholder="微信 / 手机号 / 邮箱" /></label><label>一句话需求<textarea name="requirements" rows="3" placeholder="例如：想了解雅典古迹讲解或商务陪同"></textarea></label><button className="button button-primary button-block" type="submit">提交咨询</button></form>}</div>}<button className="consultation-trigger" onClick={() => setOpen((value) => !value)} aria-expanded={open} aria-controls="consultation-form"><MessageCircle size={18} />{context}</button></div>
 }
 
 function HeritageGuidance() {
@@ -478,7 +480,7 @@ function KnowledgeBase() {
   const { slug } = useParams()
   const spot = knowledgeSpots.find((item) => item.slug === slug)
   if (spot) return <><InnerHero image={spot.image} eyebrow={`KNOWLEDGE BASE · ${spot.en}`} title={spot.name} subtitle="免费预览一段景点背景，完整音频与图文内容将在真实支付/会员能力接入后开放。" breadcrumb={`景点文史知识库 / ${spot.name}`} /><main className="knowledge-detail section"><div className="container knowledge-detail-grid"><article className="knowledge-preview"><Eyebrow>FREE PREVIEW</Eyebrow><h2>{spot.name}：先听懂，再看见</h2><p>{spot.preview}</p><div className="audio-placeholder"><Headphones size={20} /><span>{spot.audio}</span><button type="button" disabled>试听占位</button></div><p className="knowledge-disclaimer">当前为内容结构与免费预览展示，未上线真实购买、支付或会员权益。</p></article><aside className="knowledge-unlock"><Eyebrow>UNLOCK LATER</Eyebrow><h3>付费解锁板块（占位）</h3>{spot.unlocked.map((item) => <div key={item}><Check size={15} />{item}</div>)}<button className="button button-deep button-block" type="button" disabled>支付 / 会员功能后续接入</button><Link className="text-link" to="/knowledge-base">返回知识库目录 <ChevronRight size={15} /></Link></aside></div></main><ComplianceNotice /><Footer /></>
-  return <><InnerHero eyebrow="KNOWLEDGE BASE" title="景点付费文史知识库" subtitle="先从免费预览认识雅典卫城、德尔斐、圣岛与克里特王宫，完整内容能力后续接入。" breadcrumb="景点文史知识库" /><main className="knowledge-index section"><div className="container"><SectionTitle eyebrow="GREEK HISTORY · AUDIO · GUIDE" title="把景点从打卡变成理解" /><div className="knowledge-grid">{knowledgeSpots.map((item) => <article className="knowledge-card" key={item.slug}><img src={item.image} alt={item.name} loading="lazy" decoding="async" /><div><Eyebrow>{item.en}</Eyebrow><h3>{item.name}</h3><p>{item.preview}</p><Link className="text-link" to={`/knowledge-base/${item.slug}`}>查看免费预览 <ArrowRight size={14} /></Link></div></article>)}</div><div className="knowledge-notice"><LockKeyhole size={18} /><span>音频深度讲解、图文手册和会员订阅目前仅做页面占位，真实支付与会员系统需后续接入，不代表已上线购买。</span></div></div></main><ComplianceNotice /><Footer /></>
+  return <><InnerHero eyebrow="KNOWLEDGE BASE" title="景点付费文史知识库" subtitle="先从免费预览认识雅典卫城、德尔斐、圣岛与克里特王宫，完整内容能力后续接入。" breadcrumb="景点文史知识库" /><main className="knowledge-index section"><div className="container"><SectionTitle eyebrow="GREEK HISTORY · AUDIO · GUIDE" title="把景点从打卡变成理解" /><div className="knowledge-grid">{knowledgeSpots.map((item) => <article className="knowledge-card" key={item.slug}><img src={assetPath(item.image)} alt={item.name} loading="lazy" decoding="async" /><div><Eyebrow>{item.en}</Eyebrow><h3>{item.name}</h3><p>{item.preview}</p><Link className="text-link" to={`/knowledge-base/${item.slug}`}>查看免费预览 <ArrowRight size={14} /></Link></div></article>)}</div><div className="knowledge-notice"><LockKeyhole size={18} /><span>音频深度讲解、图文手册和会员订阅目前仅做页面占位，真实支付与会员系统需后续接入，不代表已上线购买。</span></div></div></main><ComplianceNotice /><Footer /></>
 }
 
 function Customize() {

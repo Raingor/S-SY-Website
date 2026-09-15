@@ -1,5 +1,5 @@
 import http from 'node:http'
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
+import { existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from 'node:fs'
 import { dirname, extname, join, normalize, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import crypto from 'node:crypto'
@@ -8,23 +8,36 @@ const root = dirname(fileURLToPath(import.meta.url))
 const distDir = resolve(root, 'dist')
 const dataPath = resolve(root, 'data/site-data.json')
 const port = Number(process.env.PORT || 4173)
-const adminPassword = process.env.SY_ADMIN_PASSWORD || 'sy-greece-admin'
+const adminPassword = String(process.env.SY_ADMIN_PASSWORD || '')
 const miniProgramTokenSecret = process.env.SY_MINIPROGRAM_TOKEN_SECRET || ''
 const wechatApiBase = String(process.env.WX_API_BASE_URL || 'https://api.weixin.qq.com').replace(/\/$/, '')
-const tokens = new Set()
+const allowedOrigin = String(process.env.SY_ALLOWED_ORIGIN || '').replace(/\/$/, '')
+const tokens = new Map()
+const adminTokenTtlMs = 8 * 60 * 60 * 1000
 let wechatAccessToken = { value: '', expiresAt: 0 }
 const mime = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8', '.json': 'application/json; charset=utf-8', '.png': 'image/png', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.webp': 'image/webp', '.svg': 'image/svg+xml', '.ico': 'image/x-icon' }
 const immutableExtensions = new Set(['.png', '.jpg', '.jpeg', '.webp', '.svg', '.ico', '.woff', '.woff2'])
 
 function readData() { return JSON.parse(readFileSync(dataPath, 'utf8')) }
-function saveData(data) { writeFileSync(dataPath, `${JSON.stringify(data, null, 2)}\n`) }
-function corsHeaders() { return { 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Methods': 'GET,POST,PATCH,DELETE,OPTIONS', 'Access-Control-Allow-Headers': 'Content-Type, Authorization' } }
+function saveData(data) {
+  const tempPath = `${dataPath}.${process.pid}.${crypto.randomBytes(4).toString('hex')}.tmp`
+  writeFileSync(tempPath, `${JSON.stringify(data, null, 2)}\n`, { encoding: 'utf8', mode: 0o600 })
+  renameSync(tempPath, dataPath)
+}
+function corsHeaders() { return { ...(allowedOrigin ? { 'Access-Control-Allow-Origin': allowedOrigin, Vary: 'Origin' } : {}), 'Access-Control-Allow-Methods': 'GET,POST,PATCH,DELETE,OPTIONS', 'Access-Control-Allow-Headers': 'Content-Type, Authorization' } }
 function json(res, status, body) { res.writeHead(status, { ...corsHeaders(), 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' }); res.end(JSON.stringify(body)) }
 function text(res, status, body, contentType) { res.writeHead(status, { 'Content-Type': contentType, 'Cache-Control': 'public, max-age=300' }); res.end(body) }
 function isGuideBooking(lead) { return lead.leadType === 'guide-booking' || Boolean(lead.guideSlug) }
 function isMiniProgramBooking(lead) { return ['miniprogram', 'wechat-miniprogram'].includes(lead.platform) || ['miniprogram', 'wechat-miniprogram'].includes(lead.source) || lead.leadType === 'mini-program-booking' }
 function leadsOfType(leads, leadType) { return leadType ? leads.filter((lead) => lead.leadType === leadType) : leads }
-function isAdmin(req) { const auth = req.headers.authorization || ''; return auth.startsWith('Bearer ') && tokens.has(auth.slice(7)) }
+function isAdmin(req) {
+  const auth = req.headers.authorization || ''
+  if (!auth.startsWith('Bearer ')) return false
+  const token = auth.slice(7); const expiresAt = tokens.get(token)
+  if (!expiresAt) return false
+  if (expiresAt <= Date.now()) { tokens.delete(token); return false }
+  return true
+}
 function isMiniProgramLead(input) { return ['wechat-miniprogram', 'miniprogram'].includes(input.platform) || ['wechat-miniprogram', 'miniprogram'].includes(input.source) }
 function miniProgramConfigReady() { return Boolean(process.env.WX_APPID && process.env.WX_APP_SECRET && miniProgramTokenSecret) }
 function encodeTokenPart(value) { return Buffer.from(JSON.stringify(value)).toString('base64url') }
@@ -69,6 +82,14 @@ function publicContent(data) {
     sampleItineraries: (data.sampleItineraries || []).filter((item) => item.status !== 'archived').map((item) => ({ ...item, cover: `./images/${item.cover}` })),
     cities: (data.cities || []).filter((item) => item.status !== 'archived').map((item) => ({ ...item, mosaic: (item.mosaic || []).map((image) => `./images/${image}`) })),
   }
+}
+function readiness(data) {
+  const requiredCollections = ['routes', 'destinations', 'cities', 'attractions', 'sampleItineraries', 'customTrips', 'leads', 'miniprogramUsers']
+  const missing = requiredCollections.filter((key) => !Array.isArray(data[key]))
+  if (!adminPassword) missing.push('SY_ADMIN_PASSWORD')
+  if (!miniProgramConfigReady()) missing.push('WX_APPID/WX_APP_SECRET/SY_MINIPROGRAM_TOKEN_SECRET')
+  if (!data.settings?.siteUrl) missing.push('settings.siteUrl')
+  return { ok: missing.length === 0, missing, content: { cities: data.cities?.length || 0, attractions: data.attractions?.length || 0, sampleItineraries: data.sampleItineraries?.length || 0 } }
 }
 function xml(value) { return String(value).replace(/[<>&'\"]/g, (char) => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;', "'": '&apos;', '"': '&quot;' }[char])) }
 function siteBase(data, req) { return String(data.settings.siteUrl || `http://${req.headers.host || '127.0.0.1:4173'}`).replace(/\/$/, '') }
@@ -156,14 +177,16 @@ const server = http.createServer(async (req, res) => {
     const method = req.method || 'GET'
     if (method === 'OPTIONS' && url.pathname.startsWith('/api/')) return res.writeHead(204, corsHeaders()).end()
     if (url.pathname === '/api/health') return json(res, 200, { ok: true, service: 'sy-greece-admin', time: new Date().toISOString() })
+    if (url.pathname === '/api/readiness' && method === 'GET') { const result = readiness(readData()); return json(res, result.ok ? 200 : 503, result) }
     if (url.pathname === '/robots.txt' && method === 'GET') { const data = readData(); const base = siteBase(data, req); return text(res, 200, `User-agent: *\nAllow: /\nDisallow: /manage-9f3k7\nDisallow: /api/\nSitemap: ${base}/sitemap.xml\n`, 'text/plain; charset=utf-8') }
     if (url.pathname === '/sitemap.xml' && method === 'GET') return text(res, 200, sitemap(readData(), req), 'application/xml; charset=utf-8')
     if (url.pathname === '/llms.txt' && method === 'GET') return text(res, 200, llms(readData(), req), 'text/plain; charset=utf-8')
     if (url.pathname === '/api/auth/login' && method === 'POST') {
+      if (!adminPassword) return json(res, 503, { error: '后台安全密码尚未配置' })
       const input = await body(req)
       if (input.password !== adminPassword) return json(res, 401, { error: '密码不正确' })
-      const token = crypto.randomBytes(24).toString('hex'); tokens.add(token)
-      return json(res, 200, { token, user: { name: 'SY Admin', role: 'editor' } })
+      const token = crypto.randomBytes(24).toString('hex'); tokens.set(token, Date.now() + adminTokenTtlMs)
+      return json(res, 200, { token, tokenType: 'Bearer', expiresIn: Math.floor(adminTokenTtlMs / 1000), user: { name: 'SY Admin', role: 'editor' } })
     }
     if (url.pathname === '/api/content' && method === 'GET') return json(res, 200, publicContent(readData()))
     const tripApiMatch = url.pathname.match(/^\/api\/trip\/([^/]+)$/)

@@ -21,20 +21,20 @@ SY Greece 中高端希腊私人定制旅行官网，包含前台展示、预约�
 - Richard 李名人导游：<http://127.0.0.1:4173/guides/richard-li>
 - 后台管理：<http://127.0.0.1:4173/manage-9f3k7>
 - 健康检查：<http://127.0.0.1:4173/api/health>
+- 上线就绪检查：<http://127.0.0.1:4173/api/readiness>
 
 ## 后台登录
 
 - 后台地址：<https://sy-greece.com/manage-9f3k7>
 - 本地后台地址：<http://127.0.0.1:4173/manage-9f3k7>
-- 生产密码：`7f40605c585310b47896583c37fd7b8b9474ec9c73f7ebe4`
 
-生产环境请通过环境变量修改密码：
+后台密码不写入仓库。启动服务前必须通过环境变量提供独立的生产密码；未配置时 `/api/readiness` 会失败，后台登录也会被拒绝：
 
 ```bash
-SY_ADMIN_PASSWORD='生产环境变量中的密码' npm run start
+SY_ADMIN_PASSWORD='请通过部署平台注入的密码' npm run start
 ```
 
-> 不要在生产环境继续使用默认密码。后台路径为非公开入口，但不能替代密码安全措施。
+> 后台路径为非公开入口，但不能替代密码安全措施。生产环境还需配置 `WX_APPID`、`WX_APP_SECRET`、`SY_MINIPROGRAM_TOKEN_SECRET` 和 `SY_ALLOWED_ORIGIN`。
 
 ## 启动方式
 

@@ -6,7 +6,7 @@ import {
   Lightbulb, Map as MapIcon, MapPin, Megaphone, Ship, Sparkles, Star, Store, Ticket,
   TrainFront, Volume2,
 } from 'lucide-react'
-import { ComplianceNotice, Eyebrow, Footer, GoldCTA, Header, InnerHero, SectionTitle, images } from './chrome'
+import { assetPath, ComplianceNotice, Eyebrow, Footer, GoldCTA, Header, InnerHero, SectionTitle, images } from './chrome'
 import staticData from './attractions-data.json'
 
 const isFile = window.location.protocol === 'file:'
@@ -65,7 +65,7 @@ export function AttractionsIndex() {
             {enriched.map((city) => (
               <Link to={`/attractions/city/${city.id}`} className="city-entry-card" key={city.id}>
                 <div className="city-entry-mosaic">
-                  {(city.mosaic || []).slice(0, 4).map((image, index) => <img src={image} alt="" loading="lazy" decoding="async" key={index} />)}
+                  {(city.mosaic || []).slice(0, 4).map((image, index) => <img src={assetPath(image)} alt="" loading="lazy" decoding="async" key={index} />)}
                   <div className="city-entry-overlay">
                     <Eyebrow dark>{CITY_EN[city.id] || city.name}</Eyebrow>
                     <h3>{city.name}</h3>
@@ -87,7 +87,7 @@ export function AttractionsIndex() {
               <div className="itinerary-card-grid">
                 {sampleItineraries.map((item) => (
                   <Link to={`/itineraries/${item.id}`} className="itinerary-mini-card" key={item.id}>
-                    <img src={item.cover} alt={item.title} loading="lazy" decoding="async" />
+                    <img src={assetPath(item.cover)} alt={item.title} loading="lazy" decoding="async" />
                     <span className="itinerary-days-chip">{item.days} 天</span>
                     <div><h3>{item.title}</h3><p>{item.summary}</p></div>
                   </Link>
@@ -123,7 +123,7 @@ export function CityGuidePage() {
         <Header />
         <div className="city-guide-back"><Link to="/attractions"><ArrowLeft size={16} />返回城市选择</Link></div>
         <div className="city-mosaic" aria-hidden="true">
-          {mosaicRows.map((row, rowIndex) => <div className="city-mosaic-row" key={rowIndex}>{row.map((image, index) => <img src={image} alt="" key={index} />)}</div>)}
+          {mosaicRows.map((row, rowIndex) => <div className="city-mosaic-row" key={rowIndex}>{row.map((image, index) => <img src={assetPath(image)} alt="" key={index} />)}</div>)}
           <div className="city-mosaic-shade" />
         </div>
         <div className="container city-guide-content">
@@ -158,7 +158,7 @@ export function CityGuidePage() {
               {cityAttractions.map((item) => (
                 <Link to={`/attractions/${item.id}`} className="dark-attraction-card" key={item.id}>
                   <div className="dark-attraction-image">
-                    <img src={item.image} alt={item.name} loading="lazy" decoding="async" />
+                    <img src={assetPath(item.image)} alt={item.name} loading="lazy" decoding="async" />
                     {sizeLabelOf(item) && <span className="scale-badge">{sizeLabelOf(item)}</span>}
                   </div>
                   <div className="dark-attraction-copy">
@@ -232,7 +232,7 @@ export function AttractionDetail() {
                 <div className="exhibit-grid">
                   {(attraction.exhibits || []).map((exhibit) => (
                     <article className="exhibit-card" key={exhibit.id}>
-                      <div className="exhibit-image"><img src={exhibit.image} alt={exhibit.name} loading="lazy" decoding="async" /><span className="exhibit-duration"><Headphones size={13} />{exhibit.duration}</span></div>
+                      <div className="exhibit-image"><img src={assetPath(exhibit.image)} alt={exhibit.name} loading="lazy" decoding="async" /><span className="exhibit-duration"><Headphones size={13} />{exhibit.duration}</span></div>
                       <div className="exhibit-copy">
                         <h3>{exhibit.name}</h3>
                         <small>{exhibit.author}</small>
@@ -276,7 +276,7 @@ export function AttractionDetail() {
                 <div className="article-grid">
                   {(attraction.articles || []).map((article) => (
                     <article className="article-card" key={article.title}>
-                      <div className="article-image"><img src={article.cover} alt={article.title} loading="lazy" decoding="async" /></div>
+                      <div className="article-image"><img src={assetPath(article.cover)} alt={article.title} loading="lazy" decoding="async" /></div>
                       <div><span className="article-date"><CalendarDays size={13} />{article.date}</span><h3>{article.title}</h3><p>{article.summary}</p></div>
                     </article>
                   ))}
@@ -290,7 +290,7 @@ export function AttractionDetail() {
                 <div className="itinerary-card-grid">
                   {relatedItineraries.map((trip) => (
                     <Link to={`/itineraries/${trip.id}`} className="itinerary-mini-card" key={trip.id}>
-                      <img src={trip.cover} alt={trip.title} loading="lazy" decoding="async" />
+                      <img src={assetPath(trip.cover)} alt={trip.title} loading="lazy" decoding="async" />
                       <span className="itinerary-days-chip">{trip.days} 天</span>
                       <div><h3>{trip.title}</h3><p>{trip.summary}</p></div>
                     </Link>
@@ -343,7 +343,7 @@ export function ItinerariesIndex() {
           <div className="itinerary-list">
             {sampleItineraries.map((trip) => (
               <article className="itinerary-row-card" key={trip.id}>
-                <Link className="itinerary-row-image" to={`/itineraries/${trip.id}`}><img src={trip.cover} alt={trip.title} loading="lazy" decoding="async" /><span className="itinerary-days-chip">{trip.days} 天</span></Link>
+                <Link className="itinerary-row-image" to={`/itineraries/${trip.id}`}><img src={assetPath(trip.cover)} alt={trip.title} loading="lazy" decoding="async" /><span className="itinerary-days-chip">{trip.days} 天</span></Link>
                 <div className="itinerary-row-copy">
                   <Eyebrow>{trip.days} DAYS · SAMPLE</Eyebrow>
                   <h2><Link to={`/itineraries/${trip.id}`}>{trip.title}</Link></h2>
