@@ -162,14 +162,20 @@ function saveMiniProgramAvatar(data, req, image, mimeType) {
   })
   return `${siteBase(data, req)}/images/${filename}`
 }
-function publicContent(data) {
+function publicContent(data, countryId = 'greece') {
+  const imageUrl = (value) => value && !/^(?:https?:)?\/\//i.test(String(value)) && !String(value).startsWith('/') ? `./images/${String(value).replace(/^\.\/images\//, '')}` : value
+  const countries = (data.countries || []).filter((item) => item.enabled !== false).sort((a, b) => Number(a.sort || 0) - Number(b.sort || 0))
+  const guides = (data.guides || []).filter((item) => item.enabled !== false && (item.countryId || 'greece') === countryId).sort((a, b) => Number(a.sort || 0) - Number(b.sort || 0))
+  const scoped = (items) => (items || []).filter((item) => (item.countryId || 'greece') === countryId)
   return {
     settings: data.settings,
-    routes: data.routes.filter((item) => item.status === 'published').map((item) => ({ ...item, image: `./images/${item.image}` })),
-    destinations: data.destinations.filter((item) => item.status === 'published').map((item) => ({ ...item, image: `./images/${item.image}` })),
-    attractions: (data.attractions || []).filter((item) => item.status === 'published').map((item) => ({ ...item, image: `./images/${item.image}`, exhibits: (item.exhibits || []).map((exhibit) => ({ ...exhibit, image: exhibit.image ? `./images/${exhibit.image}` : '' })), articles: (item.articles || []).map((article) => ({ ...article, cover: `./images/${article.cover}` })) })),
-    sampleItineraries: (data.sampleItineraries || []).filter((item) => item.status === 'published').map((item) => ({ ...item, cover: `./images/${item.cover}` })),
-    cities: (data.cities || []).filter((item) => item.status !== 'archived').map((item) => ({ ...item, mosaic: (item.mosaic || []).map((image) => `./images/${image}`) })),
+    countries: countries.map((item) => ({ ...item, heroImage: imageUrl(item.heroImage) })),
+    guides: guides.map((item) => ({ ...item, avatar: imageUrl(item.avatar), fullImage: imageUrl(item.fullImage) })),
+    routes: scoped(data.routes).filter((item) => item.status === 'published').map((item) => ({ ...item, image: `./images/${item.image}` })),
+    destinations: scoped(data.destinations).filter((item) => item.status === 'published').map((item) => ({ ...item, image: `./images/${item.image}` })),
+    attractions: scoped(data.attractions).filter((item) => item.status === 'published').map((item) => ({ ...item, image: `./images/${item.image}`, exhibits: (item.exhibits || []).map((exhibit) => ({ ...exhibit, image: exhibit.image ? `./images/${exhibit.image}` : '' })), articles: (item.articles || []).map((article) => ({ ...article, cover: `./images/${article.cover}` })) })),
+    sampleItineraries: scoped(data.sampleItineraries).filter((item) => item.status === 'published').map((item) => ({ ...item, cover: `./images/${item.cover}` })),
+    cities: scoped(data.cities).filter((item) => item.status !== 'archived').map((item) => ({ ...item, mosaic: (item.mosaic || []).map((image) => `./images/${image}`) })),
   }
 }
 function readiness(data) {
@@ -282,7 +288,7 @@ const server = http.createServer(async (req, res) => {
       const token = crypto.randomBytes(24).toString('hex'); tokens.set(token, Date.now() + adminTokenTtlMs)
       return json(res, 200, { token, tokenType: 'Bearer', expiresIn: Math.floor(adminTokenTtlMs / 1000), user: { name: 'SY Admin', role: 'editor' } })
     }
-    if (url.pathname === '/api/content' && method === 'GET') return json(res, 200, publicContent(readData()))
+    if (url.pathname === '/api/content' && method === 'GET') return json(res, 200, publicContent(readData(), url.searchParams.get('country') || 'greece'))
     const tripApiMatch = url.pathname.match(/^\/api\/trip\/([^/]+)$/)
     if (tripApiMatch && method === 'GET') {
       const data = readData()
@@ -392,7 +398,7 @@ const server = http.createServer(async (req, res) => {
         if (!miniProgramUser) return json(res, 401, { code: 'MINIPROGRAM_LOGIN_REQUIRED', error: '请先微信登录' })
         if (!miniProgramUser.phone) return json(res, 403, { code: 'PHONE_BIND_REQUIRED', error: '提交前请先绑定手机号' })
       } else if (!input.contact) return json(res, 422, { error: '请填写联系方式' })
-      const lead = { ...input, id: input.id || id('lead'), source: input.source || input.platform || 'website', platform: input.platform || input.source || 'website', leadType: input.leadType || 'customization', status: 'new', createdAt: input.createdAt || new Date().toISOString() }
+      const lead = { ...input, id: input.id || id('lead'), countryId: input.countryId || 'greece', source: input.source || input.platform || 'website', platform: input.platform || input.source || 'website', leadType: input.leadType || 'customization', status: 'new', createdAt: input.createdAt || new Date().toISOString() }
       if (miniProgramUser) { lead.userId = miniProgramUser.id; lead.contact = miniProgramUser.phone; lead.contactType = 'phone' }
       data.leads.unshift(lead); await saveData(data); void sendLeadNotification(lead)
       return json(res, 201, lead)
@@ -400,6 +406,17 @@ const server = http.createServer(async (req, res) => {
     if (url.pathname.startsWith('/api/admin/')) {
       if (!isAdmin(req)) return json(res, 401, { error: '未授权，请先登录后台' })
       const data = readData()
+      const masterMatch = url.pathname.match(/^\/api\/admin\/(countries|guides)(?:\/([^/]+))?$/)
+      if (masterMatch && ['GET', 'POST', 'PATCH', 'DELETE'].includes(method)) {
+        const collection = masterMatch[1]; const itemId = masterMatch[2]
+        if (method === 'GET') return json(res, 200, { items: data[collection] || [] })
+        data[collection] = Array.isArray(data[collection]) ? data[collection] : []
+        if (method === 'POST') { const input = await body(req); const item = { ...input, id: input.id || id(collection.slice(0, -1)), ...(collection === 'guides' ? { countryId: input.countryId || 'greece' } : {}) }; data[collection].push(item); await saveData(data); return json(res, 201, item) }
+        const index = data[collection].findIndex((item) => item.id === itemId)
+        if (index < 0) return json(res, 404, { error: 'not found' })
+        if (method === 'DELETE') { data[collection].splice(index, 1); await saveData(data); return res.writeHead(204).end() }
+        data[collection][index] = { ...data[collection][index], ...(await body(req)), id: itemId }; await saveData(data); return json(res, 200, data[collection][index])
+      }
       if (url.pathname === '/api/admin/stats' && method === 'GET') return json(res, 200, { routes: data.routes.filter((x) => x.status === 'published').length, destinations: data.destinations.filter((x) => x.status === 'published').length, leads: data.leads.length, pendingLeads: data.leads.filter((x) => x.status === 'new').length, customizationLeads: data.leads.filter((x) => x.leadType === 'customization').length, guideBookings: data.leads.filter(isGuideBooking).length, pendingGuideBookings: data.leads.filter((x) => isGuideBooking(x) && x.status === 'new').length, miniProgramBookings: data.leads.filter(isMiniProgramBooking).length, vehicleConsultations: data.leads.filter((x) => x.leadType === 'vehicle-consultation').length, knowledgeBaseLeads: data.leads.filter((x) => x.leadType === 'knowledge-base').length, businessTravelLeads: data.leads.filter((x) => x.leadType === 'business-travel').length, attractions: (data.attractions || []).filter((x) => x.status === 'published').length, sampleItineraries: (data.sampleItineraries || []).filter((x) => x.status === 'published').length, customTrips: (data.customTrips || []).filter((x) => x.status !== 'archived').length })
       if (url.pathname === '/api/admin/guide-bookings' && method === 'GET') return json(res, 200, data.leads.filter(isGuideBooking))
       if (url.pathname === '/api/admin/miniprogram-bookings' && method === 'GET') return json(res, 200, data.leads.filter(isMiniProgramBooking))
@@ -494,6 +511,12 @@ const server = http.createServer(async (req, res) => {
 async function start() {
   try {
     await initStorage()
+    const data = readData()
+    data.countries = Array.isArray(data.countries) && data.countries.length ? data.countries : [{ id: 'greece', name: '希腊', nameTw: '希臘', nameEn: 'Greece', enabled: true, sort: 1, heroImage: 'santorini.webp' }]
+    data.guides = Array.isArray(data.guides) && data.guides.length ? data.guides : [{ id: 'richard-li', countryId: 'greece', name: 'Richard 李', nameTw: 'Richard 李', nameEn: 'Richard Li', role: '名人导游', roleTw: '名人導遊', roleEn: 'Signature guide', intro: '希腊历史人文与私人路线顾问', introTw: '希臘歷史人文與私人路線顧問', introEn: 'Greek history, culture and private route specialist', avatar: 'richard-avatar.webp', eyebrow: 'EUROPEAN SIGNATURE GUIDE', proof: '武汉大学双学士 · 英国澳洲双硕士', featured: true, enabled: true, sort: 1 }]
+    for (const collection of ['routes', 'destinations', 'attractions', 'sampleItineraries', 'cities']) for (const item of data[collection] || []) item.countryId = item.countryId || 'greece'
+    for (const lead of data.leads || []) lead.countryId = lead.countryId || 'greece'
+    await saveData(data)
     server.listen(port, '127.0.0.1', () => console.log(`Greece Travel Butler server: http://127.0.0.1:${port}/ (console: /manage-9f3k7)`))
   } catch (error) {
     console.error(`Storage initialization failed: ${error.message}`)
