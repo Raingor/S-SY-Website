@@ -22,7 +22,8 @@
       "tags": "短途 · 中转 · 商务间隙",
       "desc": "卫城、宪法广场与普拉卡老城，把雅典的精华浓缩进从容的三天。",
       "image": "plaka.webp",
-      "status": "published"
+      "status": "published",
+      "countryId": "greece"
     },
     {
       "id": "honeymoon-5d",
@@ -32,7 +33,8 @@
       "tags": "蜜月 · 情侣 · 纪念日",
       "desc": "伊亚落日、悬崖酒店与双体船巡航，给两个人一段只属于爱琴海的时间。",
       "image": "couple.webp",
-      "status": "published"
+      "status": "published",
+      "countryId": "greece"
     },
     {
       "id": "family-7d",
@@ -42,7 +44,8 @@
       "tags": "亲子 · 家庭 · 闺蜜",
       "desc": "神话遗迹、海滨古城与在地美食，兼顾不同年龄的节奏与兴趣。",
       "image": "corinth.webp",
-      "status": "published"
+      "status": "published",
+      "countryId": "greece"
     },
     {
       "id": "heritage-9d",
@@ -52,7 +55,8 @@
       "tags": "深度 · 私人定制 · 文化爱好者",
       "desc": "从雅典到德尔斐、梅黛奥拉，跟着中文向导读懂古典希腊。",
       "image": "delphi.webp",
-      "status": "published"
+      "status": "published",
+      "countryId": "greece"
     }
   ],
   "destinations": [
@@ -62,7 +66,8 @@
       "en": "ATHENS",
       "type": "culture",
       "image": "athens.webp",
-      "status": "published"
+      "status": "published",
+      "countryId": "greece"
     },
     {
       "id": "delphi",
@@ -70,7 +75,8 @@
       "en": "DELPHI",
       "type": "culture",
       "image": "delphi.webp",
-      "status": "published"
+      "status": "published",
+      "countryId": "greece"
     },
     {
       "id": "meteora",
@@ -78,7 +84,8 @@
       "en": "METEORA",
       "type": "culture",
       "image": "meteora-square.webp",
-      "status": "published"
+      "status": "published",
+      "countryId": "greece"
     },
     {
       "id": "nafplio",
@@ -86,7 +93,8 @@
       "en": "NAFPLIO",
       "type": "culture",
       "image": "nafplio.webp",
-      "status": "published"
+      "status": "published",
+      "countryId": "greece"
     },
     {
       "id": "santorini",
@@ -94,7 +102,8 @@
       "en": "SANTORINI",
       "type": "island",
       "image": "santorini.webp",
-      "status": "published"
+      "status": "published",
+      "countryId": "greece"
     },
     {
       "id": "mykonos",
@@ -102,7 +111,8 @@
       "en": "MYKONOS",
       "type": "island",
       "image": "mykonos.webp",
-      "status": "published"
+      "status": "published",
+      "countryId": "greece"
     },
     {
       "id": "zakynthos",
@@ -110,7 +120,8 @@
       "en": "ZAKYNTHOS",
       "type": "island",
       "image": "zakynthos.webp",
-      "status": "published"
+      "status": "published",
+      "countryId": "greece"
     },
     {
       "id": "crete",
@@ -118,7 +129,8 @@
       "en": "CRETE",
       "type": "island",
       "image": "crete.webp",
-      "status": "published"
+      "status": "published",
+      "countryId": "greece"
     }
   ],
   "leads": [],
@@ -249,7 +261,8 @@
         ]
       },
       "originalName": "Ακρόπολη Αθηνών",
-      "sizeLabel": "超大型"
+      "sizeLabel": "超大型",
+      "countryId": "greece"
     },
     {
       "id": "acropolis-museum",
@@ -362,7 +375,8 @@
         ]
       },
       "originalName": "Μουσείο Ακρόπολης",
-      "sizeLabel": "大型"
+      "sizeLabel": "大型",
+      "countryId": "greece"
     },
     {
       "id": "benaki-museum",
@@ -460,7 +474,8 @@
           "近现代希腊史专题"
         ]
       },
-      "sizeLabel": "大型"
+      "sizeLabel": "大型",
+      "countryId": "greece"
     },
     {
       "id": "national-archaeological-museum",
@@ -573,7 +588,8 @@
         ]
       },
       "originalName": "Εθνικό Αρχαιολογικό Μουσείο",
-      "sizeLabel": "超大型"
+      "sizeLabel": "超大型",
+      "countryId": "greece"
     },
     {
       "id": "athens-landmarks",
@@ -617,7 +633,8 @@
         "family": "换岗仪式的慢动作正步对孩子极具吸引力；皇家花园是跑放电的好去处。",
         "faq": "拍摄卫队请保持距离，勿使用闪光灯；大型集会活动日广场可能管制。"
       },
-      "articles": []
+      "articles": [],
+      "countryId": "greece"
     },
     {
       "id": "likavitos",
@@ -661,7 +678,8 @@
         "family": "缆车体验深受孩子喜爱；步道较陡，儿童建议缆车上下。",
         "faq": "夏季傍晚山顶拥挤，晚餐务必提前预订。"
       },
-      "articles": []
+      "articles": [],
+      "countryId": "greece"
     },
     {
       "id": "oia",
@@ -774,7 +792,8 @@
         ]
       },
       "originalName": "Οία",
-      "sizeLabel": "大型"
+      "sizeLabel": "大型",
+      "countryId": "greece"
     },
     {
       "id": "pyrgos",
@@ -872,7 +891,8 @@
         ]
       },
       "originalName": "Πύργος Καλλίστης",
-      "sizeLabel": "中型"
+      "sizeLabel": "中型",
+      "countryId": "greece"
     },
     {
       "id": "fira",
@@ -916,7 +936,8 @@
         "family": "缆车与骡道是孩子的最爱；悬崖主路推车基本可行。",
         "faq": "游轮停靠日（约 08:00–17:00）小镇拥挤，错峰体验更佳。"
       },
-      "articles": []
+      "articles": [],
+      "countryId": "greece"
     },
     {
       "id": "black-beach",
@@ -960,7 +981,8 @@
         "family": "近海浅水区适合孩子玩水，提前准备泳衣泳具与遮阳。",
         "faq": "黑色沙滩正午吸热极烫，建议穿沙滩鞋；随身物品勿离人。"
       },
-      "articles": []
+      "articles": [],
+      "countryId": "greece"
     },
     {
       "id": "delphi",
@@ -1073,7 +1095,8 @@
         ]
       },
       "originalName": "Δελφοί",
-      "sizeLabel": "超大型"
+      "sizeLabel": "超大型",
+      "countryId": "greece"
     },
     {
       "id": "meteora",
@@ -1186,7 +1209,8 @@
         ]
       },
       "originalName": "Μετέωρα",
-      "sizeLabel": "大型"
+      "sizeLabel": "大型",
+      "countryId": "greece"
     },
     {
       "id": "knossos",
@@ -1299,7 +1323,8 @@
         ]
       },
       "originalName": "Κνωσός",
-      "sizeLabel": "大型"
+      "sizeLabel": "大型",
+      "countryId": "greece"
     },
     {
       "id": "nafplio",
@@ -1412,7 +1437,8 @@
           "伯罗奔尼撒环线规划"
         ]
       },
-      "sizeLabel": "大型"
+      "sizeLabel": "大型",
+      "countryId": "greece"
     },
     {
       "id": "epidaurus",
@@ -1525,7 +1551,8 @@
           "剧场声学原理解读",
           "戏剧节观演攻略"
         ]
-      }
+      },
+      "countryId": "greece"
     }
   ],
   "sampleItineraries": [
@@ -1565,7 +1592,8 @@
             "national-archaeological-museum"
           ]
         }
-      ]
+      ],
+      "countryId": "greece"
     },
     {
       "id": "sample-ae-6d",
@@ -1627,7 +1655,8 @@
           "desc": "上午航班返回雅典，值机协助后启程回国。",
           "attractionIds": []
         }
-      ]
+      ],
+      "countryId": "greece"
     },
     {
       "id": "sample-heritage-7d",
@@ -1699,7 +1728,8 @@
           "desc": "根据航班时间自由活动或补购手信，专车送机返程。",
           "attractionIds": []
         }
-      ]
+      ],
+      "countryId": "greece"
     },
     {
       "id": "sample-family-7d",
@@ -1773,7 +1803,8 @@
             "national-archaeological-museum"
           ]
         }
-      ]
+      ],
+      "countryId": "greece"
     },
     {
       "id": "sample-ae-5d",
@@ -1828,7 +1859,8 @@
           "desc": "上午·圣托里尼机场返回雅典，转乘回国航班",
           "attractionIds": []
         }
-      ]
+      ],
+      "countryId": "greece"
     },
     {
       "id": "sample-heritage-9d",
@@ -1919,7 +1951,8 @@
           "desc": "上午·返回雅典，专车送机回国",
           "attractionIds": []
         }
-      ]
+      ],
+      "countryId": "greece"
     }
   ],
   "customTrips": [
@@ -2298,7 +2331,8 @@
         "athens.webp"
       ],
       "price": "€9.99",
-      "purchaseNote": "一次购买，城市内全部景点讲解永久有效；未接入支付前请联系顾问咨询。"
+      "purchaseNote": "一次购买，城市内全部景点讲解永久有效；未接入支付前请联系顾问咨询。",
+      "countryId": "greece"
     },
     {
       "id": "santorini",
@@ -2315,7 +2349,8 @@
         "mykonos.webp"
       ],
       "price": "€9.99",
-      "purchaseNote": "一次购买，城市内全部景点讲解永久有效；未接入支付前请联系顾问咨询。"
+      "purchaseNote": "一次购买，城市内全部景点讲解永久有效；未接入支付前请联系顾问咨询。",
+      "countryId": "greece"
     },
     {
       "id": "delphi",
@@ -2331,7 +2366,8 @@
         "delphi.webp"
       ],
       "price": "€9.99",
-      "purchaseNote": "一次购买，城市内全部景点讲解永久有效；未接入支付前请联系顾问咨询。"
+      "purchaseNote": "一次购买，城市内全部景点讲解永久有效；未接入支付前请联系顾问咨询。",
+      "countryId": "greece"
     },
     {
       "id": "meteora",
@@ -2347,7 +2383,8 @@
         "meteora.webp"
       ],
       "price": "€9.99",
-      "purchaseNote": "一次购买，城市内全部景点讲解永久有效；未接入支付前请联系顾问咨询。"
+      "purchaseNote": "一次购买，城市内全部景点讲解永久有效；未接入支付前请联系顾问咨询。",
+      "countryId": "greece"
     },
     {
       "id": "crete",
@@ -2363,7 +2400,8 @@
         "crete.webp"
       ],
       "price": "€9.99",
-      "purchaseNote": "一次购买，城市内全部景点讲解永久有效；未接入支付前请联系顾问咨询。"
+      "purchaseNote": "一次购买，城市内全部景点讲解永久有效；未接入支付前请联系顾问咨询。",
+      "countryId": "greece"
     },
     {
       "id": "nafplio",
@@ -2380,7 +2418,40 @@
       ],
       "price": "€6.99",
       "purchaseNote": "一次购买，城市内全部景点讲解永久有效；未接入支付前请联系顾问咨询。",
-      "status": "published"
+      "status": "published",
+      "countryId": "greece"
+    }
+  ],
+  "countries": [
+    {
+      "id": "greece",
+      "name": "希腊",
+      "nameTw": "希臘",
+      "nameEn": "Greece",
+      "enabled": true,
+      "sort": 1,
+      "heroImage": "santorini.webp"
+    }
+  ],
+  "guides": [
+    {
+      "id": "richard-li",
+      "countryId": "greece",
+      "name": "Richard 李",
+      "nameTw": "Richard 李",
+      "nameEn": "Richard Li",
+      "role": "名人导游",
+      "roleTw": "名人導遊",
+      "roleEn": "Signature guide",
+      "intro": "希腊历史人文与私人路线顾问",
+      "introTw": "希臘歷史人文與私人路線顧問",
+      "introEn": "Greek history, culture and private route specialist",
+      "avatar": "richard-avatar.webp",
+      "eyebrow": "EUROPEAN SIGNATURE GUIDE",
+      "proof": "武汉大学双学士 · 英国澳洲双硕士",
+      "featured": true,
+      "enabled": true,
+      "sort": 1
     }
   ]
 }
