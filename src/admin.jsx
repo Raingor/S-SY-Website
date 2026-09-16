@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { ArrowLeft, BarChart3, CalendarDays, Check, ChevronDown, ChevronRight, ChevronUp, FileText, Globe2, Landmark, Link2, LogOut, MapPinned, Plus, Save, Settings, Smartphone, Trash2, Users } from 'lucide-react'
+import { ArrowLeft, BarChart3, CalendarDays, Check, ChevronDown, ChevronRight, ChevronUp, Copy, FileText, Globe2, Landmark, Link2, LogOut, MapPinned, Plus, Save, Settings, Smartphone, Trash2, Users } from 'lucide-react'
 import { assetPath } from './chrome'
 
 const ADMIN_KEY = 'sy-greece-admin-data'
@@ -474,6 +474,7 @@ function MasterField({ label, value, onChange, type = 'text', placeholder = '', 
 
 function MasterPanel({ title, collection, items, fields, token, onReload, notify }) {
   const [editing, setEditing] = useState(null)
+  const [copying, setCopying] = useState(false)
   const [form, setForm] = useState({})
   const isGuide = collection === 'guides'
   const template = isGuide ? formTemplates.guide : formTemplates.country
@@ -488,10 +489,22 @@ function MasterPanel({ title, collection, items, fields, token, onReload, notify
   async function save(event) {
     event.preventDefault()
     const payload = { ...form }
-    try { await callApi(`/admin/${collection}${editing && editing !== 'new' ? `/${editing}` : ''}`, { method: editing === 'new' ? 'POST' : 'PATCH', headers: { Authorization: `Bearer ${token}` }, body: JSON.stringify(payload) }); await onReload(); setEditing(null); notify(`${title}已保存`) } catch (error) { notify(error.message) }
+    try { await callApi(`/admin/${collection}${editing && editing !== 'new' ? `/${editing}` : ''}`, { method: editing === 'new' ? 'POST' : 'PATCH', headers: { Authorization: `Bearer ${token}` }, body: JSON.stringify(payload) }); await onReload(); setEditing(null); setCopying(false); notify(`${title}已保存`) } catch (error) { notify(error.message) }
   }
   async function updateStatus(itemId, status) { try { await callApi(`/admin/${collection}/${itemId}`, { method: 'PATCH', headers: { Authorization: `Bearer ${token}` }, body: JSON.stringify({ enabled: status === 'published' }) }); await onReload(); notify('状态已更新') } catch (error) { notify(error.message) } }
-  function openNew() { setEditing('new'); setForm(isGuide ? { countryId: 'greece', enabled: true, featured: false, sort: 1, credentials: [], directions: [], reviews: [] } : { enabled: true, sort: 1 }) }
+  function openNew() { setCopying(false); setEditing('new'); setForm(isGuide ? { countryId: 'greece', enabled: true, featured: false, sort: 1, credentials: [], directions: [], reviews: [] } : { enabled: true, sort: 1 }) }
+  function copyGuide(item) {
+    const copy = JSON.parse(JSON.stringify(item))
+    const suffix = Date.now().toString(36).slice(-6)
+    copy.id = `${item.id || 'guide'}-copy-${suffix}`
+    copy.name = `${item.name || '导游'}（副本）`
+    copy.nameTw = `${item.nameTw || item.name || '導遊'}（副本）`
+    copy.nameEn = `${item.nameEn || item.name || 'Guide'} (Copy)`
+    copy.enabled = false
+    copy.featured = false
+    copy.sort = Math.max(0, ...items.map((entry) => Number(entry.sort) || 0)) + 1
+    setCopying(true); setEditing('new'); setForm(copy); notify('已复制导游资料，请编辑后保存')
+  }
   function field(field) { return <MasterField label={labels[field] || field} value={form[field]} onChange={(value) => update(field, value)} type={['intro', 'introTw', 'introEn', 'storyTitle', 'story1', 'story2', 'storyNote', 'quote', 'quoteFoot', 'proof'].includes(field) ? 'textarea' : field === 'sort' ? 'number' : 'text'} /> }
   function renderGuideForm() {
     return <>
@@ -505,7 +518,7 @@ function MasterPanel({ title, collection, items, fields, token, onReload, notify
     </>
   }
   function renderCountryForm() { return <section className="admin-subeditor master-editor-section"><div className="admin-subeditor-head"><div><span className="admin-eyebrow">COUNTRY / MASTER DATA</span><h3>国家基础资料</h3><p>维护三语国家名称、展示排序和代表图片。</p></div></div><div className="admin-form-grid"><div>{field('id')}</div><div>{field('name')}</div><div>{field('nameTw')}</div><div>{field('nameEn')}</div><div>{field('sort')}</div></div><ImageUploadField label="国家代表图" value={form.heroImage} onChange={(value) => update('heroImage', value)} onUpload={(file) => uploadImage(file, 'country-hero')} required /></section> }
-  return <div className="admin-content"><div className="admin-panel collection-panel"><div className="admin-panel-head"><div><span className="admin-eyebrow">MASTER DATA / {collection.toUpperCase()}</span><h2>{title}</h2></div><button className="admin-primary small" onClick={openNew}><Plus size={15} />新增</button></div><div className="admin-table-wrap"><table className="admin-table"><thead><tr><th>ID</th><th>名称</th><th>状态</th><th>操作</th></tr></thead><tbody>{items.map((item) => <tr key={item.id}><td>{item.id}</td><td><div className="table-title">{(item.avatar || item.heroImage) && <img src={assetPath(item.avatar || item.heroImage)} alt="" loading="lazy" decoding="async" />}<span><strong>{item.name || item.nameEn || item.id}</strong><small>{isGuide ? (item.role || item.roleEn || '导游资料') : (item.nameEn || '国家资料')}</small></span></div></td><td><StatusSelect value={publicationValue(item.enabled === false ? 'unpublished' : 'published')} options={publicationStatusOptions} onChange={(status) => updateStatus(item.id, status)} /></td><td><div className="table-actions"><button onClick={() => { setEditing(item.id); setForm({ ...item }) }}>编辑</button><button className="danger" onClick={async () => { if (window.confirm('确认删除？')) { await callApi(`/admin/${collection}/${item.id}`, { method: 'DELETE', headers: { Authorization: `Bearer ${token}` } }); onReload() } }}>删除</button></div></td></tr>)}</tbody></table>{!items.length && <div className="admin-empty">暂无数据，点击右上角新增。</div>}</div></div>{editing && <AdminEditorPage title={`${editing === 'new' ? '新增' : '编辑'}${title}`} template={template} onClose={() => setEditing(null)} onFillDemo={() => setForm(templateDemo(isGuide ? 'guide' : 'country'))}><form className="admin-form master-editor-form" onSubmit={save}>{isGuide ? renderGuideForm() : renderCountryForm()}<button className="admin-primary" type="submit"><Save size={15} />保存{editing === 'new' ? '并发布' : ''}</button></form></AdminEditorPage>}</div>
+  return <div className="admin-content"><div className="admin-panel collection-panel"><div className="admin-panel-head"><div><span className="admin-eyebrow">MASTER DATA / {collection.toUpperCase()}</span><h2>{title}</h2></div><button className="admin-primary small" onClick={openNew}><Plus size={15} />新增</button></div><div className="admin-table-wrap"><table className="admin-table"><thead><tr><th>ID</th><th>名称</th><th>状态</th><th>操作</th></tr></thead><tbody>{items.map((item) => <tr key={item.id}><td>{item.id}</td><td><div className="table-title">{(item.avatar || item.heroImage) && <img src={assetPath(item.avatar || item.heroImage)} alt="" loading="lazy" decoding="async" />}<span><strong>{item.name || item.nameEn || item.id}</strong><small>{isGuide ? (item.role || item.roleEn || '导游资料') : (item.nameEn || '国家资料')}</small></span></div></td><td><StatusSelect value={publicationValue(item.enabled === false ? 'unpublished' : 'published')} options={publicationStatusOptions} onChange={(status) => updateStatus(item.id, status)} /></td><td><div className="table-actions">{isGuide && <button className="table-copy-button" onClick={() => copyGuide(item)}><Copy size={14} />复制</button>}<button onClick={() => { setCopying(false); setEditing(item.id); setForm({ ...item }) }}>编辑</button><button className="danger" onClick={async () => { if (window.confirm('确认删除？')) { await callApi(`/admin/${collection}/${item.id}`, { method: 'DELETE', headers: { Authorization: `Bearer ${token}` } }); onReload() } }}>删除</button></div></td></tr>)}</tbody></table>{!items.length && <div className="admin-empty">暂无数据，点击右上角新增。</div>}</div></div>{editing && <AdminEditorPage title={`${editing === 'new' ? (copying ? '复制' : '新增') : '编辑'}${title}`} template={template} onClose={() => { setEditing(null); setCopying(false) }} onFillDemo={() => setForm(templateDemo(isGuide ? 'guide' : 'country'))}><form className="admin-form master-editor-form" onSubmit={save}>{isGuide ? renderGuideForm() : renderCountryForm()}<button className="admin-primary" type="submit"><Save size={15} />保存{editing === 'new' ? '并发布' : ''}</button></form></AdminEditorPage>}</div>
 }
 
 function LegacyMasterPanel2({ title, collection, items, fields, token, onReload, notify }) {
