@@ -427,6 +427,19 @@ h1, h2, h3, p { margin-top: 0; }
 }
 
 .admin-subeditor { display: grid; gap: 16px; margin-top: 6px; padding: 22px; border: 1px solid rgba(16,56,68,.1); border-radius: 16px; background: linear-gradient(145deg, #f7fafb, #fbf8f2); }
+.admin-form-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
+.admin-form-grid > label, .admin-form-grid > div { min-width: 0; }
+.admin-form-grid .wide-field { grid-column: 1 / -1; }
+.master-editor-form { gap: 18px; }
+.master-editor-section { margin-top: 0; padding: 22px; }
+.master-editor-section .admin-form-grid { align-items: start; }
+.master-image-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+.guide-array-editor { margin-top: 0; }
+.guide-array-editor .admin-array-card { background: rgba(255,255,255,.86); }
+.guide-array-editor .admin-array-card-head > div:first-child { display: grid; gap: 4px; }
+.guide-array-editor .admin-array-card-head small { color: var(--muted); font-size: 10px; }
+.guide-array-editor .admin-form-grid textarea { min-height: 92px; }
+.master-publish-section { background: linear-gradient(145deg, #f4faf8, #fbf8f2); }
 .admin-template-guide-actions { display: flex; align-items: center; gap: 9px; flex-wrap: wrap; justify-content: flex-end; }
 .admin-template-fill { min-height: 32px; padding: 0 12px; color: #fff; background: var(--blue); border: 0; border-radius: 8px; cursor: pointer; font: inherit; font-size: 11px; font-weight: 700; box-shadow: 0 5px 14px rgba(25,112,135,.18); transition: transform .18s ease, background .18s ease; }
 .admin-template-fill:hover { background: #155f72; transform: translateY(-1px); }
