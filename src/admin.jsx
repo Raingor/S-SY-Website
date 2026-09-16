@@ -143,8 +143,31 @@ function AdminFormTemplateGuide({ template, onFill }) {
   if (!template) return null
   return <aside className="admin-template-guide" aria-label={template.title}><div className="admin-template-guide-head"><div><span className="admin-eyebrow">FILLING TEMPLATE / 填写引导</span><strong>{template.title}</strong><p>{template.intro}</p></div><div className="admin-template-guide-actions"><span className="admin-template-guide-badge">拟真示例</span><button type="button" className="admin-template-fill" onClick={onFill || ((event) => fillTemplateDemo(event, template))}>一键填写</button></div></div><div className="admin-template-guide-fields">{template.fields.map(([label, example]) => <div key={label}><span>{label}</span><code>{example}</code></div>)}</div><small>示例仅供填写参考，请根据实际内容修改；点击“一键填写”可载入完整拟真数据，保存前请按实际内容调整。</small></aside>
 }
-function AdminEditorPage({ title, template, children, onClose, onFillDemo }) {
-  return <div className="admin-editor-page"><div className="admin-editor-head"><button type="button" className="admin-editor-back" onClick={onClose}><ArrowLeft size={16} />返回列表</button><div><span className="admin-eyebrow">EDIT CONTENT / 独立编辑</span><h2>{title}</h2><p>在独立编辑页面完成内容、图片与日期设置，保存后即可生效。</p></div></div><div className="admin-editor-card"><AdminFormTemplateGuide template={template} onFill={onFillDemo} />{children}</div></div>
+function AnchorNav({ items, label = '快速定位' }) {
+  const sig = items.map((item) => item.id).join('|')
+  const [active, setActive] = useState(items[0]?.id || '')
+  useEffect(() => {
+    if (!sig || typeof IntersectionObserver === 'undefined') return undefined
+    const targets = sig.split('|').map((id) => document.getElementById(id)).filter(Boolean)
+    if (!targets.length) return undefined
+    const observer = new IntersectionObserver((entries) => {
+      const visible = entries.filter((entry) => entry.isIntersecting).sort((a, b) => a.boundingClientRect.top - b.boundingClientRect.top)[0]
+      if (visible?.target?.id) setActive(visible.target.id)
+    }, { rootMargin: '-16% 0px -62% 0px', threshold: 0 })
+    targets.forEach((target) => observer.observe(target))
+    return () => observer.disconnect()
+  }, [sig])
+  function jump(id) {
+    const target = document.getElementById(id)
+    if (!target) return
+    setActive(id)
+    target.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  }
+  return <nav className="admin-anchor-nav" aria-label={label + '锚点'}><span className="admin-anchor-label"><Link2 size={13} />{label}</span><div className="admin-anchor-list">{items.map((item) => <button type="button" key={item.id} className={active === item.id ? 'active' : ''} aria-current={active === item.id ? 'true' : undefined} onClick={() => jump(item.id)}><span>{item.label}</span>{Number.isFinite(item.count) && <em>{item.count}</em>}</button>)}</div></nav>
+}
+
+function AdminEditorPage({ title, template, children, onClose, onFillDemo, anchors = [] }) {
+  return <div className="admin-editor-page"><div className="admin-editor-head"><button type="button" className="admin-editor-back" onClick={onClose}><ArrowLeft size={16} />返回列表</button><div><span className="admin-eyebrow">EDIT CONTENT / 独立编辑</span><h2>{title}</h2><p>在独立编辑页面完成内容、图片与日期设置，保存后即可生效。</p></div></div>{anchors.length > 0 && <AnchorNav items={anchors} />}<div className="admin-editor-card"><AdminFormTemplateGuide template={template} onFill={onFillDemo} />{children}</div></div>
 }
 
 function ImageUploadField({ label, value, onChange, onUpload, required = false, hint = '支持 PNG、JPG、WebP，单张不超过 6MB' }) {
@@ -607,7 +630,84 @@ function MiniRecordPanel({ title, kind, items, users, onSave, onDelete }) {
 
 function AttractionsPanel({ attractions = [], editing, setEditing, form, setForm, onSubmit, onDelete, onAdd, onUpload, onStatusChange }) {
   const itemForm = (item) => ({ ...emptyAttraction, ...item, tags: (item.tags || []).join('、'), highlights: item.highlights || [], exhibits: normalizeExhibits(item.exhibits), guide: item.guide || {}, articles: item.articles || [], deepDive: item.deepDive || { preview: '', locked: [] } })
-  return <div className="admin-content"><div className="admin-panel collection-panel"><div className="admin-panel-head"><div><span className="admin-eyebrow">ATTRACTIONS & MUSEUMS</span><h2>景点管理</h2></div><button className="admin-primary small" onClick={onAdd}><Plus size={15} />新增景点</button></div><div className="admin-table-wrap"><table className="admin-table"><thead><tr><th>景点</th><th>城市 / 类型</th><th>状态</th><th>操作</th></tr></thead><tbody>{attractions.map((item) => <tr key={item.id}><td><div className="table-title">{item.image && <img src={assetPath(item.image)} alt="" loading="lazy" decoding="async" />}<span><strong>{item.name}</strong><small>{item.originalName || item.en}</small></span></div></td><td>{item.cityName}{item.sizeLabel ? ` · ${item.sizeLabel}` : ''}<small>{item.type === 'museum' ? '博物馆' : '景点'} · {(item.exhibits || []).length} 讲解点 · {(item.highlights || []).length} 亮点</small></td><td><StatusSelect value={publicationValue(item.status)} options={publicationStatusOptions} onChange={(status) => onStatusChange('attractions', item.id, status)} /></td><td><div className="table-actions"><button onClick={() => { setEditing(item.id); setForm(itemForm(item)) }}>编辑</button><button className="danger" onClick={() => onDelete('attractions', item.id)}><Trash2 size={14} /></button></div></td></tr>)}</tbody></table>{!attractions.length && <div className="admin-empty">暂无景点，点击右上角新增。</div>}</div></div>{editing && <AdminEditorPage title={editing === 'new' ? '新增景点' : '编辑景点'} template={formTemplates.attraction} onClose={() => { setEditing(null); setForm(emptyAttraction) }} onFillDemo={() => setForm(templateDemo('attraction'))}><form className="admin-form" onSubmit={onSubmit}><div className="admin-form-grid"><label>中文名称<input required value={form.name || ''} onChange={(e) => setForm({ ...form, name: e.target.value })} /></label><label>英文名称<input required value={form.en || ''} onChange={(e) => setForm({ ...form, en: e.target.value })} /></label></div><label>希腊语原名<input value={form.originalName || ''} onChange={(e) => setForm({ ...form, originalName: e.target.value })} /></label><div className="admin-form-grid"><label>所属城市<select value={form.city || 'athens'} onChange={(e) => setForm({ ...form, city: e.target.value, cityName: e.target.selectedOptions[0]?.dataset.name || '' })}><option value="athens" data-name="雅典">雅典</option><option value="santorini" data-name="圣托里尼">圣托里尼</option><option value="delphi" data-name="德尔斐">德尔斐</option><option value="meteora" data-name="梅黛奥拉">梅黛奥拉</option><option value="crete" data-name="克里特">克里特</option><option value="nafplio" data-name="纳夫普利翁">纳夫普利翁</option></select></label><label>类型<select value={form.type || 'landmark'} onChange={(e) => setForm({ ...form, type: e.target.value })}><option value="landmark">景点</option><option value="museum">博物馆</option></select></label></div><div className="admin-form-grid"><label>分类（如世界文化遗产）<input value={form.category || ''} onChange={(e) => setForm({ ...form, category: e.target.value })} /></label><label>规模标签<select value={form.sizeLabel || ''} onChange={(e) => setForm({ ...form, sizeLabel: e.target.value })}><option value="">无</option><option value="超大型">超大型</option><option value="大型">大型</option><option value="中型">中型</option></select></label></div><label>标签（逗号分隔）<input value={form.tags || ''} onChange={(e) => setForm({ ...form, tags: e.target.value })} /></label><ImageUploadField label="图片" value={form.image} onChange={(image) => setForm({ ...form, image })} onUpload={(file) => onUpload(file, 'attraction')} required /><label>简介<textarea required rows="3" value={form.summary || ''} onChange={(e) => setForm({ ...form, summary: e.target.value })} /></label><HighlightsEditor value={form.highlights} onChange={(highlights) => setForm({ ...form, highlights })} /><AttractionExhibitsEditor exhibits={form.exhibits} onChange={(exhibits) => setForm({ ...form, exhibits })} onUpload={onUpload} /><GuideEditor value={form.guide} onChange={(guide) => setForm({ ...form, guide })} /><ArticlesEditor value={form.articles} onChange={(articles) => setForm({ ...form, articles })} onUpload={onUpload} /><DeepDiveEditor value={form.deepDive} onChange={(deepDive) => setForm({ ...form, deepDive })} /><label>发布状态<select value={publicationValue(form.status)} onChange={(e) => setForm({ ...form, status: e.target.value })}><option value="published">发布</option><option value="unpublished">下架</option></select></label><button className="admin-primary" type="submit"><Save size={15} />保存</button></form></AdminEditorPage>}</div>
+  const anchors = [
+    { id: 'attraction-basic', label: '基础信息' },
+    { id: 'attraction-highlights', label: '景点亮点', count: (form.highlights || []).length },
+    { id: 'attraction-exhibits', label: '讲解点', count: normalizeExhibits(form.exhibits).length },
+    { id: 'attraction-guide', label: '游览指南', count: GUIDE_FIELDS.filter(([key]) => form.guide?.[key]).length },
+    { id: 'attraction-articles', label: '相关文章', count: (form.articles || []).length },
+    { id: 'attraction-deepdive', label: '深度内容', count: (form.deepDive?.locked || []).length },
+    { id: 'attraction-publish', label: '发布状态' },
+  ]
+  return <div className="admin-content"><div className="admin-panel collection-panel"><div className="admin-panel-head"><div><span className="admin-eyebrow">ATTRACTIONS & MUSEUMS</span><h2>景点管理</h2></div><button className="admin-primary small" onClick={onAdd}><Plus size={15} />新增景点</button></div><div className="admin-table-wrap"><table className="admin-table"><thead><tr><th>景点</th><th>城市 / 类型</th><th>状态</th><th>操作</th></tr></thead><tbody>{attractions.map((item) => <tr key={item.id}><td><div className="table-title">{item.image && <img src={assetPath(item.image)} alt="" loading="lazy" decoding="async" />}<span><strong>{item.name}</strong><small>{item.originalName || item.en}</small></span></div></td><td>{item.cityName}{item.sizeLabel ? ` · ${item.sizeLabel}` : ''}<small>{item.type === 'museum' ? '博物馆' : '景点'} · {(item.exhibits || []).length} 讲解点 · {(item.highlights || []).length} 亮点</small></td><td><StatusSelect value={publicationValue(item.status)} options={publicationStatusOptions} onChange={(status) => onStatusChange('attractions', item.id, status)} /></td><td><div className="table-actions"><button onClick={() => { setEditing(item.id); setForm(itemForm(item)) }}>编辑</button><button className="danger" onClick={() => onDelete('attractions', item.id)}><Trash2 size={14} /></button></div></td></tr>)}</tbody></table>{!attractions.length && <div className="admin-empty">暂无景点，点击右上角新增。</div>}</div></div>{editing && <AdminEditorPage title={editing === 'new' ? '新增景点' : '编辑景点'} template={formTemplates.attraction} anchors={anchors} onClose={() => { setEditing(null); setForm(emptyAttraction) }} onFillDemo={() => setForm(templateDemo('attraction'))}>
+<form className="admin-form" onSubmit={onSubmit}>
+<section className="admin-anchor-section" id="attraction-basic">
+<div className="admin-form-grid">
+<label>中文名称<input required value={form.name || ''} onChange={(e) => setForm({ ...form, name: e.target.value })} />
+</label>
+<label>英文名称<input required value={form.en || ''} onChange={(e) => setForm({ ...form, en: e.target.value })} />
+</label>
+</div>
+<label>希腊语原名<input value={form.originalName || ''} onChange={(e) => setForm({ ...form, originalName: e.target.value })} />
+</label>
+<div className="admin-form-grid">
+<label>所属城市<select value={form.city || 'athens'} onChange={(e) => setForm({ ...form, city: e.target.value, cityName: e.target.selectedOptions[0]?.dataset.name || '' })}>
+<option value="athens" data-name="雅典">雅典</option>
+<option value="santorini" data-name="圣托里尼">圣托里尼</option>
+<option value="delphi" data-name="德尔斐">德尔斐</option>
+<option value="meteora" data-name="梅黛奥拉">梅黛奥拉</option>
+<option value="crete" data-name="克里特">克里特</option>
+<option value="nafplio" data-name="纳夫普利翁">纳夫普利翁</option>
+</select>
+</label>
+<label>类型<select value={form.type || 'landmark'} onChange={(e) => setForm({ ...form, type: e.target.value })}>
+<option value="landmark">景点</option>
+<option value="museum">博物馆</option>
+</select>
+</label>
+</div>
+<div className="admin-form-grid">
+<label>分类（如世界文化遗产）<input value={form.category || ''} onChange={(e) => setForm({ ...form, category: e.target.value })} />
+</label>
+<label>规模标签<select value={form.sizeLabel || ''} onChange={(e) => setForm({ ...form, sizeLabel: e.target.value })}>
+<option value="">无</option>
+<option value="超大型">超大型</option>
+<option value="大型">大型</option>
+<option value="中型">中型</option>
+</select>
+</label>
+</div>
+<label>标签（逗号分隔）<input value={form.tags || ''} onChange={(e) => setForm({ ...form, tags: e.target.value })} />
+</label>
+<ImageUploadField label="图片" value={form.image} onChange={(image) => setForm({ ...form, image })} onUpload={(file) => onUpload(file, 'attraction')} required />
+<label>简介<textarea required rows="3" value={form.summary || ''} onChange={(e) => setForm({ ...form, summary: e.target.value })} />
+</label>
+</section>
+<section className="admin-anchor-section" id="attraction-highlights">
+<HighlightsEditor value={form.highlights} onChange={(highlights) => setForm({ ...form, highlights })} />
+</section>
+<section className="admin-anchor-section" id="attraction-exhibits">
+<AttractionExhibitsEditor exhibits={form.exhibits} onChange={(exhibits) => setForm({ ...form, exhibits })} onUpload={onUpload} />
+</section>
+<section className="admin-anchor-section" id="attraction-guide">
+<GuideEditor value={form.guide} onChange={(guide) => setForm({ ...form, guide })} />
+</section>
+<section className="admin-anchor-section" id="attraction-articles">
+<ArticlesEditor value={form.articles} onChange={(articles) => setForm({ ...form, articles })} onUpload={onUpload} />
+</section>
+<section className="admin-anchor-section" id="attraction-deepdive">
+<DeepDiveEditor value={form.deepDive} onChange={(deepDive) => setForm({ ...form, deepDive })} />
+</section>
+<section className="admin-anchor-section" id="attraction-publish">
+<label>发布状态<select value={publicationValue(form.status)} onChange={(e) => setForm({ ...form, status: e.target.value })}>
+<option value="published">发布</option>
+<option value="unpublished">下架</option>
+</select>
+</label>
+</section>
+<button className="admin-primary admin-anchor-save" type="submit"><Save size={15} />保存</button>
+</form>
+</AdminEditorPage>}</div>
 }
 
 function SampleItinerariesPanel({ itineraries, attractions = [], editing, setEditing, form, setForm, onSubmit, onDelete, onAdd, onUpload, onStatusChange }) {
