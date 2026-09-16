@@ -512,8 +512,10 @@ async function start() {
   try {
     await initStorage()
     const data = readData()
-    data.countries = Array.isArray(data.countries) && data.countries.length ? data.countries : [{ id: 'greece', name: '希腊', nameTw: '希臘', nameEn: 'Greece', enabled: true, sort: 1, heroImage: 'santorini.webp' }]
-    data.guides = Array.isArray(data.guides) && data.guides.length ? data.guides : [{ id: 'richard-li', countryId: 'greece', name: 'Richard 李', nameTw: 'Richard 李', nameEn: 'Richard Li', role: '名人导游', roleTw: '名人導遊', roleEn: 'Signature guide', intro: '希腊历史人文与私人路线顾问', introTw: '希臘歷史人文與私人路線顧問', introEn: 'Greek history, culture and private route specialist', avatar: 'richard-avatar.webp', eyebrow: 'EUROPEAN SIGNATURE GUIDE', proof: '武汉大学双学士 · 英国澳洲双硕士', featured: true, enabled: true, sort: 1 }]
+    const defaultCountry = { id: 'greece', name: '希腊', nameTw: '希臘', nameEn: 'Greece', enabled: true, sort: 1, heroImage: 'santorini.webp' }
+    const defaultGuide = { id: 'richard-li', countryId: 'greece', name: 'Richard 李', nameTw: 'Richard 李', nameEn: 'Richard Li', role: '名人导游', roleTw: '名人導遊', roleEn: 'Signature guide', intro: '希腊历史人文与私人路线顾问', introTw: '希臘歷史人文與私人路線顧問', introEn: 'Greek history, culture and private route specialist', avatar: 'richard-avatar.webp', fullImage: 'richard-profile.webp', location: '雅典 / 圣托里尼', wechat: 'SY-GREECE-01', eyebrow: 'EUROPEAN SIGNATURE GUIDE', proof: '武汉大学双学士 · 英国澳洲双硕士', credentials: [], directions: [], reviews: [], featured: true, enabled: true, sort: 1 }
+    data.countries = Array.isArray(data.countries) && data.countries.length ? data.countries.map((item) => ({ ...defaultCountry, ...item })) : [defaultCountry]
+    data.guides = Array.isArray(data.guides) && data.guides.length ? data.guides.map((item) => ({ ...defaultGuide, ...item })) : [defaultGuide]
     for (const collection of ['routes', 'destinations', 'attractions', 'sampleItineraries', 'cities']) for (const item of data[collection] || []) item.countryId = item.countryId || 'greece'
     for (const lead of data.leads || []) lead.countryId = lead.countryId || 'greece'
     await saveData(data)
