@@ -6,6 +6,21 @@ import mariadb from 'mariadb'
 
 const root = dirname(fileURLToPath(import.meta.url))
 const dataPath = resolve(root, 'data/site-data.json')
+function loadLocalEnvFile() {
+  const file = resolve(root, '.env')
+  if (!existsSync(file)) return
+  for (const raw of readFileSync(file, 'utf8').split(/\r?\n/)) {
+    const line = raw.trim()
+    if (!line || line.startsWith('#')) continue
+    const idx = line.indexOf('=')
+    if (idx === -1) continue
+    const key = line.slice(0, idx).trim()
+    let value = line.slice(idx + 1).trim()
+    if (value.startsWith('"') && value.endsWith('"')) value = value.slice(1, -1)
+    if (!(key in process.env)) process.env[key] = value
+  }
+}
+loadLocalEnvFile()
 const storageMode = String(process.env.SY_STORAGE || (process.env.SY_DB_NAME ? 'mariadb' : 'json')).toLowerCase()
 const dbConfig = {
   host: String(process.env.SY_DB_HOST || '127.0.0.1'),
