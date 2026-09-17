@@ -521,7 +521,10 @@ h1, h2, h3, p { margin-top: 0; }
 .admin-login label, .admin-form label { display: grid; gap: 8px; font-size: 12px; font-weight: 600; }
 .admin-login input, .admin-form input, .admin-form select, .admin-form textarea { width: 100%; min-height: 44px; padding: 0 13px; border: 1px solid #dbe5eb; border-radius: 9px; background: #f7fafb; color: var(--ink); outline: 0; font: inherit; }
 .admin-form textarea { padding-top: 12px; }
+/* The settings form lives in .admin-panel (not .admin-editor-card), so it needs its own inset. */
+.settings-panel .admin-form { padding: 26px 30px 30px; }
 .settings-panel .admin-form-grid { align-items: start; }
+.settings-panel { max-width: 1600px; margin-inline: auto; }
 .admin-login input:focus, .admin-form input:focus, .admin-form select:focus, .admin-form textarea:focus { border-color: var(--blue); background: #fff; }
 .admin-primary { min-height: 42px; padding: 0 18px; display: inline-flex; align-items: center; justify-content: center; gap: 7px; border: 0; border-radius: 999px; background: var(--blue); color: #fff; cursor: pointer; font-weight: 600; }
 .admin-primary.small { min-height: 37px; font-size: 12px; }
@@ -579,6 +582,7 @@ h1, h2, h3, p { margin-top: 0; }
 .admin-date-field input[type="date"] { color-scheme: light; }
 .admin-content:has(.admin-editor-page) { max-width: none; padding: 0; }
 .admin-content:has(.admin-editor-page) > .collection-panel { display: none; }
+.admin-content:has(.settings-panel) { max-width: none; }
 .admin-toast { position: fixed; z-index: 120; top: 18px; right: 24px; padding: 13px 17px; display: flex; align-items: center; gap: 7px; color: #fff; background: #287c5e; border-radius: 9px; box-shadow: var(--shadow); font-size: 12px; }.offline-dot { color: var(--gold-light); }
 @media (max-width: 820px) { .admin-shell { display: block; }.admin-sidebar { min-height: 0; padding: 16px; }.admin-sidebar nav { display: flex; overflow: auto; gap: 7px; margin-top: 20px; }.admin-sidebar nav button { min-width: max-content; padding: 10px 13px; }.admin-sidebar-foot { display: flex; justify-content: space-between; align-items: center; margin-top: 18px; }.admin-topbar { padding: 16px; }.admin-topbar h1 { font-size: 24px; }.admin-content { padding: 20px 16px; }.admin-stat-grid { grid-template-columns: repeat(2, 1fr); }.admin-overview-grid { grid-template-columns: 1fr; }.admin-panel-head { padding: 20px; }.flow-list { padding: 10px 20px; }.mini-lead { grid-template-columns: 1fr auto; padding: 14px 20px; }.mini-lead strong { display: none; }.admin-table th, .admin-table td { padding: 12px 13px; }.admin-form-grid { grid-template-columns: 1fr; }.admin-view-site { font-size: 0; }.admin-view-site svg { width: 18px; }.admin-editor-page { padding: 24px 16px 40px; }.admin-editor-head { flex-direction: column; gap: 14px; }.admin-editor-head h2 { font-size: 28px; }.admin-editor-card .admin-form { padding: 22px 18px; }.admin-file-picker { align-items: flex-start; flex-direction: column; gap: 5px; padding: 10px; } }
 
@@ -1345,4 +1349,9 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
   .admin-anchor-nav { padding: 9px 11px; margin-bottom: 12px; }
   .admin-anchor-list button { min-height: 28px; padding: 0 9px; font-size: 10px; }
   .admin-anchor-section { scroll-margin-top: 84px; }
+}
+
+/* Settings panel shares the editor page inset; keep it on small screens too. */
+@media (max-width: 820px) {
+  .settings-panel .admin-form { padding: 20px 18px 24px; }
 }
