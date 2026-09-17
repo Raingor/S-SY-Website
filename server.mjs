@@ -167,8 +167,8 @@ function publicContent(data, countryId = 'greece') {
   if (!value) return value
   const str = String(value)
   if (/^(https?:)?\/\//i.test(str) || str.startsWith('/')) return value
-  // Normalise: remove any leading ./images/ or images/ prefix, then prepend ./images/
-  const cleaned = str.replace(/^(?:\.\/|\/)?images\//, '')
+  // Normalise: remove any leading ./images/ or images/ prefix (including doubled images/), then prepend ./images/
+  const cleaned = str.replace(/^(?:\.\/|\/)?(?:images\/)+/, '')
   return cleaned ? `./images/${cleaned}` : value
 }
   const countries = (data.countries || []).filter((item) => item.enabled !== false).sort((a, b) => Number(a.sort || 0) - Number(b.sort || 0))
@@ -180,7 +180,7 @@ function publicContent(data, countryId = 'greece') {
     guides: guides.map((item) => ({ ...item, avatar: imageUrl(item.avatar), fullImage: imageUrl(item.fullImage) })),
     routes: scoped(data.routes).filter((item) => item.status === 'published').map((item) => ({ ...item, image: `./images/${item.image}` })),
     destinations: scoped(data.destinations).filter((item) => item.status === 'published').map((item) => ({ ...item, image: `./images/${item.image}` })),
-    attractions: scoped(data.attractions).filter((item) => item.status === 'published').map((item) => ({ ...item, image: `./images/${item.image}`, exhibits: (item.exhibits || []).map((exhibit) => ({ ...exhibit, image: exhibit.image ? `./images/${exhibit.image}` : '' })), articles: (item.articles || []).map((article) => ({ ...article, cover: `./images/${article.cover}` })) })),
+    attractions: scoped(data.attractions).filter((item) => item.status === 'published').map((item) => ({ ...item, image: `./images/${item.image}`, shareTitle: item.shareTitle || '', shareImage: imageUrl(item.shareImage), exhibits: (item.exhibits || []).map((exhibit) => ({ ...exhibit, image: exhibit.image ? `./images/${exhibit.image}` : '' })), articles: (item.articles || []).map((article) => ({ ...article, cover: `./images/${article.cover}` })) })),
     sampleItineraries: scoped(data.sampleItineraries).filter((item) => item.status === 'published').map((item) => ({ ...item, cover: `./images/${item.cover}` })),
     cities: scoped(data.cities).filter((item) => item.status !== 'archived').map((item) => ({ ...item, mosaic: (item.mosaic || []).map((image) => `./images/${image}`) })),
   }
