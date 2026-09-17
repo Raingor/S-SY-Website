@@ -163,7 +163,14 @@ function saveMiniProgramAvatar(data, req, image, mimeType) {
   return `${siteBase(data, req)}/images/${filename}`
 }
 function publicContent(data, countryId = 'greece') {
-  const imageUrl = (value) => value && !/^(?:https?:)?\/\//i.test(String(value)) && !String(value).startsWith('/') ? `./images/${String(value).replace(/^\.\/images\//, '')}` : value
+  const imageUrl = (value) => {
+  if (!value) return value
+  const str = String(value)
+  if (/^(https?:)?\/\//i.test(str) || str.startsWith('/')) return value
+  // Normalise: remove any leading ./images/ or images/ prefix, then prepend ./images/
+  const cleaned = str.replace(/^(?:\.\/|\/)?images\//, '')
+  return cleaned ? `./images/${cleaned}` : value
+}
   const countries = (data.countries || []).filter((item) => item.enabled !== false).sort((a, b) => Number(a.sort || 0) - Number(b.sort || 0))
   const guides = (data.guides || []).filter((item) => item.enabled !== false && (item.countryId || 'greece') === countryId).sort((a, b) => Number(a.sort || 0) - Number(b.sort || 0))
   const scoped = (items) => (items || []).filter((item) => (item.countryId || 'greece') === countryId)
