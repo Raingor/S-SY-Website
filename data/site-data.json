@@ -1,11 +1,11 @@
 {
   "settings": {
-    "siteName": "SY希旅人",
+    "siteName": "希腊旅行管家",
     "siteUrl": "https://sy-greece.com",
-    "defaultTitle": "只为一生美好回忆｜SY希旅人",
-    "defaultDescription": "只为一生美好回忆。SY希旅人提供雅典、圣托里尼及希腊全境的人文与行程咨询。",
+    "defaultTitle": "只为一生美好回忆｜希腊旅行管家",
+    "defaultDescription": "只为一生美好回忆。希腊旅行管家提供雅典、圣托里尼及希腊全境的人文与行程咨询。",
     "keywords": "希腊人文咨询,希腊行程策划,圣托里尼文化,雅典历史,中文司导咨询",
-    "ogImage": "images/santorini.webp",
+    "ogImage": "images/guide-profile-mu4x0c82-8372c7.jpg",
     "googleVerification": "",
     "robotsPolicy": "index,follow",
     "wechat": "SY-GREECE-01",
@@ -63,7 +63,7 @@
     {
       "id": "athens",
       "name": "雅典",
-      "en": "ATHENS",
+      "en": "Athens",
       "type": "culture",
       "image": "athens.webp",
       "status": "published",
@@ -71,37 +71,37 @@
     },
     {
       "id": "delphi",
-      "name": "德尔斐",
-      "en": "DELPHI",
+      "name": "纳芙普利翁",
+      "en": "Nafplio",
       "type": "culture",
-      "image": "delphi.webp",
+      "image": "destination-mu6ijfbi-65dcd8.jpg",
       "status": "published",
       "countryId": "greece"
     },
     {
       "id": "meteora",
-      "name": "梅黛奥拉",
-      "en": "METEORA",
+      "name": "科林斯",
+      "en": "Corinth",
       "type": "culture",
-      "image": "meteora-square.webp",
+      "image": "destination-mu6ikwe5-7b7cb2.jpg",
       "status": "published",
       "countryId": "greece"
     },
     {
       "id": "nafplio",
-      "name": "纳夫普利翁",
-      "en": "NAFPLIO",
+      "name": "德尔斐",
+      "en": "Delphi",
       "type": "culture",
-      "image": "nafplio.webp",
+      "image": "destination-mu6ilve0-9fb51c.jpg",
       "status": "published",
       "countryId": "greece"
     },
     {
       "id": "santorini",
-      "name": "圣托里尼",
-      "en": "SANTORINI",
-      "type": "island",
-      "image": "santorini.webp",
+      "name": "迈锡尼",
+      "en": "Mycenae",
+      "type": "culture",
+      "image": "destination-mu6imxlx-43eaf7.jpg",
       "status": "published",
       "countryId": "greece"
     },
@@ -110,7 +110,7 @@
       "name": "米克诺斯",
       "en": "MYKONOS",
       "type": "island",
-      "image": "mykonos.webp",
+      "image": "destination-mu4yf709-f0dadc.jpg",
       "status": "published",
       "countryId": "greece"
     },
@@ -119,7 +119,7 @@
       "name": "扎金索斯",
       "en": "ZAKYNTHOS",
       "type": "island",
-      "image": "zakynthos.webp",
+      "image": "destination-mu4yfpf7-2ba30e.jpg",
       "status": "published",
       "countryId": "greece"
     },
@@ -128,12 +128,34 @@
       "name": "克里特",
       "en": "CRETE",
       "type": "island",
-      "image": "crete.webp",
+      "image": "destination-mu4yg744-6c904f.jpg",
       "status": "published",
       "countryId": "greece"
     }
   ],
   "leads": [
+    {
+      "leadType": "production-mail-test",
+      "source": "website",
+      "platform": "website",
+      "contact": "smtp-real-test-20260915T091405Z@example.invalid",
+      "requirements": "smtp-real-test-20260915T091405Z",
+      "id": "lead-mu2gg9d9-d0636a",
+      "status": "new",
+      "createdAt": "2026-09-15T09:14:05.037Z",
+      "countryId": "greece"
+    },
+    {
+      "leadType": "production-mail-test",
+      "source": "website",
+      "platform": "website",
+      "contact": "production-mail-test@example.invalid",
+      "requirements": "SMTP delivery verification 20260915T091101Z",
+      "id": "lead-mu2gcbzf-84d4c5",
+      "status": "new",
+      "createdAt": "2026-09-15T09:11:01.803Z",
+      "countryId": "greece"
+    },
     {
       "source": "miniprogram",
       "platform": "wechat-miniprogram",
@@ -163,7 +185,49 @@
       "updatedAt": "2026-09-14T16:26:45.457Z",
       "phoneBoundAt": "2026-09-14T08:56:56.451Z",
       "nickname": "微信用户",
-      "avatarUrl": "https://thirdwx.qlogo.cn/mmopen/vi_32/POgEwh4mIHO4nibH0KlMECNjjGxQUq24ZEaGT4poC6icRiccVGKSyXwibcPq4BWmiaIGuG1icwxaQX6grC9VemZoJ8rg/132"
+      "avatarUrl": "https://thirdwx.qlogo.cn/mmopen/vi_32/POgEwh4mIHO4nibH0KlMECNjjGxQUq24ZEaGT4poC6icRiccVGKSyXwibcPq4BWmiaIGuG1icwxaQX6grC9VemZoJ8rg/132",
+      "travelers": [],
+      "documents": [],
+      "coupons": []
+    },
+    {
+      "id": "mpu-mu2eaza7-1c32e3",
+      "openid": "optBA12rHR5SGfNgQA4FdJQG5GkQ",
+      "unionid": "",
+      "phone": "",
+      "nickname": "用户8515",
+      "avatarUrl": "https://thirdwx.qlogo.cn/mmopen/vi_32/POgEwh4mIHO4nibH0KlMECNjjGxQUq24ZEaGT4poC6icRiccVGKSyXwibcPq4BWmiaIGuG1icwxaQX6grC9VemZoJ8rg/132",
+      "createdAt": "2026-09-15T08:13:59.455Z",
+      "updatedAt": "2026-09-15T08:13:59.455Z",
+      "travelers": [],
+      "documents": [],
+      "coupons": []
+    },
+    {
+      "id": "mpu-mu56c4f6-15f146",
+      "openid": "optBA10YCP6--HRgDS4qwJcgnfbg",
+      "unionid": "",
+      "phone": "",
+      "nickname": "用户6664",
+      "avatarUrl": "",
+      "createdAt": "2026-09-17T06:54:14.370Z",
+      "updatedAt": "2026-09-17T06:54:14.370Z",
+      "travelers": [],
+      "documents": [],
+      "coupons": []
+    },
+    {
+      "id": "mpu-mu56knx4-3f9e4a",
+      "openid": "optBA18mtMqM4eRroBkQXTh2AilQ",
+      "unionid": "",
+      "phone": "",
+      "nickname": "用户6208",
+      "avatarUrl": "https://thirdwx.qlogo.cn/mmopen/vi_32/POgEwh4mIHO4nibH0KlMECNjjGxQUq24ZEaGT4poC6icRiccVGKSyXwibcPq4BWmiaIGuG1icwxaQX6grC9VemZoJ8rg/132",
+      "createdAt": "2026-09-17T07:00:52.888Z",
+      "updatedAt": "2026-09-17T07:00:52.888Z",
+      "travelers": [],
+      "documents": [],
+      "coupons": []
     }
   ],
   "attractions": [
@@ -1622,6 +1686,8 @@
           ]
         }
       ],
+      "tag": "短途 · 中转",
+      "crowd": "适合：中转停留 / 商务出行",
       "countryId": "greece"
     },
     {
@@ -1683,6 +1749,8 @@
           "attractionIds": []
         }
       ],
+      "tag": "经典 · 双城",
+      "crowd": "适合：首次到访 / 轻松节奏",
       "countryId": "greece"
     },
     {
@@ -1754,6 +1822,8 @@
           "attractionIds": []
         }
       ],
+      "tag": "文明 · 溯源",
+      "crowd": "适合：世遗深度 / 人文爱好者",
       "countryId": "greece"
     },
     {
@@ -1827,6 +1897,8 @@
           ]
         }
       ],
+      "tag": "亲子 · 家庭",
+      "crowd": "适合：亲子家庭 / 轻松度假",
       "countryId": "greece"
     },
     {
@@ -1881,6 +1953,8 @@
           "attractionIds": []
         }
       ],
+      "tag": "蜜月 · 情侣",
+      "crowd": "适合：蜜月婚礼 / 浪漫之旅",
       "countryId": "greece"
     },
     {
@@ -1971,6 +2045,8 @@
           "attractionIds": []
         }
       ],
+      "tag": "深度 · 定制",
+      "crowd": "适合：深度文化 / 沉浸体验",
       "countryId": "greece"
     }
   ],
@@ -2283,7 +2359,7 @@
             "行程有关的车辆使用费、油费、过路费、高速费、停车费已包含；因您和同行人员原因所致的交通罚款和车辆损坏等损失未包含。",
             "为确保旅行安全和舒适体验，司导单日全天最长服务时间及里程：10 小时 300 公里每天（旅程表既定行程除外），超时费 50 欧元每小时，超里程费 1 欧元每公里。",
             "包车行程的接送和陪同均含英语翻译服务；如您有希腊语或其它语言翻译特别需求，应提前至少七天沟通且须付全款预定。",
-            "旅程期间的代订住宿均为SY希旅人长期合作的四星标准及以上酒店或特色民宿，早餐均已包含，午餐和晚餐司导将按需协助，如无需陪同用餐司导将自行安排。",
+            "旅程期间的代订住宿均为希腊旅行管家长期合作的四星标准及以上酒店或特色民宿，早餐均已包含，午餐和晚餐司导将按需协助，如无需陪同用餐司导将自行安排。",
             "希腊境内机票、门票、船票、住宿等是否包含以确定的定制旅程表版本为准，您的所有自主选择性消费均未包含在报价内。",
             "旅行全程车内禁止吸烟，违者罚金 100 欧元每次，罚金应在当日交清；如车内吸烟两次及以上屡劝不改，则司导有权终止后续行程且不退款。",
             "此旅程表的日程安排在您签约付款后，因天气、酒店、机票、船票、门票、预售及季节性调整等因素，相关安排及顺序可能根据实际情况作出必要调整。",
@@ -2307,7 +2383,7 @@
           "items": [
             "护照签证：出行前确定持有有效申根签证、其它有效旅行许可文件或是否免签，并确保护照在您计划离境的时间之前还有至少六个月有效期。",
             "抵达希腊后旅行期间如随身携带护照和贵重物品请务必妥善保管，需要携带护照的日程安排司导将会提前告知。",
-            "勿携带任何熟食（如老干妈、榨菜）等违禁品入境，避免海关查扣和罚款；旅程期间未经SY希旅人同意不得擅自更改行程。",
+            "勿携带任何熟食（如老干妈、榨菜）等违禁品入境，避免海关查扣和罚款；旅程期间未经希腊旅行管家同意不得擅自更改行程。",
             "天气衣物（春季 3–5 月）：平均气温 10°C–25°C，气温逐渐回升，早晚温差较大；建议轻便叠穿，长袖 T 恤、薄毛衣加防风外套，舒适步行鞋。",
             "天气衣物（夏季 6–8 月）：平均气温 25°C–35°C，干燥炎热、阳光强烈；建议清凉透气的棉麻材质，遮阳帽、墨镜、高倍防晒霜；泳衣泳镜泳帽，凉鞋、沙滩鞋、透气运动鞋。",
             "天气衣物（秋季 9–11 月）：平均气温 5°C–30°C，初秋仍温暖如夏，11 月转凉且降雨增多；建议短袖加薄外套，10 月后需准备抓绒衣或轻羽绒，封闭式步行鞋。",
@@ -2325,7 +2401,7 @@
           "title": "紧急联系方式与备用信息",
           "items": [
             "中国驻希腊雅典大使馆联系电话：使馆总机 +30-2160036690，领事部 +30-2106723282，值班手机 +30-6973730680。",
-            "SY希旅人公司地址：Ikoniou 94, Nea Smyrni 17123, Athens, Greece；联系电话：手机 +30-6973573863，办公室 +30-2104283748。",
+            "希腊旅行管家公司地址：Ikoniou 94, Nea Smyrni 17123, Athens, Greece；联系电话：手机 +30-6973573863，办公室 +30-2104283748。",
             "希腊境内紧急联系电话：报警电话 100，医疗急救 166，火灾报警 199，海岸警卫队 108。"
           ]
         }
@@ -2455,11 +2531,11 @@
   "guides": [
     {
       "storyTitle": "先认识本人，再决定这次如何徐徐深入",
-      "story1": "旅居欧美多年，我一直把希腊当成一座可以慢慢读的博物馆。历史、人文、秘境与镜头感，交给真正生活在这里的人。",
-      "story2": "我不负责把行程塞满，而是希望你离开时，仍记得某一束光、某一段海岸，以及途中那些没有被攻略写下的细节。",
+      "story1": "旅居欧美多年，我一直把希腊当成一座可以慢慢读的博物馆。",
+      "story2": "我不负责把行程塞满，而是希望你离开时仍记得沿途细节。",
       "storyNote": "旅行最珍贵的，不是走过多少地方，而是终于有人替你读懂沿途的故事。",
       "quoteKicker": "Richard 李 · 在地深度陪同",
-      "quote": "把一簇辉映，变成一段真正有温度的希腊经验",
+      "quote": "让这次希腊之旅，成为您一生最美好的回忆。",
       "quoteFoot": "武汉大学双学士 · 英国澳洲双硕士 · 欧盟 / 美国 / 中国驾照",
       "credentialsTitle": "三项背书，足够放心与他一起探索希腊",
       "credentials": [
@@ -2486,36 +2562,72 @@
           "index": "01",
           "title": "雅典文明",
           "subtitle": "历史与建筑讲解",
-          "desc": "从卫城到古市集，把课本里的文明讲成一次有温度的探索。",
-          "suitable": "适合：第一次到访 / 亲子家庭",
-          "duration": "半日 · 1日"
+          "desc": "深度解读雅典古迹的建造背景、神话典故与人文内涵，包含卫城、卫城博物馆、古集市等核心遗址文史知识讲解。",
+          "suitable": "适合：历史爱好者 | 首次赴希腊访客 | 人文研学人群",
+          "duration": "1 日"
         },
         {
           "key": "culture",
           "index": "02",
-          "title": "圣地人文",
-          "subtitle": "信仰与建筑",
-          "desc": "深入德尔斐、梅黛奥拉等圣地，读懂石头背后的信仰与时间。",
-          "suitable": "适合：深度文化 / 摄影爱好者",
-          "duration": "1日 · 多日"
+          "title": "雅典卫城专题",
+          "subtitle": "神庙与雕塑文史解析",
+          "desc": "聚焦帕特农神庙、伊瑞克提翁神庙，拆解古希腊建筑美学、神话故事与文物背后的文明脉络。",
+          "suitable": "适合：深度人文爱好者 | 艺术爱好者 | 研学访客",
+          "duration": "半日 / 1日"
         },
         {
           "key": "coast",
           "index": "03",
-          "title": "小众秘境",
-          "subtitle": "海岸线与岛屿",
-          "desc": "避开人潮，沿着海岸线去看当地人才知道的蓝与风。",
-          "suitable": "适合：情侣蜜月 / 朋友出行",
-          "duration": "1日 · 多日"
+          "title": "雅典古城市井",
+          "subtitle": "老城广场与古市集人文",
+          "desc": "探索普拉卡老城区、罗马古市集，了解古希腊市民生活、民主起源与城市发展历史。",
+          "suitable": "适合：喜欢城市漫步、人文故事的自由访客",
+          "duration": "半日 / 1日"
         },
         {
           "key": "photo",
           "index": "04",
-          "title": "私人摄影",
-          "subtitle": "路线规划与记录",
-          "desc": "把光线、节奏和路线交给我，留下自然、不摆拍的旅行影像。",
-          "suitable": "适合：纪念日 / 家庭旅拍",
-          "duration": "半日 · 1日"
+          "title": "德尔斐神谕",
+          "subtitle": "世界中心的神话与遗址讲解",
+          "desc": "解读阿波罗神庙、德尔斐考古遗址，还原古希腊神谕文化、祭祀传统与遗址考古发现。",
+          "suitable": "适合：神话爱好者、深度历史研学游客",
+          "duration": "1日-2日"
+        },
+        {
+          "key": "direction-5",
+          "index": "05",
+          "title": "伯罗奔尼撒史诗",
+          "subtitle": "迈锡尼与古剧场文明讲解",
+          "desc": "探秘迈锡尼遗址、埃皮达鲁斯古剧场与纳芙普利翁老城小镇，讲述青铜时代王国、特洛伊相关史诗、古剧场声学建筑知识与初代首都滨海人文历史。",
+          "suitable": "适合：史诗文学爱好者、古迹深度访客",
+          "duration": "2日-3日"
+        },
+        {
+          "key": "direction-6",
+          "index": "06",
+          "title": "梅黛奥拉悬岩修道院",
+          "subtitle": "崖顶信仰建筑文史解读",
+          "desc": "介绍梅黛奥拉修道院群的建造历史、东正教文化，解读悬岩之上的修行故事与建筑奇观。",
+          "suitable": "适合：摄影爱好者、宗教人文爱好者",
+          "duration": "1日-2日"
+        },
+        {
+          "key": "direction-7",
+          "index": "07",
+          "title": "圣托里尼文明",
+          "subtitle": "火山遗址与爱琴海人文",
+          "desc": "讲解阿克罗蒂里史前遗址、蓝顶教堂历史，解读火山文明、海岛建筑风格与当地民俗故事。",
+          "suitable": "适合：蜜月旅行、文艺打卡、人文休闲访客",
+          "duration": "2日-3日"
+        },
+        {
+          "key": "direction-8",
+          "index": "08",
+          "title": "克里特米诺斯文明",
+          "subtitle": "迷宫宫殿考古专题讲解",
+          "desc": "解析克诺索斯宫殿遗址，讲述米诺斯王国、牛头怪神话，还原欧洲最早古文明的历史脉络。",
+          "suitable": "适合：考古爱好者、神话深度爱好者、研学人群",
+          "duration": "3日-4日"
         }
       ],
       "reviewsTitle": "他们这样记住 Richard",
@@ -2541,16 +2653,16 @@
       "name": "Richard 李",
       "nameTw": "Richard 李",
       "nameEn": "Richard Li",
-      "role": "名人导游",
+      "role": "名人司导",
       "roleTw": "名人導遊",
       "roleEn": "Signature guide",
       "intro": "希腊历史人文与私人路线顾问",
       "introTw": "希臘歷史人文與私人路線顧問",
       "introEn": "Greek history, culture and private route specialist",
       "avatar": "richard-avatar.webp",
-      "fullImage": "richard-profile.webp",
-      "location": "雅典 / 圣托里尼",
-      "wechat": "SY-GREECE-01",
+      "fullImage": "images/guide-profile-mu4x0c82-8372c7.jpg",
+      "location": "雅典 / 伯罗奔尼撒半岛 / 德尔斐 / 梅黛奥拉 / 圣托里尼 ",
+      "wechat": "SYGJ1130",
       "eyebrow": "EUROPEAN SIGNATURE GUIDE",
       "proof": "武汉大学双学士 · 英国澳洲双硕士",
       "featured": true,
@@ -2562,22 +2674,23 @@
     {
       "id": "culture",
       "name": "文明溯源",
-      "description": "历史遗址与人文古城",
-      "sort": 1,
-      "status": "published"
-    },
-    {
-      "id": "island",
-      "name": "爱琴海境",
-      "description": "岛屿海岸线旅游地",
-      "sort": 2,
-      "status": "published"
+      "description": "古典文明遗址，历史古城",
+      "status": "published",
+      "sort": 1
     },
     {
       "id": "mountain",
       "name": "山海遗堡",
       "description": "山地古堡与自然遗迹",
-      "status": "published"
+      "status": "published",
+      "sort": 2
+    },
+    {
+      "id": "island",
+      "name": "爱琴海境",
+      "description": "岛屿海岸线旅游地",
+      "status": "published",
+      "sort": 3
     }
   ]
 }
