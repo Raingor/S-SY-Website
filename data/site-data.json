@@ -2670,6 +2670,35 @@
       "sort": 1
     }
   ],
+  "destinationCategories": [
+    {
+      "key": "culture",
+      "name": "文明溯源",
+      "nameTw": "文明溯源",
+      "nameEn": "Civilization Origins",
+      "description": "古典文明遗址，历史古城",
+      "sort": 1,
+      "enabled": true
+    },
+    {
+      "key": "mountain",
+      "name": "山海遗堡",
+      "nameTw": "山海遺堡",
+      "nameEn": "Mountain & Sea Heritage",
+      "description": "山地古堡与自然遗迹",
+      "sort": 2,
+      "enabled": true
+    },
+    {
+      "key": "island",
+      "name": "爱琴海境",
+      "nameTw": "愛琴海境",
+      "nameEn": "Aegean Escapes",
+      "description": "岛屿海岸线旅游地",
+      "sort": 3,
+      "enabled": true
+    }
+  ],
   "destinationTypes": [
     {
       "id": "culture",

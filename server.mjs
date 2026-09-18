@@ -183,6 +183,9 @@ function publicContent(data, countryId = 'greece') {
     attractions: scoped(data.attractions).filter((item) => item.status === 'published').map((item) => ({ ...item, image: `./images/${item.image}`, shareTitle: item.shareTitle || '', shareImage: imageUrl(item.shareImage), exhibits: (item.exhibits || []).map((exhibit) => ({ ...exhibit, image: exhibit.image ? `./images/${exhibit.image}` : '' })), articles: (item.articles || []).map((article) => ({ ...article, cover: `./images/${article.cover}` })) })),
     sampleItineraries: scoped(data.sampleItineraries).filter((item) => item.status === 'published').map((item) => ({ ...item, cover: `./images/${item.cover}` })),
     cities: scoped(data.cities).filter((item) => item.status !== 'archived').map((item) => ({ ...item, mosaic: (item.mosaic || []).map((image) => `./images/${image}`) })),
+    destinationCategories: (data.destinationCategories || []).filter((item) => item.enabled !== false && scoped(data.destinations).some((destination) => destination.status === 'published' && destination.type === item.key)).sort((a, b) => Number(a.sort || 0) - Number(b.sort || 0)).map((item) => ({ key: item.key, name: item.name, nameTw: item.nameTw || item.name, nameEn: item.nameEn || item.name, sort: item.sort || 0, enabled: true })),
+    // Backward-compatible alias for clients that have not moved to destinationCategories yet.
+    destinationTypes: (data.destinationCategories || []).filter((item) => item.enabled !== false && scoped(data.destinations).some((destination) => destination.status === 'published' && destination.type === item.key)).sort((a, b) => Number(a.sort || 0) - Number(b.sort || 0)).map((item) => ({ id: item.key, name: item.name, description: item.description || '', status: 'published', sort: item.sort || 0 })),
   }
 }
 function readiness(data) {
@@ -480,10 +483,11 @@ const server = http.createServer(async (req, res) => {
         if (!payload) return json(res, 422, { error: '缺少必填字段' })
         Object.assign(found.item, payload, { updatedAt: new Date().toISOString() }); await saveData(data); return json(res, 200, { ...(collection === 'travelers' ? safeTraveler(found.item, true) : collection === 'documents' ? safeDocument(found.item, true) : serializer(found.item)), userId: found.user.id, userNickname: found.user.nickname || found.user.id })
       }
-      const match = url.pathname.match(/^\/api\/admin\/(routes|destinations|attractions|sampleItineraries|customTrips|leads)(?:\/([^/]+))?$/)
+      const match = url.pathname.match(/^\/api\/admin\/(routes|destinations|attractions|sampleItineraries|customTrips|leads|destinationTypes|destinationCategories)(?:\/([^/]+))?$/)
       if (match) {
-        if (!data[match[1]]) data[match[1]] = []
-        if (match[1] === 'customTrips' && method === 'POST') {
+        const collection = match[1] === 'destinationTypes' ? 'destinationCategories' : match[1]
+        if (!data[collection]) data[collection] = []
+        if (collection === 'customTrips' && method === 'POST') {
           const input = await body(req)
           if (!input.client || !input.period) return json(res, 422, { error: '请填写客户称呼与行程日期' })
           const now = new Date().toISOString()
@@ -491,9 +495,33 @@ const server = http.createServer(async (req, res) => {
           data.customTrips.unshift(trip); await saveData(data)
           return json(res, 201, trip)
         }
-        if (match[1] === 'leads' && method === 'GET' && url.searchParams.has('leadType')) return json(res, 200, leadsOfType(data.leads, url.searchParams.get('leadType')))
+        if (collection === 'leads' && method === 'GET' && url.searchParams.has('leadType')) return json(res, 200, leadsOfType(data.leads, url.searchParams.get('leadType')))
+        if (collection === 'destinationCategories') {
+          if (method === 'GET') return json(res, 200, data.destinationCategories.map((item) => ({ ...item, id: item.key })))
+          const input = method === 'DELETE' ? {} : await body(req)
+          const payload = { ...input, key: input.key || input.id, enabled: input.enabled !== false }
+          const itemId = match[2]
+          if (method === 'POST') {
+            if (!payload.key || !payload.name) return json(res, 422, { error: '请填写分类 ID 与名称' })
+            if (data.destinationCategories.some((item) => item.key === payload.key)) return json(res, 409, { error: '分类 ID 已存在' })
+            data.destinationCategories.push(payload); await saveData(data)
+            return json(res, 201, { ...payload, id: payload.key })
+          }
+          const index = data.destinationCategories.findIndex((item) => item.key === itemId)
+          if (index < 0) return json(res, 404, { error: 'not found' })
+          if (method === 'DELETE') {
+            if ((data.destinations || []).some((item) => item.type === itemId)) return json(res, 409, { error: '仍有目的地使用此分类，请先重新分配' })
+            data.destinationCategories.splice(index, 1); await saveData(data)
+            return res.writeHead(204).end()
+          }
+          if (method === 'PATCH') {
+            data.destinationCategories[index] = { ...data.destinationCategories[index], ...payload, key: itemId }
+            await saveData(data); return json(res, 200, { ...data.destinationCategories[index], id: itemId })
+          }
+          return json(res, 405, { error: 'method not allowed' })
+        }
         const payload = method === 'GET' || method === 'DELETE' ? {} : await body(req)
-        const result = await collectionHandler(data, match[1], method, match[2] ? `/api/admin/${match[1]}/${match[2]}` : url.pathname, payload)
+        const result = await collectionHandler(data, collection, method, match[2] ? `/api/admin/${collection}/${match[2]}` : url.pathname, payload)
         if (result.status === 204) return res.writeHead(204).end()
         return json(res, result.status, result.body)
       }
@@ -526,6 +554,22 @@ async function start() {
     const richardDetails = { storyTitle: '先认识本人，再决定这次如何徐徐深入', story1: '旅居欧美多年，我一直把希腊当成一座可以慢慢读的博物馆。历史、人文、秘境与镜头感，交给真正生活在这里的人。', story2: '我不负责把行程塞满，而是希望你离开时，仍记得某一束光、某一段海岸，以及途中那些没有被攻略写下的细节。', storyNote: '旅行最珍贵的，不是走过多少地方，而是终于有人替你读懂沿途的故事。', quoteKicker: 'Richard 李 · 在地深度陪同', quote: '把一簇辉映，变成一段真正有温度的希腊经验', quoteFoot: '武汉大学双学士 · 英国澳洲双硕士 · 欧盟 / 美国 / 中国驾照', credentialsTitle: '三项背书，足够放心与他一起探索希腊', credentials: [{ index: '01', title: '名校教育', desc: '武汉大学双学士\n英国澳洲双硕士' }, { index: '02', title: '资深履历', desc: '资深定制旅行规划师\n欧洲精品文旅金牌从业者' }, { index: '03', title: '在地资质', desc: '欧盟 · 美国 · 中国\n驾照兼备' }], signatureTitle: '他最擅长的四种希腊时光', directions: [{ key: 'history', index: '01', title: '雅典文明', subtitle: '历史与建筑讲解', desc: '从卫城到古市集，把课本里的文明讲成一次有温度的探索。', suitable: '适合：第一次到访 / 亲子家庭', duration: '半日 · 1日' }, { key: 'culture', index: '02', title: '圣地人文', subtitle: '信仰与建筑', desc: '深入德尔斐、梅黛奥拉等圣地，读懂石头背后的信仰与时间。', suitable: '适合：深度文化 / 摄影爱好者', duration: '1日 · 多日' }, { key: 'coast', index: '03', title: '小众秘境', subtitle: '海岸线与岛屿', desc: '避开人潮，沿着海岸线去看当地人才知道的蓝与风。', suitable: '适合：情侣蜜月 / 朋友出行', duration: '1日 · 多日' }, { key: 'photo', index: '04', title: '私人摄影', subtitle: '路线规划与记录', desc: '把光线、节奏和路线交给我，留下自然、不摆拍的旅行影像。', suitable: '适合：纪念日 / 家庭旅拍', duration: '半日 · 1日' }], reviewsTitle: '他们这样记住 Richard', reviews: [{ quote: '学识渊博，谈吐儒雅。一路上孩子听得入迷，大人也真正看懂了雅典。', name: '北京 · L女士', meta: '亲子文化之旅' }, { quote: '专业靠谱又细心体贴，临时调整路线也安排得很稳，拍照尤其好看。', name: '上海 · K先生', meta: '圣岛蜜月之旅' }, { quote: '不赶景点，更像和一位老朋友探索希腊。小众海岸线比想象中更惊喜。', name: '广州 · M女士', meta: '海岛深度定制' }] }
     data.guides = data.guides.map((item) => item.id === 'richard-li' ? { ...richardDetails, ...item, credentials: Array.isArray(item.credentials) && item.credentials.length ? item.credentials : richardDetails.credentials, directions: Array.isArray(item.directions) && item.directions.length ? item.directions : richardDetails.directions, reviews: Array.isArray(item.reviews) && item.reviews.length ? item.reviews : richardDetails.reviews } : item)
     for (const collection of ['routes', 'destinations', 'attractions', 'sampleItineraries', 'cities']) for (const item of data[collection] || []) item.countryId = item.countryId || 'greece'
+    // Migrate legacy destinationTypes once, without changing destinations[].type.
+    if (!Array.isArray(data.destinationCategories) || !data.destinationCategories.length) {
+      const defaults = {
+        culture: { name: '文明溯源', nameTw: '文明溯源', nameEn: 'Civilization Origins', description: '古典文明遗址，历史古城', sort: 1 },
+        mountain: { name: '山海遗堡', nameTw: '山海遺堡', nameEn: 'Mountain & Sea Heritage', description: '山地古堡与自然遗迹', sort: 2 },
+        island: { name: '爱琴海境', nameTw: '愛琴海境', nameEn: 'Aegean Escapes', description: '岛屿海岸线旅游地', sort: 3 },
+      }
+      const legacy = Array.isArray(data.destinationTypes) ? data.destinationTypes : []
+      data.destinationCategories = (legacy.length ? legacy : Object.entries(defaults).map(([id, item]) => ({ id, ...item }))).map((item) => {
+        const key = item.key || item.id
+        const fallback = defaults[key] || {}
+        return { key, name: item.name || fallback.name || key, nameTw: item.nameTw || fallback.nameTw || '', nameEn: item.nameEn || fallback.nameEn || '', description: item.description || fallback.description || '', sort: Number(item.sort ?? fallback.sort) || 0, enabled: item.enabled !== false && item.status !== 'archived' }
+      })
+    }
+    // Keep legacy admin routes and stored consumers functional during the migration.
+    data.destinationTypes = data.destinationCategories.map((item) => ({ id: item.key, name: item.name, description: item.description || '', sort: item.sort || 0, status: item.enabled === false ? 'unpublished' : 'published' }))
     for (const lead of data.leads || []) lead.countryId = lead.countryId || 'greece'
     await saveData(data)
     server.listen(port, '127.0.0.1', () => console.log(`Greece Travel Butler server: http://127.0.0.1:${port}/ (console: /manage-9f3k7)`))
