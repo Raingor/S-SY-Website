@@ -2078,3 +2078,22 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
   .admin-view-site svg { width: 16px; }
   .admin-toast { top: 64px; right: 12px; left: 12px; justify-content: center; }
 }
+
+/* Site settings: keep the OG preview compact while preserving its aspect ratio. */
+.og-image-field {
+  align-content: start;
+}
+
+.og-image-field > img {
+  display: block;
+  width: 100%;
+  max-width: 320px;
+  max-height: 180px;
+  height: auto;
+  margin-top: 2px;
+  object-fit: contain;
+  object-position: left center;
+  border: 1px solid var(--layui-line);
+  border-radius: 2px;
+  background: #f8f8f8;
+}
