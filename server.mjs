@@ -6,7 +6,7 @@ import crypto from 'node:crypto'
 import { setTimeout as delay } from 'node:timers/promises'
 import tls from 'node:tls'
 import { closeStorage, initStorage, readData, saveData, storageStatus } from './storage.mjs'
-import { amountToFen, createMiniProgramPrepay, decryptWechatNotify, realPayNotifyReady, realPayRequestReady, verifyWechatNotify, wechatPayConfig } from './wechat-pay.mjs'
+import { amountToFen, createMiniProgramPrepay, decryptWechatNotify, queryWechatTransaction, realPayNotifyReady, realPayRequestReady, verifyWechatNotify, wechatPayConfig } from './wechat-pay.mjs'
 
 const root = dirname(fileURLToPath(import.meta.url))
 const distDir = resolve(root, 'dist')
@@ -189,6 +189,31 @@ function realPaymentProduct(data, productType) {
 }
 function realPaymentOrderResponse(data, user, order, extra = {}) {
   return { simulation: false, payment: 'wechat-v3', order: publicPaymentOrder(order), entitlements: realPaymentEntitlements(data, user), ...extra }
+}
+async function refreshRealPaymentOrder(data, order) {
+  if (!order || order.status !== 'pending' || !order.outTradeNo) return null
+  try {
+    const transaction = await queryWechatTransaction(wechatPay, order.outTradeNo)
+    order.wechatTradeState = transaction.trade_state
+    order.wechatTradeStateDescription = transaction.trade_state_desc || ''
+    if (transaction.trade_state === 'SUCCESS') {
+      order.status = 'paid'
+      order.transactionId = transaction.transaction_id || order.transactionId || ''
+      order.paidAt = order.paidAt || transaction.success_time || new Date().toISOString()
+    } else if (['CLOSED', 'REVOKED'].includes(transaction.trade_state)) {
+      order.status = 'closed'
+      order.closedAt = order.closedAt || new Date().toISOString()
+    } else if (transaction.trade_state === 'PAYERROR') {
+      order.status = 'failed'
+      order.failedAt = order.failedAt || new Date().toISOString()
+    }
+    order.updatedAt = new Date().toISOString()
+    await saveData(data)
+    return transaction
+  } catch (error) {
+    console.warn('[wechat-pay] order query failed', error.code || error.message)
+    return null
+  }
 }
 function simulationUserRequired(res) { return json(res, 401, { code: 'MINIPROGRAM_SIMULATION_USER_REQUIRED', error: '请先使用手机号创建模拟测试会话' }) }
 function simulationProduct(data, productType) { return miniProgramKnowledgeConfig(data).products[productType] }
@@ -567,7 +592,9 @@ const server = http.createServer(async (req, res) => {
       const data = readData(); const user = miniProgramUserFromRequest(req, data)
       if (!user) return json(res, 401, { code: 'MINIPROGRAM_LOGIN_REQUIRED', error: '请先微信登录' })
       const order = realPaymentOrders(data, user).find((item) => item.id === paymentOrderMatch[1])
-      return order ? json(res, 200, realPaymentOrderResponse(data, user, order)) : json(res, 404, { code: 'PAYMENT_ORDER_NOT_FOUND', error: '支付订单不存在' })
+      if (!order) return json(res, 404, { code: 'PAYMENT_ORDER_NOT_FOUND', error: '支付订单不存在' })
+      const transaction = await refreshRealPaymentOrder(data, order)
+      return json(res, 200, realPaymentOrderResponse(data, user, order, transaction ? { wechatTradeState: transaction.trade_state, wechatTradeStateDescription: transaction.trade_state_desc || '' } : {}))
     }
     const simulationOrderMatch = url.pathname.match(/^\/api\/miniprogram\/orders\/([^/]+)\/(simulate-paid|simulate-failed)$/)
     if (simulationOrderMatch && method === 'POST') {

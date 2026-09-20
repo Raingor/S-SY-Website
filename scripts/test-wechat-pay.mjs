@@ -3,7 +3,7 @@ import { createCipheriv, createSign, generateKeyPairSync } from 'node:crypto'
 import { mkdtempSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { amountToFen, buildMiniProgramPayment, buildWechatAuthorization, createMiniProgramPrepay, decryptWechatNotify, realPayNotifyReady, realPayRequestReady, verifyWechatNotify } from '../wechat-pay.mjs'
+import { amountToFen, buildMiniProgramPayment, buildWechatAuthorization, createMiniProgramPrepay, decryptWechatNotify, queryWechatTransaction, realPayNotifyReady, realPayRequestReady, verifyWechatNotify } from '../wechat-pay.mjs'
 
 const temp = mkdtempSync(join(tmpdir(), 'sy-wechat-pay-'))
 try {
@@ -36,6 +36,17 @@ try {
   assert.equal(prepayRequest.url, 'https://api.example.test/v3/pay/transactions/jsapi')
   assert.match(prepayRequest.options.headers.Authorization, /^WECHATPAY2-SHA256-RSA2048 /)
   assert.equal(JSON.parse(prepayRequest.options.body).payer.openid, 'openid-test')
+
+  let queryRequest = null
+  globalThis.fetch = async (url, options) => {
+    queryRequest = { url, options }
+    return { ok: true, status: 200, json: async () => ({ trade_state: 'SUCCESS', trade_state_desc: '支付成功', transaction_id: 'wx-transaction' }) }
+  }
+  const transaction = await queryWechatTransaction(config, 'SY-test-order')
+  globalThis.fetch = originalFetch
+  assert.equal(transaction.trade_state, 'SUCCESS')
+  assert.equal(queryRequest.url, 'https://api.example.test/v3/pay/transactions/out-trade-no/SY-test-order?mchid=1722439618')
+  assert.match(queryRequest.options.headers.Authorization, /^WECHATPAY2-SHA256-RSA2048 /)
 
   const resourceNonce = '123456789012'
   const associatedData = 'transaction'

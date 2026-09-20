@@ -83,6 +83,26 @@ export async function createMiniProgramPrepay(config, order) {
   return { prepayId: payload.prepay_id, payment: buildMiniProgramPayment(config, payload.prepay_id) }
 }
 
+export async function queryWechatTransaction(config, outTradeNo) {
+  const path = `/v3/pay/transactions/out-trade-no/${encodeURIComponent(outTradeNo)}?mchid=${encodeURIComponent(config.mchid)}`
+  const response = await fetch(`${config.apiBase}${path}`, {
+    method: 'GET',
+    headers: {
+      Accept: 'application/json',
+      Authorization: buildWechatAuthorization(config, 'GET', path, '')
+    },
+    signal: AbortSignal.timeout(10000)
+  })
+  const payload = await response.json().catch(() => ({}))
+  if (!response.ok || !payload.trade_state) {
+    const error = new Error(payload.message || payload.code || '微信支付订单查询失败')
+    error.code = payload.code || 'WECHAT_PAY_QUERY_FAILED'
+    error.status = response.status
+    throw error
+  }
+  return payload
+}
+
 export function verifyWechatNotify(config, headers, rawBody) {
   const timestamp = String(headers['wechatpay-timestamp'] || '')
   const nonce = String(headers['wechatpay-nonce'] || '')
@@ -107,4 +127,3 @@ export function amountToFen(value) {
   if (!Number.isFinite(amount) || amount <= 0) return 0
   return Math.round(amount * 100)
 }
-
