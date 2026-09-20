@@ -11,7 +11,8 @@
     "wechat": "SY-GREECE-01",
     "phone": "+30 210 000 0000",
     "email": "hello@sy-greece.com",
-    "replyHours": "24 小时内回复"
+    "replyHours": "24 小时内回复",
+    "miniprogramAccess": true
   },
   "routes": [
     {

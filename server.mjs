@@ -40,6 +40,14 @@ function isAdmin(req) {
   return true
 }
 function isMiniProgramLead(input) { return ['wechat-miniprogram', 'miniprogram'].includes(input.platform) || ['wechat-miniprogram', 'miniprogram'].includes(input.source) }
+function isMiniProgramAccessEnabled(data) { return data.settings?.miniprogramAccess !== false }
+function miniProgramAccessPayload(data) {
+  const accessEnabled = isMiniProgramAccessEnabled(data)
+  return accessEnabled
+    ? { accessEnabled: true, title: '正常访问', message: '小程序服务正常。' }
+    : { accessEnabled: false, title: '正在升级中', message: '小程序正在升级中，请稍后再试。' }
+}
+function miniProgramMaintenance(res) { return json(res, 503, { code: 'MINIPROGRAM_MAINTENANCE', error: '小程序正在升级中，请稍后再试。', title: '正在升级中', message: '小程序正在升级中，请稍后再试。' }) }
 function miniProgramConfigReady() { return Boolean(process.env.WX_APPID && process.env.WX_APP_SECRET && miniProgramTokenSecret) }
 function encodeTokenPart(value) { return Buffer.from(JSON.stringify(value)).toString('base64url') }
 function createMiniProgramToken(userId) { const now = Math.floor(Date.now() / 1000); const payload = { sub: userId, iat: now, exp: now + 30 * 24 * 60 * 60 }; const encoded = encodeTokenPart(payload); const signature = crypto.createHmac('sha256', miniProgramTokenSecret).update(encoded).digest('base64url'); return `mpv1.${encoded}.${signature}` }
@@ -299,6 +307,11 @@ const server = http.createServer(async (req, res) => {
       return json(res, 200, { token, tokenType: 'Bearer', expiresIn: Math.floor(adminTokenTtlMs / 1000), user: { name: 'SY Admin', role: 'editor' } })
     }
     if (url.pathname === '/api/content' && method === 'GET') return json(res, 200, publicContent(readData(), url.searchParams.get('country') || 'greece'))
+    if (url.pathname === '/api/miniprogram/access' && method === 'GET') return json(res, 200, miniProgramAccessPayload(readData()))
+    if (url.pathname.startsWith('/api/miniprogram/')) {
+      const data = readData()
+      if (!isMiniProgramAccessEnabled(data)) return miniProgramMaintenance(res)
+    }
     const tripApiMatch = url.pathname.match(/^\/api\/trip\/([^/]+)$/)
     if (tripApiMatch && method === 'GET') {
       const data = readData()
@@ -404,6 +417,7 @@ const server = http.createServer(async (req, res) => {
       const input = await body(req)
       const data = readData(); let miniProgramUser = null
       if (isMiniProgramLead(input)) {
+        if (!isMiniProgramAccessEnabled(data)) return miniProgramMaintenance(res)
         miniProgramUser = miniProgramUserFromRequest(req, data)
         if (!miniProgramUser) return json(res, 401, { code: 'MINIPROGRAM_LOGIN_REQUIRED', error: '请先微信登录' })
         if (!miniProgramUser.phone) return json(res, 403, { code: 'PHONE_BIND_REQUIRED', error: '提交前请先绑定手机号' })
