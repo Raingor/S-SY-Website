@@ -50,12 +50,31 @@ function miniProgramAccessPayload(data) {
 function miniProgramMaintenance(res) { return json(res, 503, { code: 'MINIPROGRAM_MAINTENANCE', error: '小程序正在升级中，请稍后再试。', title: '正在升级中', message: '小程序正在升级中，请稍后再试。' }) }
 function miniProgramSimulationEnabled() { return process.env.SY_MINIPROGRAM_SIMULATION_ENABLED === 'true' }
 function miniProgramSimulationDisabled(res) { return json(res, 404, { code: 'MINIPROGRAM_SIMULATION_DISABLED', error: '模拟商品服务未开启' }) }
+function simulationTokenSecret() { return process.env.SY_MINIPROGRAM_SIMULATION_SECRET || miniProgramTokenSecret }
+function normalizeSimulationPhone(value) {
+  const raw = String(value || '').trim().replace(/[\s()-]/g, '')
+  const phone = raw.startsWith('+') ? raw : (/^1\d{10}$/.test(raw) ? `+86${raw}` : `+${raw}`)
+  if (!/^\+\d{7,20}$/.test(phone)) throw new Error('请输入有效测试手机号')
+  return phone
+}
+function simulationPhoneHash(phone) { return crypto.createHmac('sha256', simulationTokenSecret()).update(phone).digest('hex') }
+function createSimulationToken(phone) {
+  const now = Math.floor(Date.now() / 1000); const phoneHash = simulationPhoneHash(phone); const payload = { sub: `sim-phone-${phoneHash.slice(0, 20)}`, phone, phoneHash, iat: now, exp: now + 24 * 60 * 60 }; const encoded = encodeTokenPart(payload); const signature = crypto.createHmac('sha256', simulationTokenSecret()).update(encoded).digest('base64url'); return `smpv1.${encoded}.${signature}`
+}
+function verifySimulationToken(token) {
+  try {
+    const [version, encoded, signature] = String(token || '').split('.'); if (version !== 'smpv1' || !encoded || !signature || !simulationTokenSecret()) return null
+    const expected = crypto.createHmac('sha256', simulationTokenSecret()).update(encoded).digest('base64url'); const actualBuffer = Buffer.from(signature); const expectedBuffer = Buffer.from(expected); if (actualBuffer.length !== expectedBuffer.length || !crypto.timingSafeEqual(actualBuffer, expectedBuffer)) return null
+    const payload = JSON.parse(Buffer.from(encoded, 'base64url').toString('utf8')); if (!payload.exp || payload.exp <= Math.floor(Date.now() / 1000)) return null
+    const phone = normalizeSimulationPhone(payload.phone); const phoneHash = simulationPhoneHash(phone); return phoneHash === payload.phoneHash ? { key: `phone-${phoneHash}`, userId: payload.sub, phone, phoneHash } : null
+  } catch { return null }
+}
 function defaultMiniProgramKnowledgeConfig() {
   return {
     trialSeconds: 60,
     products: {
-      attraction: { enabled: true, productType: 'attraction', name: '单景点永久讲解（模拟）', price: 1, currency: 'CNY' },
-      membership: { enabled: true, productType: 'membership', name: '终身会员（模拟）', price: 1, currency: 'CNY' },
+      attraction: { enabled: true, productType: 'attraction', name: '单景点永久讲解（模拟）', price: 0.01, currency: 'CNY' },
+      membership: { enabled: true, productType: 'membership', name: '终身会员（模拟）', price: 0.01, currency: 'CNY' },
     },
   }
 }
@@ -77,13 +96,14 @@ function miniProgramKnowledgeConfig(data) {
   const trialSeconds = Number(configured.trialSeconds)
   return { trialSeconds: Number.isInteger(trialSeconds) && trialSeconds >= 0 && trialSeconds <= 3600 ? trialSeconds : fallback.trialSeconds, products, simulation: true }
 }
-function simulationUserKey(req) {
-  if (!miniProgramSimulationEnabled()) return ''
+function simulationUserIdentity(req) {
+  if (!miniProgramSimulationEnabled()) return null
   const auth = String(req.headers.authorization || '')
+  if (auth.startsWith('Bearer smpv1.')) return verifySimulationToken(auth.slice('Bearer '.length))
   const header = String(req.headers['x-sy-simulation-user'] || '')
   const raw = header || (auth.startsWith('Bearer sim-') ? auth.slice('Bearer '.length) : '')
   const key = raw.replace(/^sim[-_:]/i, '').trim().toLowerCase()
-  return /^[a-z0-9][a-z0-9_-]{0,40}$/.test(key) ? key : ''
+  return /^[a-z0-9][a-z0-9_-]{0,40}$/.test(key) ? { key } : null
 }
 function simulationState(data) {
   data.miniprogramSimulation = data.miniprogramSimulation || {}
@@ -93,23 +113,26 @@ function simulationState(data) {
 function publishedAttractionIds(data) { return (data.attractions || []).filter((item) => item.status === 'published').map((item) => item.id) }
 function simulationFixtureOrders(data, userKey) {
   const attractionId = publishedAttractionIds(data)[0] || ''
-  if (userKey === 'attraction' && attractionId) return [{ id: `sim-fixture-attraction-${attractionId}`, testUser: userKey, status: 'paid', productType: 'attraction', attractionId, price: 1, currency: 'CNY', createdAt: '2026-01-01T00:00:00.000Z', paidAt: '2026-01-01T00:00:00.000Z' }]
-  if (userKey === 'membership') return [{ id: 'sim-fixture-membership', testUser: userKey, status: 'paid', productType: 'membership', attractionId: '', price: 1, currency: 'CNY', createdAt: '2026-01-01T00:00:00.000Z', paidAt: '2026-01-01T00:00:00.000Z' }]
+  const config = miniProgramKnowledgeConfig(data)
+  if (userKey === 'attraction' && attractionId) return [{ id: `sim-fixture-attraction-${attractionId}`, testUser: userKey, status: 'paid', productType: 'attraction', attractionId, name: config.products.attraction.name, price: config.products.attraction.price, currency: config.products.attraction.currency, createdAt: '2026-01-01T00:00:00.000Z', paidAt: '2026-01-01T00:00:00.000Z' }]
+  if (userKey === 'membership') return [{ id: 'sim-fixture-membership', testUser: userKey, status: 'paid', productType: 'membership', attractionId: '', name: config.products.membership.name, price: config.products.membership.price, currency: config.products.membership.currency, createdAt: '2026-01-01T00:00:00.000Z', paidAt: '2026-01-01T00:00:00.000Z' }]
   return []
 }
-function simulationOrders(data, userKey) { return [...simulationFixtureOrders(data, userKey), ...simulationState(data).orders.filter((order) => order.testUser === userKey)] }
+function simulationOrders(data, identity) { return [...(identity.phoneHash ? [] : simulationFixtureOrders(data, identity.key)), ...simulationState(data).orders.filter((order) => identity.phoneHash ? order.phoneHash === identity.phoneHash : order.testUser === identity.key)] }
 function publicSimulationOrder(order) {
-  const { testUser, ...safe } = order
-  return { simulation: true, ...safe }
+  const { testUser, phoneHash, verifiedPhone, ...safe } = order
+  const phone = verifiedPhone || safe.phone || ''
+  return { simulation: true, ...safe, phone, phoneMasked: phone ? maskPhone(phone) : null }
 }
-function simulationEntitlements(data, userKey) {
-  const orders = simulationOrders(data, userKey)
+function simulationEntitlements(data, identity) {
+  const orders = simulationOrders(data, identity)
   const paidOrders = orders.filter((order) => order.status === 'paid')
   const member = paidOrders.some((order) => order.productType === 'membership')
   const unlocked = new Set(member ? publishedAttractionIds(data) : paidOrders.filter((order) => order.productType === 'attraction').map((order) => order.attractionId).filter(Boolean))
   return {
     simulation: true,
-    testUser: userKey,
+    testUser: identity.key,
+    user: { id: identity.userId || `sim-${identity.key}`, phoneBound: Boolean(identity.phone), phoneMasked: identity.phone ? maskPhone(identity.phone) : null },
     member,
     memberLabel: member ? '终身会员' : '普通用户',
     purchases: paidOrders.map((order) => ({ orderId: order.id, productType: order.productType, attractionId: order.attractionId || '', status: order.status, purchasedAt: order.paidAt || order.createdAt })),
@@ -119,9 +142,9 @@ function simulationEntitlements(data, userKey) {
     orders: orders.map(publicSimulationOrder),
   }
 }
-function simulationUserRequired(res) { return json(res, 401, { code: 'MINIPROGRAM_SIMULATION_USER_REQUIRED', error: '请使用 sim-* 测试身份' }) }
+function simulationUserRequired(res) { return json(res, 401, { code: 'MINIPROGRAM_SIMULATION_USER_REQUIRED', error: '请先使用手机号创建模拟测试会话' }) }
 function simulationProduct(data, productType) { return miniProgramKnowledgeConfig(data).products[productType] }
-function simulationOrderResponse(data, userKey, order, extra = {}) { return { simulation: true, order: publicSimulationOrder(order), entitlements: simulationEntitlements(data, userKey), ...extra } }
+function simulationOrderResponse(data, identity, order, extra = {}) { return { simulation: true, order: publicSimulationOrder(order), entitlements: simulationEntitlements(data, identity), ...extra } }
 function miniProgramConfigReady() { return Boolean(process.env.WX_APPID && process.env.WX_APP_SECRET && miniProgramTokenSecret) }
 function encodeTokenPart(value) { return Buffer.from(JSON.stringify(value)).toString('base64url') }
 function createMiniProgramToken(userId) { const now = Math.floor(Date.now() / 1000); const payload = { sub: userId, iat: now, exp: now + 30 * 24 * 60 * 60 }; const encoded = encodeTokenPart(payload); const signature = crypto.createHmac('sha256', miniProgramTokenSecret).update(encoded).digest('base64url'); return `mpv1.${encoded}.${signature}` }
@@ -386,51 +409,67 @@ const server = http.createServer(async (req, res) => {
       const data = readData()
       if (!isMiniProgramAccessEnabled(data)) return miniProgramMaintenance(res)
     }
+    if (url.pathname === '/api/miniprogram/simulation/session' && method === 'POST') {
+      if (!miniProgramSimulationEnabled()) return miniProgramSimulationDisabled(res)
+      if (!simulationTokenSecret()) return json(res, 503, { code: 'SIMULATION_SECRET_NOT_CONFIGURED', error: '模拟测试会话未配置签名密钥' })
+      const input = await body(req)
+      try {
+        const phone = normalizeSimulationPhone(input.phone); const phoneHash = simulationPhoneHash(phone)
+        return json(res, 200, { simulation: true, accessToken: createSimulationToken(phone), tokenType: 'Bearer', expiresIn: 24 * 60 * 60, user: { id: `sim-phone-${phoneHash.slice(0, 20)}`, phoneBound: true, phoneMasked: maskPhone(phone) } })
+      } catch (error) { return json(res, 422, { code: 'INVALID_SIMULATION_PHONE', error: error.message }) }
+    }
     if (url.pathname === '/api/miniprogram/knowledge/config' && method === 'GET') {
       if (!miniProgramSimulationEnabled()) return miniProgramSimulationDisabled(res)
       return json(res, 200, miniProgramKnowledgeConfig(readData()))
     }
     if (url.pathname === '/api/miniprogram/entitlements' && method === 'GET') {
       if (!miniProgramSimulationEnabled()) return miniProgramSimulationDisabled(res)
-      const data = readData(); const userKey = simulationUserKey(req)
-      if (!userKey) return simulationUserRequired(res)
-      return json(res, 200, simulationEntitlements(data, userKey))
+      const data = readData(); const identity = simulationUserIdentity(req)
+      if (!identity) return simulationUserRequired(res)
+      return json(res, 200, simulationEntitlements(data, identity))
+    }
+    if (url.pathname === '/api/miniprogram/orders' && method === 'GET') {
+      if (!miniProgramSimulationEnabled()) return miniProgramSimulationDisabled(res)
+      const data = readData(); const identity = simulationUserIdentity(req)
+      if (!identity) return simulationUserRequired(res)
+      return json(res, 200, { simulation: true, items: simulationOrders(data, identity).map(publicSimulationOrder) })
     }
     if (url.pathname === '/api/miniprogram/orders' && method === 'POST') {
       if (!miniProgramSimulationEnabled()) return miniProgramSimulationDisabled(res)
-      const data = readData(); const userKey = simulationUserKey(req)
-      if (!userKey) return simulationUserRequired(res)
+      const data = readData(); const identity = simulationUserIdentity(req)
+      if (!identity) return simulationUserRequired(res)
+      if (!identity.phoneHash) return json(res, 422, { code: 'SIMULATION_PHONE_REQUIRED', error: '创建模拟订单前请先使用手机号创建测试会话' })
       const input = await body(req); const productType = String(input.productType || '').trim(); const product = simulationProduct(data, productType)
       if (!product || product.enabled === false) return json(res, 422, { code: 'SIMULATION_PRODUCT_UNAVAILABLE', error: '模拟商品不可用' })
       const attractionId = String(input.attractionId || '').trim()
       if (productType === 'attraction' && !(data.attractions || []).some((item) => item.id === attractionId && item.status === 'published')) return json(res, 422, { code: 'ATTRACTION_NOT_FOUND', error: '景点不存在或未发布' })
       const now = new Date().toISOString()
-      const order = { id: id('sim-order'), testUser: userKey, status: 'pending', productType, attractionId: productType === 'attraction' ? attractionId : '', name: product.name, price: product.price, currency: product.currency, createdAt: now }
+      const order = { id: id('sim-order'), testUser: identity.key, userId: identity.userId, verifiedPhone: identity.phone, phoneHash: identity.phoneHash, phone: identity.phone, status: 'pending', productType, attractionId: productType === 'attraction' ? attractionId : '', name: product.name, price: product.price, currency: product.currency, createdAt: now }
       simulationState(data).orders.push(order); await saveData(data)
       return json(res, 201, { simulation: true, order: publicSimulationOrder(order), payment: null })
     }
     const simulationOrderMatch = url.pathname.match(/^\/api\/miniprogram\/orders\/([^/]+)\/(simulate-paid|simulate-failed)$/)
     if (simulationOrderMatch && method === 'POST') {
       if (!miniProgramSimulationEnabled()) return miniProgramSimulationDisabled(res)
-      const data = readData(); const userKey = simulationUserKey(req)
-      if (!userKey) return simulationUserRequired(res)
-      const order = simulationState(data).orders.find((item) => item.id === simulationOrderMatch[1] && item.testUser === userKey)
+      const data = readData(); const identity = simulationUserIdentity(req)
+      if (!identity) return simulationUserRequired(res)
+      const order = simulationState(data).orders.find((item) => item.id === simulationOrderMatch[1] && (identity.phoneHash ? item.phoneHash === identity.phoneHash : item.testUser === identity.key))
       if (!order) return json(res, 404, { code: 'SIMULATION_ORDER_NOT_FOUND', error: '模拟订单不存在' })
       const nextStatus = simulationOrderMatch[2] === 'simulate-paid' ? 'paid' : 'failed'
-      if (order.status === nextStatus) return json(res, 200, simulationOrderResponse(data, userKey, order, nextStatus === 'failed' ? { code: 'SIMULATED_PAYMENT_FAILED', message: '模拟支付失败，未授予权益。', idempotent: true } : { idempotent: true }))
+      if (order.status === nextStatus) return json(res, 200, simulationOrderResponse(data, identity, order, nextStatus === 'failed' ? { code: 'SIMULATED_PAYMENT_FAILED', message: '模拟支付失败，未授予权益。', idempotent: true } : { idempotent: true }))
       if (order.status !== 'pending') return json(res, 409, { code: 'SIMULATION_ORDER_FINALIZED', error: '模拟订单已完成，不能重复改变状态' })
       order.status = nextStatus; order.updatedAt = new Date().toISOString()
       if (nextStatus === 'paid') order.paidAt = order.updatedAt
       if (nextStatus === 'failed') { order.failedAt = order.updatedAt; order.errorCode = 'SIMULATED_PAYMENT_FAILED'; order.errorMessage = '模拟支付失败，未授予权益。' }
       await saveData(data)
-      return json(res, 200, simulationOrderResponse(data, userKey, order, nextStatus === 'failed' ? { code: 'SIMULATED_PAYMENT_FAILED', message: '模拟支付失败，未授予权益。' } : {}))
+      return json(res, 200, simulationOrderResponse(data, identity, order, nextStatus === 'failed' ? { code: 'SIMULATED_PAYMENT_FAILED', message: '模拟支付失败，未授予权益。' } : {}))
     }
     if (url.pathname === '/api/miniprogram/simulation/reset' && method === 'POST') {
       if (!miniProgramSimulationEnabled()) return miniProgramSimulationDisabled(res)
-      const data = readData(); const userKey = simulationUserKey(req)
-      if (!userKey) return simulationUserRequired(res)
-      const state = simulationState(data); state.orders = state.orders.filter((order) => order.testUser !== userKey); await saveData(data)
-      return json(res, 200, { simulation: true, reset: true, entitlements: simulationEntitlements(data, userKey) })
+      const data = readData(); const identity = simulationUserIdentity(req)
+      if (!identity) return simulationUserRequired(res)
+      const state = simulationState(data); state.orders = state.orders.filter((order) => identity.phoneHash ? order.phoneHash !== identity.phoneHash : order.testUser !== identity.key); await saveData(data)
+      return json(res, 200, { simulation: true, reset: true, entitlements: simulationEntitlements(data, identity) })
     }
     const tripApiMatch = url.pathname.match(/^\/api\/trip\/([^/]+)$/)
     if (tripApiMatch && method === 'GET') {

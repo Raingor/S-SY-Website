@@ -57,6 +57,11 @@ async function request(path, options = {}) {
 
 function assert(condition, message) { if (!condition) throw new Error(message) }
 function auth(user) { return { Authorization: `Bearer sim-${user}` } }
+async function createSession(phone) {
+  const result = await request('/api/miniprogram/simulation/session', { method: 'POST', body: JSON.stringify({ phone }) })
+  assert(result.status === 200 && result.data.simulation === true && result.data.user.phoneBound === true, 'phone simulation session failed')
+  return { Authorization: `Bearer ${result.data.accessToken}` }
+}
 
 async function stop() {
   if (!child || child.killed) return
@@ -71,44 +76,55 @@ try {
   await waitForServer()
 
   let result = await request('/api/miniprogram/knowledge/config')
-  assert(result.status === 200 && result.data.simulation === true && result.data.trialSeconds === 60, 'config contract failed')
+  assert(result.status === 200 && result.data.simulation === true && result.data.trialSeconds === 60 && result.data.products.attraction.price === 0.01 && result.data.products.membership.price === 0.01, 'config contract failed')
   assert(result.data.products.attraction.productType === 'attraction' && result.data.products.membership.productType === 'membership', 'product config failed')
 
   result = await request('/api/miniprogram/entitlements', { headers: auth('regular') })
   assert(result.status === 200 && result.data.member === false && result.data.orders.length === 0, 'regular fixture failed')
 
-  result = await request('/api/miniprogram/orders', { method: 'POST', headers: auth('regular'), body: JSON.stringify({ productType: 'attraction', attractionId: 'acropolis' }) })
-  assert(result.status === 201 && result.data.simulation === true && result.data.order.status === 'pending' && result.data.payment === null, 'attraction order creation failed')
+  const phoneAuth = await createSession('13800138000')
+  result = await request('/api/miniprogram/entitlements', { headers: phoneAuth })
+  assert(result.status === 200 && result.data.user.phoneBound === true && result.data.orders.length === 0, 'phone entitlement isolation failed')
+
+  result = await request('/api/miniprogram/orders', { method: 'POST', headers: phoneAuth, body: JSON.stringify({ productType: 'attraction', attractionId: 'acropolis' }) })
+  assert(result.status === 201 && result.data.simulation === true && result.data.order.status === 'pending' && result.data.order.price === 0.01 && result.data.order.phone === '+8613800138000' && result.data.payment === null, 'attraction order creation failed')
   const attractionOrderId = result.data.order.id
 
-  result = await request('/api/miniprogram/orders', { method: 'POST', headers: auth('regular'), body: JSON.stringify({ productType: 'membership' }) })
-  assert(result.status === 201 && result.data.order.productType === 'membership', 'membership order creation failed')
+  result = await request('/api/miniprogram/orders', { method: 'POST', headers: phoneAuth, body: JSON.stringify({ productType: 'membership' }) })
+  assert(result.status === 201 && result.data.order.productType === 'membership' && result.data.order.price === 0.01, 'membership order creation failed')
   const membershipOrderId = result.data.order.id
 
-  result = await request(`/api/miniprogram/orders/${attractionOrderId}/simulate-paid`, { method: 'POST', headers: auth('regular') })
+  result = await request('/api/miniprogram/orders', { method: 'GET', headers: phoneAuth })
+  assert(result.status === 200 && result.data.items.length === 2 && result.data.items.every((order) => order.phone === '+8613800138000'), 'order query contract failed')
+
+  result = await request(`/api/miniprogram/orders/${attractionOrderId}/simulate-paid`, { method: 'POST', headers: phoneAuth })
   assert(result.status === 200 && result.data.order.status === 'paid' && result.data.entitlements.unlockedAttractions.includes('acropolis'), 'paid entitlement failed')
-  result = await request(`/api/miniprogram/orders/${attractionOrderId}/simulate-paid`, { method: 'POST', headers: auth('regular') })
+  result = await request(`/api/miniprogram/orders/${attractionOrderId}/simulate-paid`, { method: 'POST', headers: phoneAuth })
   assert(result.status === 200 && result.data.idempotent === true, 'paid idempotency failed')
 
-  result = await request(`/api/miniprogram/orders/${membershipOrderId}/simulate-failed`, { method: 'POST', headers: auth('regular') })
+  result = await request(`/api/miniprogram/orders/${membershipOrderId}/simulate-failed`, { method: 'POST', headers: phoneAuth })
   assert(result.status === 200 && result.data.order.status === 'failed' && result.data.code === 'SIMULATED_PAYMENT_FAILED' && result.data.entitlements.member === false, 'failed payment path failed')
-  result = await request(`/api/miniprogram/orders/${membershipOrderId}/simulate-failed`, { method: 'POST', headers: auth('regular') })
+  result = await request(`/api/miniprogram/orders/${membershipOrderId}/simulate-failed`, { method: 'POST', headers: phoneAuth })
   assert(result.status === 200 && result.data.idempotent === true, 'failed idempotency failed')
+
+  const otherPhoneAuth = await createSession('13900139000')
+  result = await request('/api/miniprogram/entitlements', { headers: otherPhoneAuth })
+  assert(result.status === 200 && result.data.orders.length === 0 && result.data.unlockedAttractions.length === 0, 'phone order isolation failed')
 
   result = await request('/api/miniprogram/entitlements', { headers: auth('attraction') })
   assert(result.status === 200 && result.data.member === false && result.data.unlockedAttractions.includes('acropolis'), 'attraction fixture failed')
   result = await request('/api/miniprogram/entitlements', { headers: auth('membership') })
   assert(result.status === 200 && result.data.member === true && result.data.unlockedAttractions.length > 0, 'membership fixture failed')
 
-  result = await request('/api/miniprogram/simulation/reset', { method: 'POST', headers: auth('regular') })
+  result = await request('/api/miniprogram/simulation/reset', { method: 'POST', headers: phoneAuth })
   assert(result.status === 200 && result.data.reset === true && result.data.entitlements.orders.length === 0, 'simulation reset failed')
 
   result = await request('/api/auth/login', { method: 'POST', body: JSON.stringify({ password: 'test-admin-password' }) })
   const adminToken = result.data.token
-  result = await request('/api/admin/settings', { method: 'PATCH', headers: { Authorization: `Bearer ${adminToken}` }, body: JSON.stringify({ miniprogramKnowledge: { trialSeconds: 90, products: { attraction: { enabled: true, name: '测试景点讲解', price: 2, currency: 'CNY' }, membership: { enabled: true, name: '测试终身会员', price: 3, currency: 'CNY' } } } }) })
+  result = await request('/api/admin/settings', { method: 'PATCH', headers: { Authorization: `Bearer ${adminToken}` }, body: JSON.stringify({ miniprogramKnowledge: { trialSeconds: 90, products: { attraction: { enabled: true, name: '测试景点讲解', price: 0.01, currency: 'CNY' }, membership: { enabled: true, name: '测试终身会员', price: 0.01, currency: 'CNY' } } } }) })
   assert(result.status === 200, 'knowledge config settings update failed')
   result = await request('/api/miniprogram/knowledge/config')
-  assert(result.status === 200 && result.data.trialSeconds === 90 && result.data.products.attraction.price === 2, 'knowledge config persistence failed')
+  assert(result.status === 200 && result.data.trialSeconds === 90 && result.data.products.attraction.price === 0.01, 'knowledge config persistence failed')
   result = await request('/api/admin/settings', { method: 'PATCH', headers: { Authorization: `Bearer ${adminToken}` }, body: JSON.stringify({ miniprogramAccess: false }) })
   assert(result.status === 200, 'maintenance toggle off failed')
   result = await request('/api/miniprogram/knowledge/config')
@@ -123,7 +139,7 @@ try {
   await waitForServer()
   result = await request('/api/miniprogram/knowledge/config')
   assert(result.status === 404 && result.data.code === 'MINIPROGRAM_SIMULATION_DISABLED', 'simulation disable switch failed')
-  console.log('PASS: config, fixtures, attraction purchase, membership/failed payment, idempotency, reset, maintenance gate, content isolation, disable switch')
+  console.log('PASS: phone session, 0.01 products, order query/isolation, fixtures, attraction purchase, membership/failed payment, idempotency, reset, maintenance gate, content isolation, disable switch')
 } finally {
   await stop()
   await rm(tempRoot, { recursive: true, force: true })

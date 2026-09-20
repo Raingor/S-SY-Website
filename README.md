@@ -134,11 +134,13 @@ SY_MINIPROGRAM_TOKEN_SECRET='用于签发小程序用户 Token 的随机密钥'
 
 该能力默认关闭，服务端设置 `SY_MINIPROGRAM_SIMULATION_ENABLED=true` 后才开放；它使用独立的 `miniprogramSimulation.orders` 命名空间，不写入真实小程序用户或真实订单，也不会调用微信支付。关闭环境变量后相关接口返回 `404 MINIPROGRAM_SIMULATION_DISABLED`。
 
-测试身份使用 `Authorization: Bearer sim-regular`、`sim-attraction` 或 `sim-membership`（也可使用请求头 `X-SY-Simulation-User`）。三种身份分别对应普通用户、已购买首个已发布景点的用户和终身会员；生成的订单只属于当前测试身份。
+推荐先调用手机号测试会话接口获取 Bearer Token；旧的 `sim-regular`、`sim-attraction`、`sim-membership` fixture 仍保留用于无订单权益回归，但创建订单必须使用手机号会话。测试会话只在模拟开关开启时可用，手机号仅用于隔离测试订单，不代表真实微信手机号授权。
 
-- `GET /api/miniprogram/knowledge/config`：返回后台 `settings.miniprogramKnowledge` 中的 `trialSeconds`、两类商品及 `simulation: true`。测试价格仅为模拟价格，默认均为 `1 CNY`。
-- `GET /api/miniprogram/entitlements`：需要测试身份，返回 `member`、`purchases`、`unlockedAttractions`、`favorites`、`history` 和 `orders`。终身会员会自动解锁所有当前及未来发布的景点。
-- `POST /api/miniprogram/orders`：需要测试身份，请求 `{ "productType": "attraction", "attractionId": "acropolis" }` 或 `{ "productType": "membership" }`，返回 `pending` 订单和 `payment: null`。
+- `POST /api/miniprogram/simulation/session`：请求 `{ "phone": "13800138000" }`，返回 `simulation: true`、签名 `accessToken` 及脱敏手机号用户；手机号会标准化为带国家码的测试身份。
+- `GET /api/miniprogram/knowledge/config`：返回后台 `settings.miniprogramKnowledge` 中的 `trialSeconds`、两类商品及 `simulation: true`。测试价格固定默认均为 `0.01 CNY`，不会产生真实扣款。
+- `GET /api/miniprogram/entitlements`：需要手机号测试会话 Bearer Token，按 `phoneHash` 返回 `member`、`purchases`、`unlockedAttractions`、`favorites`、`history` 和完整 `orders`。终身会员会自动解锁所有当前及未来发布的景点。
+- `GET /api/miniprogram/orders`：需要手机号测试会话，返回当前测试手机号下的模拟订单列表。
+- `POST /api/miniprogram/orders`：需要手机号测试会话，请求 `{ "productType": "attraction", "attractionId": "acropolis" }` 或 `{ "productType": "membership" }`，返回价格 `0.01` 的 `pending` 订单和 `payment: null`；订单保存 `verifiedPhone`、`phoneHash` 与用户身份。
 - `POST /api/miniprogram/orders/:id/simulate-paid`：将测试订单置为 `paid` 并授予对应权益；重复调用幂等。
 - `POST /api/miniprogram/orders/:id/simulate-failed`：将测试订单置为 `failed`，返回 `SIMULATED_PAYMENT_FAILED`，不会授予权益；重复调用幂等。
 - `POST /api/miniprogram/simulation/reset`：清理当前测试身份生成的模拟订单；fixture 身份的预置状态仍保留。
@@ -146,7 +148,10 @@ SY_MINIPROGRAM_TOKEN_SECRET='用于签发小程序用户 Token 的随机密钥'
 示例：
 
 ```bash
-SIM='Authorization: Bearer sim-regular'
+SESSION=$(curl -sS -X POST -H 'Content-Type: application/json' \
+  -d '{"phone":"13800138000"}' \
+  http://127.0.0.1:4174/api/miniprogram/simulation/session)
+SIM="Authorization: Bearer $(node -p "JSON.parse(process.argv[1]).accessToken" "$SESSION")"
 curl -H "$SIM" https://sy-greece.com/api/miniprogram/entitlements
 curl https://sy-greece.com/api/miniprogram/knowledge/config
 curl -X POST -H "$SIM" -H 'Content-Type: application/json' \
@@ -154,6 +159,8 @@ curl -X POST -H "$SIM" -H 'Content-Type: application/json' \
   https://sy-greece.com/api/miniprogram/orders
 curl -X POST -H "$SIM" https://sy-greece.com/api/miniprogram/simulation/reset
 ```
+
+模拟订单的 `phone` 来自服务端创建的测试会话，客户端不能通过订单请求体覆盖；真实用户路径仍使用微信登录后的 Website `userId` 与 `/api/miniprogram/auth/phone` 已验证手机号关联，真实支付接入点仍需后续配置微信商户号、支付服务和回调，模拟接口不会调用 `wx.requestPayment`。
 
 模拟接口仍遵守 `/api/miniprogram/access` 维护开关；维护关闭时返回现有 `503 MINIPROGRAM_MAINTENANCE`，开启后恢复。
 

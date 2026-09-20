@@ -20,14 +20,14 @@
           "enabled": true,
           "productType": "attraction",
           "name": "单景点永久讲解（模拟）",
-          "price": 1,
+          "price": 0.01,
           "currency": "CNY"
         },
         "membership": {
           "enabled": true,
           "productType": "membership",
           "name": "终身会员（模拟）",
-          "price": 1,
+          "price": 0.01,
           "currency": "CNY"
         }
       }
