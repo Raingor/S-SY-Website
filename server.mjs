@@ -6,6 +6,7 @@ import crypto from 'node:crypto'
 import { setTimeout as delay } from 'node:timers/promises'
 import tls from 'node:tls'
 import { closeStorage, initStorage, readData, saveData, storageStatus } from './storage.mjs'
+import { amountToFen, createMiniProgramPrepay, decryptWechatNotify, realPayNotifyReady, realPayRequestReady, verifyWechatNotify, wechatPayConfig } from './wechat-pay.mjs'
 
 const root = dirname(fileURLToPath(import.meta.url))
 const distDir = resolve(root, 'dist')
@@ -21,6 +22,7 @@ const smtpUser = String(process.env.SY_SMTP_USER || 'ro_ye@foxmail.com')
 const smtpPassword = String(process.env.SY_SMTP_PASSWORD || '')
 const tokens = new Map()
 const adminTokenTtlMs = 8 * 60 * 60 * 1000
+const wechatPay = wechatPayConfig()
 let wechatAccessToken = { value: '', expiresAt: 0 }
 const mime = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8', '.json': 'application/json; charset=utf-8', '.png': 'image/png', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.webp': 'image/webp', '.svg': 'image/svg+xml', '.ico': 'image/x-icon' }
 const immutableExtensions = new Set(['.png', '.jpg', '.jpeg', '.webp', '.svg', '.ico', '.woff', '.woff2'])
@@ -49,7 +51,10 @@ function miniProgramAccessPayload(data) {
 }
 function miniProgramMaintenance(res) { return json(res, 503, { code: 'MINIPROGRAM_MAINTENANCE', error: '小程序正在升级中，请稍后再试。', title: '正在升级中', message: '小程序正在升级中，请稍后再试。' }) }
 function miniProgramSimulationEnabled() { return process.env.SY_MINIPROGRAM_SIMULATION_ENABLED === 'true' }
+function miniProgramRealPayEnabled() { return process.env.SY_MINIPROGRAM_REAL_PAY_ENABLED === 'true' && realPayRequestReady(wechatPay) }
+function miniProgramCommerceEnabled() { return miniProgramSimulationEnabled() || miniProgramRealPayEnabled() }
 function miniProgramSimulationDisabled(res) { return json(res, 404, { code: 'MINIPROGRAM_SIMULATION_DISABLED', error: '模拟商品服务未开启' }) }
+function miniProgramPaymentUnavailable(res) { return json(res, 503, { code: 'MINIPROGRAM_PAYMENT_NOT_CONFIGURED', error: '微信支付服务尚未配置' }) }
 function simulationTokenSecret() { return process.env.SY_MINIPROGRAM_SIMULATION_SECRET || miniProgramTokenSecret }
 function normalizeSimulationPhone(value) {
   const raw = String(value || '').trim().replace(/[\s()-]/g, '')
@@ -94,7 +99,7 @@ function miniProgramKnowledgeConfig(data) {
     }]
   }))
   const trialSeconds = Number(configured.trialSeconds)
-  return { trialSeconds: Number.isInteger(trialSeconds) && trialSeconds >= 0 && trialSeconds <= 3600 ? trialSeconds : fallback.trialSeconds, products, simulation: true }
+  return { trialSeconds: Number.isInteger(trialSeconds) && trialSeconds >= 0 && trialSeconds <= 3600 ? trialSeconds : fallback.trialSeconds, products, simulation: miniProgramSimulationEnabled(), payment: miniProgramRealPayEnabled() ? 'wechat-v3' : null }
 }
 function simulationUserIdentity(req) {
   if (!miniProgramSimulationEnabled()) return null
@@ -142,6 +147,49 @@ function simulationEntitlements(data, identity) {
     orders: orders.map(publicSimulationOrder),
   }
 }
+function paymentOrders(data) {
+  data.miniprogramOrders = Array.isArray(data.miniprogramOrders) ? data.miniprogramOrders : []
+  return data.miniprogramOrders
+}
+function publicPaymentOrder(order) {
+  const { openid, phoneHash, ...safe } = order
+  return { ...safe, phoneMasked: order.phone ? maskPhone(order.phone) : null }
+}
+function realPaymentOrders(data, user) {
+  return paymentOrders(data).filter((order) => order.userId === user.id)
+}
+function realPaymentEntitlements(data, user) {
+  const orders = realPaymentOrders(data, user)
+  const paidOrders = orders.filter((order) => order.status === 'paid')
+  const member = paidOrders.some((order) => order.productType === 'membership')
+  const unlocked = new Set(member ? publishedAttractionIds(data) : paidOrders.filter((order) => order.productType === 'attraction').map((order) => order.attractionId).filter(Boolean))
+  return {
+    simulation: false,
+    payment: 'wechat-v3',
+    user: publicMiniProgramUser(user),
+    member,
+    memberLabel: member ? '终身会员' : '普通用户',
+    purchases: paidOrders.map((order) => ({ orderId: order.id, productType: order.productType, attractionId: order.attractionId || '', status: order.status, purchasedAt: order.paidAt || order.createdAt })),
+    unlockedAttractions: [...unlocked],
+    favorites: [],
+    history: [],
+    orders: orders.map(publicPaymentOrder)
+  }
+}
+function miniProgramCommerceUser(req, data) {
+  if (miniProgramSimulationEnabled()) return null
+  return miniProgramUserFromRequest(req, data)
+}
+function realPaymentProduct(data, productType) {
+  const product = miniProgramKnowledgeConfig(data).products[productType]
+  if (!product || product.enabled === false) return null
+  const amountTotal = amountToFen(product.price)
+  if (!amountTotal) return null
+  return { ...product, amountTotal, description: String(product.name || '').replace(/[（(]模拟[）)]/g, '').trim().slice(0, 127) || '景点文史知识讲解' }
+}
+function realPaymentOrderResponse(data, user, order, extra = {}) {
+  return { simulation: false, payment: 'wechat-v3', order: publicPaymentOrder(order), entitlements: realPaymentEntitlements(data, user), ...extra }
+}
 function simulationUserRequired(res) { return json(res, 401, { code: 'MINIPROGRAM_SIMULATION_USER_REQUIRED', error: '请先使用手机号创建模拟测试会话' }) }
 function simulationProduct(data, productType) { return miniProgramKnowledgeConfig(data).products[productType] }
 function simulationOrderResponse(data, identity, order, extra = {}) { return { simulation: true, order: publicSimulationOrder(order), entitlements: simulationEntitlements(data, identity), ...extra } }
@@ -179,6 +227,40 @@ async function body(req, limit = 1024 * 1024) {
   let raw = ''
   for await (const chunk of req) { raw += chunk; if (raw.length > limit) throw new Error('payload too large') }
   return raw ? JSON.parse(raw) : {}
+}
+async function rawBody(req, limit = 1024 * 1024) {
+  const chunks = []
+  let length = 0
+  for await (const chunk of req) {
+    const buffer = Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk)
+    length += buffer.length
+    if (length > limit) throw new Error('payload too large')
+    chunks.push(buffer)
+  }
+  return Buffer.concat(chunks).toString('utf8')
+}
+async function handleWechatPayNotify(req, res) {
+  if (!realPayNotifyReady(wechatPay)) return miniProgramPaymentUnavailable(res)
+  const raw = await rawBody(req)
+  if (!verifyWechatNotify(wechatPay, req.headers, raw)) return json(res, 401, { code: 'WECHAT_PAY_NOTIFY_SIGNATURE_INVALID', error: '微信支付回调验签失败' })
+  try {
+    const envelope = JSON.parse(raw)
+    const transaction = JSON.parse(decryptWechatNotify(wechatPay, envelope.resource || {}))
+    const data = readData()
+    const order = paymentOrders(data).find((item) => item.outTradeNo === transaction.out_trade_no)
+    if (!order) return json(res, 404, { code: 'WECHAT_PAY_ORDER_NOT_FOUND', error: '支付订单不存在' })
+    if (transaction.appid !== wechatPay.appid || transaction.mchid !== wechatPay.mchid || Number(transaction.amount?.total) !== Number(order.amountTotal)) return json(res, 400, { code: 'WECHAT_PAY_ORDER_MISMATCH', error: '支付订单校验失败' })
+    if (transaction.trade_state === 'SUCCESS') {
+      order.status = 'paid'
+      order.transactionId = transaction.transaction_id || order.transactionId || ''
+      order.paidAt = order.paidAt || new Date().toISOString()
+      order.updatedAt = new Date().toISOString()
+      await saveData(data)
+    }
+    return json(res, 200, { code: 'SUCCESS', message: '成功' })
+  } catch (error) {
+    return json(res, 400, { code: 'WECHAT_PAY_NOTIFY_DECRYPT_FAILED', error: error.message })
+  }
 }
 function redact(value) {
   return String(value ?? '').replace(/Bearer\s+[^\s]+/gi, 'Bearer [REDACTED]').replace(/(password|secret|token|authorization)\s*[:=]\s*[^,\s]+/gi, '$1=[REDACTED]')
@@ -405,6 +487,7 @@ const server = http.createServer(async (req, res) => {
     }
     if (url.pathname === '/api/content' && method === 'GET') return json(res, 200, publicContent(readData(), url.searchParams.get('country') || 'greece'))
     if (url.pathname === '/api/miniprogram/access' && method === 'GET') return json(res, 200, miniProgramAccessPayload(readData()))
+    if (url.pathname === '/api/wechat/pay/notify' && method === 'POST') return handleWechatPayNotify(req, res)
     if (url.pathname.startsWith('/api/miniprogram/')) {
       const data = readData()
       if (!isMiniProgramAccessEnabled(data)) return miniProgramMaintenance(res)
@@ -419,34 +502,72 @@ const server = http.createServer(async (req, res) => {
       } catch (error) { return json(res, 422, { code: 'INVALID_SIMULATION_PHONE', error: error.message }) }
     }
     if (url.pathname === '/api/miniprogram/knowledge/config' && method === 'GET') {
-      if (!miniProgramSimulationEnabled()) return miniProgramSimulationDisabled(res)
+      if (!miniProgramCommerceEnabled()) return miniProgramSimulationDisabled(res)
+      if (!miniProgramSimulationEnabled() && !miniProgramRealPayEnabled()) return miniProgramPaymentUnavailable(res)
       return json(res, 200, miniProgramKnowledgeConfig(readData()))
     }
     if (url.pathname === '/api/miniprogram/entitlements' && method === 'GET') {
-      if (!miniProgramSimulationEnabled()) return miniProgramSimulationDisabled(res)
-      const data = readData(); const identity = simulationUserIdentity(req)
-      if (!identity) return simulationUserRequired(res)
-      return json(res, 200, simulationEntitlements(data, identity))
+      if (miniProgramSimulationEnabled()) {
+        const data = readData(); const identity = simulationUserIdentity(req)
+        if (!identity) return simulationUserRequired(res)
+        return json(res, 200, simulationEntitlements(data, identity))
+      }
+      if (!miniProgramRealPayEnabled()) return miniProgramPaymentUnavailable(res)
+      const data = readData(); const user = miniProgramUserFromRequest(req, data)
+      if (!user) return json(res, 401, { code: 'MINIPROGRAM_LOGIN_REQUIRED', error: '请先微信登录' })
+      return json(res, 200, realPaymentEntitlements(data, user))
     }
     if (url.pathname === '/api/miniprogram/orders' && method === 'GET') {
-      if (!miniProgramSimulationEnabled()) return miniProgramSimulationDisabled(res)
-      const data = readData(); const identity = simulationUserIdentity(req)
-      if (!identity) return simulationUserRequired(res)
-      return json(res, 200, { simulation: true, items: simulationOrders(data, identity).map(publicSimulationOrder) })
+      if (miniProgramSimulationEnabled()) {
+        const data = readData(); const identity = simulationUserIdentity(req)
+        if (!identity) return simulationUserRequired(res)
+        return json(res, 200, { simulation: true, items: simulationOrders(data, identity).map(publicSimulationOrder) })
+      }
+      if (!miniProgramRealPayEnabled()) return miniProgramPaymentUnavailable(res)
+      const data = readData(); const user = miniProgramUserFromRequest(req, data)
+      if (!user) return json(res, 401, { code: 'MINIPROGRAM_LOGIN_REQUIRED', error: '请先微信登录' })
+      return json(res, 200, { simulation: false, payment: 'wechat-v3', items: realPaymentOrders(data, user).map(publicPaymentOrder) })
     }
     if (url.pathname === '/api/miniprogram/orders' && method === 'POST') {
-      if (!miniProgramSimulationEnabled()) return miniProgramSimulationDisabled(res)
-      const data = readData(); const identity = simulationUserIdentity(req)
-      if (!identity) return simulationUserRequired(res)
-      if (!identity.phoneHash) return json(res, 422, { code: 'SIMULATION_PHONE_REQUIRED', error: '创建模拟订单前请先使用手机号创建测试会话' })
-      const input = await body(req); const productType = String(input.productType || '').trim(); const product = simulationProduct(data, productType)
-      if (!product || product.enabled === false) return json(res, 422, { code: 'SIMULATION_PRODUCT_UNAVAILABLE', error: '模拟商品不可用' })
-      const attractionId = String(input.attractionId || '').trim()
+      const data = readData(); const input = await body(req); const productType = String(input.productType || '').trim(); const attractionId = String(input.attractionId || '').trim()
+      if (miniProgramSimulationEnabled()) {
+        const identity = simulationUserIdentity(req)
+        if (!identity) return simulationUserRequired(res)
+        if (!identity.phoneHash) return json(res, 422, { code: 'SIMULATION_PHONE_REQUIRED', error: '创建模拟订单前请先使用手机号创建测试会话' })
+        const product = simulationProduct(data, productType)
+        if (!product || product.enabled === false) return json(res, 422, { code: 'SIMULATION_PRODUCT_UNAVAILABLE', error: '模拟商品不可用' })
+        if (productType === 'attraction' && !(data.attractions || []).some((item) => item.id === attractionId && item.status === 'published')) return json(res, 422, { code: 'ATTRACTION_NOT_FOUND', error: '景点不存在或未发布' })
+        const now = new Date().toISOString()
+        const order = { id: id('sim-order'), testUser: identity.key, userId: identity.userId, verifiedPhone: identity.phone, phoneHash: identity.phoneHash, phone: identity.phone, status: 'pending', productType, attractionId: productType === 'attraction' ? attractionId : '', name: product.name, price: product.price, currency: product.currency, createdAt: now }
+        simulationState(data).orders.push(order); await saveData(data)
+        return json(res, 201, { simulation: true, order: publicSimulationOrder(order), payment: null })
+      }
+      if (!miniProgramRealPayEnabled()) return miniProgramPaymentUnavailable(res)
+      const user = miniProgramUserFromRequest(req, data)
+      if (!user) return json(res, 401, { code: 'MINIPROGRAM_LOGIN_REQUIRED', error: '请先微信登录' })
+      if (!user.phone) return json(res, 403, { code: 'PHONE_BIND_REQUIRED', error: '支付前请先绑定手机号' })
+      const product = realPaymentProduct(data, productType)
+      if (!product) return json(res, 422, { code: 'PAYMENT_PRODUCT_UNAVAILABLE', error: '支付商品不可用或价格未配置' })
       if (productType === 'attraction' && !(data.attractions || []).some((item) => item.id === attractionId && item.status === 'published')) return json(res, 422, { code: 'ATTRACTION_NOT_FOUND', error: '景点不存在或未发布' })
       const now = new Date().toISOString()
-      const order = { id: id('sim-order'), testUser: identity.key, userId: identity.userId, verifiedPhone: identity.phone, phoneHash: identity.phoneHash, phone: identity.phone, status: 'pending', productType, attractionId: productType === 'attraction' ? attractionId : '', name: product.name, price: product.price, currency: product.currency, createdAt: now }
-      simulationState(data).orders.push(order); await saveData(data)
-      return json(res, 201, { simulation: true, order: publicSimulationOrder(order), payment: null })
+      const order = { id: id('mp-order'), outTradeNo: `SY${Date.now()}${crypto.randomBytes(5).toString('hex')}`, userId: user.id, openid: user.openid, phone: user.phone, status: 'pending', productType, attractionId: productType === 'attraction' ? attractionId : '', name: product.description, description: product.description, price: product.price, amountTotal: product.amountTotal, currency: product.currency, createdAt: now }
+      try {
+        const prepay = await createMiniProgramPrepay(wechatPay, { ...order, openid: user.openid })
+        order.prepayId = prepay.prepayId
+        paymentOrders(data).push(order); await saveData(data)
+        return json(res, 201, { simulation: false, paymentMode: 'wechat-v3', order: publicPaymentOrder(order), payment: prepay.payment })
+      } catch (error) {
+        console.error('[wechat-pay] prepay failed', error.code || error.message)
+        return json(res, error.status >= 400 && error.status < 500 ? 422 : 502, { code: error.code || 'WECHAT_PAY_PREPAY_FAILED', error: '微信支付下单失败，请稍后再试' })
+      }
+    }
+    const paymentOrderMatch = url.pathname.match(/^\/api\/miniprogram\/orders\/([^/]+)$/)
+    if (paymentOrderMatch && method === 'GET' && !miniProgramSimulationEnabled()) {
+      if (!miniProgramRealPayEnabled()) return miniProgramPaymentUnavailable(res)
+      const data = readData(); const user = miniProgramUserFromRequest(req, data)
+      if (!user) return json(res, 401, { code: 'MINIPROGRAM_LOGIN_REQUIRED', error: '请先微信登录' })
+      const order = realPaymentOrders(data, user).find((item) => item.id === paymentOrderMatch[1])
+      return order ? json(res, 200, realPaymentOrderResponse(data, user, order)) : json(res, 404, { code: 'PAYMENT_ORDER_NOT_FOUND', error: '支付订单不存在' })
     }
     const simulationOrderMatch = url.pathname.match(/^\/api\/miniprogram\/orders\/([^/]+)\/(simulate-paid|simulate-failed)$/)
     if (simulationOrderMatch && method === 'POST') {

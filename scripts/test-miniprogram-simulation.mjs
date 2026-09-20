@@ -13,6 +13,7 @@ let child
 async function prepare() {
   await mkdir(join(tempRoot, 'data'), { recursive: true })
   await cp(join(root, 'server.mjs'), join(tempRoot, 'server.mjs'))
+  await cp(join(root, 'wechat-pay.mjs'), join(tempRoot, 'wechat-pay.mjs'))
   await cp(join(root, 'storage.mjs'), join(tempRoot, 'storage.mjs'))
   await cp(join(root, 'data/site-data.json'), join(tempRoot, 'data/site-data.json'))
   await symlink(join(root, 'node_modules'), join(tempRoot, 'node_modules'), 'dir')

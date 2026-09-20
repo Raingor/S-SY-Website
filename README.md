@@ -164,6 +164,36 @@ curl -X POST -H "$SIM" https://sy-greece.com/api/miniprogram/simulation/reset
 
 模拟接口仍遵守 `/api/miniprogram/access` 维护开关；维护关闭时返回现有 `503 MINIPROGRAM_MAINTENANCE`，开启后恢复。
 
+### 小程序真实微信支付（API v3）
+
+真实支付默认关闭，只有服务端同时设置 `SY_MINIPROGRAM_REAL_PAY_ENABLED=true` 且 API v3 配置完整时才会开放。真实支付与模拟订单使用不同的数据命名空间；模拟开关开启时仍优先走模拟链路。
+
+服务端环境变量：
+
+```bash
+SY_MINIPROGRAM_REAL_PAY_ENABLED=false
+WX_PAY_MCHID='微信支付商户号'
+WX_PAY_API_V3_KEY='微信支付 API v3 密钥'
+WX_PAY_PRIVATE_KEY_PATH='/secure/path/apiclient_key.pem'
+WX_PAY_SERIAL_NO='商户 API 证书序列号'
+WX_PAY_PUBLIC_KEY_PATH='/secure/path/pub_key.pem'
+WX_PAY_PUBLIC_KEY_ID='微信支付公钥 ID'
+WX_PAY_NOTIFY_URL='https://sy-greece.com/api/wechat/pay/notify'
+```
+
+真实下单使用 `/v3/pay/transactions/jsapi`，服务端以微信登录用户的 `openid` 创建订单，返回小程序 `wx.requestPayment` 所需的 `timeStamp`、`nonceStr`、`package`、`signType`、`paySign`。支付成功后由 `/api/wechat/pay/notify` 验签、解密并把手机号绑定用户对应订单标记为 `paid`，再授予景点或终身会员权益。
+
+真实支付接口：
+
+- `GET /api/miniprogram/knowledge/config`：返回真实商品和 `payment: "wechat-v3"`。
+- `POST /api/miniprogram/orders`：需要微信登录及手机号绑定，创建真实待支付订单并返回调起支付参数。
+- `GET /api/miniprogram/orders`：查询当前微信用户的订单。
+- `GET /api/miniprogram/orders/:id`：查询单笔订单及当前权益状态。
+- `GET /api/miniprogram/entitlements`：返回已支付景点和终身会员权益。
+- `POST /api/wechat/pay/notify`：接收微信支付成功回调，回调地址不得携带查询参数。
+
+本地只验证签名、回调验签和 AES-GCM 解密，不会调用真实扣款接口。启用生产支付前，应先确认商户号已绑定小程序 AppID、商品金额及回调地址，并用体验版完成一笔明确金额的测试订单。
+
 小程序提交表单时继续使用 `POST /api/leads`，并携带 Bearer Token 及 `platform: "wechat-miniprogram"`（或 `source` 同值）。未登录返回 `401 MINIPROGRAM_LOGIN_REQUIRED`，未绑定手机号返回 `403 PHONE_BIND_REQUIRED`；绑定后服务端从用户记录写入联系方式，不信任客户端传入的手机号。小程序用户记录保存在 MariaDB 的站点数据文档中，微信 `openid` 不会通过 API 返回。
 
 ### 本地 Mock 联调
