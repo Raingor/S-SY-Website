@@ -48,6 +48,80 @@ function miniProgramAccessPayload(data) {
     : { accessEnabled: false, title: '正在升级中', message: '小程序正在升级中，请稍后再试。' }
 }
 function miniProgramMaintenance(res) { return json(res, 503, { code: 'MINIPROGRAM_MAINTENANCE', error: '小程序正在升级中，请稍后再试。', title: '正在升级中', message: '小程序正在升级中，请稍后再试。' }) }
+function miniProgramSimulationEnabled() { return process.env.SY_MINIPROGRAM_SIMULATION_ENABLED === 'true' }
+function miniProgramSimulationDisabled(res) { return json(res, 404, { code: 'MINIPROGRAM_SIMULATION_DISABLED', error: '模拟商品服务未开启' }) }
+function defaultMiniProgramKnowledgeConfig() {
+  return {
+    trialSeconds: 60,
+    products: {
+      attraction: { enabled: true, productType: 'attraction', name: '单景点永久讲解（模拟）', price: 1, currency: 'CNY' },
+      membership: { enabled: true, productType: 'membership', name: '终身会员（模拟）', price: 1, currency: 'CNY' },
+    },
+  }
+}
+function miniProgramKnowledgeConfig(data) {
+  const fallback = defaultMiniProgramKnowledgeConfig()
+  const configured = data.settings?.miniprogramKnowledge || {}
+  const products = Object.fromEntries(Object.entries(fallback.products).map(([key, product]) => {
+    const value = configured.products?.[key] || {}
+    return [key, {
+      ...product,
+      ...value,
+      enabled: value.enabled !== false,
+      productType: key,
+      name: String(value.name || product.name).trim().slice(0, 120),
+      price: Number.isFinite(Number(value.price)) && Number(value.price) >= 0 ? Number(value.price) : product.price,
+      currency: String(value.currency || product.currency).trim().slice(0, 12),
+    }]
+  }))
+  const trialSeconds = Number(configured.trialSeconds)
+  return { trialSeconds: Number.isInteger(trialSeconds) && trialSeconds >= 0 && trialSeconds <= 3600 ? trialSeconds : fallback.trialSeconds, products, simulation: true }
+}
+function simulationUserKey(req) {
+  if (!miniProgramSimulationEnabled()) return ''
+  const auth = String(req.headers.authorization || '')
+  const header = String(req.headers['x-sy-simulation-user'] || '')
+  const raw = header || (auth.startsWith('Bearer sim-') ? auth.slice('Bearer '.length) : '')
+  const key = raw.replace(/^sim[-_:]/i, '').trim().toLowerCase()
+  return /^[a-z0-9][a-z0-9_-]{0,40}$/.test(key) ? key : ''
+}
+function simulationState(data) {
+  data.miniprogramSimulation = data.miniprogramSimulation || {}
+  data.miniprogramSimulation.orders = Array.isArray(data.miniprogramSimulation.orders) ? data.miniprogramSimulation.orders : []
+  return data.miniprogramSimulation
+}
+function publishedAttractionIds(data) { return (data.attractions || []).filter((item) => item.status === 'published').map((item) => item.id) }
+function simulationFixtureOrders(data, userKey) {
+  const attractionId = publishedAttractionIds(data)[0] || ''
+  if (userKey === 'attraction' && attractionId) return [{ id: `sim-fixture-attraction-${attractionId}`, testUser: userKey, status: 'paid', productType: 'attraction', attractionId, price: 1, currency: 'CNY', createdAt: '2026-01-01T00:00:00.000Z', paidAt: '2026-01-01T00:00:00.000Z' }]
+  if (userKey === 'membership') return [{ id: 'sim-fixture-membership', testUser: userKey, status: 'paid', productType: 'membership', attractionId: '', price: 1, currency: 'CNY', createdAt: '2026-01-01T00:00:00.000Z', paidAt: '2026-01-01T00:00:00.000Z' }]
+  return []
+}
+function simulationOrders(data, userKey) { return [...simulationFixtureOrders(data, userKey), ...simulationState(data).orders.filter((order) => order.testUser === userKey)] }
+function publicSimulationOrder(order) {
+  const { testUser, ...safe } = order
+  return { simulation: true, ...safe }
+}
+function simulationEntitlements(data, userKey) {
+  const orders = simulationOrders(data, userKey)
+  const paidOrders = orders.filter((order) => order.status === 'paid')
+  const member = paidOrders.some((order) => order.productType === 'membership')
+  const unlocked = new Set(member ? publishedAttractionIds(data) : paidOrders.filter((order) => order.productType === 'attraction').map((order) => order.attractionId).filter(Boolean))
+  return {
+    simulation: true,
+    testUser: userKey,
+    member,
+    memberLabel: member ? '终身会员' : '普通用户',
+    purchases: paidOrders.map((order) => ({ orderId: order.id, productType: order.productType, attractionId: order.attractionId || '', status: order.status, purchasedAt: order.paidAt || order.createdAt })),
+    unlockedAttractions: [...unlocked],
+    favorites: [],
+    history: [],
+    orders: orders.map(publicSimulationOrder),
+  }
+}
+function simulationUserRequired(res) { return json(res, 401, { code: 'MINIPROGRAM_SIMULATION_USER_REQUIRED', error: '请使用 sim-* 测试身份' }) }
+function simulationProduct(data, productType) { return miniProgramKnowledgeConfig(data).products[productType] }
+function simulationOrderResponse(data, userKey, order, extra = {}) { return { simulation: true, order: publicSimulationOrder(order), entitlements: simulationEntitlements(data, userKey), ...extra } }
 function miniProgramConfigReady() { return Boolean(process.env.WX_APPID && process.env.WX_APP_SECRET && miniProgramTokenSecret) }
 function encodeTokenPart(value) { return Buffer.from(JSON.stringify(value)).toString('base64url') }
 function createMiniProgramToken(userId) { const now = Math.floor(Date.now() / 1000); const payload = { sub: userId, iat: now, exp: now + 30 * 24 * 60 * 60 }; const encoded = encodeTokenPart(payload); const signature = crypto.createHmac('sha256', miniProgramTokenSecret).update(encoded).digest('base64url'); return `mpv1.${encoded}.${signature}` }
@@ -311,6 +385,52 @@ const server = http.createServer(async (req, res) => {
     if (url.pathname.startsWith('/api/miniprogram/')) {
       const data = readData()
       if (!isMiniProgramAccessEnabled(data)) return miniProgramMaintenance(res)
+    }
+    if (url.pathname === '/api/miniprogram/knowledge/config' && method === 'GET') {
+      if (!miniProgramSimulationEnabled()) return miniProgramSimulationDisabled(res)
+      return json(res, 200, miniProgramKnowledgeConfig(readData()))
+    }
+    if (url.pathname === '/api/miniprogram/entitlements' && method === 'GET') {
+      if (!miniProgramSimulationEnabled()) return miniProgramSimulationDisabled(res)
+      const data = readData(); const userKey = simulationUserKey(req)
+      if (!userKey) return simulationUserRequired(res)
+      return json(res, 200, simulationEntitlements(data, userKey))
+    }
+    if (url.pathname === '/api/miniprogram/orders' && method === 'POST') {
+      if (!miniProgramSimulationEnabled()) return miniProgramSimulationDisabled(res)
+      const data = readData(); const userKey = simulationUserKey(req)
+      if (!userKey) return simulationUserRequired(res)
+      const input = await body(req); const productType = String(input.productType || '').trim(); const product = simulationProduct(data, productType)
+      if (!product || product.enabled === false) return json(res, 422, { code: 'SIMULATION_PRODUCT_UNAVAILABLE', error: '模拟商品不可用' })
+      const attractionId = String(input.attractionId || '').trim()
+      if (productType === 'attraction' && !(data.attractions || []).some((item) => item.id === attractionId && item.status === 'published')) return json(res, 422, { code: 'ATTRACTION_NOT_FOUND', error: '景点不存在或未发布' })
+      const now = new Date().toISOString()
+      const order = { id: id('sim-order'), testUser: userKey, status: 'pending', productType, attractionId: productType === 'attraction' ? attractionId : '', name: product.name, price: product.price, currency: product.currency, createdAt: now }
+      simulationState(data).orders.push(order); await saveData(data)
+      return json(res, 201, { simulation: true, order: publicSimulationOrder(order), payment: null })
+    }
+    const simulationOrderMatch = url.pathname.match(/^\/api\/miniprogram\/orders\/([^/]+)\/(simulate-paid|simulate-failed)$/)
+    if (simulationOrderMatch && method === 'POST') {
+      if (!miniProgramSimulationEnabled()) return miniProgramSimulationDisabled(res)
+      const data = readData(); const userKey = simulationUserKey(req)
+      if (!userKey) return simulationUserRequired(res)
+      const order = simulationState(data).orders.find((item) => item.id === simulationOrderMatch[1] && item.testUser === userKey)
+      if (!order) return json(res, 404, { code: 'SIMULATION_ORDER_NOT_FOUND', error: '模拟订单不存在' })
+      const nextStatus = simulationOrderMatch[2] === 'simulate-paid' ? 'paid' : 'failed'
+      if (order.status === nextStatus) return json(res, 200, simulationOrderResponse(data, userKey, order, nextStatus === 'failed' ? { code: 'SIMULATED_PAYMENT_FAILED', message: '模拟支付失败，未授予权益。', idempotent: true } : { idempotent: true }))
+      if (order.status !== 'pending') return json(res, 409, { code: 'SIMULATION_ORDER_FINALIZED', error: '模拟订单已完成，不能重复改变状态' })
+      order.status = nextStatus; order.updatedAt = new Date().toISOString()
+      if (nextStatus === 'paid') order.paidAt = order.updatedAt
+      if (nextStatus === 'failed') { order.failedAt = order.updatedAt; order.errorCode = 'SIMULATED_PAYMENT_FAILED'; order.errorMessage = '模拟支付失败，未授予权益。' }
+      await saveData(data)
+      return json(res, 200, simulationOrderResponse(data, userKey, order, nextStatus === 'failed' ? { code: 'SIMULATED_PAYMENT_FAILED', message: '模拟支付失败，未授予权益。' } : {}))
+    }
+    if (url.pathname === '/api/miniprogram/simulation/reset' && method === 'POST') {
+      if (!miniProgramSimulationEnabled()) return miniProgramSimulationDisabled(res)
+      const data = readData(); const userKey = simulationUserKey(req)
+      if (!userKey) return simulationUserRequired(res)
+      const state = simulationState(data); state.orders = state.orders.filter((order) => order.testUser !== userKey); await saveData(data)
+      return json(res, 200, { simulation: true, reset: true, entitlements: simulationEntitlements(data, userKey) })
     }
     const tripApiMatch = url.pathname.match(/^\/api\/trip\/([^/]+)$/)
     if (tripApiMatch && method === 'GET') {

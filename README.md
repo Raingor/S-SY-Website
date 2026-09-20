@@ -130,6 +130,33 @@ SY_MINIPROGRAM_TOKEN_SECRET='用于签发小程序用户 Token 的随机密钥'
 - `GET/POST/PATCH/DELETE /api/miniprogram/documents[/:id]`：当前用户的护照/签证资料，字段 `name`、`passportNo`、`expiry`、`visaStatus`。
 - `GET /api/miniprogram/coupons`：需要 Bearer Token，返回真实优惠券 `{ "items": [] }`；当前没有优惠券时保持空数组，不生成演示数据。
 
+### 小程序模拟商品与模拟支付（仅联调）
+
+该能力默认关闭，服务端设置 `SY_MINIPROGRAM_SIMULATION_ENABLED=true` 后才开放；它使用独立的 `miniprogramSimulation.orders` 命名空间，不写入真实小程序用户或真实订单，也不会调用微信支付。关闭环境变量后相关接口返回 `404 MINIPROGRAM_SIMULATION_DISABLED`。
+
+测试身份使用 `Authorization: Bearer sim-regular`、`sim-attraction` 或 `sim-membership`（也可使用请求头 `X-SY-Simulation-User`）。三种身份分别对应普通用户、已购买首个已发布景点的用户和终身会员；生成的订单只属于当前测试身份。
+
+- `GET /api/miniprogram/knowledge/config`：返回后台 `settings.miniprogramKnowledge` 中的 `trialSeconds`、两类商品及 `simulation: true`。测试价格仅为模拟价格，默认均为 `1 CNY`。
+- `GET /api/miniprogram/entitlements`：需要测试身份，返回 `member`、`purchases`、`unlockedAttractions`、`favorites`、`history` 和 `orders`。终身会员会自动解锁所有当前及未来发布的景点。
+- `POST /api/miniprogram/orders`：需要测试身份，请求 `{ "productType": "attraction", "attractionId": "acropolis" }` 或 `{ "productType": "membership" }`，返回 `pending` 订单和 `payment: null`。
+- `POST /api/miniprogram/orders/:id/simulate-paid`：将测试订单置为 `paid` 并授予对应权益；重复调用幂等。
+- `POST /api/miniprogram/orders/:id/simulate-failed`：将测试订单置为 `failed`，返回 `SIMULATED_PAYMENT_FAILED`，不会授予权益；重复调用幂等。
+- `POST /api/miniprogram/simulation/reset`：清理当前测试身份生成的模拟订单；fixture 身份的预置状态仍保留。
+
+示例：
+
+```bash
+SIM='Authorization: Bearer sim-regular'
+curl -H "$SIM" https://sy-greece.com/api/miniprogram/entitlements
+curl https://sy-greece.com/api/miniprogram/knowledge/config
+curl -X POST -H "$SIM" -H 'Content-Type: application/json' \
+  -d '{"productType":"attraction","attractionId":"acropolis"}' \
+  https://sy-greece.com/api/miniprogram/orders
+curl -X POST -H "$SIM" https://sy-greece.com/api/miniprogram/simulation/reset
+```
+
+模拟接口仍遵守 `/api/miniprogram/access` 维护开关；维护关闭时返回现有 `503 MINIPROGRAM_MAINTENANCE`，开启后恢复。
+
 小程序提交表单时继续使用 `POST /api/leads`，并携带 Bearer Token 及 `platform: "wechat-miniprogram"`（或 `source` 同值）。未登录返回 `401 MINIPROGRAM_LOGIN_REQUIRED`，未绑定手机号返回 `403 PHONE_BIND_REQUIRED`；绑定后服务端从用户记录写入联系方式，不信任客户端传入的手机号。小程序用户记录保存在 MariaDB 的站点数据文档中，微信 `openid` 不会通过 API 返回。
 
 ### 本地 Mock 联调

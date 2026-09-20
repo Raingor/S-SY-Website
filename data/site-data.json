@@ -12,7 +12,26 @@
     "phone": "+30 210 000 0000",
     "email": "hello@sy-greece.com",
     "replyHours": "24 小时内回复",
-    "miniprogramAccess": true
+    "miniprogramAccess": true,
+    "miniprogramKnowledge": {
+      "trialSeconds": 60,
+      "products": {
+        "attraction": {
+          "enabled": true,
+          "productType": "attraction",
+          "name": "单景点永久讲解（模拟）",
+          "price": 1,
+          "currency": "CNY"
+        },
+        "membership": {
+          "enabled": true,
+          "productType": "membership",
+          "name": "终身会员（模拟）",
+          "price": 1,
+          "currency": "CNY"
+        }
+      }
+    }
   },
   "routes": [
     {

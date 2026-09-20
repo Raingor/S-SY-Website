@@ -8,6 +8,7 @@
     "build": "vite build && node scripts/finalize-build.mjs",
     "preview": "vite preview",
     "server": "node server.mjs",
+    "test:miniprogram-simulation": "node scripts/test-miniprogram-simulation.mjs",
     "mock:wechat": "node scripts/mock-wechat-api.mjs",
     "start": "npm run build && node server.mjs"
   },
