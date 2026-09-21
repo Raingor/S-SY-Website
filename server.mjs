@@ -582,7 +582,15 @@ const server = http.createServer(async (req, res) => {
         paymentOrders(data).push(order); await saveData(data)
         return json(res, 201, { simulation: false, paymentMode: 'wechat-v3', order: publicPaymentOrder(order), payment: prepay.payment })
       } catch (error) {
-        console.error('[wechat-pay] prepay failed', error.code || error.message)
+        console.error('[wechat-pay] prepay failed', JSON.stringify({
+          status: Number(error.status) || 0,
+          code: error.code || 'WECHAT_PAY_PREPAY_FAILED',
+          message: redact(error.message || '微信支付下单失败'),
+          appid: wechatPay.appid,
+          mchid: wechatPay.mchid,
+          serialNo: wechatPay.serialNo,
+          outTradeNo: order.outTradeNo,
+        }))
         return json(res, error.status >= 400 && error.status < 500 ? 422 : 502, { code: error.code || 'WECHAT_PAY_PREPAY_FAILED', error: '微信支付下单失败，请稍后再试' })
       }
     }
