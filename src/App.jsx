@@ -380,7 +380,7 @@ function SampleItineraryCard({ trip }) {
 
 function RouteAudioPreview({ itinerary }) {
   const audioRef = useRef(null)
-  const source = itinerary?.audioUrl || itinerary?.audioSrc || (typeof itinerary?.audio === 'string' ? itinerary.audio : '')
+  const source = itinerary?.audioUrl || itinerary?.audioSrc || (typeof itinerary?.audio === 'string' ? itinerary.audio : '') || '/audio/selected-routes-intro.m4a'
   const [playing, setPlaying] = useState(false)
   const [current, setCurrent] = useState(0)
   const [duration, setDuration] = useState(60)
@@ -398,7 +398,7 @@ function RouteAudioPreview({ itinerary }) {
   }
   return <article className={`route-audio-preview ${source ? 'has-audio' : 'no-audio'}`}>
     {source && <audio ref={audioRef} src={assetPath(source)} preload="metadata" onLoadedMetadata={(event) => setDuration(Math.min(60, event.currentTarget.duration || 60))} onTimeUpdate={(event) => { const value = Math.min(60, event.currentTarget.currentTime); setCurrent(value); if (event.currentTarget.currentTime >= 60) { event.currentTarget.pause(); event.currentTarget.currentTime = 60; setPlaying(false) } }} onPlay={() => setPlaying(true)} onPause={() => setPlaying(false)} onEnded={() => setPlaying(false)} />}
-    <div className="route-audio-icon"><Headphones size={21} /></div><div className="route-audio-copy"><Eyebrow>LISTEN BEFORE YOU GO</Eyebrow><h3>甄选路线语音导览</h3><p>{itinerary ? `先听一段「${itinerary.title}」的路线导览，试听时长限制 1 分钟。` : '路线语音导览试听，时长限制 1 分钟。'}</p><div className="route-audio-controls"><button type="button" disabled={!source} onClick={toggle} aria-label={playing ? '暂停试听' : '播放试听'}>{playing ? <Pause size={15} /> : <Play size={15} />}</button><input type="range" min="0" max={maxDuration} step="0.1" value={Math.min(current, maxDuration)} disabled={!source} onChange={(event) => seek(event.target.value)} aria-label="试听进度" /><span>{timeLabel(current)} / {timeLabel(maxDuration)}</span><button type="button" disabled={!source} onClick={() => seek(0)} aria-label="从头播放"><RotateCcw size={14} /></button></div>{!source && <small>音频素材待从后台上传，试听控制会在资源可用后启用。</small>}</div>
+    <div className="route-audio-icon"><Headphones size={21} /></div><div className="route-audio-copy"><Eyebrow>LISTEN BEFORE YOU GO</Eyebrow><h3>甄选路线语音导览</h3><p>{itinerary ? `先听一段「${itinerary.title}」的路线导览，试听时长限制 1 分钟。` : '路线语音导览试听，时长限制 1 分钟。'}</p><div className="route-audio-controls"><button type="button" disabled={!source} onClick={toggle} aria-label={playing ? '暂停试听' : '播放试听'}>{playing ? <Pause size={15} /> : <Play size={15} />}</button><input type="range" min="0" max={maxDuration} step="0.1" value={Math.min(current, maxDuration)} disabled={!source} onChange={(event) => seek(event.target.value)} aria-label="试听进度" /><span>{timeLabel(current)} / {timeLabel(maxDuration)}</span><button type="button" disabled={!source} onClick={() => seek(0)} aria-label="从头播放"><RotateCcw size={14} /></button></div>{!source && <small>试听音频与 MpApp 共用，播放到 1:00 自动停止。</small>}</div>
   </article>
 }
 
