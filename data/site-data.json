@@ -1218,7 +1218,7 @@
       "name": "梅黛奥拉修道院群",
       "en": "Meteora Monasteries",
       "city": "meteora",
-      "cityName": "卡兰巴卡",
+      "cityName": "梅黛奥拉",
       "type": "landmark",
       "category": "世界文化遗产",
       "tags": [
@@ -2724,22 +2724,22 @@
       "id": "culture",
       "name": "文明溯源",
       "description": "古典文明遗址，历史古城",
-      "status": "published",
-      "sort": 1
+      "sort": 1,
+      "status": "published"
     },
     {
       "id": "mountain",
       "name": "山海遗堡",
       "description": "山地古堡与自然遗迹",
-      "status": "published",
-      "sort": 2
+      "sort": 2,
+      "status": "published"
     },
     {
       "id": "island",
       "name": "爱琴海境",
       "description": "岛屿海岸线旅游地",
-      "status": "published",
-      "sort": 3
+      "sort": 3,
+      "status": "published"
     }
   ]
 }

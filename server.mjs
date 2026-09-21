@@ -26,7 +26,12 @@ const wechatPay = wechatPayConfig()
 let wechatAccessToken = { value: '', expiresAt: 0 }
 const mime = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8', '.json': 'application/json; charset=utf-8', '.png': 'image/png', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.webp': 'image/webp', '.svg': 'image/svg+xml', '.ico': 'image/x-icon', '.m4a': 'audio/mp4', '.mp3': 'audio/mpeg' }
 const immutableExtensions = new Set(['.png', '.jpg', '.jpeg', '.webp', '.svg', '.ico', '.woff', '.woff2'])
+const runtimeImageDir = resolve(root, 'public/images')
 
+function writeRuntimeImage(filename, buffer) {
+  mkdirSync(runtimeImageDir, { recursive: true })
+  writeFileSync(join(runtimeImageDir, filename), buffer)
+}
 function corsHeaders() { return { ...(allowedOrigin ? { 'Access-Control-Allow-Origin': allowedOrigin, Vary: 'Origin' } : {}), 'Access-Control-Allow-Methods': 'GET,POST,PATCH,DELETE,OPTIONS', 'Access-Control-Allow-Headers': 'Content-Type, Authorization' } }
 function json(res, status, body) { res.writeHead(status, { ...corsHeaders(), 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' }); res.end(JSON.stringify(body)) }
 function text(res, status, body, contentType) { res.writeHead(status, { 'Content-Type': contentType, 'Cache-Control': 'public, max-age=300' }); res.end(body) }
@@ -245,7 +250,41 @@ function documentPayload(input = {}, current = {}) { const name = String(input.n
 function miniProgramProfile(data, user) { ensureMiniCollections(user); const leads = data.leads.filter((lead) => lead.userId === user.id); const appointments = leads.filter((lead) => ['guide-booking', 'vehicle-consultation'].includes(lead.leadType)).length; const trips = leads.filter((lead) => ['customization', 'business-travel'].includes(lead.leadType)).length; return { user: publicMiniProgramUser(user), stats: { appointments, trips, coupons: user.coupons.length, profiles: user.travelers.length + user.documents.length } } }
 function couponPayload(input = {}, current = {}) { const title = String(input.title ?? current.title ?? '').trim().slice(0, 80); if (!title) return null; return { title, description: String(input.description ?? current.description ?? '').trim().slice(0, 240), code: String(input.code ?? current.code ?? '').trim().slice(0, 64), expiresAt: String(input.expiresAt ?? current.expiresAt ?? '').trim().slice(0, 32), status: String(input.status ?? current.status ?? 'active').trim().slice(0, 24) } }
 function safeCoupon(item) { return { id: item.id, title: item.title, description: item.description || '', code: item.code || '', expiresAt: item.expiresAt || '', status: item.status || 'active', createdAt: item.createdAt, updatedAt: item.updatedAt } }
-function adminMiniUserSummary(data, user) { const profile = miniProgramProfile(data, user); const leads = data.leads.filter((lead) => lead.userId === user.id); return { ...profile.user, stats: profile.stats, leadCount: leads.length, createdAt: user.createdAt, updatedAt: user.updatedAt } }
+function adminMiniUserSummary(data, user) { const profile = miniProgramProfile(data, user); const leads = data.leads.filter((lead) => lead.userId === user.id); const member = paymentOrders(data).some((order) => order.userId === user.id && order.status === 'paid' && order.productType === 'membership'); return { ...profile.user, member, memberLabel: member ? '终身会员' : '普通用户', stats: profile.stats, leadCount: leads.length, createdAt: user.createdAt, updatedAt: user.updatedAt } }
+function adminPaymentOrder(data, order) {
+  const user = (data.miniprogramUsers || []).find((item) => item.id === order.userId)
+  const { openid, phone, ...safe } = order
+  return { ...safe, userId: order.userId || null, userNickname: user?.nickname || order.userId || '未知用户', phoneMasked: phone ? maskPhone(phone) : (user?.phone ? maskPhone(user.phone) : null), member: Boolean(user && paymentOrders(data).some((item) => item.userId === user.id && item.status === 'paid' && item.productType === 'membership')) }
+}
+function adminPaymentMembers(data) {
+  const orders = paymentOrders(data)
+  return (data.miniprogramUsers || []).flatMap((user) => {
+    const paidMemberships = orders.filter((order) => order.userId === user.id && order.status === 'paid' && order.productType === 'membership').sort((a, b) => String(a.paidAt || a.createdAt || '').localeCompare(String(b.paidAt || b.createdAt || '')))
+    if (!paidMemberships.length) return []
+    const latest = paidMemberships.at(-1)
+    return [{ id: user.id, nickname: user.nickname || user.id, phoneMasked: user.phone ? maskPhone(user.phone) : null, memberLabel: '终身会员', paidAt: latest.paidAt || latest.createdAt || null, orderId: latest.id, outTradeNo: latest.outTradeNo || null, orderCount: orders.filter((order) => order.userId === user.id).length, unlockedAttractions: publishedAttractionIds(data).length, createdAt: user.createdAt || null }]
+  }).sort((a, b) => String(b.paidAt || '').localeCompare(String(a.paidAt || '')))
+}
+function beijingWindowStart(days) {
+  const parts = Object.fromEntries(new Intl.DateTimeFormat('en-US', { timeZone: 'Asia/Shanghai', year: 'numeric', month: '2-digit', day: '2-digit' }).formatToParts(new Date()).filter((part) => part.type !== 'literal').map((part) => [part.type, Number(part.value)]))
+  return Date.UTC(parts.year, parts.month - 1, parts.day) - (8 * 60 * 60 * 1000) - ((days - 1) * 24 * 60 * 60 * 1000)
+}
+function adminCommerceStats(data) {
+  const orders = paymentOrders(data)
+  const paidOrders = orders.filter((order) => order.status === 'paid')
+  const members = new Set(paidOrders.filter((order) => order.productType === 'membership').map((order) => order.userId).filter(Boolean))
+  const amountTotalFen = (items) => items.reduce((total, order) => total + (Number(order.amountTotal) || 0), 0)
+  const buildWindow = (days) => {
+    const start = beijingWindowStart(days)
+    const inWindow = (value) => value && new Date(value).getTime() >= start
+    const windowOrders = orders.filter((order) => inWindow(order.createdAt))
+    const windowPaid = windowOrders.filter((order) => order.status === 'paid')
+    const windowMembers = new Set(windowPaid.filter((order) => order.productType === 'membership' && inWindow(order.paidAt || order.createdAt)).map((order) => order.userId).filter(Boolean))
+    return { orderCount: windowOrders.length, paidOrderCount: windowPaid.length, memberCount: windowMembers.size, amountTotalFen: amountTotalFen(windowPaid), amount: amountTotalFen(windowPaid) / 100 }
+  }
+  return { totals: { orderCount: orders.length, paidOrderCount: paidOrders.length, memberCount: members.size, amountTotalFen: amountTotalFen(paidOrders), amount: amountTotalFen(paidOrders) / 100 }, windows: { today: buildWindow(1), last7Days: buildWindow(7), last30Days: buildWindow(30) } }
+}
+function adminPaymentSummary(data) { return { items: paymentOrders(data).map((order) => adminPaymentOrder(data, order)).sort((a, b) => String(b.createdAt || '').localeCompare(String(a.createdAt || ''))), members: adminPaymentMembers(data) } }
 function adminMiniRecords(data, collection) { return (data.miniprogramUsers || []).flatMap((user) => { ensureMiniCollections(user); return user[collection].map((item) => ({ ...((collection === 'travelers' ? safeTraveler : collection === 'documents' ? safeDocument : safeCoupon)(item, true)), userId: user.id, userNickname: user.nickname || user.id })) }) }
 function findMiniRecord(data, collection, itemId) { for (const user of data.miniprogramUsers || []) { ensureMiniCollections(user); const item = user[collection].find((entry) => entry.id === itemId); if (item) return { user, items: user[collection], item } } return null }
 async function body(req, limit = 1024 * 1024) {
@@ -367,11 +406,7 @@ async function multipartImage(req, limit = 6 * 1024 * 1024) {
 function saveMiniProgramAvatar(data, req, image, mimeType) {
   const extension = mimeType === 'image/jpeg' ? 'jpg' : mimeType.split('/')[1]
   const filename = `mp-avatar-${Date.now().toString(36)}-${crypto.randomBytes(3).toString('hex')}.${extension}`
-  const imageDirs = [resolve(root, 'public/images'), join(distDir, 'images')]
-  imageDirs.forEach((directory) => {
-    mkdirSync(directory, { recursive: true })
-    writeFileSync(join(directory, filename), image)
-  })
+  writeRuntimeImage(filename, image)
   return `${siteBase(data, req)}/images/${filename}`
 }
 function publicContent(data, countryId = 'greece') {
@@ -481,14 +516,21 @@ function injectSeoHtml(html, seo) {
   const title = htmlAttr(seo.title); const description = htmlAttr(seo.description); const canonical = htmlAttr(seo.canonical); const robots = htmlAttr(seo.robots)
   return html.toString().replace(/<title>[^<]*<\/title>/, `<title>${title}</title>`).replace(/<meta name="robots" content="[^"]*" \/>/, `<meta name="robots" content="${robots}" />`).replace(/<meta name="description" content="[^"]*" \/>/, `<meta name="description" content="${description}" />`).replace(/<link rel="canonical" href="[^"]*" \/>/, `<link rel="canonical" href="${canonical}" />`).replace(/<meta property="og:title" content="[^"]*" \/>/, `<meta property="og:title" content="${title}" />`).replace(/<meta property="og:description" content="[^"]*" \/>/, `<meta property="og:description" content="${description}" />`).replace(/<meta property="og:url" content="[^"]*" \/>/, `<meta property="og:url" content="${canonical}" />`)
 }
+function normalizeAttractionPayload(data, payload) {
+  if (!Object.prototype.hasOwnProperty.call(payload, 'city')) return payload
+  const cityId = String(payload.city || '').trim()
+  const city = (data.cities || []).find((item) => item.id === cityId)
+  return { ...payload, cityName: city ? city.name : '' }
+}
 async function collectionHandler(data, collection, method, pathname, payload) {
   const items = data[collection]
   const itemId = pathname.split('/').pop()
+  const normalizedPayload = collection === 'attractions' ? normalizeAttractionPayload(data, payload) : payload
   if (method === 'GET') return { status: 200, body: items }
-  if (method === 'POST') { const next = { ...payload, id: payload.id || id(collection.slice(0, -1)) }; items.push(next); await saveData(data); return { status: 201, body: next } }
+  if (method === 'POST') { const next = { ...normalizedPayload, id: normalizedPayload.id || id(collection.slice(0, -1)) }; items.push(next); await saveData(data); return { status: 201, body: next } }
   const index = items.findIndex((item) => item.id === itemId)
   if (index < 0) return { status: 404, body: { error: 'not found' } }
-  if (method === 'PATCH') { items[index] = { ...items[index], ...payload, id: itemId }; await saveData(data); return { status: 200, body: items[index] } }
+  if (method === 'PATCH') { items[index] = { ...items[index], ...normalizedPayload, id: itemId }; await saveData(data); return { status: 200, body: items[index] } }
   if (method === 'DELETE') { items.splice(index, 1); await saveData(data); return { status: 204, body: null } }
   return { status: 405, body: { error: 'method not allowed' } }
 }
@@ -756,9 +798,10 @@ const server = http.createServer(async (req, res) => {
         if (method === 'DELETE') { data[collection].splice(index, 1); await saveData(data); return res.writeHead(204).end() }
         data[collection][index] = { ...data[collection][index], ...(await body(req)), id: itemId }; await saveData(data); return json(res, 200, data[collection][index])
       }
-      if (url.pathname === '/api/admin/stats' && method === 'GET') return json(res, 200, { routes: data.routes.filter((x) => x.status === 'published').length, destinations: data.destinations.filter((x) => x.status === 'published').length, leads: data.leads.length, pendingLeads: data.leads.filter((x) => x.status === 'new').length, customizationLeads: data.leads.filter((x) => x.leadType === 'customization').length, guideBookings: data.leads.filter(isGuideBooking).length, pendingGuideBookings: data.leads.filter((x) => isGuideBooking(x) && x.status === 'new').length, miniProgramBookings: data.leads.filter(isMiniProgramBooking).length, vehicleConsultations: data.leads.filter((x) => x.leadType === 'vehicle-consultation').length, knowledgeBaseLeads: data.leads.filter((x) => x.leadType === 'knowledge-base').length, businessTravelLeads: data.leads.filter((x) => x.leadType === 'business-travel').length, attractions: (data.attractions || []).filter((x) => x.status === 'published').length, sampleItineraries: (data.sampleItineraries || []).filter((x) => x.status === 'published').length, customTrips: (data.customTrips || []).filter((x) => x.status !== 'archived').length })
+      if (url.pathname === '/api/admin/stats' && method === 'GET') return json(res, 200, { routes: data.routes.filter((x) => x.status === 'published').length, destinations: data.destinations.filter((x) => x.status === 'published').length, leads: data.leads.length, pendingLeads: data.leads.filter((x) => x.status === 'new').length, customizationLeads: data.leads.filter((x) => x.leadType === 'customization').length, guideBookings: data.leads.filter(isGuideBooking).length, pendingGuideBookings: data.leads.filter((x) => isGuideBooking(x) && x.status === 'new').length, miniProgramBookings: data.leads.filter(isMiniProgramBooking).length, vehicleConsultations: data.leads.filter((x) => x.leadType === 'vehicle-consultation').length, knowledgeBaseLeads: data.leads.filter((x) => x.leadType === 'knowledge-base').length, businessTravelLeads: data.leads.filter((x) => x.leadType === 'business-travel').length, attractions: (data.attractions || []).filter((x) => x.status === 'published').length, sampleItineraries: (data.sampleItineraries || []).filter((x) => x.status === 'published').length, customTrips: (data.customTrips || []).filter((x) => x.status !== 'archived').length, commerce: adminCommerceStats(data) })
       if (url.pathname === '/api/admin/guide-bookings' && method === 'GET') return json(res, 200, data.leads.filter(isGuideBooking))
       if (url.pathname === '/api/admin/miniprogram-bookings' && method === 'GET') return json(res, 200, data.leads.filter(isMiniProgramBooking))
+      if (url.pathname === '/api/admin/miniprogram-orders' && method === 'GET') return json(res, 200, adminPaymentSummary(data))
       if (url.pathname === '/api/admin/settings' && method === 'GET') return json(res, 200, data.settings)
       if (url.pathname === '/api/admin/settings' && method === 'PATCH') { data.settings = { ...data.settings, ...(await body(req)) }; await saveData(data); return json(res, 200, data.settings) }
       if (url.pathname === '/api/admin/upload-image' && method === 'POST') {
@@ -770,8 +813,7 @@ const server = http.createServer(async (req, res) => {
         const extension = match[1] === 'image/jpeg' ? 'jpg' : match[1].split('/')[1]
         const prefix = String(input.prefix || 'og').replace(/[^a-z0-9-]/gi, '').slice(0, 20) || 'image'
         const filename = `${prefix}-${Date.now().toString(36)}-${crypto.randomBytes(3).toString('hex')}.${extension}`
-        const imageDirs = [resolve(root, 'public/images'), join(distDir, 'images')]
-        imageDirs.forEach((directory) => { mkdirSync(directory, { recursive: true }); writeFileSync(join(directory, filename), buffer) })
+        writeRuntimeImage(filename, buffer)
         if (input.updateSettings !== false) {
           data.settings = { ...data.settings, ogImage: `images/${filename}` }
           await saveData(data)
@@ -860,8 +902,9 @@ const server = http.createServer(async (req, res) => {
     const requested = decodeURIComponent(url.pathname === '/' ? '/index.html' : url.pathname)
     const safePath = normalize(requested).replace(/^\.\.(\/|\\)/, '')
     const filePath = join(distDir, safePath)
+    const publicImagePath = safePath.startsWith('/images/') ? join(root, 'public', safePath.slice(1)) : ''
     const fallback = join(distDir, 'index.html')
-    const target = existsSync(filePath) ? filePath : fallback
+    const target = existsSync(filePath) ? filePath : publicImagePath && existsSync(publicImagePath) ? publicImagePath : fallback
     const extension = extname(target)
     const cacheControl = immutableExtensions.has(extension) ? 'public, max-age=31536000, immutable' : extension === '.html' ? 'no-cache' : 'public, max-age=300'
     res.writeHead(200, { 'Content-Type': mime[extension] || 'application/octet-stream', 'Cache-Control': cacheControl })
@@ -883,6 +926,8 @@ async function start() {
     const richardDetails = { storyTitle: '先认识本人，再决定这次如何徐徐深入', story1: '旅居欧美多年，我一直把希腊当成一座可以慢慢读的博物馆。历史、人文、秘境与镜头感，交给真正生活在这里的人。', story2: '我不负责把行程塞满，而是希望你离开时，仍记得某一束光、某一段海岸，以及途中那些没有被攻略写下的细节。', storyNote: '旅行最珍贵的，不是走过多少地方，而是终于有人替你读懂沿途的故事。', quoteKicker: 'Richard 李 · 在地深度陪同', quote: '把一簇辉映，变成一段真正有温度的希腊经验', quoteFoot: '武汉大学双学士 · 英国澳洲双硕士 · 欧盟 / 美国 / 中国驾照', credentialsTitle: '三项背书，足够放心与他一起探索希腊', credentials: [{ index: '01', title: '名校教育', desc: '武汉大学双学士\n英国澳洲双硕士' }, { index: '02', title: '资深履历', desc: '资深定制旅行规划师\n欧洲精品文旅金牌从业者' }, { index: '03', title: '在地资质', desc: '欧盟 · 美国 · 中国\n驾照兼备' }], signatureTitle: '他最擅长的四种希腊时光', directions: [{ key: 'history', index: '01', title: '雅典文明', subtitle: '历史与建筑讲解', desc: '从卫城到古市集，把课本里的文明讲成一次有温度的探索。', suitable: '适合：第一次到访 / 亲子家庭', duration: '半日 · 1日' }, { key: 'culture', index: '02', title: '圣地人文', subtitle: '信仰与建筑', desc: '深入德尔斐、梅黛奥拉等圣地，读懂石头背后的信仰与时间。', suitable: '适合：深度文化 / 摄影爱好者', duration: '1日 · 多日' }, { key: 'coast', index: '03', title: '小众秘境', subtitle: '海岸线与岛屿', desc: '避开人潮，沿着海岸线去看当地人才知道的蓝与风。', suitable: '适合：情侣蜜月 / 朋友出行', duration: '1日 · 多日' }, { key: 'photo', index: '04', title: '私人摄影', subtitle: '路线规划与记录', desc: '把光线、节奏和路线交给我，留下自然、不摆拍的旅行影像。', suitable: '适合：纪念日 / 家庭旅拍', duration: '半日 · 1日' }], reviewsTitle: '他们这样记住 Richard', reviews: [{ quote: '学识渊博，谈吐儒雅。一路上孩子听得入迷，大人也真正看懂了雅典。', name: '北京 · L女士', meta: '亲子文化之旅' }, { quote: '专业靠谱又细心体贴，临时调整路线也安排得很稳，拍照尤其好看。', name: '上海 · K先生', meta: '圣岛蜜月之旅' }, { quote: '不赶景点，更像和一位老朋友探索希腊。小众海岸线比想象中更惊喜。', name: '广州 · M女士', meta: '海岛深度定制' }] }
     data.guides = data.guides.map((item) => item.id === 'richard-li' ? { ...richardDetails, ...item, credentials: Array.isArray(item.credentials) && item.credentials.length ? item.credentials : richardDetails.credentials, directions: Array.isArray(item.directions) && item.directions.length ? item.directions : richardDetails.directions, reviews: Array.isArray(item.reviews) && item.reviews.length ? item.reviews : richardDetails.reviews } : item)
     for (const collection of ['routes', 'destinations', 'attractions', 'sampleItineraries', 'cities']) for (const item of data[collection] || []) item.countryId = item.countryId || 'greece'
+    // Keep the denormalised city label aligned with the city ID for existing records too.
+    for (const attraction of data.attractions || []) Object.assign(attraction, normalizeAttractionPayload(data, attraction))
     // Migrate legacy destinationTypes once, without changing destinations[].type.
     if (!Array.isArray(data.destinationCategories) || !data.destinationCategories.length) {
       const defaults = {
