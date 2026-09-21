@@ -2193,6 +2193,47 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 .my-about-card h2 { margin-bottom: 9px; font: 600 26px var(--serif); }
 .my-about-card p { max-width: 640px; color: rgba(255,255,255,.72); font-size: 12px; line-height: 1.8; }
 .public-bottom-nav { display: none; }
+/* ===== Responsive hardening: tablet layouts and narrow-phone overflow ===== */
+@media (max-width: 1080px) and (min-width: 821px) {
+  .container { width: min(960px, calc(100% - 40px)); }
+  .nav-shell { width: min(1040px, calc(100% - 40px)); gap: 22px; }
+  .site-header nav { gap: 15px; font-size: 12px; }
+  .nav-cta { padding-inline: 15px; }
+  .detail-layout,
+  .form-layout,
+  .destination-intro,
+  .service-page-grid,
+  .knowledge-detail-grid { grid-template-columns: 1fr; }
+  .trip-aside { position: static; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .destination-intro { gap: 28px; }
+  .knowledge-grid { grid-template-columns: 1fr; }
+  .footer-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 36px; }
+}
+
+@media (max-width: 900px) and (min-width: 821px) {
+  .nav-shell { height: 76px; }
+  .language-switcher { margin-left: auto; margin-right: 5px; }
+  .nav-cta { display: none; }
+  .menu-button { display: grid; margin-left: 0; }
+  .site-header nav { position: absolute; z-index: 20; left: 20px; right: 20px; top: 69px; padding: 16px; display: none; align-items: stretch; flex-direction: column; gap: 0; background: rgba(7,50,76,.97); border: 1px solid rgba(255,255,255,.13); border-radius: 14px; box-shadow: 0 18px 50px rgba(0,0,0,.3); backdrop-filter: blur(20px); }
+  .site-header nav.nav-open { display: flex; animation: menu-in .2s ease both; }
+  .site-header nav a { padding: 13px 12px; opacity: .82; }
+  .nav-mobile-cta { display: block; margin-top: 7px; color: var(--deep) !important; text-align: center; background: var(--gold-light); border-radius: 9px; }
+}
+
+@media (max-width: 820px) {
+  .hero-brand-lockup { flex-wrap: wrap; row-gap: 3px; }
+  .section-heading { gap: 10px; }
+  .section-heading > div { min-width: 0; }
+  .section-heading .text-link { flex: 0 0 auto; white-space: nowrap; }
+  .route-audio-controls { min-width: 0; }
+  .route-audio-controls input { min-width: 0; }
+  .destination-card,
+  .knowledge-city-card,
+  .my-feature-grid article { min-width: 0; }
+  .knowledge-city-card > div { min-width: 0; }
+}
+
 @media (max-width: 820px) {
   .knowledge-city-grid { grid-template-columns: repeat(2, 1fr); gap: 12px; }
   .knowledge-city-card > div { height: 105px; }
