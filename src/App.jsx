@@ -1,10 +1,10 @@
-import React, { useEffect, useMemo, useState } from 'react'
+import React, { useEffect, useMemo, useRef, useState } from 'react'
 import { Link, Route, Routes, useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import {
   ArrowRight, BusFront, CalendarDays, Check, ChevronRight, CircleDollarSign,
   Clock3, CloudSun, Compass, Euro, Heart, Landmark, Mail, Map, MapPin,
   MessageCircle, Phone, Plane, Search, ShipWheel, Sparkles, SunMedium,
-  Users, Waves, X, Headphones, LockKeyhole,
+  Users, Waves, X, Headphones, LockKeyhole, Pause, Play, RotateCcw, Home as HomeIcon, UserRound,
 } from 'lucide-react'
 import AdminPage from './admin'
 import { AttractionsIndex, AttractionDetail, CityGuidePage, ItinerariesIndex, ItineraryDetail, CustomTripPage } from './attractions'
@@ -182,6 +182,9 @@ function SEO() {
       '/attractions': ['希腊景点导览｜景点 · 博物馆 · 参观指南', '按城市浏览雅典、圣托里尼、德尔斐等地的景点与博物馆，含展品讲解与参观指南 12 项。'],
       '/itineraries': ['参考行程｜雅典 · 圣托里尼 · 世界遗产环线', '浏览参考行程框架，正式行程按需求定制后通过专属链接发送。'],
       '/business-travel': ['希腊商旅随行咨询｜商务语言与行程规划', '提供商务陪同、语言翻译、企业拜访与人文行程的咨询。'],
+      '/my': ['我的｜希腊旅行管家', '微信登录、手机号绑定、预约、行程与个人资料入口。'],
+      '/experiences/private-flight': ['私人包机｜希腊奢享体验', '按日期、人数与目的地沟通私人包机协调方案。'],
+      '/experiences/private-yacht': ['游艇出海｜希腊奢享体验', '按日期、人数与船型沟通私人游艇出海方案。'],
 
       '/guides/richard-li': ['Richard 李名人导游｜希腊私人深度旅行与预约', '认识 Richard 李：武汉大学双学士、英国澳洲双硕士，提供希腊历史人文、小众秘境与私人摄影导览。'],
       '/manage-9f3k7': ['网站管理后台｜希腊旅行管家', '希腊旅行管家网站内容与 SEO 管理后台'],
@@ -193,7 +196,7 @@ function SEO() {
         : matchedCity
           ? [`${matchedCity.name}景点导览｜${matchedCity.subtitle || matchedCity.country}`, `${matchedCity.name}：${matchedCity.description || ''}`]
           : matchedAttraction
-            ? [`${matchedAttraction.name}参观指南｜${matchedAttraction.en}`, matchedAttraction.summary || '']
+            ? [matchedAttraction.shareTitle || `${matchedAttraction.name}参观指南｜${matchedAttraction.en}`, matchedAttraction.summary || '']
             : matchedItinerary
               ? [`${matchedItinerary.title}｜参考行程`, matchedItinerary.summary || '']
               : (pages[path] || [config.defaultTitle, config.defaultDescription])
@@ -202,7 +205,8 @@ function SEO() {
     const title = pageTitle.includes('SY') ? pageTitle : `${pageTitle} | ${config.siteName}`
     const baseUrl = String(config.siteUrl || window.location.origin).replace(/\/$/, '')
     const canonical = `${baseUrl}${path === '/' ? '/' : path}`
-    const ogImage = /^https?:\/\//.test(config.ogImage || '') ? config.ogImage : `${baseUrl}/${String(config.ogImage || '').replace(/^\.?\//, '')}`
+    const selectedOgImage = matchedAttraction?.shareImage || matchedAttraction?.image || config.ogImage
+    const ogImage = /^https?:\/\//.test(selectedOgImage || '') ? selectedOgImage : `${baseUrl}/${String(selectedOgImage || '').replace(/^\.?\//, '')}`
     document.title = title
     upsertMeta('name', 'description', description)
     upsertMeta('name', 'keywords', config.keywords)
@@ -303,93 +307,187 @@ function DestinationCard({ item }) {
   )
 }
 
-function GuideTeaser() {
+function GuideTeaser({ guide }) {
+  const name = guide?.name || 'Richard 李'
+  const role = guide?.role || '名人司导'
+  const location = guide?.location || '雅典 / 伯罗奔尼撒半岛 / 德尔斐 / 梅黛奥拉 / 圣托里尼'
+  const proof = guide?.proof || '武汉大学双学士 · 英国澳洲双硕士 · 欧盟 / 美国 / 中国驾照'
+  const avatar = guide?.avatar || images.richardAvatar
+  const tags = (guide?.directions || []).slice(0, 3).map((item) => typeof item === 'string' ? item : item.title || item.name).filter(Boolean)
   return (
     <article className="guide-teaser">
-      <div className="guide-teaser-avatar"><img src={images.richardAvatar} alt="Richard 李" loading="lazy" decoding="async" /></div>
+      <div className="guide-teaser-avatar"><img src={assetPath(avatar)} alt={`${name}头像`} loading="lazy" decoding="async" /></div>
       <div className="guide-teaser-copy">
-        <Eyebrow>Signature Guide · Richard Li</Eyebrow>
-        <h2>名人导游 · Richard 李</h2>
-        <p>武汉大学双学士、英国澳洲双硕士，旅居欧美多年，深耕希腊历史文化与小众秘境路线。</p>
-        <div className="guide-teaser-credentials"><span>名校教育</span><span>欧洲精品文旅金牌从业者</span><span>中英美驾照</span></div>
+        <Eyebrow>Signature Guide · {guide?.nameEn || 'Richard Li'}</Eyebrow>
+        <h2>名人导游 · {name}</h2>
+        <p>{guide?.intro || guide?.introTw || '旅居欧美多年，深耕希腊历史文化与小众秘境路线。'}</p>
+        <div className="guide-teaser-meta"><span>{role}</span><span>{location}</span></div>
+        <div className="guide-teaser-credentials">{(tags.length ? tags : ['名校教育', '欧洲精品文旅金牌从业者', '中英美驾照']).map((tag) => <span key={tag}>{tag}</span>)}</div>
+        <small className="guide-teaser-proof">{proof}</small>
       </div>
       <Link className="button button-primary" to="/guides/richard-li">查看档案 / 预约时间 <ArrowRight size={15} /></Link>
     </article>
   )
 }
 
+function normalizeDestinationCategories(destinations, primary, legacy) {
+  const hasPublishedType = (key) => destinations.some((item) => item.status !== 'unpublished' && item.status !== 'archived' && item.type === key)
+  const source = Array.isArray(primary) && primary.length > 0 ? primary : (Array.isArray(legacy) && legacy.length > 0 ? legacy : [])
+  const normalized = source
+    .filter((item) => item && item.enabled !== false && (item.status === undefined || item.status === 'published'))
+    .map((item) => ({ ...item, key: item.key || item.id }))
+    .filter((item) => item.key && hasPublishedType(item.key))
+    .sort((a, b) => Number(a.sort || 0) - Number(b.sort || 0))
+  if (normalized.length > 0 || source.length > 0) return normalized
+  return ['culture', 'island']
+    .filter(hasPublishedType)
+    .map((key, index) => ({ key, name: key === 'culture' ? '文明溯源' : '海岛度假', nameTw: key === 'culture' ? '文明溯源' : '海島度假', nameEn: key === 'culture' ? 'Civilization Origins' : 'Aegean Escapes', sort: index + 1 }))
+}
+
+function HomeDestinationTile({ item, attraction }) {
+  const content = <><img src={assetPath(item.image)} alt={`${item.name}风光`} loading="lazy" decoding="async" /><span><strong>{item.name}</strong><small>{item.nameEn || item.en || 'GREECE'}</small></span>{attraction ? <em>查看景点详情 <ArrowRight size={13} /></em> : <em className="is-unavailable">暂无详情</em>}</>
+  if (!attraction) return <article className="destination-card destination-card-disabled" aria-label={`${item.name}暂无关联景点详情`}>{content}</article>
+  return <Link to={`/attractions/${attraction.id}`} className="destination-card">{content}</Link>
+}
+
+function HomeHero({ countries = [] }) {
+  const [selectedCountry, setSelectedCountry] = useState(countries[0]?.id || 'greece')
+  const country = countries.find((item) => item.id === selectedCountry) || countries[0]
+  const fallbackSlides = [images.santorini, images.athens, images.plaka, images.delphi]
+  const slides = [...(country?.heroImage ? [country.heroImage] : []), ...fallbackSlides].filter((source, index, list) => source && list.indexOf(source) === index).map((image) => ({ image }))
+  const [active, setActive] = useState(0)
+  useEffect(() => { if (countries.length && !countries.some((item) => item.id === selectedCountry)) setSelectedCountry(countries[0].id) }, [countries, selectedCountry])
+  useEffect(() => { const timer = window.setInterval(() => setActive((index) => (index + 1) % slides.length), 6500); return () => window.clearInterval(timer) }, [slides.length])
+  return <div className="home-hero" style={{ '--hero-image': `url("${assetPath(slides[active]?.image || images.santorini)}")` }}>
+    <Header />
+    <div className="container hero-content">
+      <div className="hero-brand-lockup"><strong>希腊旅行管家</strong><span>Greece Travel Butler</span></div>
+      <Eyebrow dark>GREECE TRAVEL BUTLER · TAILOR-MADE JOURNEYS</Eyebrow>
+      <h1>只为一生美好回忆</h1>
+      <p>希腊在地人文与行程咨询服务。雅典在地团队，<br />一对一中文顾问，提供文化、行程与语言陪同咨询。</p>
+      <SearchBox />
+      <div className="hero-country-switcher" role="tablist" aria-label="选择国家"><span>探索国家</span>{(countries.length ? countries : [{ id: 'greece', name: '希腊', nameEn: 'Greece' }]).map((item) => <button type="button" className={selectedCountry === item.id ? 'active' : ''} key={item.id} onClick={() => { setSelectedCountry(item.id); setActive(0) }} role="tab" aria-selected={selectedCountry === item.id}>{item.nameEn || item.nameEn === '' ? `${item.name} / ${item.nameEn}` : item.name}</button>)}</div>
+      <div className="hero-actions"><Link className="button button-primary" to="/customize">提交行程咨询</Link><a className="button button-ghost" href="#routes">浏览甄选路线</a></div>
+      <div className="trust-row"><span><Check size={14} />先沟通需求范围</span><span><Check size={14} />24 小时内回复</span><span><Check size={14} />中文 / English 咨询</span></div>
+      <div className="hero-slide-dots" aria-label="品牌头图轮播">{slides.map((slide, index) => <button type="button" key={slide.image} className={active === index ? 'active' : ''} onClick={() => setActive(index)} aria-label={`查看第 ${index + 1} 张头图`} />)}</div>
+    </div>
+  </div>
+}
+
+function SampleItineraryCard({ trip }) {
+  return <article className="itinerary-home-card"><Link className="itinerary-home-image" to={`/itineraries/${trip.id}`}><img src={assetPath(trip.cover || trip.image)} alt={trip.title} loading="lazy" decoding="async" /><span>{trip.days} 天</span></Link><div><Eyebrow>{trip.tag || trip.crowd || 'SAMPLE ITINERARY'}</Eyebrow><h3><Link to={`/itineraries/${trip.id}`}>{trip.title}</Link></h3><p>{trip.summary}</p><Link className="text-link" to={`/itineraries/${trip.id}`}>查看参考行程 <ArrowRight size={14} /></Link></div></article>
+}
+
+function RouteAudioPreview({ itinerary }) {
+  const audioRef = useRef(null)
+  const source = itinerary?.audioUrl || itinerary?.audioSrc || (typeof itinerary?.audio === 'string' ? itinerary.audio : '')
+  const [playing, setPlaying] = useState(false)
+  const [current, setCurrent] = useState(0)
+  const [duration, setDuration] = useState(60)
+  const maxDuration = Math.min(60, duration || 60)
+  const timeLabel = (value) => `${Math.floor(value / 60)}:${String(Math.floor(value % 60)).padStart(2, '0')}`
+  function toggle() {
+    if (!audioRef.current || !source) return
+    if (audioRef.current.paused) audioRef.current.play().catch(() => {})
+    else audioRef.current.pause()
+  }
+  function seek(value) {
+    if (!audioRef.current || !source) return
+    audioRef.current.currentTime = Math.min(Number(value), 60)
+    setCurrent(audioRef.current.currentTime)
+  }
+  return <article className={`route-audio-preview ${source ? 'has-audio' : 'no-audio'}`}>
+    {source && <audio ref={audioRef} src={assetPath(source)} preload="metadata" onLoadedMetadata={(event) => setDuration(Math.min(60, event.currentTarget.duration || 60))} onTimeUpdate={(event) => { const value = Math.min(60, event.currentTarget.currentTime); setCurrent(value); if (event.currentTarget.currentTime >= 60) { event.currentTarget.pause(); event.currentTarget.currentTime = 60; setPlaying(false) } }} onPlay={() => setPlaying(true)} onPause={() => setPlaying(false)} onEnded={() => setPlaying(false)} />}
+    <div className="route-audio-icon"><Headphones size={21} /></div><div className="route-audio-copy"><Eyebrow>LISTEN BEFORE YOU GO</Eyebrow><h3>甄选路线语音导览</h3><p>{itinerary ? `先听一段「${itinerary.title}」的路线导览，试听时长限制 1 分钟。` : '路线语音导览试听，时长限制 1 分钟。'}</p><div className="route-audio-controls"><button type="button" disabled={!source} onClick={toggle} aria-label={playing ? '暂停试听' : '播放试听'}>{playing ? <Pause size={15} /> : <Play size={15} />}</button><input type="range" min="0" max={maxDuration} step="0.1" value={Math.min(current, maxDuration)} disabled={!source} onChange={(event) => seek(event.target.value)} aria-label="试听进度" /><span>{timeLabel(current)} / {timeLabel(maxDuration)}</span><button type="button" disabled={!source} onClick={() => seek(0)} aria-label="从头播放"><RotateCcw size={14} /></button></div>{!source && <small>音频素材待从后台上传，试听控制会在资源可用后启用。</small>}</div>
+  </article>
+}
+
+const LUXURY_EXPERIENCES = [
+  { id: 'private-flight', title: '私人包机', image: images.jet, desc: '雅典往返圣托里尼 / 米克诺斯，跳过轮渡排队，清晨出发，落地即开始假期。', points: ['可协调雅典、圣托里尼、米克诺斯等目的地', '按日期、人数与机型沟通报价', '确认航班、接送与地面安排后再出行'] },
+  { id: 'private-yacht', title: '游艇出海', image: images.yacht, desc: '私人游艇 + 船长 + 轻食下午茶，火山湖浮潜、隐秘海湾与海面落日。', points: ['可协调圣托里尼火山湖、隐秘海湾与日落航线', '按日期、人数、船型与餐饮偏好沟通', '出发前确认天气、码头、时长与报价'] },
+]
+
 function Home() {
-  const [destTab, setDestTab] = useState('culture')
-  const [content, setContent] = useState({ routes, destinations })
+  const [activeCategory, setActiveCategory] = useState('')
+  const [content, setContent] = useState({ routes: [], destinations: [], attractions: [], sampleItineraries: [], destinationCategories: [], destinationTypes: [], guides: [], countries: [] })
   useEffect(() => {
     if (window.location.protocol === 'file:') return
     fetch('/api/content').then((response) => response.ok ? response.json() : null).then((next) => {
-      if (next) setContent({ routes: next.routes?.length ? next.routes : routes, destinations: next.destinations?.length ? next.destinations : destinations })
+      if (next) setContent({
+        routes: next.routes || [],
+        destinations: next.destinations || [],
+        attractions: next.attractions || [],
+        sampleItineraries: next.sampleItineraries || [],
+        destinationCategories: next.destinationCategories || [],
+        destinationTypes: next.destinationTypes || [],
+        guides: next.guides || [],
+        countries: next.countries || [],
+      })
     }).catch(() => {})
   }, [])
+  const destinationCategories = useMemo(() => normalizeDestinationCategories(content.destinations, content.destinationCategories, content.destinationTypes), [content.destinations, content.destinationCategories, content.destinationTypes])
+  useEffect(() => {
+    if (!destinationCategories.some((item) => item.key === activeCategory)) setActiveCategory(destinationCategories[0]?.key || '')
+  }, [destinationCategories, activeCategory])
+  const featuredGuide = content.guides.find((item) => item.enabled !== false) || null
+  const featuredItinerary = content.sampleItineraries[0]
   const services = [
-    [Compass, '行程定制咨询', '围绕历史文明、海岛、餐厅与特别安排，沟通一份专属行程规划'],
-    [Landmark, '古迹人文讲解预约', '预约 Richard 李的中文 / 英文文史讲解，先理解，再看见遗址细节'],
-    [BusFront, '在地用车资源对接咨询', '咨询车型、司导资质、机场与城际移动等实际用车信息'],
-    [Map, '景点付费文史知识库', '免费预览景点背景，音频与图文深度内容待真实支付能力接入'],
-    [Users, '希腊商旅一站式随行服务', '商务陪同、语言翻译、企业拜访与人文行程的综合咨询'],
+    [Compass, '行程定制', '围绕历史文明、海岛、餐厅与特别安排，沟通一份专属行程规划', '/customize'],
+    [Landmark, '古迹讲解', '预约 Richard 李的中文 / 英文文史讲解，先理解，再看见遗址细节', '/heritage-guidance'],
+    [BusFront, '在地用车', '咨询车型、司导资质、机场与城际移动等实际用车信息', '/vehicle-consultation'],
+    [Map, '文史知识库', '精选城市、景点、参观指南与免费预览，内容随真实数据更新', '/knowledge-base'],
+    [Users, '希腊商旅', '商务陪同、语言翻译、企业拜访与人文行程的综合咨询', '/business-travel'],
+    [CloudSun, '出行指南', '签证、交通、网络、货币与行前实用攻略，一站式准备出发', '/tools'],
   ]
-  const serviceLinks = ['/customize', '/heritage-guidance', '/vehicle-consultation', '/knowledge-base', '/business-travel']
+  const attractionsById = useMemo(() => Object.fromEntries(content.attractions.map((item) => [item.id, item])), [content.attractions])
   return (
     <>
-      <div className="home-hero">
-        <Header />
-        <div className="container hero-content">
-          <Eyebrow dark>GREECE TRAVEL BUTLER · TAILOR-MADE JOURNEYS</Eyebrow>
-          <h1>只为一生美好回忆</h1>
-          <p>希腊在地人文与行程咨询服务。雅典在地团队，<br />一对一中文顾问，提供文化、行程与语言陪同咨询。</p>
-          <SearchBox />
-          <div className="hero-actions"><Link className="button button-primary" to="/customize">提交行程咨询</Link><a className="button button-ghost" href="#routes">浏览甄选路线</a></div>
-          <div className="trust-row"><span><Check size={14} />先沟通需求范围</span><span><Check size={14} />24 小时内回复</span><span><Check size={14} />中文 / English 咨询</span></div>
-        </div>
-      </div>
+      <HomeHero countries={content.countries} />
 
       <section id="services" className="section services-section">
         <div className="container">
-          <SectionTitle eyebrow="OUR SERVICES" title="不只是行程，更是在地服务" action={{ to: '/customize', label: '了解全部服务' }} />
-          <div className="service-grid">{services.map(([Icon, title, desc], index) => <Link to={serviceLinks[index]} className="service-card" key={title}><span className="service-index" aria-hidden="true">0{index + 1}</span><Icon /><h3>{title}</h3><p>{desc}</p><ArrowRight size={17} /></Link>)}</div>
-          <GuideTeaser />
+          <SectionTitle eyebrow="SIX WAYS TO TRAVEL" title="六大服务入口" action={{ to: '/customize', label: '了解全部服务' }} />
+          <div className="service-grid">{services.map(([Icon, title, desc, href], index) => <Link to={href} className="service-card" key={title}><span className="service-index" aria-hidden="true">0{index + 1}</span><Icon /><h3>{title}</h3><p>{desc}</p><ArrowRight size={17} /></Link>)}</div>
         </div>
+      </section>
+
+      <section className="section home-guide-section">
+        <div className="container"><SectionTitle eyebrow="SIGNATURE GUIDE" title="先认识 Richard，再决定如何深入希腊" action={{ to: '/guides/richard-li', label: '查看完整档案' }} /><GuideTeaser guide={featuredGuide} /></div>
+      </section>
+
+      <section className="section route-audio-section">
+        <div className="container"><RouteAudioPreview itinerary={featuredItinerary} /></div>
       </section>
 
       <section id="routes" className="section routes-section">
         <div className="container">
-          <SectionTitle eyebrow="CURATED PACKAGES" title="甄选主题路线" action={{ to: '/itineraries', label: '查看全部参考行程' }} />
-          <div className="route-grid">{content.routes.map((route) => <RouteCard key={route.id || route.title} route={route} />)}</div>
-          <div className="customize-entry-banner">
-            <div>
-              <strong>定制行程 · 填写需求，获取专属方案</strong>
-              <span>提交出行时间、人数与偏好，顾问 24 小时内一对一沟通；确认后定制行程将通过专属链接单独发送给你。</span>
-            </div>
-            <Link className="button button-gold" to="/customize">定制行程 · 填写需求 <ArrowRight size={15} /></Link>
-          </div>
+          <SectionTitle eyebrow="CURATED ITINERARIES" title="甄选路线" action={{ to: '/itineraries', label: '查看全部参考行程' }} />
+          <div className="horizontal-card-track itinerary-home-track">{content.sampleItineraries.map((trip) => <SampleItineraryCard key={trip.id} trip={trip} />)}</div>
         </div>
       </section>
+
+      <section className="section home-customize-section">
+        <div className="container customize-entry-banner">
+          <div><Eyebrow>TAILOR-MADE CONSULTATION</Eyebrow><strong>定制行程 · 把需求说清楚，再一起规划希腊</strong><span>填写目的地、日期、人数、预算与偏好，顾问会先确认服务范围，再沟通专属方案。</span></div>
+          <Link className="button button-gold" to="/customize">填写行程需求 <ArrowRight size={15} /></Link>
+        </div>
+      </section>
+
+      {destinationCategories.length > 0 && <section className="section destinations-section">
+        <div className="container">
+          <SectionTitle eyebrow="DESTINATIONS" title="精选目的地" action={{ to: '/attractions', label: '进入城市与景点导览' }} />
+          <div className="destination-tabs" role="tablist">{destinationCategories.map((category) => <button type="button" key={category.key} className={activeCategory === category.key ? 'active' : ''} onClick={() => setActiveCategory(category.key)} role="tab" aria-selected={activeCategory === category.key}>{category.name}</button>)}</div>
+          {destinationCategories.map((category) => <div key={category.key} className={`destination-group ${activeCategory === category.key ? 'mobile-active' : ''}`}><div className="destination-subhead"><h3>{category.name}</h3><span>{category.nameEn || category.nameTw || category.key}</span></div><div className="destination-grid">{content.destinations.filter((item) => item.status !== 'unpublished' && item.status !== 'archived' && item.type === category.key).map((item) => <HomeDestinationTile key={item.id || item.name} item={item} attraction={item.attractionId ? attractionsById[item.attractionId] : null} />)}</div></div>)}
+        </div>
+      </section>}
 
       <section id="experiences" className="section experiences-section">
         <div className="container">
-          <SectionTitle dark eyebrow="SIGNATURE EXPERIENCES" title="奢享体验" action={{ to: '/customize', label: '了解奢享定制' }} />
-          <div className="experience-grid">
-            {[
-              [images.jet, '私人包机', '雅典往返圣托里尼 / 米克诺斯，跳过轮渡排队，清晨出发，落地即开始假期。'],
-              [images.yacht, '游艇出海', '私人游艇 + 船长 + 轻食下午茶，火山湖浮潜、隐秘海湾与海面落日。'],
-            ].map(([image, title, desc]) => <article className="experience-card" key={title}><div className="experience-image"><img src={assetPath(image)} alt={title} loading="lazy" decoding="async" /><span>高端定制</span></div><div><h3>{title}</h3><p>{desc}</p><Link to="/customize">咨询{title}方案 <ArrowRight size={14} /></Link></div></article>)}
-          </div>
+          <SectionTitle dark eyebrow="SIGNATURE EXPERIENCES" title="奢享体验" action={{ to: '/experiences/private-flight', label: '了解奢享定制' }} />
+          <div className="horizontal-card-track experience-home-track">{LUXURY_EXPERIENCES.map((item) => <Link className="experience-card" to={`/experiences/${item.id}`} key={item.id}><div className="experience-image"><img src={assetPath(item.image)} alt={item.title} loading="lazy" decoding="async" /><span>高端定制</span></div><div><h3>{item.title}</h3><p>{item.desc}</p><span className="text-link">查看服务内容 <ArrowRight size={14} /></span></div></Link>)}</div>
         </div>
       </section>
 
-      <section className="section destinations-section">
-        <div className="container">
-          <SectionTitle eyebrow="DESTINATIONS" title="精选目的地" action={{ to: '/destinations/santorini', label: '全部 14 个目的地' }} />
-          <div className="destination-tabs" role="tablist"><button className={destTab === 'culture' ? 'active' : ''} onClick={() => setDestTab('culture')}>文明溯源</button><button className={destTab === 'island' ? 'active' : ''} onClick={() => setDestTab('island')}>海岛度假</button></div>
-          {['culture', 'island'].map((type) => <div key={type} className={`destination-group ${destTab === type ? 'mobile-active' : ''}`}><div className="destination-subhead"><h3>{type === 'culture' ? '文明溯源' : '海岛度假'}</h3><span>{type === 'culture' ? '伯罗奔尼撒 · 阿拉霍瓦 · 塞萨洛尼基 · 比雷埃夫斯' : '科孚 · 埃伊纳'}</span></div><div className="destination-grid">{content.destinations.filter((d) => d.type === type).map((item) => <DestinationCard item={item} key={item.id || item.name} />)}</div></div>)}
-        </div>
-      </section>
       <GoldCTA /><Footer />
     </>
   )
@@ -455,7 +553,7 @@ function ConsultationDock() {
   const [open, setOpen] = useState(false)
   const [sent, setSent] = useState(false)
   if (pathname.startsWith('/manage-9f3k7')) return null
-  const context = pathname.startsWith('/guides/') ? '预约 Richard' : pathname.startsWith('/heritage-guidance') ? '咨询古迹讲解' : pathname.startsWith('/attractions') ? '咨询景点导览' : pathname.startsWith('/business-travel') ? '咨询商旅方案' : pathname.startsWith('/knowledge-base') ? '咨询知识库' : '在线咨询'
+  const context = pathname.startsWith('/guides/') ? '预约 Richard' : pathname.startsWith('/heritage-guidance') ? '咨询古迹讲解' : pathname.startsWith('/attractions') ? '咨询景点导览' : pathname.startsWith('/business-travel') ? '咨询商旅方案' : pathname.startsWith('/experiences/') ? '咨询奢享体验' : pathname.startsWith('/knowledge-base') ? '咨询知识库' : '在线咨询'
   async function submit(event) {
     event.preventDefault(); const form = event.currentTarget
     await postLead({ ...Object.fromEntries(new FormData(form)), leadType: form.leadType.value || 'customization' })
@@ -483,9 +581,20 @@ const knowledgeSpots = [
   { slug: 'knossos', name: '克里特王宫', en: 'KNOSSOS', image: images.crete, preview: '免费预览：米诺斯文明的宫殿、迷宫传说与克里特岛的海上交流。', audio: '1:00 试听片段占位', unlocked: ['米诺斯文明时间线', '宫殿布局与神话图文', '深度阅读与视频咨询'] },
 ]
 
+function KnowledgeBaseIndex() {
+  const [content, setContent] = useState({ cities: [], attractions: [] })
+  useEffect(() => {
+    fetch('/api/content').then((response) => response.ok ? response.json() : null).then((payload) => setContent({ cities: payload?.cities || [], attractions: payload?.attractions || [] })).catch(() => {})
+  }, [])
+  const cities = content.cities.filter((city) => city.status !== 'unpublished' && city.status !== 'archived')
+  const attractions = content.attractions.filter((item) => item.status !== 'unpublished' && item.status !== 'archived')
+  return <><InnerHero image={images.athens} eyebrow="KNOWLEDGE BASE" title="景点文史知识库" subtitle="从精选城市进入城市导览，再打开景点详情、参观指南与免费内容预览。" breadcrumb="景点文史知识库"><div className="hero-actions"><Link className="button button-primary" to="/attractions">进入完整城市导览</Link><Link className="button button-ghost" to="/itineraries">查看关联行程</Link></div></InnerHero><main className="knowledge-index section"><div className="container"><SectionTitle eyebrow="SELECT A CITY" title="精选城市" action={{ to: '/attractions', label: '查看全部城市导览' }} /><div className="knowledge-city-grid">{cities.map((city) => <Link className="knowledge-city-card" to={`/attractions/city/${city.id}`} key={city.id}><div>{(city.mosaic || []).slice(0, 3).map((image, index) => <img key={index} src={assetPath(image)} alt="" loading="lazy" decoding="async" />)}</div><strong>{city.name}</strong><span>{city.subtitle || city.country}</span><small>{city.museumCount || 0} 个景点 · {city.audioMinutes || 0} 分钟讲解</small></Link>)}</div>{attractions.length > 0 && <section className="knowledge-featured-attractions"><SectionTitle eyebrow="FREE PREVIEW" title="从一个景点开始" /><div className="knowledge-grid">{attractions.slice(0, 4).map((item) => <Link className="knowledge-card" to={`/attractions/${item.id}`} key={item.id}><img src={assetPath(item.image)} alt={item.name} loading="lazy" decoding="async" /><div><Eyebrow>{item.en || item.cityName}</Eyebrow><h3>{item.name}</h3><p>{item.summary}</p><span className="text-link">查看景点详情 <ArrowRight size={14} /></span></div></Link>)}</div></section>}<div className="knowledge-notice"><LockKeyhole size={18} /><span>景点详情、参观指南、视频 / 语音字段与关联行程均读取 Website 内容接口；付费解锁能力按当前生产支付与会员状态开放。</span></div></div></main><ComplianceNotice /><Footer /></>
+}
+
 function KnowledgeBase() {
   const { slug } = useParams()
   const spot = knowledgeSpots.find((item) => item.slug === slug)
+  if (!spot) return <KnowledgeBaseIndex />
   if (spot) return <><InnerHero image={spot.image} eyebrow={`KNOWLEDGE BASE · ${spot.en}`} title={spot.name} subtitle="免费预览一段景点背景，完整音频与图文内容将在真实支付/会员能力接入后开放。" breadcrumb={`景点文史知识库 / ${spot.name}`} /><main className="knowledge-detail section"><div className="container knowledge-detail-grid"><article className="knowledge-preview"><Eyebrow>FREE PREVIEW</Eyebrow><h2>{spot.name}：先听懂，再看见</h2><p>{spot.preview}</p><div className="audio-placeholder"><Headphones size={20} /><span>{spot.audio}</span><button type="button" disabled>试听占位</button></div><p className="knowledge-disclaimer">当前为内容结构与免费预览展示，未上线真实购买、支付或会员权益。</p></article><aside className="knowledge-unlock"><Eyebrow>UNLOCK LATER</Eyebrow><h3>付费解锁板块（占位）</h3>{spot.unlocked.map((item) => <div key={item}><Check size={15} />{item}</div>)}<button className="button button-deep button-block" type="button" disabled>支付 / 会员功能后续接入</button><Link className="text-link" to="/knowledge-base">返回知识库目录 <ChevronRight size={15} /></Link></aside></div></main><ComplianceNotice /><Footer /></>
   return <><InnerHero eyebrow="KNOWLEDGE BASE" title="景点付费文史知识库" subtitle="先从免费预览认识雅典卫城、德尔斐、圣岛与克里特王宫，完整内容能力后续接入。" breadcrumb="景点文史知识库" /><main className="knowledge-index section"><div className="container"><SectionTitle eyebrow="GREEK HISTORY · AUDIO · GUIDE" title="把景点从打卡变成理解" /><div className="knowledge-grid">{knowledgeSpots.map((item) => <article className="knowledge-card" key={item.slug}><img src={assetPath(item.image)} alt={item.name} loading="lazy" decoding="async" /><div><Eyebrow>{item.en}</Eyebrow><h3>{item.name}</h3><p>{item.preview}</p><Link className="text-link" to={`/knowledge-base/${item.slug}`}>查看免费预览 <ArrowRight size={14} /></Link></div></article>)}</div><div className="knowledge-notice"><LockKeyhole size={18} /><span>音频深度讲解、图文手册和会员订阅目前仅做页面占位，真实支付与会员系统需后续接入，不代表已上线购买。</span></div></div></main><ComplianceNotice /><Footer /></>
 }
@@ -559,10 +668,27 @@ function DestinationDetail() {
   )
 }
 
-const SEARCH_EXPERIENCES = [
-  { id: 'private-flight', title: '私人包机', desc: '雅典往返圣托里尼 / 米克诺斯，跳过轮渡排队，清晨出发，落地即开始假期。', image: images.jet },
-  { id: 'private-yacht', title: '游艇出海', desc: '私人游艇、火山湖浮潜、隐秘海湾与爱琴海日落，按日期和人数专属报价。', image: images.yacht },
-]
+const SEARCH_EXPERIENCES = LUXURY_EXPERIENCES.map(({ id, title, desc, image }) => ({ id, title, desc, image }))
+
+function LuxuryExperienceDetail() {
+  const { slug } = useParams()
+  const item = LUXURY_EXPERIENCES.find((entry) => entry.id === slug)
+  const [phone, setPhone] = useState('15071465661')
+  useEffect(() => {
+    fetch('/api/content').then((response) => response.ok ? response.json() : null).then((payload) => {
+      const configured = payload?.settings?.consultPhone || (payload?.settings?.phone && !String(payload.settings.phone).includes('000 000') ? payload.settings.phone : '')
+      if (configured) setPhone(configured)
+    }).catch(() => {})
+  }, [])
+  if (!item) return <NotFound />
+  const tel = String(phone).replace(/[^\d+]/g, '')
+  return <>
+    <InnerHero image={item.image} eyebrow="SIGNATURE EXPERIENCE" title={item.title} subtitle={item.desc} breadcrumb={`奢享体验 / ${item.title}`}>
+      <div className="detail-hero-actions"><strong>按日期与人数沟通报价</strong><a className="button button-primary" href={`tel:${tel}`}>直接电话咨询 <Phone size={15} /></a></div>
+    </InnerHero>
+    <main className="detail-page section luxury-detail-page"><div className="container detail-layout"><div><article className="intro-card"><Eyebrow>PRIVATE ARRANGEMENT</Eyebrow><h2>把重要的时光，交给一份从容安排</h2><p>{item.desc} 我们会先确认出行日期、人数、目的地与服务边界，再提供可执行的协调方案与报价。</p></article><section className="luxury-detail-section"><SectionTitle eyebrow="WHAT WE COORDINATE" title="服务内容" /><div className="service-points">{item.points.map((point) => <div key={point}><Check size={16} /><span>{point}</span></div>)}</div></section><section className="luxury-detail-section"><SectionTitle eyebrow="BEFORE CONFIRMATION" title="准备与确认" /><div className="luxury-preparation"><p>请提前提供预计日期、人数、行李或餐饮偏好，以及希望前往的目的地。实际可行性会结合天气、机位 / 船期、码头与当地运营方确认。</p><p>本页面仅提供文化与行程咨询、资源信息和沟通入口；交通、场地及劳务由客户与希腊本土主体直接确认和结算。</p></div></section></div><aside className="trip-aside"><div className="summary-card"><h2>直接咨询</h2><p>告诉顾问你的日期、人数与目的地，我们会先确认资源与报价。</p><a className="button button-primary button-block" href={`tel:${tel}`}><Phone size={15} />拨打顾问电话</a><Link className="button button-gold button-block" to="/customize">填写详细需求</Link><small className="luxury-phone-note">咨询电话：{phone}</small></div></aside></div></main><GoldCTA /><Footer />
+  </>
+}
 
 function searchText(item) {
   return Object.values(item).flat(Infinity).filter((value) => typeof value === 'string' || typeof value === 'number').join(' ').toLocaleLowerCase()
@@ -648,7 +774,29 @@ function ToolsPage() {
 
 function GuidePage() {
   const [language] = useLanguage()
-  const copy = translate('guide', language)
+  const fallbackCopy = translate('guide', language)
+  const [guide, setGuide] = useState(null)
+  useEffect(() => {
+    fetch('/api/content').then((response) => response.ok ? response.json() : null).then((payload) => setGuide(payload?.guides?.find((item) => item.id === 'richard-li' && item.enabled !== false) || null)).catch(() => {})
+  }, [])
+  const copy = {
+    ...fallbackCopy,
+    eyebrow: guide?.eyebrow || fallbackCopy.eyebrow,
+    title: guide?.name ? `${guide.name}|${guide.role || fallbackCopy.role}` : fallbackCopy.title,
+    role: guide?.role || fallbackCopy.role,
+    note: guide?.storyNote || guide?.intro || fallbackCopy.note,
+    profileTitle: guide?.name || fallbackCopy.profileTitle,
+    profileEyebrow: guide?.nameEn || fallbackCopy.profileEyebrow,
+    profileEducation: guide?.proof || fallbackCopy.profileEducation,
+    profileBio: guide?.intro || fallbackCopy.profileBio,
+    profileTags: (guide?.directions || []).slice(0, 3).map((item) => typeof item === 'string' ? item : item.title || item.name).filter(Boolean).length ? (guide.directions || []).slice(0, 3).map((item) => typeof item === 'string' ? item : item.title || item.name).filter(Boolean) : fallbackCopy.profileTags,
+    storyTitle: guide?.storyTitle || fallbackCopy.storyTitle,
+    storyParagraphs: [guide?.story1, guide?.story2].filter(Boolean).length ? [guide.story1, guide.story2].filter(Boolean) : fallbackCopy.storyParagraphs,
+    quote: guide?.quote || fallbackCopy.quote,
+    credentialsTitle: guide?.credentialsTitle || fallbackCopy.credentialsTitle,
+    guestbookTitle: guide?.reviewsTitle || fallbackCopy.guestbookTitle,
+    quotes: (guide?.reviews || []).map((item) => [item.quote || item.text || item.content, item.author || item.name]).filter(([quote, author]) => quote && author).length ? (guide.reviews || []).map((item) => [item.quote || item.text || item.content, item.author || item.name]).filter(([quote, author]) => quote && author) : fallbackCopy.quotes,
+  }
   const bookingLabel = translate('common.booking', language)
   const [selectedDate, setSelectedDate] = useState('')
   const [bookingMessage, setBookingMessage] = useState('')
@@ -689,7 +837,7 @@ function GuidePage() {
             <div className="guide-hero-actions"><a className="button button-gold" href="#reserve">{bookingLabel} <ArrowRight size={15} /></a><a className="button button-ghost" href="#contact">{translate('common.addWechat', language)}</a></div>
           </div>
           <div className="guide-profile-card">
-            <div className="guide-avatar"><img src={images.richardAvatar} alt="Richard 李头像" loading="lazy" decoding="async" /></div>
+            <div className="guide-avatar"><img src={assetPath(guide?.fullImage || guide?.avatar || images.richardAvatar)} alt={`${guide?.name || 'Richard 李'}头像`} loading="lazy" decoding="async" /></div>
             <h2>{copy.profileTitle}</h2><Eyebrow>{copy.profileEyebrow}</Eyebrow>
             <div className="profile-rule" />
             <p><strong>{copy.profileEducation}</strong><br />{copy.profileBio}</p>
@@ -733,6 +881,19 @@ function GuidePage() {
   )
 }
 
+function MyPage() {
+  return <>
+    <InnerHero image={images.athens} eyebrow="MY GREECE TRAVEL BUTLER" title="我的" subtitle="登录、绑定手机号后，在小程序中查看预约、行程与个人资料。" breadcrumb="我的" short />
+    <main className="section my-page"><div className="container"><div className="my-profile-card"><div className="my-profile-icon"><UserRound size={25} /></div><div><Eyebrow>WECHAT ACCOUNT</Eyebrow><h2>微信登录与手机号绑定</h2><p>Website 保留同一套内容与咨询入口；微信登录、手机号绑定及个人数据由 MpApp 安全承载。</p></div><Link className="button button-primary" to="/customize">立即联系顾问</Link></div><div className="my-feature-grid"><article><CalendarDays /><h3>预约与行程</h3><p>查看已提交的导游预约、定制需求与专属行程链接。</p></article><article><Heart /><h3>优惠券与收藏</h3><p>小程序登录后查看可用优惠券及已保存的旅行内容。</p></article><article><Users /><h3>出行人资料</h3><p>维护同行人、护照与签证资料，出发前集中查看。</p></article><article><UserRound /><h3>个人资料与关于我们</h3><p>编辑个人资料，了解希腊旅行管家的服务边界与联系方式。</p></article></div><div className="my-about-card"><Eyebrow>GREECE TRAVEL BUTLER</Eyebrow><h2>只为一生美好回忆</h2><p>sy-greece.com 提供希腊文化咨询、行程策划与语言陪同咨询。需要登录或资料协助时，请在微信小程序中完成操作，或直接联系顾问。</p><a className="button button-gold" href="tel:+8615071465661">电话咨询 · +86 150 7146 5661</a></div></div></main><GoldCTA /><Footer />
+  </>
+}
+
+function PublicBottomNav() {
+  const { pathname } = useLocation()
+  if (pathname.startsWith('/manage-9f3k7')) return null
+  return <nav className="public-bottom-nav" aria-label="主要导航"><Link to="/"><HomeIcon size={18} /><span>首页</span></Link><Link to="/#contact"><Phone size={18} /><span>立即联系</span></Link><Link to="/my"><UserRound size={18} /><span>我的</span></Link></nav>
+}
+
 function NotFound() {
   return <main className="not-found"><Logo /><h1>这片海域还没有航线</h1><p>回到首页，继续探索你的希腊旅程。</p><Link className="button button-primary" to="/">返回首页</Link></main>
 }
@@ -744,5 +905,5 @@ function LegacyAdminRedirect() {
 }
 
 export default function App() {
-  return <><ScrollToTop /><SEO /><Routes><Route path="/" element={<Home />} /><Route path="/routes/:slug" element={<RouteDetail />} /><Route path="/customize" element={<Customize />} /><Route path="/heritage-guidance" element={<HeritageGuidance />} /><Route path="/vehicle-consultation" element={<VehicleConsultation />} /><Route path="/knowledge-base" element={<KnowledgeBase />} /><Route path="/knowledge-base/:slug" element={<KnowledgeBase />} /><Route path="/attractions" element={<AttractionsIndex />} /><Route path="/attractions/city/:cityId" element={<CityGuidePage />} /><Route path="/attractions/:id" element={<AttractionDetail />} /><Route path="/itineraries" element={<ItinerariesIndex />} /><Route path="/itineraries/:id" element={<ItineraryDetail />} /><Route path="/trip/:token" element={<CustomTripPage />} /><Route path="/business-travel" element={<BusinessTravel />} /><Route path="/destinations/:slug" element={<DestinationDetail />} /><Route path="/guides/richard-li" element={<GuidePage />} /><Route path="/search" element={<SearchPage />} /><Route path="/tools" element={<ToolsPage />} /><Route path="/admin" element={<LegacyAdminRedirect />} /><Route path="/manage-9f3k7" element={<AdminPage />} /><Route path="*" element={<NotFound />} /></Routes><ConsultationDock /></>
+  return <><ScrollToTop /><SEO /><Routes><Route path="/" element={<Home />} /><Route path="/routes/:slug" element={<RouteDetail />} /><Route path="/customize" element={<Customize />} /><Route path="/heritage-guidance" element={<HeritageGuidance />} /><Route path="/vehicle-consultation" element={<VehicleConsultation />} /><Route path="/knowledge-base" element={<KnowledgeBase />} /><Route path="/knowledge-base/:slug" element={<KnowledgeBase />} /><Route path="/attractions" element={<AttractionsIndex />} /><Route path="/attractions/city/:cityId" element={<CityGuidePage />} /><Route path="/attractions/:id" element={<AttractionDetail />} /><Route path="/itineraries" element={<ItinerariesIndex />} /><Route path="/itineraries/:id" element={<ItineraryDetail />} /><Route path="/trip/:token" element={<CustomTripPage />} /><Route path="/business-travel" element={<BusinessTravel />} /><Route path="/experiences/:slug" element={<LuxuryExperienceDetail />} /><Route path="/destinations/:slug" element={<DestinationDetail />} /><Route path="/guides/richard-li" element={<GuidePage />} /><Route path="/search" element={<SearchPage />} /><Route path="/tools" element={<ToolsPage />} /><Route path="/my" element={<MyPage />} /><Route path="/admin" element={<LegacyAdminRedirect />} /><Route path="/manage-9f3k7" element={<AdminPage />} /><Route path="*" element={<NotFound />} /></Routes><ConsultationDock /><PublicBottomNav /></>
 }
