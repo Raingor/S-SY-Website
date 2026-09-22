@@ -963,7 +963,7 @@ const server = http.createServer(async (req, res) => {
         if (!payload) return json(res, 422, { error: '缺少必填字段' })
         Object.assign(found.item, payload, { updatedAt: new Date().toISOString() }); await saveData(data); return json(res, 200, { ...(collection === 'travelers' ? safeTraveler(found.item, true) : collection === 'documents' ? safeDocument(found.item, true) : serializer(found.item)), userId: found.user.id, userNickname: found.user.nickname || found.user.id })
       }
-      const match = url.pathname.match(/^\/api\/admin\/(routes|destinations|attractions|sampleItineraries|customTrips|leads|destinationTypes|destinationCategories)(?:\/([^/]+))?$/)
+      const match = url.pathname.match(/^\/api\/admin\/(cities|routes|destinations|attractions|sampleItineraries|customTrips|leads|destinationTypes|destinationCategories)(?:\/([^/]+))?$/)
       if (match) {
         const collection = match[1] === 'destinationTypes' ? 'destinationCategories' : match[1]
         if (!data[collection]) data[collection] = []
