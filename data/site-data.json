@@ -2459,13 +2459,15 @@
       "guidePointCount": 1303,
       "audioMinutes": 2133,
       "status": "published",
+      "priceCny": 0.01,
+      "currency": "CNY",
+      "price": "¥0.01",
       "mosaic": [
         "athens.webp",
         "plaka.webp",
         "plaka.webp",
         "athens.webp"
       ],
-      "price": "€9.99",
       "purchaseNote": "一次购买，城市内全部景点讲解永久有效；未接入支付前请联系顾问咨询。",
       "countryId": "greece"
     },
@@ -2479,11 +2481,13 @@
       "guidePointCount": 468,
       "audioMinutes": 762,
       "status": "published",
+      "priceCny": 0.01,
+      "currency": "CNY",
+      "price": "¥0.01",
       "mosaic": [
         "santorini.webp",
         "mykonos.webp"
       ],
-      "price": "€9.99",
       "purchaseNote": "一次购买，城市内全部景点讲解永久有效；未接入支付前请联系顾问咨询。",
       "countryId": "greece"
     },
@@ -2497,10 +2501,12 @@
       "guidePointCount": 216,
       "audioMinutes": 357,
       "status": "published",
+      "priceCny": 0.01,
+      "currency": "CNY",
+      "price": "¥0.01",
       "mosaic": [
         "delphi.webp"
       ],
-      "price": "€9.99",
       "purchaseNote": "一次购买，城市内全部景点讲解永久有效；未接入支付前请联系顾问咨询。",
       "countryId": "greece"
     },
@@ -2514,10 +2520,12 @@
       "guidePointCount": 128,
       "audioMinutes": 196,
       "status": "published",
+      "priceCny": 0.01,
+      "currency": "CNY",
+      "price": "¥0.01",
       "mosaic": [
         "meteora.webp"
       ],
-      "price": "€9.99",
       "purchaseNote": "一次购买，城市内全部景点讲解永久有效；未接入支付前请联系顾问咨询。",
       "countryId": "greece"
     },
@@ -2531,10 +2539,12 @@
       "guidePointCount": 242,
       "audioMinutes": 391,
       "status": "published",
+      "priceCny": 0.01,
+      "currency": "CNY",
+      "price": "¥0.01",
       "mosaic": [
         "crete.webp"
       ],
-      "price": "€9.99",
       "purchaseNote": "一次购买，城市内全部景点讲解永久有效；未接入支付前请联系顾问咨询。",
       "countryId": "greece"
     },
@@ -2547,11 +2557,13 @@
       "museumCount": 4,
       "guidePointCount": 152,
       "audioMinutes": 236,
+      "priceCny": 0.01,
+      "currency": "CNY",
+      "price": "¥0.01",
       "mosaic": [
         "nafplio.webp",
         "corinth.webp"
       ],
-      "price": "€6.99",
       "purchaseNote": "一次购买，城市内全部景点讲解永久有效；未接入支付前请联系顾问咨询。",
       "status": "published",
       "countryId": "greece"
