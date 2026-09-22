@@ -469,7 +469,7 @@ function publicContent(data, countryId = 'greece') {
   const publicCities = scoped(data.cities).filter((item) => item.status !== 'archived').map((item) => ({ ...item, mosaic: (item.mosaic || []).map((image) => `./images/${image}`) }))
   const publicDestinations = scoped(data.destinations).filter((item) => item.status === 'published').map((item) => ({ ...normalizePublicDestination(item, publicCities, publicAttractions), image: imageUrl(item.image) })).filter((item) => item.cityId && item.attractionIds.length > 0)
   const home = homeSettings(data, imageUrl)
-  const activeDestinationCategories = (data.destinationCategories || []).filter((item) => item.enabled !== false && publicDestinations.some((destination) => destination.type === item.key)).sort((a, b) => Number(a.sort || 0) - Number(b.sort || 0))
+  const activeDestinationCategories = (data.destinationCategories || []).filter((item) => item.enabled !== false).sort((a, b) => Number(a.sort || 0) - Number(b.sort || 0))
   return {
     settings: { ...data.settings, homeEyebrow: home.eyebrow, homeTitle: home.title, homeDescription: home.description, homeBanners: home.banners },
     home,

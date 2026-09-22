@@ -91,39 +91,59 @@
     },
     {
       "id": "delphi",
-      "name": "纳芙普利翁",
-      "en": "Nafplio",
-      "type": "culture",
-      "image": "destination-mu6ijfbi-65dcd8.jpg",
-      "status": "published",
-      "countryId": "greece"
-    },
-    {
-      "id": "meteora",
-      "name": "科林斯",
-      "en": "Corinth",
-      "type": "culture",
-      "image": "destination-mu6ikwe5-7b7cb2.jpg",
-      "status": "published",
-      "countryId": "greece"
-    },
-    {
-      "id": "nafplio",
       "name": "德尔斐",
       "en": "Delphi",
       "type": "culture",
-      "image": "destination-mu6ilve0-9fb51c.jpg",
+      "image": "delphi.webp",
       "status": "published",
-      "countryId": "greece"
+      "countryId": "greece",
+      "cityId": "delphi",
+      "attractionIds": [
+        "delphi"
+      ]
+    },
+    {
+      "id": "meteora",
+      "name": "梅黛奥拉",
+      "en": "Meteora",
+      "type": "culture",
+      "image": "meteora-square.webp",
+      "status": "published",
+      "countryId": "greece",
+      "cityId": "meteora",
+      "attractionIds": [
+        "meteora"
+      ]
+    },
+    {
+      "id": "nafplio",
+      "name": "纳夫普利翁",
+      "en": "Nafplio",
+      "type": "culture",
+      "image": "nafplio.webp",
+      "status": "published",
+      "countryId": "greece",
+      "cityId": "nafplio",
+      "attractionIds": [
+        "nafplio",
+        "epidaurus"
+      ]
     },
     {
       "id": "santorini",
-      "name": "迈锡尼",
-      "en": "Mycenae",
+      "name": "圣托里尼",
+      "en": "Santorini",
       "type": "culture",
-      "image": "destination-mu6imxlx-43eaf7.jpg",
+      "image": "santorini.webp",
       "status": "published",
-      "countryId": "greece"
+      "countryId": "greece",
+      "cityId": "santorini",
+      "attractionIds": [
+        "oia",
+        "pyrgos",
+        "fira",
+        "black-beach"
+      ]
     },
     {
       "id": "mykonos",
