@@ -364,9 +364,9 @@ function HomeHero({ countries = [], home = {} }) {
     <Header />
     <div className="container hero-content">
       <div className="hero-brand-lockup"><strong>希腊旅行管家</strong><span>Greece Travel Butler</span></div>
-      <Eyebrow dark>{home.eyebrow || 'GREECE TRAVEL BUTLER · TAILOR-MADE JOURNEYS'}</Eyebrow>
-      <h1>{activeSlide.title || home.title || '只为一生美好回忆'}</h1>
-      <p>{activeSlide.description || home.description || '希腊在地人文与行程咨询服务。雅典在地团队，一对一中文顾问，提供文化、行程与语言陪同咨询。'}</p>
+      <Eyebrow dark>{home.eyebrow || 'Greece Travel Butler'}</Eyebrow>
+      <h1>{home.title || activeSlide.title || '希腊旅行管家'}</h1>
+      <p>{home.description || activeSlide.description || '希伴旅 · 只为一生美好回忆'}</p>
       <SearchBox />
       <div className="hero-country-switcher" role="tablist" aria-label="选择国家"><span>探索国家</span>{(countries.length ? countries : [{ id: 'greece', name: '希腊', nameEn: 'Greece' }]).map((item) => <button type="button" className={selectedCountry === item.id ? 'active' : ''} key={item.id} onClick={() => { setSelectedCountry(item.id); setActive(0) }} role="tab" aria-selected={selectedCountry === item.id}>{item.nameEn || item.nameEn === '' ? `${item.name} / ${item.nameEn}` : item.name}</button>)}</div>
       <div className="hero-actions"><Link className="button button-primary" to="/customize">提交行程咨询</Link><a className="button button-ghost" href="#routes">浏览甄选路线</a></div>

@@ -424,9 +424,9 @@ function publicHomeBanners(data) {
 }
 function publicHome(data) {
   return {
-    eyebrow: data.settings?.homeEyebrow || 'GREECE TRAVEL BUTLER · TAILOR-MADE JOURNEYS',
-    title: data.settings?.homeTitle || '只为一生美好回忆',
-    description: data.settings?.homeDescription || '希腊在地人文与行程咨询服务。雅典在地团队，一对一中文顾问，提供文化、行程与语言陪同咨询。',
+    eyebrow: data.settings?.homeEyebrow || 'Greece Travel Butler',
+    title: data.settings?.homeTitle || '希腊旅行管家',
+    description: data.settings?.homeDescription || '希伴旅 · 只为一生美好回忆',
     banners: publicHomeBanners(data),
   }
 }
