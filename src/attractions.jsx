@@ -155,7 +155,7 @@ export function CityGuidePage({ cityIdOverride = '' }) {
 
           <section id="city-attractions">
             <SectionTitle eyebrow={`${CITY_EN[cityId] || ''} · ATTRACTIONS`} title={`${city?.name || ''}的景点与博物馆`} />
-            <div className="city-attraction-list">
+            {cityAttractions.length ? <div className="city-attraction-list">
               {cityAttractions.map((item) => (
                 <Link to={`/attractions/${item.id}`} className="dark-attraction-card" key={item.id}>
                   <div className="dark-attraction-image">
@@ -174,7 +174,7 @@ export function CityGuidePage({ cityIdOverride = '' }) {
                   </div>
                 </Link>
               ))}
-            </div>
+            </div> : <div className="empty-state"><Compass /><h2>该城市暂时没有可展示的景点</h2><p>内容可能尚未发布或已下线，请返回城市选择继续浏览。</p><Link className="button button-primary" to="/attractions">返回精选城市</Link></div>}
           </section>
         </div>
       </main>

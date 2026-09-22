@@ -435,6 +435,24 @@ function homeSettings(data, imageUrl = (value) => value) {
     banners,
   }
 }
+function normalizePublicDestination(item, cities, attractions) {
+  const cityById = new Map(cities.map((city) => [city.id, city]))
+  const explicitCityId = String(item.cityId || '').trim()
+  const configuredAttractionIds = Object.prototype.hasOwnProperty.call(item, 'attractionIds') || Object.prototype.hasOwnProperty.call(item, 'attractionId')
+  const requestedIds = destinationAttractionIds(item)
+  const validAttractionIds = requestedIds.filter((attractionId) => attractions.some((attraction) => attraction.id === attractionId))
+  let cityId = explicitCityId ? (cityById.has(explicitCityId) ? explicitCityId : '') : (cityById.has(item.id) ? item.id : '')
+  if (!cityId) cityId = validAttractionIds.map((attractionId) => attractions.find((attraction) => attraction.id === attractionId)?.city).find((candidate) => cityById.has(candidate)) || ''
+  const attractionIds = configuredAttractionIds
+    ? validAttractionIds
+    : cityId
+      ? attractions.filter((attraction) => attraction.city === cityId).map((attraction) => attraction.id)
+      : validAttractionIds
+  const legacyAttractionId = Object.prototype.hasOwnProperty.call(item, 'attractionId')
+    ? (validAttractionIds.includes(String(item.attractionId || '').trim()) ? String(item.attractionId).trim() : '')
+    : undefined
+  return { ...item, cityId, attractionIds, ...(Object.prototype.hasOwnProperty.call(item, 'attractionId') ? { attractionId: legacyAttractionId } : {}) }
+}
 function publicContent(data, countryId = 'greece') {
   const imageUrl = (value) => {
   if (!value) return value
@@ -447,20 +465,24 @@ function publicContent(data, countryId = 'greece') {
   const countries = (data.countries || []).filter((item) => item.enabled !== false).sort((a, b) => Number(a.sort || 0) - Number(b.sort || 0))
   const guides = (data.guides || []).filter((item) => item.enabled !== false && (item.countryId || 'greece') === countryId).sort((a, b) => Number(a.sort || 0) - Number(b.sort || 0))
   const scoped = (items) => (items || []).filter((item) => (item.countryId || 'greece') === countryId)
+  const publicAttractions = scoped(data.attractions).filter((item) => item.status === 'published').map((item) => ({ ...item, image: `./images/${item.image}`, shareTitle: item.shareTitle || '', shareImage: imageUrl(item.shareImage), exhibits: (item.exhibits || []).map((exhibit) => ({ ...exhibit, image: exhibit.image ? `./images/${exhibit.image}` : '' })), articles: (item.articles || []).map((article) => ({ ...article, cover: `./images/${article.cover}` })) }))
+  const publicCities = scoped(data.cities).filter((item) => item.status !== 'archived').map((item) => ({ ...item, mosaic: (item.mosaic || []).map((image) => `./images/${image}`) }))
+  const publicDestinations = scoped(data.destinations).filter((item) => item.status === 'published').map((item) => ({ ...normalizePublicDestination(item, publicCities, publicAttractions), image: imageUrl(item.image) })).filter((item) => item.cityId && item.attractionIds.length > 0)
   const home = homeSettings(data, imageUrl)
+  const activeDestinationCategories = (data.destinationCategories || []).filter((item) => item.enabled !== false && publicDestinations.some((destination) => destination.type === item.key)).sort((a, b) => Number(a.sort || 0) - Number(b.sort || 0))
   return {
     settings: { ...data.settings, homeEyebrow: home.eyebrow, homeTitle: home.title, homeDescription: home.description, homeBanners: home.banners },
     home,
     countries: countries.map((item) => ({ ...item, heroImage: imageUrl(item.heroImage) })),
     guides: guides.map((item) => ({ ...item, avatar: imageUrl(item.avatar), fullImage: imageUrl(item.fullImage) })),
     routes: scoped(data.routes).filter((item) => item.status === 'published').map((item) => ({ ...item, image: `./images/${item.image}` })),
-    destinations: scoped(data.destinations).filter((item) => item.status === 'published').map((item) => ({ ...item, image: imageUrl(item.image), ...(Object.prototype.hasOwnProperty.call(item, 'attractionIds') || Object.prototype.hasOwnProperty.call(item, 'attractionId') ? { attractionIds: destinationAttractionIds(item) } : {}) })),
-    attractions: scoped(data.attractions).filter((item) => item.status === 'published').map((item) => ({ ...item, image: `./images/${item.image}`, shareTitle: item.shareTitle || '', shareImage: imageUrl(item.shareImage), exhibits: (item.exhibits || []).map((exhibit) => ({ ...exhibit, image: exhibit.image ? `./images/${exhibit.image}` : '' })), articles: (item.articles || []).map((article) => ({ ...article, cover: `./images/${article.cover}` })) })),
+    destinations: publicDestinations,
+    attractions: publicAttractions,
     sampleItineraries: scoped(data.sampleItineraries).filter((item) => item.status === 'published').map((item) => ({ ...item, cover: `./images/${item.cover}` })),
-    cities: scoped(data.cities).filter((item) => item.status !== 'archived').map((item) => ({ ...item, mosaic: (item.mosaic || []).map((image) => `./images/${image}`) })),
-    destinationCategories: (data.destinationCategories || []).filter((item) => item.enabled !== false && scoped(data.destinations).some((destination) => destination.status === 'published' && destination.type === item.key)).sort((a, b) => Number(a.sort || 0) - Number(b.sort || 0)).map((item) => ({ key: item.key, name: item.name, nameTw: item.nameTw || item.name, nameEn: item.nameEn || item.name, sort: item.sort || 0, enabled: true })),
+    cities: publicCities,
+    destinationCategories: activeDestinationCategories.map((item) => ({ key: item.key, name: item.name, nameTw: item.nameTw || item.name, nameEn: item.nameEn || item.name, sort: item.sort || 0, enabled: true })),
     // Backward-compatible alias for clients that have not moved to destinationCategories yet.
-    destinationTypes: (data.destinationCategories || []).filter((item) => item.enabled !== false && scoped(data.destinations).some((destination) => destination.status === 'published' && destination.type === item.key)).sort((a, b) => Number(a.sort || 0) - Number(b.sort || 0)).map((item) => ({ id: item.key, name: item.name, description: item.description || '', status: 'published', sort: item.sort || 0 })),
+    destinationTypes: activeDestinationCategories.map((item) => ({ id: item.key, name: item.name, description: item.description || '', status: 'published', sort: item.sort || 0 })),
   }
 }
 function readiness(data) {
