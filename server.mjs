@@ -27,6 +27,9 @@ let wechatAccessToken = { value: '', expiresAt: 0 }
 const mime = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8', '.json': 'application/json; charset=utf-8', '.png': 'image/png', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.webp': 'image/webp', '.svg': 'image/svg+xml', '.ico': 'image/x-icon', '.m4a': 'audio/mp4', '.mp3': 'audio/mpeg' }
 const immutableExtensions = new Set(['.png', '.jpg', '.jpeg', '.webp', '.svg', '.ico', '.woff', '.woff2'])
 const runtimeImageDir = resolve(root, 'public/images')
+const DEFAULT_HOME_EYEBROW = 'GREECE TRAVEL BUTLER · TAILOR-MADE JOURNEYS'
+const DEFAULT_HOME_TITLE = '只为一生美好回忆'
+const DEFAULT_HOME_DESCRIPTION = '希腊在地人文与行程咨询服务。雅典在地团队，一对一中文顾问，提供文化、行程与语言陪同咨询。'
 
 function writeRuntimeImage(filename, buffer) {
   mkdirSync(runtimeImageDir, { recursive: true })
@@ -409,6 +412,29 @@ function saveMiniProgramAvatar(data, req, image, mimeType) {
   writeRuntimeImage(filename, image)
   return `${siteBase(data, req)}/images/${filename}`
 }
+function destinationAttractionIds(item = {}) {
+  if (Array.isArray(item.attractionIds)) return [...new Set(item.attractionIds.map((value) => String(value || '').trim()).filter(Boolean))]
+  if (Object.prototype.hasOwnProperty.call(item, 'attractionId')) {
+    const value = String(item.attractionId || '').trim()
+    return value ? [value] : []
+  }
+  return []
+}
+function homeSettings(data, imageUrl = (value) => value) {
+  const settings = data.settings || {}
+  const banners = Array.isArray(settings.homeBanners)
+    ? settings.homeBanners
+      .filter((item) => item && item.enabled !== false && item.image)
+      .map((item, index) => ({ ...item, id: item.id || `home-banner-${index + 1}`, sort: Number(item.sort || index + 1), image: imageUrl(item.image) }))
+      .sort((a, b) => a.sort - b.sort)
+    : []
+  return {
+    eyebrow: String(settings.homeEyebrow || DEFAULT_HOME_EYEBROW).trim(),
+    title: String(settings.homeTitle || DEFAULT_HOME_TITLE).trim(),
+    description: String(settings.homeDescription || DEFAULT_HOME_DESCRIPTION).trim(),
+    banners,
+  }
+}
 function publicContent(data, countryId = 'greece') {
   const imageUrl = (value) => {
   if (!value) return value
@@ -421,12 +447,14 @@ function publicContent(data, countryId = 'greece') {
   const countries = (data.countries || []).filter((item) => item.enabled !== false).sort((a, b) => Number(a.sort || 0) - Number(b.sort || 0))
   const guides = (data.guides || []).filter((item) => item.enabled !== false && (item.countryId || 'greece') === countryId).sort((a, b) => Number(a.sort || 0) - Number(b.sort || 0))
   const scoped = (items) => (items || []).filter((item) => (item.countryId || 'greece') === countryId)
+  const home = homeSettings(data, imageUrl)
   return {
-    settings: data.settings,
+    settings: { ...data.settings, homeEyebrow: home.eyebrow, homeTitle: home.title, homeDescription: home.description, homeBanners: home.banners },
+    home,
     countries: countries.map((item) => ({ ...item, heroImage: imageUrl(item.heroImage) })),
     guides: guides.map((item) => ({ ...item, avatar: imageUrl(item.avatar), fullImage: imageUrl(item.fullImage) })),
     routes: scoped(data.routes).filter((item) => item.status === 'published').map((item) => ({ ...item, image: `./images/${item.image}` })),
-    destinations: scoped(data.destinations).filter((item) => item.status === 'published').map((item) => ({ ...item, image: `./images/${item.image}` })),
+    destinations: scoped(data.destinations).filter((item) => item.status === 'published').map((item) => ({ ...item, image: imageUrl(item.image), ...(Object.prototype.hasOwnProperty.call(item, 'attractionIds') || Object.prototype.hasOwnProperty.call(item, 'attractionId') ? { attractionIds: destinationAttractionIds(item) } : {}) })),
     attractions: scoped(data.attractions).filter((item) => item.status === 'published').map((item) => ({ ...item, image: `./images/${item.image}`, shareTitle: item.shareTitle || '', shareImage: imageUrl(item.shareImage), exhibits: (item.exhibits || []).map((exhibit) => ({ ...exhibit, image: exhibit.image ? `./images/${exhibit.image}` : '' })), articles: (item.articles || []).map((article) => ({ ...article, cover: `./images/${article.cover}` })) })),
     sampleItineraries: scoped(data.sampleItineraries).filter((item) => item.status === 'published').map((item) => ({ ...item, cover: `./images/${item.cover}` })),
     cities: scoped(data.cities).filter((item) => item.status !== 'archived').map((item) => ({ ...item, mosaic: (item.mosaic || []).map((image) => `./images/${image}`) })),
@@ -494,7 +522,7 @@ function pageSeo(data, pathname, search, req) {
   const tripToken = pathname.match(/^\/trip\/([^/]+)$/)?.[1] || ((pathname === '/itinerary/detail' || pathname === '/pages/itinerary/detail') ? params.get('token') : '')
   const matchedTrip = tripToken ? (data.customTrips || []).find((item) => item.token === tripToken) : null
   const pages = {
-    '/': ['只为一生美好回忆｜希腊旅行管家', `只为一生美好回忆。${config.defaultDescription}`],
+    '/': [`${config.homeTitle || '只为一生美好回忆'}｜${config.siteName || '希腊旅行管家'}`, config.homeDescription || config.defaultDescription],
     '/routes/honeymoon': ['爱琴海蜜月之旅｜5天4晚希腊定制路线', '雅典 + 圣托里尼 5 天 4 晚蜜月路线，中文司导、悬崖酒店、双体船出海与伊亚日落旅拍。'],
     '/customize': ['希腊行程咨询｜提交需求沟通方案', '告诉我们出行时间、人数与偏好，先沟通需求范围与行程规划方式。'],
     '/destinations/santorini': ['圣托里尼旅行指南｜蓝顶教堂与爱琴海日落', '圣托里尼悬崖酒店、伊亚日落、火山温泉与双体船巡航的深度旅行指南。'],
@@ -561,10 +589,30 @@ function normalizeAttractionPayload(data, payload) {
   const city = (data.cities || []).find((item) => item.id === cityId)
   return { ...payload, cityName: city ? city.name : '' }
 }
+function normalizeDestinationPayload(payload, method) {
+  const next = { ...payload }
+  const hasAttractionIds = Object.prototype.hasOwnProperty.call(payload, 'attractionIds')
+  const hasLegacyAttractionId = Object.prototype.hasOwnProperty.call(payload, 'attractionId')
+  if (hasAttractionIds || hasLegacyAttractionId || method === 'POST') {
+    const rawIds = hasAttractionIds
+      ? (Array.isArray(payload.attractionIds) ? payload.attractionIds : String(payload.attractionIds || '').split(/[,，、\\s]+/))
+      : [payload.attractionId]
+    const attractionIds = [...new Set(rawIds.map((value) => String(value || '').trim()).filter(Boolean))]
+    next.attractionIds = attractionIds
+    // Keep the legacy field in sync for old clients and stored records.
+    next.attractionId = attractionIds[0] || ''
+  }
+  if (Object.prototype.hasOwnProperty.call(payload, 'cityId')) next.cityId = String(payload.cityId || '').trim()
+  return next
+}
 async function collectionHandler(data, collection, method, pathname, payload) {
   const items = data[collection]
   const itemId = pathname.split('/').pop()
-  const normalizedPayload = collection === 'attractions' ? normalizeAttractionPayload(data, payload) : payload
+  const normalizedPayload = collection === 'attractions'
+    ? normalizeAttractionPayload(data, payload)
+    : collection === 'destinations'
+      ? normalizeDestinationPayload(payload, method)
+      : payload
   if (method === 'GET') return { status: 200, body: items }
   if (method === 'POST') { const next = { ...normalizedPayload, id: normalizedPayload.id || id(collection.slice(0, -1)) }; items.push(next); await saveData(data); return { status: 201, body: next } }
   const index = items.findIndex((item) => item.id === itemId)

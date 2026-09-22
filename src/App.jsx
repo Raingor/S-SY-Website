@@ -178,7 +178,7 @@ function SEO() {
     const luxuryType = path === '/pages/luxury/detail' ? params.get('type') : ''
     const luxurySlug = path.match(/^\/experiences\/([^/]+)$/)?.[1] || (luxuryType === 'jet' ? 'private-flight' : luxuryType === 'yacht' ? 'private-yacht' : '')
     const pages = {
-      '/': ['只为一生美好回忆｜希腊旅行管家', `只为一生美好回忆。${config.defaultDescription}`],
+      '/': [`${config.homeTitle || '只为一生美好回忆'}｜${config.siteName || '希腊旅行管家'}`, config.homeDescription || config.defaultDescription],
       '/customize': ['希腊行程咨询｜提交需求沟通方案', '告诉我们出行时间、人数与偏好，先沟通需求范围与行程规划方式。'],
       '/search': [`搜索${query ? `“${query}”` : '希腊旅行'}｜Greece Travel Butler`, `搜索希腊路线、目的地和私人定制旅行灵感。${query ? `当前关键词：${query}。` : ''}`],
       '/tools': ['希腊行前信息工具箱｜签证 · 汇率 · 天气 · 行程日历', '出发前准备希腊申根签证、欧元汇率、天气和每日行程的信息工具箱。'],
@@ -352,6 +352,32 @@ function GuideTeaser({ guide }) {
   )
 }
 
+function destinationAssociationIds(item = {}) {
+  if (Array.isArray(item.attractionIds)) return [...new Set(item.attractionIds.map((value) => String(value || '').trim()).filter(Boolean))]
+  if (Object.prototype.hasOwnProperty.call(item, 'attractionId')) {
+    const value = String(item.attractionId || '').trim()
+    return value ? [value] : []
+  }
+  return []
+}
+function destinationCityId(item, cities, attractions) {
+  const cityIds = new Set(cities.map((city) => city.id))
+  if (item.cityId && cityIds.has(item.cityId)) return item.cityId
+  if (cityIds.has(item.id)) return item.id
+  return destinationAssociationIds(item).map((id) => attractions.find((attraction) => attraction.id === id)?.city).find(Boolean) || ''
+}
+function visibleDestinations(destinations, cities, attractions) {
+  return destinations.filter((item) => {
+    if (item.status === 'unpublished' || item.status === 'archived') return false
+    const associationConfigured = Array.isArray(item.attractionIds) || Object.prototype.hasOwnProperty.call(item, 'attractionId')
+    const associationIds = destinationAssociationIds(item)
+    const validAssociations = associationIds.filter((id) => attractions.some((attraction) => attraction.id === id && attraction.status !== 'unpublished' && attraction.status !== 'archived'))
+    if (associationConfigured && associationIds.length > 0 && validAssociations.length === 0) return false
+    if (associationConfigured && associationIds.length === 0) return false
+    const cityId = destinationCityId(item, cities, attractions)
+    return Boolean(cityId && attractions.some((attraction) => attraction.city === cityId && attraction.status !== 'unpublished' && attraction.status !== 'archived'))
+  })
+}
 function normalizeDestinationCategories(destinations, primary, legacy) {
   const hasPublishedType = (key) => destinations.some((item) => item.status !== 'unpublished' && item.status !== 'archived' && item.type === key)
   const source = Array.isArray(primary) && primary.length > 0 ? primary : (Array.isArray(legacy) && legacy.length > 0 ? legacy : [])
@@ -366,17 +392,20 @@ function normalizeDestinationCategories(destinations, primary, legacy) {
     .map((key, index) => ({ key, name: key === 'culture' ? '文明溯源' : '海岛度假', nameTw: key === 'culture' ? '文明溯源' : '海島度假', nameEn: key === 'culture' ? 'Civilization Origins' : 'Aegean Escapes', sort: index + 1 }))
 }
 
-function HomeDestinationTile({ item, attraction }) {
-  const content = <><img src={assetPath(item.image)} alt={`${item.name}风光`} loading="lazy" decoding="async" /><span><strong>{item.name}</strong><small>{item.nameEn || item.en || 'GREECE'}</small></span>{attraction ? <em>查看景点详情 <ArrowRight size={13} /></em> : <em className="is-unavailable">暂无详情</em>}</>
-  if (!attraction) return <article className="destination-card destination-card-disabled" aria-label={`${item.name}暂无关联景点详情`}>{content}</article>
-  return <Link to={`/attractions/${attraction.id}`} className="destination-card">{content}</Link>
+function HomeDestinationTile({ item, cityId }) {
+  const content = <><img src={assetPath(item.image)} alt={`${item.name}风光`} loading="lazy" decoding="async" /><span><strong>{item.name}</strong><small>{item.nameEn || item.en || 'GREECE'}</small></span><em>进入城市导览 <ArrowRight size={13} /></em></>
+  return <Link to={`/attractions/city/${cityId}`} className="destination-card">{content}</Link>
 }
 
-function HomeHero({ countries = [] }) {
+function HomeHero({ countries = [], home = {} }) {
   const [selectedCountry, setSelectedCountry] = useState(countries[0]?.id || 'greece')
   const country = countries.find((item) => item.id === selectedCountry) || countries[0]
-  const fallbackSlides = [images.santorini, images.athens, images.plaka, images.delphi]
-  const slides = [...(country?.heroImage ? [country.heroImage] : []), ...fallbackSlides].filter((source, index, list) => source && list.indexOf(source) === index).map((image) => ({ image }))
+  const fallbackSlides = [country?.heroImage, images.santorini, images.athens, images.plaka, images.delphi].filter(Boolean)
+  const configuredSlides = Array.isArray(home.banners) ? home.banners.filter((item) => item?.image).map((item) => ({ ...item, image: item.image })) : []
+  const slides = (configuredSlides.length ? configuredSlides : fallbackSlides.map((image) => ({ image }))).filter((slide, index, list) => slide.image && list.findIndex((item) => item.image === slide.image) === index)
+  const homeEyebrow = home.eyebrow || 'GREECE TRAVEL BUTLER · TAILOR-MADE JOURNEYS'
+  const homeTitle = home.title || '只为一生美好回忆'
+  const homeDescription = home.description || '希腊在地人文与行程咨询服务。雅典在地团队，一对一中文顾问，提供文化、行程与语言陪同咨询。'
   const [active, setActive] = useState(0)
   useEffect(() => { if (countries.length && !countries.some((item) => item.id === selectedCountry)) setSelectedCountry(countries[0].id) }, [countries, selectedCountry])
   useEffect(() => { const timer = window.setInterval(() => setActive((index) => (index + 1) % slides.length), 6500); return () => window.clearInterval(timer) }, [slides.length])
@@ -384,9 +413,9 @@ function HomeHero({ countries = [] }) {
     <Header />
     <div className="container hero-content">
       <div className="hero-brand-lockup"><strong>希腊旅行管家</strong><span>Greece Travel Butler</span></div>
-      <Eyebrow dark>GREECE TRAVEL BUTLER · TAILOR-MADE JOURNEYS</Eyebrow>
-      <h1>只为一生美好回忆</h1>
-      <p>希腊在地人文与行程咨询服务。雅典在地团队，<br />一对一中文顾问，提供文化、行程与语言陪同咨询。</p>
+      <Eyebrow dark>{homeEyebrow}</Eyebrow>
+      <h1>{homeTitle}</h1>
+      <p className="home-hero-description">{homeDescription}</p>
       <SearchBox />
       <div className="hero-country-switcher" role="tablist" aria-label="选择国家"><span>探索国家</span>{(countries.length ? countries : [{ id: 'greece', name: '希腊', nameEn: 'Greece' }]).map((item) => <button type="button" className={selectedCountry === item.id ? 'active' : ''} key={item.id} onClick={() => { setSelectedCountry(item.id); setActive(0) }} role="tab" aria-selected={selectedCountry === item.id}>{item.nameEn || item.nameEn === '' ? `${item.name} / ${item.nameEn}` : item.name}</button>)}</div>
       <div className="hero-actions"><Link className="button button-primary" to="/customize">提交行程咨询</Link><a className="button button-ghost" href="#routes">浏览甄选路线</a></div>
@@ -431,7 +460,7 @@ const LUXURY_EXPERIENCES = [
 
 function Home() {
   const [activeCategory, setActiveCategory] = useState('')
-  const [content, setContent] = useState({ routes: [], destinations: [], attractions: [], sampleItineraries: [], destinationCategories: [], destinationTypes: [], guides: [], countries: [] })
+  const [content, setContent] = useState({ routes: [], destinations: [], attractions: [], sampleItineraries: [], destinationCategories: [], destinationTypes: [], guides: [], countries: [], cities: [], home: {} })
   useEffect(() => {
     if (window.location.protocol === 'file:') return
     fetch('/api/content').then((response) => response.ok ? response.json() : null).then((next) => {
@@ -444,10 +473,13 @@ function Home() {
         destinationTypes: next.destinationTypes || [],
         guides: next.guides || [],
         countries: next.countries || [],
+        cities: next.cities || [],
+        home: next.home || {},
       })
     }).catch(() => {})
   }, [])
-  const destinationCategories = useMemo(() => normalizeDestinationCategories(content.destinations, content.destinationCategories, content.destinationTypes), [content.destinations, content.destinationCategories, content.destinationTypes])
+  const visibleDestinationItems = useMemo(() => visibleDestinations(content.destinations, content.cities, content.attractions), [content.destinations, content.cities, content.attractions])
+  const destinationCategories = useMemo(() => normalizeDestinationCategories(visibleDestinationItems, content.destinationCategories, content.destinationTypes), [visibleDestinationItems, content.destinationCategories, content.destinationTypes])
   useEffect(() => {
     if (!destinationCategories.some((item) => item.key === activeCategory)) setActiveCategory(destinationCategories[0]?.key || '')
   }, [destinationCategories, activeCategory])
@@ -461,10 +493,9 @@ function Home() {
     [Users, '希腊商旅', '商务陪同、语言翻译、企业拜访与人文行程的综合咨询', '/business-travel'],
     [CloudSun, '出行指南', '签证、交通、网络、货币与行前实用攻略，一站式准备出发', '/tools'],
   ]
-  const attractionsById = useMemo(() => Object.fromEntries(content.attractions.map((item) => [item.id, item])), [content.attractions])
   return (
     <>
-      <HomeHero countries={content.countries} />
+      <HomeHero countries={content.countries} home={content.home} />
 
       <section id="services" className="section services-section">
         <div className="container">
@@ -499,7 +530,7 @@ function Home() {
         <div className="container">
           <SectionTitle eyebrow="DESTINATIONS" title="精选目的地" action={{ to: '/attractions', label: '进入城市与景点导览' }} />
           <div className="destination-tabs" role="tablist">{destinationCategories.map((category) => <button type="button" key={category.key} className={activeCategory === category.key ? 'active' : ''} onClick={() => setActiveCategory(category.key)} role="tab" aria-selected={activeCategory === category.key}>{category.name}</button>)}</div>
-          {destinationCategories.map((category) => <div key={category.key} className={`destination-group ${activeCategory === category.key ? 'mobile-active' : ''}`}><div className="destination-subhead"><h3>{category.name}</h3><span>{category.nameEn || category.nameTw || category.key}</span></div><div className="destination-grid">{content.destinations.filter((item) => item.status !== 'unpublished' && item.status !== 'archived' && item.type === category.key).map((item) => <HomeDestinationTile key={item.id || item.name} item={item} attraction={item.attractionId ? attractionsById[item.attractionId] : null} />)}</div></div>)}
+          {destinationCategories.map((category) => <div key={category.key} className={`destination-group ${activeCategory === category.key ? 'mobile-active' : ''}`}><div className="destination-subhead"><h3>{category.name}</h3><span>{category.nameEn || category.nameTw || category.key}</span></div><div className="destination-grid">{visibleDestinationItems.filter((item) => item.type === category.key).map((item) => <HomeDestinationTile key={item.id || item.name} item={item} cityId={destinationCityId(item, content.cities, content.attractions)} />)}</div></div>)}
         </div>
       </section>}
 
