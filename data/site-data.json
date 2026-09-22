@@ -12,6 +12,9 @@
     "phone": "+30 210 000 0000",
     "email": "hello@sy-greece.com",
     "replyHours": "24 小时内回复",
+    "homeEyebrow": "GREECE TRAVEL BUTLER · TAILOR-MADE JOURNEYS",
+    "homeTitle": "只为一生美好回忆",
+    "homeDescription": "希腊在地人文与行程咨询服务。雅典在地团队，一对一中文顾问，提供文化、行程与语言陪同咨询。",
     "miniprogramAccess": true,
     "miniprogramKnowledge": {
       "trialSeconds": 60,
@@ -2743,6 +2746,43 @@
     }
   ],
   "home": {
-    "banners": []
+    "banners": [
+      {
+        "id": "home-hero-santorini",
+        "title": "只为一生美好回忆",
+        "description": "希腊在地人文与行程咨询服务。雅典在地团队，一对一中文顾问，提供文化、行程与语言陪同咨询。",
+        "alt": "圣托里尼爱琴海风光",
+        "image": "santorini.webp",
+        "enabled": true,
+        "sort": 1
+      },
+      {
+        "id": "home-hero-athens",
+        "title": "只为一生美好回忆",
+        "description": "希腊在地人文与行程咨询服务。雅典在地团队，一对一中文顾问，提供文化、行程与语言陪同咨询。",
+        "alt": "雅典城市与古典文明景观",
+        "image": "athens.webp",
+        "enabled": true,
+        "sort": 2
+      },
+      {
+        "id": "home-hero-plaka",
+        "title": "只为一生美好回忆",
+        "description": "希腊在地人文与行程咨询服务。雅典在地团队，一对一中文顾问，提供文化、行程与语言陪同咨询。",
+        "alt": "雅典普拉卡老城街景",
+        "image": "plaka.webp",
+        "enabled": true,
+        "sort": 3
+      },
+      {
+        "id": "home-hero-delphi",
+        "title": "只为一生美好回忆",
+        "description": "希腊在地人文与行程咨询服务。雅典在地团队，一对一中文顾问，提供文化、行程与语言陪同咨询。",
+        "alt": "德尔斐古迹与山谷风光",
+        "image": "delphi.webp",
+        "enabled": true,
+        "sort": 4
+      }
+    ]
   }
 }

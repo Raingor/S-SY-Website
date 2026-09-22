@@ -4,7 +4,7 @@ import { assetPath } from './chrome'
 
 const ADMIN_KEY = 'sy-greece-admin-data'
 const TOKEN_KEY = 'sy-greece-admin-token'
-const defaultSettings = { siteName: '', siteUrl: '', defaultTitle: '', defaultDescription: '', keywords: '', ogImage: '', googleVerification: '', robotsPolicy: 'index,follow', wechat: '', phone: '', email: '', replyHours: '', miniprogramAccess: true, miniprogramKnowledge: { trialSeconds: 60, products: { attraction: { enabled: true, productType: 'attraction', name: '单景点永久讲解（模拟）', price: 0.01, currency: 'CNY' }, membership: { enabled: true, productType: 'membership', name: '终身会员（模拟）', price: 0.01, currency: 'CNY' } } } }
+const defaultSettings = { siteName: '', siteUrl: '', defaultTitle: '', defaultDescription: '', keywords: '', ogImage: '', googleVerification: '', robotsPolicy: 'index,follow', wechat: '', phone: '', email: '', replyHours: '', homeEyebrow: '', homeTitle: '', homeDescription: '', miniprogramAccess: true, miniprogramKnowledge: { trialSeconds: 60, products: { attraction: { enabled: true, productType: 'attraction', name: '单景点永久讲解（模拟）', price: 0.01, currency: 'CNY' }, membership: { enabled: true, productType: 'membership', name: '终身会员（模拟）', price: 0.01, currency: 'CNY' } } } }
 const emptyRoute = { days: '', kicker: '', title: '', tags: '', desc: '', image: 'santorini.webp', status: 'published' }
 const emptyDestination = { name: '', en: '', type: 'culture', image: 'santorini.webp', status: 'published', attractionId: '' }
 const emptyAttraction = { name: '', en: '', originalName: '', city: 'athens', cityName: '雅典', type: 'landmark', category: '', sizeLabel: '', tags: '', image: 'athens.webp', summary: '', status: 'published', highlights: [], exhibits: [], guide: {}, articles: [], deepDive: { preview: '', locked: [] }, shareTitle: '', shareImage: '' }
@@ -19,7 +19,7 @@ const attractionCities = [
 function attractionCityName(cityId, fallback = '') { return attractionCities.find((city) => city.id === cityId)?.name || fallback }
 const emptyItinerary = { title: '', tag: '', days: 3, cover: 'santorini.webp', crowd: '', summary: '', status: 'published', itinerary: [] }
 const emptyCustomTrip = { client: '', title: '希腊定制旅程', period: '', orderNo: '', travelers: '', language: '中文普通话 / 英语', vehicle: '欧 6 标准及以上七座奔驰商务车', guide: '希腊文旅金牌司导 / 欧美澳高等教育 / 欧盟 + 美国 + 中国驾照', totalFee: '', status: 'active', days: [], notices: [] }
-const emptyBanner = { title: '', alt: '', image: '', enabled: true, sort: 1 }
+const emptyBanner = { title: '', description: '', alt: '', image: '', enabled: true, sort: 1 }
 const formTemplates = {
   route: { title: '路线填写模板', intro: '先确定路线定位，再补充天数、客群和卖点。', fields: [['路线名称', '雅典 · 圣托里尼经典 8 日'], ['路线副标题', '古典文明与爱琴海慢旅'], ['天数', '8 天'], ['人群标签', '首次到访 · 亲子 · 文化'], ['行程简介', '用 2–3 句话概括路线亮点和适合人群。'], ['图片', '上传横版路线主图'] ] },
   destination: { title: '目的地填写模板', intro: '名称保持简洁，英文名用于前台双语展示。', fields: [['中文名称', '圣托里尼'], ['英文名称', 'Santorini'], ['分类', '海岛度假 / 文明溯源'], ['图片', '上传目的地代表图']] },
@@ -479,9 +479,9 @@ const [destinationTypes, setDestinationTypes] = useState([])
   async function saveBanner(e) {
     e.preventDefault()
     const isEdit = editing && editing !== 'new'
-    const payload = { ...bannerForm, title: String(bannerForm.title || '').trim(), alt: String(bannerForm.alt || '').trim(), image: String(bannerForm.image || '').trim(), sort: Number(bannerForm.sort) || 1, enabled: bannerForm.enabled !== false }
+    const payload = { ...bannerForm, title: String(bannerForm.title || '').trim(), description: String(bannerForm.description || '').trim(), alt: String(bannerForm.alt || '').trim(), image: String(bannerForm.image || '').trim(), sort: Number(bannerForm.sort) || 1, enabled: bannerForm.enabled !== false }
     try {
-      if (!payload.title || !payload.alt || !payload.image) throw new Error('请填写标题、替代文案并上传图片')
+      if (!payload.title || !payload.description || !payload.alt || !payload.image) throw new Error('请填写标题、描述、替代文案并上传图片')
       if (localMode) localUpdate('home', (current = {}) => ({ ...current, banners: isEdit ? (current.banners || []).map((item) => item.id === editing ? { ...item, ...payload, id: editing, updatedAt: new Date().toISOString() } : item) : [...(current.banners || []), { ...payload, id: localId('banner'), updatedAt: new Date().toISOString() }] }))
       else await callApi(isEdit ? `/admin/home-banners/${editing}` : '/admin/home-banners', { method: isEdit ? 'PATCH' : 'POST', headers: { Authorization: `Bearer ${token}` }, body: JSON.stringify(payload) })
       await load(); setEditing(null); setBannerForm(emptyBanner); notify('小程序首页 Banner 已保存')

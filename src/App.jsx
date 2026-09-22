@@ -350,21 +350,23 @@ function HomeDestinationTile({ item, attraction }) {
   return <Link to={`/attractions/${attraction.id}`} className="destination-card">{content}</Link>
 }
 
-function HomeHero({ countries = [] }) {
+function HomeHero({ countries = [], home = {} }) {
   const [selectedCountry, setSelectedCountry] = useState(countries[0]?.id || 'greece')
   const country = countries.find((item) => item.id === selectedCountry) || countries[0]
-  const fallbackSlides = [images.santorini, images.athens, images.plaka, images.delphi]
-  const slides = [...(country?.heroImage ? [country.heroImage] : []), ...fallbackSlides].filter((source, index, list) => source && list.indexOf(source) === index).map((image) => ({ image }))
+  const fallbackSlides = [images.santorini, images.athens, images.plaka, images.delphi].map((image) => ({ image }))
+  const configuredSlides = (home.banners || []).filter((item) => item.enabled !== false && item.image)
+  const slides = configuredSlides.length ? configuredSlides : fallbackSlides
   const [active, setActive] = useState(0)
+  const activeSlide = slides[active] || slides[0] || {}
   useEffect(() => { if (countries.length && !countries.some((item) => item.id === selectedCountry)) setSelectedCountry(countries[0].id) }, [countries, selectedCountry])
   useEffect(() => { const timer = window.setInterval(() => setActive((index) => (index + 1) % slides.length), 6500); return () => window.clearInterval(timer) }, [slides.length])
   return <div className="home-hero" style={{ '--hero-image': `url("${assetPath(slides[active]?.image || images.santorini)}")` }}>
     <Header />
     <div className="container hero-content">
       <div className="hero-brand-lockup"><strong>希腊旅行管家</strong><span>Greece Travel Butler</span></div>
-      <Eyebrow dark>GREECE TRAVEL BUTLER · TAILOR-MADE JOURNEYS</Eyebrow>
-      <h1>只为一生美好回忆</h1>
-      <p>希腊在地人文与行程咨询服务。雅典在地团队，<br />一对一中文顾问，提供文化、行程与语言陪同咨询。</p>
+      <Eyebrow dark>{home.eyebrow || 'GREECE TRAVEL BUTLER · TAILOR-MADE JOURNEYS'}</Eyebrow>
+      <h1>{activeSlide.title || home.title || '只为一生美好回忆'}</h1>
+      <p>{activeSlide.description || home.description || '希腊在地人文与行程咨询服务。雅典在地团队，一对一中文顾问，提供文化、行程与语言陪同咨询。'}</p>
       <SearchBox />
       <div className="hero-country-switcher" role="tablist" aria-label="选择国家"><span>探索国家</span>{(countries.length ? countries : [{ id: 'greece', name: '希腊', nameEn: 'Greece' }]).map((item) => <button type="button" className={selectedCountry === item.id ? 'active' : ''} key={item.id} onClick={() => { setSelectedCountry(item.id); setActive(0) }} role="tab" aria-selected={selectedCountry === item.id}>{item.nameEn || item.nameEn === '' ? `${item.name} / ${item.nameEn}` : item.name}</button>)}</div>
       <div className="hero-actions"><Link className="button button-primary" to="/customize">提交行程咨询</Link><a className="button button-ghost" href="#routes">浏览甄选路线</a></div>
@@ -409,7 +411,7 @@ const LUXURY_EXPERIENCES = [
 
 function Home() {
   const [activeCategory, setActiveCategory] = useState('')
-  const [content, setContent] = useState({ routes: [], destinations: [], attractions: [], sampleItineraries: [], destinationCategories: [], destinationTypes: [], guides: [], countries: [] })
+  const [content, setContent] = useState({ routes: [], destinations: [], attractions: [], sampleItineraries: [], destinationCategories: [], destinationTypes: [], guides: [], countries: [], home: {} })
   useEffect(() => {
     if (window.location.protocol === 'file:') return
     fetch('/api/content').then((response) => response.ok ? response.json() : null).then((next) => {
@@ -422,6 +424,7 @@ function Home() {
         destinationTypes: next.destinationTypes || [],
         guides: next.guides || [],
         countries: next.countries || [],
+        home: next.home || {},
       })
     }).catch(() => {})
   }, [])
@@ -442,7 +445,7 @@ function Home() {
   const attractionsById = useMemo(() => Object.fromEntries(content.attractions.map((item) => [item.id, item])), [content.attractions])
   return (
     <>
-      <HomeHero countries={content.countries} />
+      <HomeHero countries={content.countries} home={content.home} />
 
       <section id="services" className="section services-section">
         <div className="container">

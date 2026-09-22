@@ -411,15 +411,24 @@ function saveMiniProgramAvatar(data, req, image, mimeType) {
 }
 function homeBannerPayload(input = {}, current = {}) {
   const title = String(input.title ?? current.title ?? '').trim().slice(0, 120)
+  const description = String(input.description ?? current.description ?? '').trim().slice(0, 500)
   const alt = String(input.alt ?? current.alt ?? title).trim().slice(0, 180)
   const image = String(input.image ?? current.image ?? '').trim().slice(0, 500)
-  if (!title || !alt || !image) return null
+  if (!title || !description || !alt || !image) return null
   const sort = Math.max(1, Math.min(9999, Number(input.sort ?? current.sort ?? 1) || 1))
-  return { title, alt, image, enabled: input.enabled !== undefined ? input.enabled !== false : current.enabled !== false, sort, ...(current.createdAt ? { createdAt: current.createdAt } : {}) }
+  return { title, description, alt, image, enabled: input.enabled !== undefined ? input.enabled !== false : current.enabled !== false, sort, ...(current.createdAt ? { createdAt: current.createdAt } : {}) }
 }
 function publicHomeBanners(data) {
   const imageUrl = (value) => { const image = String(value || ''); if (!image || /^(https?:)?\/\//i.test(image) || image.startsWith('/')) return image; const cleaned = image.replace(/^(?:\.\/|\/)?(?:images\/)+/, ''); return cleaned ? `./images/${cleaned}` : image }
-  return (data.home?.banners || []).filter((item) => item.enabled !== false).sort((a, b) => Number(a.sort || 0) - Number(b.sort || 0)).map((item) => ({ id: item.id, title: item.title, alt: item.alt || item.title, image: imageUrl(item.image), enabled: true, sort: Number(item.sort || 0), ...(item.path ? { path: item.path } : {}) }))
+  return (data.home?.banners || []).filter((item) => item.enabled !== false).sort((a, b) => Number(a.sort || 0) - Number(b.sort || 0)).map((item) => ({ id: item.id, title: item.title, description: item.description || '', alt: item.alt || item.title, image: imageUrl(item.image), enabled: true, sort: Number(item.sort || 0), ...(item.path ? { path: item.path } : {}) }))
+}
+function publicHome(data) {
+  return {
+    eyebrow: data.settings?.homeEyebrow || 'GREECE TRAVEL BUTLER · TAILOR-MADE JOURNEYS',
+    title: data.settings?.homeTitle || '只为一生美好回忆',
+    description: data.settings?.homeDescription || '希腊在地人文与行程咨询服务。雅典在地团队，一对一中文顾问，提供文化、行程与语言陪同咨询。',
+    banners: publicHomeBanners(data),
+  }
 }
 function publicContent(data, countryId = 'greece') {
   const imageUrl = (value) => {
@@ -435,8 +444,7 @@ function publicContent(data, countryId = 'greece') {
   const scoped = (items) => (items || []).filter((item) => (item.countryId || 'greece') === countryId)
   return {
     settings: data.settings,
-    // Compatibility field for existing clients. The Website does not read this field; MpApp uses /api/miniprogram/home.
-    home: { banners: publicHomeBanners(data) },
+    home: publicHome(data),
     countries: countries.map((item) => ({ ...item, heroImage: imageUrl(item.heroImage) })),
     guides: guides.map((item) => ({ ...item, avatar: imageUrl(item.avatar), fullImage: imageUrl(item.fullImage) })),
     routes: scoped(data.routes).filter((item) => item.status === 'published').map((item) => ({ ...item, image: `./images/${item.image}` })),
@@ -555,7 +563,7 @@ const server = http.createServer(async (req, res) => {
     const method = req.method || 'GET'
     if (method === 'OPTIONS' && url.pathname.startsWith('/api/')) return res.writeHead(204, corsHeaders()).end()
     if (url.pathname === '/api/health') return json(res, 200, { ok: true, service: 'sy-greece-admin', time: new Date().toISOString() })
-    if (url.pathname === '/api/miniprogram/home' && method === 'GET') { const data = readData(); return json(res, 200, { home: { banners: publicHomeBanners(data) } }) }
+    if (url.pathname === '/api/miniprogram/home' && method === 'GET') { const data = readData(); return json(res, 200, { home: publicHome(data) }) }
     if (url.pathname === '/api/readiness' && method === 'GET') { const result = readiness(readData()); return json(res, result.ok ? 200 : 503, result) }
     if (url.pathname === '/robots.txt' && method === 'GET') { const data = readData(); const base = siteBase(data, req); return text(res, 200, `User-agent: *\nAllow: /\nDisallow: /manage-9f3k7\nDisallow: /api/\nSitemap: ${base}/sitemap.xml\n`, 'text/plain; charset=utf-8') }
     if (url.pathname === '/sitemap.xml' && method === 'GET') return text(res, 200, sitemap(readData(), req), 'application/xml; charset=utf-8')
@@ -822,7 +830,7 @@ const server = http.createServer(async (req, res) => {
         if (method === 'GET') return json(res, 200, { items: [...data.home.banners].sort((a, b) => Number(a.sort || 0) - Number(b.sort || 0)) })
         if (method === 'POST') {
           const input = await body(req); const payload = homeBannerPayload(input)
-          if (!payload) return json(res, 422, { error: '请填写标题、替代文案并上传图片' })
+          if (!payload) return json(res, 422, { error: '请填写标题、描述、替代文案并上传图片' })
           const now = new Date().toISOString(); const item = { ...payload, id: input.id || id('home-banner'), createdAt: now, updatedAt: now }
           data.home.banners.push(item); await saveData(data); return json(res, 201, item)
         }
@@ -830,7 +838,7 @@ const server = http.createServer(async (req, res) => {
         if (index < 0) return json(res, 404, { error: 'not found' })
         if (method === 'DELETE') { data.home.banners.splice(index, 1); await saveData(data); return res.writeHead(204).end() }
         const input = await body(req); const payload = homeBannerPayload(input, data.home.banners[index])
-        if (!payload) return json(res, 422, { error: '请填写标题、替代文案并上传图片' })
+        if (!payload) return json(res, 422, { error: '请填写标题、描述、替代文案并上传图片' })
         data.home.banners[index] = { ...data.home.banners[index], ...payload, id: itemId, updatedAt: new Date().toISOString() }; await saveData(data); return json(res, 200, data.home.banners[index])
       }
       if (url.pathname === '/api/admin/guide-bookings' && method === 'GET') return json(res, 200, data.leads.filter(isGuideBooking))
