@@ -2391,3 +2391,14 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
   .collection-panel .table-title img,
   .collection-panel .banner-table-title img { width: 76px; height: 48px; }
 }
+
+/* Sidebar navigation stays scrollable, but its scrollbar remains visually hidden. */
+.admin-sidebar nav {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+.admin-sidebar nav::-webkit-scrollbar {
+  width: 0;
+  height: 0;
+  display: none;
+}
