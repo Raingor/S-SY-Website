@@ -104,8 +104,9 @@ export function AttractionsIndex() {
 
 /* ---------------- 城市介绍页（深色 mosaic + 统计 + 双 CTA） ---------------- */
 
-export function CityGuidePage() {
-  const { cityId } = useParams()
+export function CityGuidePage({ cityIdOverride = '' }) {
+  const { cityId: routeCityId } = useParams()
+  const cityId = cityIdOverride || routeCityId || ''
   const { attractions, cities } = useSiteContent()
   const city = cities.find((item) => item.id === cityId)
   const cityAttractions = attractions.filter((item) => item.city === cityId)
@@ -190,8 +191,9 @@ const GUIDE_ITEMS = [
   ['accessibility', '无障碍服务', Accessibility], ['exhibitions', '临时展览', Megaphone], ['faq', '常见问题', HelpCircle], ['notices', '临时通知', Info],
 ]
 
-export function AttractionDetail() {
-  const { id } = useParams()
+export function AttractionDetail({ idOverride = '' }) {
+  const { id: routeId } = useParams()
+  const id = idOverride || routeId || ''
   const { attractions, sampleItineraries } = useSiteContent()
   const attraction = attractions.find((item) => item.id === id)
   const [guideTab, setGuideTab] = useState('all')
@@ -363,8 +365,9 @@ export function ItinerariesIndex() {
   )
 }
 
-export function ItineraryDetail() {
-  const { id } = useParams()
+export function ItineraryDetail({ idOverride = '' }) {
+  const { id: routeId } = useParams()
+  const id = idOverride || routeId || ''
   const { attractions, sampleItineraries } = useSiteContent()
   const trip = sampleItineraries.find((item) => item.id === id)
   if (!trip) return <><Header solid /><NotFoundMini /><Footer /></>
@@ -428,8 +431,9 @@ function formatDate(dateCode) {
   return value.length === 4 ? `${Number(value.slice(0, 2))}月${Number(value.slice(2))}日` : value
 }
 
-export function CustomTripPage() {
-  const { token } = useParams()
+export function CustomTripPage({ tokenOverride = '' }) {
+  const { token: routeToken } = useParams()
+  const token = tokenOverride || routeToken || ''
   const [trip, setTrip] = useState(null)
   const [state, setState] = useState('loading')
   const [attractionNames, setAttractionNames] = useState({})

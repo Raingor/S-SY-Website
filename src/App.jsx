@@ -145,12 +145,12 @@ function upsertLink(rel, href) {
 function SEO() {
   const { pathname, search } = useLocation()
   const [settings, setSettings] = useState(fallbackSeoSettings)
-  const [dynamicContent, setDynamicContent] = useState({ attractions: [], cities: [], sampleItineraries: [] })
+  const [dynamicContent, setDynamicContent] = useState({ guides: [], attractions: [], cities: [], sampleItineraries: [] })
   useEffect(() => {
     if (window.location.protocol === 'file:') return
     fetch('/api/content').then((response) => response.ok ? response.json() : null).then((payload) => {
       if (payload?.settings) setSettings((current) => ({ ...current, ...payload.settings }))
-      if (payload) setDynamicContent({ attractions: payload.attractions || [], cities: payload.cities || [], sampleItineraries: payload.sampleItineraries || [] })
+      if (payload) setDynamicContent({ guides: payload.guides || [], attractions: payload.attractions || [], cities: payload.cities || [], sampleItineraries: payload.sampleItineraries || [] })
     }).catch(() => {})
   }, [])
   useEffect(() => {
@@ -161,12 +161,22 @@ function SEO() {
     const matchedRoute = routeMatch ? routes.find((item) => item.slug === routeMatch[1]) : null
     const destMatch = path.match(/^\/destinations\/([^/]+)$/)
     const matchedDestination = destMatch ? destinations.find((item) => item.slug === destMatch[1]) : null
+    const params = new URLSearchParams(search)
+    const queryId = params.get('id') || ''
     const attractionMatch = path.match(/^\/attractions\/([^/]+)$/)
-    const matchedAttraction = attractionMatch ? dynamicContent.attractions.find((item) => item.id === decodeURIComponent(attractionMatch[1])) : null
-    const cityMatch = path.match(/^\/attractions\/city\/([^/]+)$/)
-    const matchedCity = cityMatch ? dynamicContent.cities.find((item) => item.id === cityMatch[1]) : null
+    const aliasAttractionId = path === '/pages/attraction/detail' ? queryId : ''
+    const matchedAttraction = dynamicContent.attractions.find((item) => item.id === decodeURIComponent(attractionMatch?.[1] || aliasAttractionId)) || null
+    const cityMatch = path.match(/^\/attractions\/city\/([^/]+)(?:\/spots)?$/)
+    const aliasCityId = path === '/pages/city/index' || path === '/pages/city/spots' ? queryId : ''
+    const matchedCity = dynamicContent.cities.find((item) => item.id === (cityMatch?.[1] || aliasCityId)) || null
     const itineraryMatch = path.match(/^\/itineraries\/([^/]+)$/)
-    const matchedItinerary = itineraryMatch ? dynamicContent.sampleItineraries.find((item) => item.id === decodeURIComponent(itineraryMatch[1])) : null
+    const aliasItineraryId = path === '/itinerary/detail' || path === '/pages/itinerary/detail' ? queryId : ''
+    const matchedItinerary = dynamicContent.sampleItineraries.find((item) => item.id === decodeURIComponent(itineraryMatch?.[1] || aliasItineraryId)) || null
+    const guideMatch = path.match(/^\/guides\/([^/]+)$/)
+    const aliasGuideId = path === '/pages/guide/guide' ? (queryId || 'richard-li') : ''
+    const matchedGuide = dynamicContent.guides.find((item) => item.id === decodeURIComponent(guideMatch?.[1] || aliasGuideId)) || null
+    const luxuryType = path === '/pages/luxury/detail' ? params.get('type') : ''
+    const luxurySlug = path.match(/^\/experiences\/([^/]+)$/)?.[1] || (luxuryType === 'jet' ? 'private-flight' : luxuryType === 'yacht' ? 'private-yacht' : '')
     const pages = {
       '/': ['只为一生美好回忆｜希腊旅行管家', `只为一生美好回忆。${config.defaultDescription}`],
       '/customize': ['希腊行程咨询｜提交需求沟通方案', '告诉我们出行时间、人数与偏好，先沟通需求范围与行程规划方式。'],
@@ -187,6 +197,12 @@ function SEO() {
       '/experiences/private-yacht': ['游艇出海｜希腊奢享体验', '按日期、人数与船型沟通私人游艇出海方案。'],
 
       '/guides/richard-li': ['Richard 李名人导游｜希腊私人深度旅行与预约', '认识 Richard 李：武汉大学双学士、英国澳洲双硕士，提供希腊历史人文、小众秘境与私人摄影导览。'],
+      '/pages/itinerary/index': ['参考行程｜希腊旅行管家', '浏览可公开查看的参考行程框架。'],
+      '/pages/customize/customize': ['希腊行程咨询｜提交需求沟通方案', '告诉我们出行时间、人数与偏好，先沟通需求范围与行程规划方式。'],
+      '/pages/knowledge/knowledge': ['景点文史知识库｜免费预览', '从精选城市进入景点历史、神话与参观知识预览。'],
+      '/pages/travel-guide/travel-guide': ['希腊旅行工具箱｜出行指南', '签证、汇率、天气与行程日历等出行前信息。'],
+      '/pages/vehicle/vehicle': ['在地用车资源对接咨询｜希腊出行信息', '咨询希腊本地车型、司导资质与用车资源对接方式。'],
+      '/pages/business/business': ['希腊商旅随行咨询｜商务语言与行程规划', '提供商务陪同、语言翻译、企业拜访与人文行程的咨询。'],
       '/manage-9f3k7': ['网站管理后台｜希腊旅行管家', '希腊旅行管家网站内容与 SEO 管理后台'],
     }
     const [pageTitle, description] = matchedRoute
@@ -199,13 +215,19 @@ function SEO() {
             ? [matchedAttraction.shareTitle || `${matchedAttraction.name}参观指南｜${matchedAttraction.en}`, matchedAttraction.summary || '']
             : matchedItinerary
               ? [`${matchedItinerary.title}｜参考行程`, matchedItinerary.summary || '']
-              : (pages[path] || [config.defaultTitle, config.defaultDescription])
+              : matchedGuide
+                ? [`${matchedGuide.name}｜${matchedGuide.role || '希腊私人导游'}`, matchedGuide.intro || matchedGuide.storyNote || '希腊历史人文与私人路线顾问。']
+                : luxurySlug === 'private-flight'
+                  ? ['私人包机｜希腊奢享体验', '按日期、人数与目的地沟通私人包机协调方案。']
+                  : luxurySlug === 'private-yacht'
+                    ? ['游艇出海｜希腊奢享体验', '按日期、人数与船型沟通私人游艇出海方案。']
+                    : (pages[path] || [config.defaultTitle, config.defaultDescription])
     const isPrivate = path.startsWith('/trip/')
     const isAdmin = path === '/manage-9f3k7'
     const title = pageTitle.includes('SY') ? pageTitle : `${pageTitle} | ${config.siteName}`
     const baseUrl = String(config.siteUrl || window.location.origin).replace(/\/$/, '')
     const canonical = `${baseUrl}${path === '/' ? '/' : path}`
-    const selectedOgImage = matchedAttraction?.shareImage || matchedAttraction?.image || config.ogImage
+    const selectedOgImage = matchedAttraction?.shareImage || matchedAttraction?.image || matchedGuide?.fullImage || matchedGuide?.avatar || matchedCity?.mosaic?.[0] || matchedItinerary?.cover || config.ogImage
     const ogImage = /^https?:\/\//.test(selectedOgImage || '') ? selectedOgImage : `${baseUrl}/${String(selectedOgImage || '').replace(/^\.?\//, '')}`
     document.title = title
     upsertMeta('name', 'description', description)
@@ -670,8 +692,9 @@ function DestinationDetail() {
 
 const SEARCH_EXPERIENCES = LUXURY_EXPERIENCES.map(({ id, title, desc, image }) => ({ id, title, desc, image }))
 
-function LuxuryExperienceDetail() {
-  const { slug } = useParams()
+function LuxuryExperienceDetail({ slugOverride = '' }) {
+  const { slug: routeSlug } = useParams()
+  const slug = slugOverride || routeSlug || ''
   const item = LUXURY_EXPERIENCES.find((entry) => entry.id === slug)
   const [phone, setPhone] = useState('15071465661')
   useEffect(() => {
@@ -772,13 +795,21 @@ function ToolsPage() {
   )
 }
 
-function GuidePage() {
+function GuidePage({ guideIdOverride = '' }) {
+  const { id: routeGuideId } = useParams()
+  const guideId = guideIdOverride || routeGuideId || 'richard-li'
   const [language] = useLanguage()
   const fallbackCopy = translate('guide', language)
   const [guide, setGuide] = useState(null)
+  const [loaded, setLoaded] = useState(false)
   useEffect(() => {
-    fetch('/api/content').then((response) => response.ok ? response.json() : null).then((payload) => setGuide(payload?.guides?.find((item) => item.id === 'richard-li' && item.enabled !== false) || null)).catch(() => {})
-  }, [])
+    setLoaded(false)
+    fetch('/api/content').then((response) => response.ok ? response.json() : null).then((payload) => {
+      setGuide(payload?.guides?.find((item) => item.id === guideId && item.enabled !== false) || null)
+      setLoaded(true)
+    }).catch(() => setLoaded(true))
+  }, [guideId])
+  if (loaded && guideId !== 'richard-li' && !guide) return <ContentNotFound title="没有找到这位导游" description="导游资料可能已下线或链接中的 guideId 无效。" backTo="/" backLabel="返回首页" />
   const copy = {
     ...fallbackCopy,
     eyebrow: guide?.eyebrow || fallbackCopy.eyebrow,
@@ -888,10 +919,47 @@ function MyPage() {
   </>
 }
 
+function GuideSharePage() {
+  const [params] = useSearchParams()
+  return <GuidePage guideIdOverride={params.get('id') || 'richard-li'} />
+}
+
+function AttractionSharePage() {
+  const [params] = useSearchParams()
+  const id = params.get('id') || ''
+  return id ? <AttractionDetail idOverride={id} /> : <ContentNotFound title="缺少景点 ID" description="请使用有效的 attractionId 打开景点详情。" backTo="/attractions" backLabel="返回景点导览" />
+}
+
+function CitySharePage() {
+  const [params] = useSearchParams()
+  const id = params.get('id') || ''
+  return id ? <CityGuidePage cityIdOverride={id} /> : <ContentNotFound title="缺少城市 ID" description="请使用有效的 cityId 打开城市导览。" backTo="/attractions" backLabel="返回城市选择" />
+}
+
+function ItinerarySharePage() {
+  const [params] = useSearchParams()
+  const token = params.get('token') || ''
+  const id = params.get('id') || ''
+  if (token) return <CustomTripPage tokenOverride={token} />
+  if (id) return <ItineraryDetail idOverride={id} />
+  return <ContentNotFound title="缺少行程参数" description="请使用有效的 token 或 id 打开行程详情。" backTo="/itineraries" backLabel="返回参考行程" />
+}
+
+function LuxurySharePage() {
+  const [params] = useSearchParams()
+  const type = params.get('type') || ''
+  const slug = type === 'jet' ? 'private-flight' : type === 'yacht' ? 'private-yacht' : ''
+  return slug ? <LuxuryExperienceDetail slugOverride={slug} /> : <ContentNotFound title="缺少奢享类型" description="请使用 type=jet 或 type=yacht 打开奢享体验。" backTo="/" backLabel="返回首页" />
+}
+
 function PublicBottomNav() {
   const { pathname } = useLocation()
   if (pathname.startsWith('/manage-9f3k7')) return null
   return <nav className="public-bottom-nav" aria-label="主要导航"><Link to="/"><HomeIcon size={18} /><span>首页</span></Link><Link to="/#contact"><Phone size={18} /><span>立即联系</span></Link><Link to="/my"><UserRound size={18} /><span>我的</span></Link></nav>
+}
+
+function ContentNotFound({ title = '没有找到这条内容', description = '内容可能已下线或链接参数无效。', backTo = '/', backLabel = '返回首页' }) {
+  return <main className="section"><div className="container empty-state"><Compass /><h2>{title}</h2><p>{description}</p><Link className="button button-primary" to={backTo}>{backLabel}</Link></div></main>
 }
 
 function NotFound() {
@@ -905,5 +973,43 @@ function LegacyAdminRedirect() {
 }
 
 export default function App() {
-  return <><ScrollToTop /><SEO /><Routes><Route path="/" element={<Home />} /><Route path="/routes/:slug" element={<RouteDetail />} /><Route path="/customize" element={<Customize />} /><Route path="/heritage-guidance" element={<HeritageGuidance />} /><Route path="/vehicle-consultation" element={<VehicleConsultation />} /><Route path="/knowledge-base" element={<KnowledgeBase />} /><Route path="/knowledge-base/:slug" element={<KnowledgeBase />} /><Route path="/attractions" element={<AttractionsIndex />} /><Route path="/attractions/city/:cityId" element={<CityGuidePage />} /><Route path="/attractions/:id" element={<AttractionDetail />} /><Route path="/itineraries" element={<ItinerariesIndex />} /><Route path="/itineraries/:id" element={<ItineraryDetail />} /><Route path="/trip/:token" element={<CustomTripPage />} /><Route path="/business-travel" element={<BusinessTravel />} /><Route path="/experiences/:slug" element={<LuxuryExperienceDetail />} /><Route path="/destinations/:slug" element={<DestinationDetail />} /><Route path="/guides/richard-li" element={<GuidePage />} /><Route path="/search" element={<SearchPage />} /><Route path="/tools" element={<ToolsPage />} /><Route path="/my" element={<MyPage />} /><Route path="/admin" element={<LegacyAdminRedirect />} /><Route path="/manage-9f3k7" element={<AdminPage />} /><Route path="*" element={<NotFound />} /></Routes><ConsultationDock /><PublicBottomNav /></>
+  return <><ScrollToTop /><SEO /><Routes>
+    <Route path="/" element={<Home />} />
+    <Route path="/routes/:slug" element={<RouteDetail />} />
+    <Route path="/customize" element={<Customize />} />
+    <Route path="/heritage-guidance" element={<HeritageGuidance />} />
+    <Route path="/vehicle-consultation" element={<VehicleConsultation />} />
+    <Route path="/knowledge-base" element={<KnowledgeBase />} />
+    <Route path="/knowledge-base/:slug" element={<KnowledgeBase />} />
+    <Route path="/attractions" element={<AttractionsIndex />} />
+    <Route path="/attractions/city/:cityId/spots" element={<CityGuidePage />} />
+    <Route path="/attractions/city/:cityId" element={<CityGuidePage />} />
+    <Route path="/attractions/:id" element={<AttractionDetail />} />
+    <Route path="/itineraries" element={<ItinerariesIndex />} />
+    <Route path="/itineraries/:id" element={<ItineraryDetail />} />
+    <Route path="/itinerary/detail" element={<ItinerarySharePage />} />
+    <Route path="/trip/:token" element={<CustomTripPage />} />
+    <Route path="/business-travel" element={<BusinessTravel />} />
+    <Route path="/experiences/:slug" element={<LuxuryExperienceDetail />} />
+    <Route path="/destinations/:slug" element={<DestinationDetail />} />
+    <Route path="/guides/:id" element={<GuidePage />} />
+    <Route path="/search" element={<SearchPage />} />
+    <Route path="/tools" element={<ToolsPage />} />
+    <Route path="/my" element={<MyPage />} />
+    <Route path="/pages/guide/guide" element={<GuideSharePage />} />
+    <Route path="/pages/attraction/detail" element={<AttractionSharePage />} />
+    <Route path="/pages/city/index" element={<CitySharePage />} />
+    <Route path="/pages/city/spots" element={<CitySharePage />} />
+    <Route path="/pages/itinerary/index" element={<ItinerariesIndex />} />
+    <Route path="/pages/itinerary/detail" element={<ItinerarySharePage />} />
+    <Route path="/pages/luxury/detail" element={<LuxurySharePage />} />
+    <Route path="/pages/customize/customize" element={<Customize />} />
+    <Route path="/pages/knowledge/knowledge" element={<KnowledgeBaseIndex />} />
+    <Route path="/pages/travel-guide/travel-guide" element={<ToolsPage />} />
+    <Route path="/pages/vehicle/vehicle" element={<VehicleConsultation />} />
+    <Route path="/pages/business/business" element={<BusinessTravel />} />
+    <Route path="/admin" element={<LegacyAdminRedirect />} />
+    <Route path="/manage-9f3k7" element={<AdminPage />} />
+    <Route path="*" element={<NotFound />} />
+  </Routes><ConsultationDock /><PublicBottomNav /></>
 }

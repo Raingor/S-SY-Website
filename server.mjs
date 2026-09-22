@@ -452,8 +452,9 @@ function sitemap(data, req) {
     '/', '/customize', '/heritage-guidance', '/vehicle-consultation', '/knowledge-base', '/business-travel', '/search', '/tools', '/guides/richard-li',
     ...data.routes.filter((item) => item.status === 'published').map((item) => `/routes/${item.id}`),
     ...data.destinations.filter((item) => item.status === 'published').map((item) => `/destinations/${item.id}`),
+    ...(data.guides || []).filter((item) => item.enabled !== false).map((item) => `/guides/${item.id}`),
     ...(data.attractions || []).filter((item) => item.status === 'published').map((item) => `/attractions/${item.id}`),
-    ...(data.cities || []).filter((item) => item.status !== 'archived').map((item) => `/attractions/city/${item.id}`),
+    ...(data.cities || []).filter((item) => item.status !== 'archived').flatMap((item) => [`/attractions/city/${item.id}`, `/attractions/city/${item.id}/spots`]),
     ...(data.sampleItineraries || []).filter((item) => item.status === 'published').map((item) => `/itineraries/${item.id}`),
   ]
   const lastmod = new Date().toISOString().slice(0, 10)
@@ -467,17 +468,31 @@ function llms(data, req) {
   return lines.join('\n')
 }
 function htmlAttr(value) { return String(value || '').replace(/[&<>"]/g, (char) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[char])) }
+function seoImage(data, req, value) {
+  const base = siteBase(data, req)
+  if (!value) return `${base}/images/santorini.webp`
+  const source = String(value)
+  if (/^https?:\/\//i.test(source)) return source
+  const cleaned = source.replace(/^(?:\.\/|\/)?(?:images\/)+/, '').replace(/^\//, '')
+  return `${base}/images/${cleaned}`
+}
 function pageSeo(data, pathname, search, req) {
   const config = { siteName: '希腊旅行管家', siteUrl: siteBase(data, req), defaultTitle: '只为一生美好回忆｜希腊旅行管家', defaultDescription: '只为一生美好回忆。希腊旅行管家提供雅典、圣托里尼及希腊全境的人文与行程咨询。', robotsPolicy: 'index,follow', ...data.settings }
-  const query = new URLSearchParams(search || '').get('q')
-  const attractionMatch = pathname.match(/^\/attractions\/([^/]+)$/)
-  const matchedAttraction = attractionMatch ? (data.attractions || []).find((item) => item.id === decodeURIComponent(attractionMatch[1])) : null
-  const cityMatch = pathname.match(/^\/attractions\/city\/([^/]+)$/)
-  const matchedCity = cityMatch ? (data.cities || []).find((item) => item.id === cityMatch[1]) : null
-  const itineraryMatch = pathname.match(/^\/itineraries\/([^/]+)$/)
-  const matchedItinerary = itineraryMatch ? (data.sampleItineraries || []).find((item) => item.id === decodeURIComponent(itineraryMatch[1])) : null
-  const tripMatch = pathname.match(/^\/trip\/([^/]+)$/)
-  const matchedTrip = tripMatch ? (data.customTrips || []).find((item) => item.token === tripMatch[1]) : null
+  const params = new URLSearchParams(search || '')
+  const query = params.get('q') || ''
+  const queryId = params.get('id') || ''
+  const attractionId = pathname.match(/^\/attractions\/([^/]+)$/)?.[1] || (pathname === '/pages/attraction/detail' ? queryId : '')
+  const cityId = pathname.match(/^\/attractions\/city\/([^/]+)(?:\/spots)?$/)?.[1] || ((pathname === '/pages/city/index' || pathname === '/pages/city/spots') ? queryId : '')
+  const itineraryId = pathname.match(/^\/itineraries\/([^/]+)$/)?.[1] || ((pathname === '/itinerary/detail' || pathname === '/pages/itinerary/detail') ? queryId : '')
+  const guideId = pathname.match(/^\/guides\/([^/]+)$/)?.[1] || (pathname === '/pages/guide/guide' ? (queryId || 'richard-li') : '')
+  const luxuryType = pathname === '/pages/luxury/detail' ? params.get('type') : ''
+  const luxurySlug = pathname.match(/^\/experiences\/([^/]+)$/)?.[1] || (luxuryType === 'jet' ? 'private-flight' : luxuryType === 'yacht' ? 'private-yacht' : '')
+  const matchedAttraction = attractionId ? (data.attractions || []).find((item) => item.id === decodeURIComponent(attractionId)) : null
+  const matchedCity = cityId ? (data.cities || []).find((item) => item.id === cityId) : null
+  const matchedItinerary = itineraryId ? (data.sampleItineraries || []).find((item) => item.id === decodeURIComponent(itineraryId)) : null
+  const matchedGuide = guideId ? (data.guides || []).find((item) => item.id === decodeURIComponent(guideId) && item.enabled !== false) : null
+  const tripToken = pathname.match(/^\/trip\/([^/]+)$/)?.[1] || ((pathname === '/itinerary/detail' || pathname === '/pages/itinerary/detail') ? params.get('token') : '')
+  const matchedTrip = tripToken ? (data.customTrips || []).find((item) => item.token === tripToken) : null
   const pages = {
     '/': ['只为一生美好回忆｜希腊旅行管家', `只为一生美好回忆。${config.defaultDescription}`],
     '/routes/honeymoon': ['爱琴海蜜月之旅｜5天4晚希腊定制路线', '雅典 + 圣托里尼 5 天 4 晚蜜月路线，中文司导、悬崖酒店、双体船出海与伊亚日落旅拍。'],
@@ -487,15 +502,16 @@ function pageSeo(data, pathname, search, req) {
     '/tools': ['希腊行前信息工具箱｜签证 · 汇率 · 天气 · 行程日历', '出发前准备希腊申根签证、欧元汇率、天气和每日行程的信息工具箱。'],
     '/attractions': ['希腊景点导览｜景点 · 博物馆 · 展品讲解', '按城市浏览雅典、圣托里尼、德尔斐等地的景点与博物馆，含参观指南与展品讲解。'],
     '/itineraries': ['参考行程｜希腊旅行管家', '雅典、圣托里尼与世界遗产环线的参考行程，可按需定制。'],
+    '/pages/itinerary/index': ['参考行程｜希腊旅行管家', '浏览可公开查看的参考行程框架。'],
     '/heritage-guidance': ['古迹人文讲解预约｜希腊文化咨询', '预约雅典、德尔斐与克里特等古迹的人文知识讲解。'],
     '/vehicle-consultation': ['在地用车资源对接咨询｜希腊出行信息', '咨询希腊本地车型、司导资质与用车资源对接方式。'],
+    '/pages/vehicle/vehicle': ['在地用车资源对接咨询｜希腊出行信息', '咨询希腊本地车型、司导资质与用车资源对接方式。'],
     '/knowledge-base': ['景点付费文史知识库｜免费预览', '浏览希腊景点的历史、神话与建筑知识预览。'],
-    '/knowledge-base/acropolis': ['雅典卫城文史知识库｜免费预览', '预览雅典卫城的历史、神话、建筑与参观知识。'],
-    '/knowledge-base/delphi': ['德尔斐文史知识库｜免费预览', '预览德尔斐的神谕、圣路、宝库与古剧场知识。'],
-    '/knowledge-base/santorini': ['圣托里尼文史知识库｜免费预览', '预览圣托里尼的火山地质、聚落与葡萄酒文化。'],
-    '/knowledge-base/knossos': ['克里特王宫文史知识库｜免费预览', '预览克诺索斯王宫、米诺斯文明与迷宫传说。'],
+    '/pages/knowledge/knowledge': ['景点文史知识库｜免费预览', '从精选城市进入景点历史、神话与参观知识预览。'],
+    '/pages/travel-guide/travel-guide': ['希腊旅行工具箱｜出行指南', '签证、汇率、天气与行程日历等出行前信息。'],
     '/business-travel': ['希腊商旅随行咨询｜商务语言与行程规划', '提供商务陪同、语言翻译、企业拜访与人文行程的咨询。'],
-
+    '/pages/business/business': ['希腊商旅随行咨询｜商务语言与行程规划', '提供商务陪同、语言翻译、企业拜访与人文行程的咨询。'],
+    '/pages/customize/customize': ['希腊行程咨询｜提交需求沟通方案', '告诉我们出行时间、人数与偏好，先沟通需求范围与行程规划方式。'],
     '/guides/richard-li': ['Richard 李名人导游｜希腊私人深度旅行与预约', '认识 Richard 李：武汉大学双学士、英国澳洲双硕士，提供希腊历史人文、小众秘境与私人摄影导览。'],
     '/manage-9f3k7': ['网站管理后台｜希腊旅行管家', '希腊旅行管家网站内容与 SEO 管理后台'],
   }
@@ -504,17 +520,40 @@ function pageSeo(data, pathname, search, req) {
     : matchedCity
       ? [`${matchedCity.name}景点导览｜${matchedCity.subtitle || matchedCity.country}`, `${matchedCity.name}：${matchedCity.description || ''}含 ${matchedCity.museumCount} 个景点与 ${matchedCity.guidePointCount} 个讲解点。`]
       : matchedAttraction
-        ? [`${matchedAttraction.name}参观指南｜${matchedAttraction.en}`, `${matchedAttraction.name}：${matchedAttraction.summary || ''}开放时间、门票、交通与展品讲解。`]
+        ? [`${matchedAttraction.shareTitle || matchedAttraction.name}｜参观指南`, `${matchedAttraction.name}：${matchedAttraction.summary || ''}开放时间、门票、交通与展品讲解。`]
         : matchedItinerary
           ? [`${matchedItinerary.title}｜参考行程`, `${matchedItinerary.title}，${matchedItinerary.days} 天参考行程，${matchedItinerary.summary || ''}`]
-          : null
+          : matchedGuide
+            ? [`${matchedGuide.name}｜${matchedGuide.role || '希腊私人导游'}`, matchedGuide.intro || matchedGuide.storyNote || '希腊历史人文与私人路线顾问。']
+            : luxurySlug === 'private-flight'
+              ? ['私人包机｜希腊奢享体验', '按日期、人数与目的地沟通私人包机协调方案。']
+              : luxurySlug === 'private-yacht'
+                ? ['游艇出海｜希腊奢享体验', '按日期、人数与船型沟通私人游艇出海方案。']
+                : null
   const [title, description] = dynamicPage || pages[pathname] || [config.defaultTitle, config.defaultDescription]
   const isAdmin = pathname === '/manage-9f3k7'
-  return { title: title.includes('SY') ? title : `${title} | ${config.siteName}`, description, canonical: `${config.siteUrl.replace(/\/$/, '')}${pathname === '/' ? '/' : pathname}`, robots: (isAdmin || matchedTrip) ? 'noindex,nofollow' : config.robotsPolicy }
+  const canonicalPath = pathname === '/pages/guide/guide' && guideId ? `/guides/${encodeURIComponent(guideId)}`
+    : pathname === '/pages/attraction/detail' && attractionId ? `/attractions/${encodeURIComponent(attractionId)}`
+      : pathname === '/pages/city/index' && cityId ? `/attractions/city/${encodeURIComponent(cityId)}`
+        : pathname === '/pages/city/spots' && cityId ? `/attractions/city/${encodeURIComponent(cityId)}/spots`
+          : pathname === '/pages/luxury/detail' && luxurySlug ? `/experiences/${luxurySlug}`
+            : pathname === '/pages/itinerary/index' ? '/itineraries'
+              : pathname === '/pages/customize/customize' ? '/customize'
+                : pathname === '/pages/knowledge/knowledge' ? '/knowledge-base'
+                  : pathname === '/pages/travel-guide/travel-guide' ? '/tools'
+                    : pathname === '/pages/vehicle/vehicle' ? '/vehicle-consultation'
+                      : pathname === '/pages/business/business' ? '/business-travel'
+                        : pathname
+  const canonicalQuery = (pathname === '/itinerary/detail' || pathname === '/pages/itinerary/detail') && (params.get('token') || params.get('id')) ? `?${params.get('token') ? `token=${encodeURIComponent(params.get('token'))}` : `id=${encodeURIComponent(params.get('id'))}`}` : ''
+  const image = seoImage(data, req, matchedAttraction?.shareImage || matchedAttraction?.image || matchedGuide?.fullImage || matchedGuide?.avatar || matchedCity?.mosaic?.[0] || matchedItinerary?.cover || config.ogImage)
+  return { title: title.includes('SY') ? title : `${title} | ${config.siteName}`, description, image, canonical: `${config.siteUrl.replace(/\/$/, '')}${canonicalPath === '/' ? '/' : canonicalPath}${canonicalQuery}`, robots: (isAdmin || matchedTrip) ? 'noindex,nofollow' : config.robotsPolicy }
 }
 function injectSeoHtml(html, seo) {
-  const title = htmlAttr(seo.title); const description = htmlAttr(seo.description); const canonical = htmlAttr(seo.canonical); const robots = htmlAttr(seo.robots)
-  return html.toString().replace(/<title>[^<]*<\/title>/, `<title>${title}</title>`).replace(/<meta name="robots" content="[^"]*" \/>/, `<meta name="robots" content="${robots}" />`).replace(/<meta name="description" content="[^"]*" \/>/, `<meta name="description" content="${description}" />`).replace(/<link rel="canonical" href="[^"]*" \/>/, `<link rel="canonical" href="${canonical}" />`).replace(/<meta property="og:title" content="[^"]*" \/>/, `<meta property="og:title" content="${title}" />`).replace(/<meta property="og:description" content="[^"]*" \/>/, `<meta property="og:description" content="${description}" />`).replace(/<meta property="og:url" content="[^"]*" \/>/, `<meta property="og:url" content="${canonical}" />`)
+  const title = htmlAttr(seo.title); const description = htmlAttr(seo.description); const canonical = htmlAttr(seo.canonical); const robots = htmlAttr(seo.robots); const image = htmlAttr(seo.image)
+  let output = html.toString().replace(/<title>[^<]*<\/title>/, `<title>${title}</title>`).replace(/<meta name="robots" content="[^"]*" \/>/, `<meta name="robots" content="${robots}" />`).replace(/<meta name="description" content="[^"]*" \/>/, `<meta name="description" content="${description}" />`).replace(/<link rel="canonical" href="[^"]*" \/>/, `<link rel="canonical" href="${canonical}" />`).replace(/<meta property="og:title" content="[^"]*" \/>/, `<meta property="og:title" content="${title}" />`).replace(/<meta property="og:description" content="[^"]*" \/>/, `<meta property="og:description" content="${description}" />`).replace(/<meta property="og:url" content="[^"]*" \/>/, `<meta property="og:url" content="${canonical}" />`).replace(/<meta property="og:image" content="[^"]*" \/>/, `<meta property="og:image" content="${image}" />`)
+  if (/<meta name="twitter:image"/.test(output)) output = output.replace(/<meta name="twitter:image" content="[^"]*" \/>/, `<meta name="twitter:image" content="${image}" />`)
+  else output = output.replace('</head>', `<meta name="twitter:image" content="${image}" />\n</head>`)
+  return output
 }
 function normalizeAttractionPayload(data, payload) {
   if (!Object.prototype.hasOwnProperty.call(payload, 'city')) return payload
