@@ -2741,5 +2741,8 @@
       "sort": 3,
       "status": "published"
     }
-  ]
+  ],
+  "home": {
+    "banners": []
+  }
 }

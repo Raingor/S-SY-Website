@@ -409,6 +409,18 @@ function saveMiniProgramAvatar(data, req, image, mimeType) {
   writeRuntimeImage(filename, image)
   return `${siteBase(data, req)}/images/${filename}`
 }
+function homeBannerPayload(input = {}, current = {}) {
+  const title = String(input.title ?? current.title ?? '').trim().slice(0, 120)
+  const alt = String(input.alt ?? current.alt ?? title).trim().slice(0, 180)
+  const image = String(input.image ?? current.image ?? '').trim().slice(0, 500)
+  if (!title || !alt || !image) return null
+  const sort = Math.max(1, Math.min(9999, Number(input.sort ?? current.sort ?? 1) || 1))
+  return { title, alt, image, enabled: input.enabled !== undefined ? input.enabled !== false : current.enabled !== false, sort, ...(current.createdAt ? { createdAt: current.createdAt } : {}) }
+}
+function publicHomeBanners(data) {
+  const imageUrl = (value) => { const image = String(value || ''); if (!image || /^(https?:)?\/\//i.test(image) || image.startsWith('/')) return image; const cleaned = image.replace(/^(?:\.\/|\/)?(?:images\/)+/, ''); return cleaned ? `./images/${cleaned}` : image }
+  return (data.home?.banners || []).filter((item) => item.enabled !== false).sort((a, b) => Number(a.sort || 0) - Number(b.sort || 0)).map((item) => ({ id: item.id, title: item.title, alt: item.alt || item.title, image: imageUrl(item.image), enabled: true, sort: Number(item.sort || 0), ...(item.path ? { path: item.path } : {}) }))
+}
 function publicContent(data, countryId = 'greece') {
   const imageUrl = (value) => {
   if (!value) return value
@@ -423,6 +435,8 @@ function publicContent(data, countryId = 'greece') {
   const scoped = (items) => (items || []).filter((item) => (item.countryId || 'greece') === countryId)
   return {
     settings: data.settings,
+    // Compatibility field for existing clients. The Website does not read this field; MpApp uses /api/miniprogram/home.
+    home: { banners: publicHomeBanners(data) },
     countries: countries.map((item) => ({ ...item, heroImage: imageUrl(item.heroImage) })),
     guides: guides.map((item) => ({ ...item, avatar: imageUrl(item.avatar), fullImage: imageUrl(item.fullImage) })),
     routes: scoped(data.routes).filter((item) => item.status === 'published').map((item) => ({ ...item, image: `./images/${item.image}` })),
@@ -541,6 +555,7 @@ const server = http.createServer(async (req, res) => {
     const method = req.method || 'GET'
     if (method === 'OPTIONS' && url.pathname.startsWith('/api/')) return res.writeHead(204, corsHeaders()).end()
     if (url.pathname === '/api/health') return json(res, 200, { ok: true, service: 'sy-greece-admin', time: new Date().toISOString() })
+    if (url.pathname === '/api/miniprogram/home' && method === 'GET') { const data = readData(); return json(res, 200, { home: { banners: publicHomeBanners(data) } }) }
     if (url.pathname === '/api/readiness' && method === 'GET') { const result = readiness(readData()); return json(res, result.ok ? 200 : 503, result) }
     if (url.pathname === '/robots.txt' && method === 'GET') { const data = readData(); const base = siteBase(data, req); return text(res, 200, `User-agent: *\nAllow: /\nDisallow: /manage-9f3k7\nDisallow: /api/\nSitemap: ${base}/sitemap.xml\n`, 'text/plain; charset=utf-8') }
     if (url.pathname === '/sitemap.xml' && method === 'GET') return text(res, 200, sitemap(readData(), req), 'application/xml; charset=utf-8')
@@ -799,6 +814,25 @@ const server = http.createServer(async (req, res) => {
         data[collection][index] = { ...data[collection][index], ...(await body(req)), id: itemId }; await saveData(data); return json(res, 200, data[collection][index])
       }
       if (url.pathname === '/api/admin/stats' && method === 'GET') return json(res, 200, { routes: data.routes.filter((x) => x.status === 'published').length, destinations: data.destinations.filter((x) => x.status === 'published').length, leads: data.leads.length, pendingLeads: data.leads.filter((x) => x.status === 'new').length, customizationLeads: data.leads.filter((x) => x.leadType === 'customization').length, guideBookings: data.leads.filter(isGuideBooking).length, pendingGuideBookings: data.leads.filter((x) => isGuideBooking(x) && x.status === 'new').length, miniProgramBookings: data.leads.filter(isMiniProgramBooking).length, vehicleConsultations: data.leads.filter((x) => x.leadType === 'vehicle-consultation').length, knowledgeBaseLeads: data.leads.filter((x) => x.leadType === 'knowledge-base').length, businessTravelLeads: data.leads.filter((x) => x.leadType === 'business-travel').length, attractions: (data.attractions || []).filter((x) => x.status === 'published').length, sampleItineraries: (data.sampleItineraries || []).filter((x) => x.status === 'published').length, customTrips: (data.customTrips || []).filter((x) => x.status !== 'archived').length, commerce: adminCommerceStats(data) })
+      const homeBannerMatch = url.pathname.match(/^\/api\/admin\/home-banners(?:\/([^/]+))?$/)
+      if (homeBannerMatch && ['GET', 'POST', 'PATCH', 'DELETE'].includes(method)) {
+        data.home = data.home && typeof data.home === 'object' ? data.home : {}
+        data.home.banners = Array.isArray(data.home.banners) ? data.home.banners : []
+        const itemId = homeBannerMatch[1]
+        if (method === 'GET') return json(res, 200, { items: [...data.home.banners].sort((a, b) => Number(a.sort || 0) - Number(b.sort || 0)) })
+        if (method === 'POST') {
+          const input = await body(req); const payload = homeBannerPayload(input)
+          if (!payload) return json(res, 422, { error: '请填写标题、替代文案并上传图片' })
+          const now = new Date().toISOString(); const item = { ...payload, id: input.id || id('home-banner'), createdAt: now, updatedAt: now }
+          data.home.banners.push(item); await saveData(data); return json(res, 201, item)
+        }
+        const index = data.home.banners.findIndex((item) => item.id === itemId)
+        if (index < 0) return json(res, 404, { error: 'not found' })
+        if (method === 'DELETE') { data.home.banners.splice(index, 1); await saveData(data); return res.writeHead(204).end() }
+        const input = await body(req); const payload = homeBannerPayload(input, data.home.banners[index])
+        if (!payload) return json(res, 422, { error: '请填写标题、替代文案并上传图片' })
+        data.home.banners[index] = { ...data.home.banners[index], ...payload, id: itemId, updatedAt: new Date().toISOString() }; await saveData(data); return json(res, 200, data.home.banners[index])
+      }
       if (url.pathname === '/api/admin/guide-bookings' && method === 'GET') return json(res, 200, data.leads.filter(isGuideBooking))
       if (url.pathname === '/api/admin/miniprogram-bookings' && method === 'GET') return json(res, 200, data.leads.filter(isMiniProgramBooking))
       if (url.pathname === '/api/admin/miniprogram-orders' && method === 'GET') return json(res, 200, adminPaymentSummary(data))
@@ -944,6 +978,8 @@ async function start() {
     }
     // Keep legacy admin routes and stored consumers functional during the migration.
     data.destinationTypes = data.destinationCategories.map((item) => ({ id: item.key, name: item.name, description: item.description || '', sort: item.sort || 0, status: item.enabled === false ? 'unpublished' : 'published' }))
+    data.home = data.home && typeof data.home === 'object' ? data.home : {}
+    data.home.banners = Array.isArray(data.home.banners) ? data.home.banners : []
     for (const lead of data.leads || []) lead.countryId = lead.countryId || 'greece'
     await saveData(data)
     server.listen(port, '127.0.0.1', () => console.log(`Greece Travel Butler server: http://127.0.0.1:${port}/ (console: /manage-9f3k7)`))
