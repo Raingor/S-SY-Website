@@ -133,7 +133,7 @@
       "id": "santorini",
       "name": "圣托里尼",
       "en": "Santorini",
-      "type": "culture",
+      "type": "island",
       "image": "santorini.webp",
       "status": "published",
       "countryId": "greece",
