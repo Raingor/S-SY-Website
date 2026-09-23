@@ -2425,7 +2425,8 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 .status-select:focus { border-color: rgba(0, 150, 136, .35); background: #f5fbfa; }
 
 .admin-editor-page {
-  max-width: 1180px;
+  width: 100%;
+  max-width: none;
   padding: 24px 28px 42px;
 }
 
@@ -2766,10 +2767,15 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 .banner-empty svg { color: var(--layui-primary); }
 .banner-empty strong { color: var(--layui-ink); font-size: 14px; }
 .banner-empty span { font-size: 12px; }
+/* Keep an empty collection intentional: no orphaned table header or left-aligned CTA. */
+.banner-panel:has(.banner-empty) .banner-table { display: none; }
+.banner-panel:has(.banner-empty) .admin-table-wrap { display: flex; flex-direction: column; }
+.banner-panel:has(.banner-empty) .banner-empty { flex: 1; align-content: center; }
+.banner-panel .banner-empty .admin-secondary { justify-self: center; min-height: 36px; padding: 0 14px; color: #fff; background: var(--layui-primary); border-radius: 4px; }
+.banner-panel .banner-empty .admin-secondary:hover { background: var(--layui-primary-hover, #007f79); }
 .banner-form-intro { display: flex; align-items: center; gap: 10px; margin-bottom: 18px; padding: 12px 14px; color: #087d70; background: #f1fbf8; border: 1px solid #d9f0eb; border-radius: 6px; }
 .banner-form-intro span { font-size: 10px; font-weight: 700; letter-spacing: .1em; }
 .banner-form-intro p { margin: 0; font-size: 12px; }
-.banner-standalone-back { position: fixed; z-index: 20; top: 18px; left: 20px; min-height: 32px; padding: 0 11px; display: inline-flex; align-items: center; gap: 5px; color: var(--layui-ink); background: #fff; border: 1px solid var(--layui-line); border-radius: 4px; cursor: pointer; }
 @media (max-width: 820px) { .banner-context { align-items: flex-start; flex-direction: column; gap: 10px; }.banner-context-badge { margin-left: 41px; }.banner-table-title img { width: 78px; height: 46px; } }
 
 /* Shared content workbench — carry the Banner list language across every admin module. */
@@ -2906,6 +2912,168 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
   width: 0;
   height: 0;
   display: none;
+}
+
+/* Layui form language for every dedicated editor (native controls, no extra UI runtime). */
+.admin-editor-page {
+  --editor-line: var(--layui-line, #e6e6e6);
+  --editor-fill: #fff;
+  --editor-subtle: var(--layui-soft, #f8f8f8);
+  --editor-focus: var(--layui-link, #1e9fff);
+  --editor-ink: var(--layui-ink, #333);
+  --editor-muted: var(--layui-muted, #999);
+}
+.admin-editor-page .admin-editor-head { align-items: center; }
+.admin-editor-page .admin-editor-head h2 { color: var(--editor-ink); font-family: var(--sans); font-weight: 400; }
+.admin-editor-page .admin-editor-head p { color: var(--editor-muted); }
+.admin-editor-page .admin-editor-back,
+.admin-editor-page .admin-primary,
+.admin-editor-page .admin-secondary,
+.admin-editor-page .admin-template-fill,
+.admin-editor-page .admin-anchor-list button,
+.admin-editor-page .admin-icon-button,
+.admin-editor-page .admin-reorder-actions button,
+.admin-editor-page .admin-field-with-action button {
+  min-height: 36px;
+  padding-inline: 14px;
+  border: 1px solid var(--editor-line);
+  border-radius: 2px;
+  box-shadow: none;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 400;
+  transition: color .15s ease, background-color .15s ease, border-color .15s ease;
+}
+.admin-editor-page .admin-primary,
+.admin-editor-page .admin-template-fill,
+.admin-editor-page .admin-anchor-list button.active {
+  color: #fff;
+  border-color: var(--layui-primary, #009688);
+  background: var(--layui-primary, #009688);
+}
+.admin-editor-page .admin-primary:hover,
+.admin-editor-page .admin-template-fill:hover,
+.admin-editor-page .admin-anchor-list button.active:hover { background: var(--layui-primary-dark, #007d72); }
+.admin-editor-page .admin-secondary,
+.admin-editor-page .admin-editor-back,
+.admin-editor-page .admin-anchor-list button,
+.admin-editor-page .admin-icon-button,
+.admin-editor-page .admin-reorder-actions button,
+.admin-editor-page .admin-field-with-action button {
+  color: var(--editor-ink);
+  border-color: var(--editor-line);
+  background: var(--editor-fill);
+}
+.admin-editor-page .admin-secondary:hover,
+.admin-editor-page .admin-editor-back:hover,
+.admin-editor-page .admin-anchor-list button:hover,
+.admin-editor-page .admin-icon-button:hover,
+.admin-editor-page .admin-reorder-actions button:hover,
+.admin-editor-page .admin-field-with-action button:hover { color: var(--layui-primary, #009688); border-color: var(--layui-primary, #009688); background: var(--editor-subtle); }
+.admin-editor-page .admin-editor-card,
+.admin-editor-page .admin-array-card,
+.admin-editor-page .admin-slot-card,
+.admin-editor-page .admin-subeditor,
+.admin-editor-page .admin-exhibits-editor,
+.admin-editor-page .admin-exhibit-card,
+.admin-editor-page .admin-check-field,
+.admin-editor-page .admin-anchor-nav {
+  border: 1px solid var(--editor-line);
+  border-radius: 2px;
+  background: var(--editor-fill);
+  box-shadow: none;
+}
+.admin-editor-page .admin-editor-card { border-top: 2px solid var(--layui-primary, #009688); }
+.admin-editor-page .admin-form { gap: 18px; }
+.admin-editor-page .admin-form label { gap: 7px; color: var(--editor-ink); font-size: 12px; font-weight: 400; }
+.admin-editor-page .admin-form input:not([type="checkbox"]):not([type="radio"]):not([type="file"]),
+.admin-editor-page .admin-form select,
+.admin-editor-page .admin-form textarea {
+  width: 100%;
+  min-height: 38px;
+  padding: 0 10px;
+  color: var(--editor-ink);
+  border: 1px solid var(--editor-line);
+  border-radius: 2px;
+  outline: 0;
+  background-color: var(--editor-fill);
+  box-shadow: none;
+  font: inherit;
+  font-size: 12px;
+  transition: border-color .15s ease, box-shadow .15s ease;
+}
+.admin-editor-page .admin-form select { padding-right: 30px; }
+.admin-editor-page .admin-form textarea { min-height: 96px; padding: 9px 10px; line-height: 1.6; resize: vertical; }
+.admin-editor-page .admin-form :is(input, select, textarea):hover { border-color: #c9c9c9; }
+.admin-editor-page .admin-form :is(input, select, textarea):focus { border-color: var(--editor-focus); box-shadow: 0 0 0 2px color-mix(in srgb, var(--editor-focus) 12%, transparent); }
+.admin-editor-page .admin-form :is(input, select, textarea):disabled { color: #c2c2c2; background: #f2f2f2; cursor: not-allowed; }
+.admin-editor-page .admin-form input[type="checkbox"],
+.admin-editor-page .admin-form input[type="radio"] { width: 14px; min-height: 14px; accent-color: var(--layui-primary, #009688); }
+.admin-editor-page .admin-check-field { padding: 14px; }
+.admin-editor-page .admin-check-field legend { color: var(--editor-muted); font-weight: 400; }
+.admin-editor-page .admin-check-grid label { min-height: 32px; padding: 5px 9px; border-radius: 2px; background: var(--editor-subtle); font-weight: 400; }
+.admin-editor-page .admin-template-guide { margin: 18px 24px 0; padding: 15px 17px; border: 1px solid var(--editor-line); border-left: 3px solid var(--layui-primary, #009688); border-radius: 2px; background: #fbfbfb; }
+.admin-editor-page .admin-template-guide-head strong { color: var(--editor-ink); font: 400 16px var(--sans); }
+.admin-editor-page .admin-template-guide-fields > div { border-color: var(--editor-line); border-radius: 2px; background: #fff; }
+.admin-editor-page .admin-template-guide-fields span,
+.admin-editor-page .admin-template-guide > small { color: var(--editor-muted); }
+.admin-editor-page .admin-template-guide-fields code { color: var(--layui-link, #1e9fff); }
+.admin-editor-page .admin-template-guide-badge { border-radius: 2px; }
+.admin-editor-page .admin-anchor-list button { min-height: 30px; padding-inline: 11px; }
+.admin-editor-page .admin-anchor-nav { position: sticky; top: 0; }
+.admin-editor-page .admin-array-card-head,
+.admin-editor-page .admin-exhibit-card-head { border-color: var(--editor-line); }
+.admin-editor-page .admin-array-empty,
+.admin-editor-page .admin-exhibits-empty,
+.admin-editor-page .admin-image-empty { border: 1px dashed var(--editor-line); border-radius: 2px; background: var(--editor-subtle); color: var(--editor-muted); }
+.admin-editor-page .admin-image-preview { overflow: hidden; border: 1px solid var(--editor-line); border-radius: 2px; background: var(--editor-subtle); }
+.admin-editor-page .admin-image-preview span { left: 8px; bottom: 8px; padding: 4px 8px; border-radius: 2px; }
+.admin-editor-page .admin-file-picker { position: relative; min-height: 38px; padding: 0 12px; border: 1px solid var(--editor-line); border-radius: 2px; color: var(--editor-ink); background: var(--editor-subtle); }
+.admin-editor-page .admin-file-picker input[type="file"] { position: absolute; inset: 0; width: 100%; height: 100%; min-height: 100%; opacity: 0; cursor: pointer; }
+.admin-editor-page .admin-file-picker strong { font-weight: 400; }
+.admin-editor-page .admin-file-picker:has(input:focus-visible) { outline: 2px solid color-mix(in srgb, var(--editor-focus) 24%, transparent); outline-offset: 1px; }
+.admin-editor-page .admin-image-field small,
+.admin-editor-page .admin-date-field small,
+.admin-editor-page .admin-muted { color: var(--editor-muted); font-size: 11px; }
+.admin-editor-page .admin-date-field input[type="date"] { color-scheme: light; }
+.admin-editor-page .admin-date-field input[type="date"]::-webkit-calendar-picker-indicator { cursor: pointer; opacity: .65; }
+.admin-editor-page .admin-icon-button.danger,
+.admin-editor-page .admin-reorder-actions .danger { color: #ff5722; background: #fff; }
+.admin-editor-page .admin-icon-button.danger:hover,
+.admin-editor-page .admin-reorder-actions .danger:hover { color: #fff; border-color: #ff5722; background: #ff5722; }
+.admin-editor-page .admin-subeditor,
+.admin-editor-page .admin-exhibits-editor,
+.admin-editor-page .master-editor-section,
+.admin-editor-page .admin-array-card,
+.admin-editor-page .admin-slot-card,
+.admin-editor-page .admin-exhibit-card { gap: 14px; padding: 16px; background: #fff; }
+.admin-editor-page .admin-subeditor-head h3,
+.admin-editor-page .admin-exhibits-head h3 { color: var(--editor-ink); font: 400 16px/1.4 var(--sans); }
+.admin-editor-page .admin-subeditor-head p,
+.admin-editor-page .admin-exhibits-head p { color: var(--editor-muted); }
+.admin-editor-page .admin-slot-list { border-left: 1px solid var(--editor-line); }
+.admin-editor-page .destination-attraction-picker { gap: 10px; padding: 14px; border: 1px solid var(--editor-line); border-radius: 2px; background: var(--editor-subtle); }
+.admin-editor-page .destination-attraction-picker legend { color: var(--editor-ink); font-size: 12px; font-weight: 400; }
+.admin-editor-page .destination-attraction-trigger { min-height: 38px; padding-inline: 10px; border: 1px solid var(--editor-line); border-radius: 2px; background: #fff; font-size: 12px; }
+.admin-editor-page .destination-attraction-trigger:hover,
+.admin-editor-page .destination-attraction-trigger:focus,
+.admin-editor-page .destination-attraction-trigger.is-open { border-color: var(--editor-focus); outline: 0; box-shadow: 0 0 0 2px color-mix(in srgb, var(--editor-focus) 12%, transparent); }
+.admin-editor-page .destination-attraction-trigger svg { color: var(--editor-muted); }
+.admin-editor-page .destination-attraction-menu { top: calc(100% + 2px); border: 1px solid var(--editor-line); border-radius: 2px; box-shadow: 0 4px 12px rgba(0, 0, 0, .12); }
+.admin-editor-page .destination-attraction-menu-head { background: var(--editor-subtle); border-color: var(--editor-line); }
+.admin-editor-page .destination-attraction-menu-head button { border-radius: 2px; color: var(--layui-link, #1e9fff); }
+.admin-editor-page .destination-attraction-menu-options > label { border-radius: 2px; }
+.admin-editor-page .destination-attraction-menu-options > label:hover,
+.admin-editor-page .destination-attraction-menu-options > label.is-selected { background: #f2f8fc; }
+.admin-editor-page .destination-attraction-menu-options input { accent-color: var(--layui-primary, #009688); }
+.admin-editor-page .admin-error { padding: 9px 12px; color: #ff5722; border: 1px solid #ffbdbd; border-radius: 2px; background: #fff2f2; }
+.admin-editor-page .admin-editor-card .admin-form > .admin-primary { position: sticky; bottom: 12px; justify-self: end; z-index: 5; }
+.admin-editor-page :is(button, input, select, textarea):focus-visible { outline: 2px solid color-mix(in srgb, var(--editor-focus) 28%, transparent); outline-offset: 1px; }
+
+@media (max-width: 820px) {
+  .admin-editor-page .admin-editor-card .admin-form { gap: 15px; padding: 18px 14px; }
+  .admin-editor-page .admin-template-guide { margin: 14px 14px 0; padding: 13px; }
+  .admin-editor-page .admin-anchor-nav { position: static; }
 }
 /*$vite$:1*/</style>
   </head>
