@@ -85,7 +85,29 @@
                   </template></div>
                   <div class="list-filter-summary"><span>筛选结果 <b>{{ filteredItems.length }}</b> / {{ items.length }}</span><el-button v-if="hasActiveFilters" type="text" icon="el-icon-refresh-left" @click="resetFilters">清空条件</el-button></div>
                 </div>
-                <div class="admin-table-scroll"><el-table v-if="filteredItems.length" :data="filteredItems" :row-key="rowKey" border stripe size="small" class="admin-data-table">
+                <div v-if="active==='attractions'" class="attraction-view-toolbar">
+                  <span class="filter-toolbar-label">景点视图</span>
+                  <el-radio-group v-model="attractionView" size="small"><el-radio-button label="list">现有列表</el-radio-button><el-radio-button label="destination">按目的地分组</el-radio-button></el-radio-group>
+                  <el-select v-if="attractionView==='destination'" v-model="attractionDestinationFilter" clearable filterable size="small" class="attraction-destination-select" placeholder="筛选目的地（含未关联）">
+                    <el-option v-for="option in attractionDestinationOptions" :key="option.value" :label="option.label" :value="option.value"/>
+                  </el-select>
+                </div>
+                <div v-if="active==='attractions'&&attractionView==='destination'" class="attraction-destination-groups">
+                  <el-card v-for="group in visibleAttractionGroups" :key="group.key" shadow="never" class="attraction-destination-card">
+                    <div slot="header" class="attraction-destination-heading"><div><strong>{{ group.title }}</strong><el-tag v-if="group.cityId" size="mini" effect="plain">cityId: {{ group.cityId }}</el-tag><el-tag v-if="group.destinationId" size="mini" type="info" effect="plain">destinationId: {{ group.destinationId }}</el-tag><span class="attraction-group-count">{{ group.items.length }} 个景点</span></div><el-button v-if="group.destinationId" size="mini" icon="el-icon-edit" @click="editDestinationGroup(group.destinationId)">维护关联</el-button></div>
+                    <el-table v-if="group.items.length" :data="group.items" :row-key="rowKey" border stripe size="small" class="admin-data-table">
+                      <el-table-column label="景点" min-width="220"><template slot-scope="{row}"><div class="table-image-cell"><img v-if="row.image" :src="assetUrl(row.image)" :alt="row.name || row.id"/><span>{{ row.name || row.id }}</span></div></template></el-table-column>
+                      <el-table-column prop="id" label="景点 ID" min-width="170" show-overflow-tooltip/>
+                      <el-table-column prop="city" label="cityId" min-width="130" show-overflow-tooltip/>
+                      <el-table-column prop="type" label="类型" min-width="120"><template slot-scope="{row}">{{ displayValue(row.type) }}</template></el-table-column>
+                      <el-table-column label="状态" width="130"><template slot-scope="{row}"><el-select :value="rowStatus(row)" size="mini" class="status-inline" @change="value=>changeStatus(row,value)"><el-option v-for="option in statusOptionsForCurrent" :key="option.value" :label="option.label" :value="option.value"/></el-select></template></el-table-column>
+                      <el-table-column label="操作" width="145" align="right"><template slot-scope="{row}"><el-button size="mini" @click="editRow(row)">编辑</el-button><el-button size="mini" type="danger" plain @click="deleteRow(row)">删除</el-button></template></el-table-column>
+                    </el-table>
+                    <el-empty v-else description="该目的地暂未关联景点" :image-size="54"/>
+                  </el-card>
+                  <el-empty v-if="!visibleAttractionGroups.length" description="没有符合当前筛选条件的目的地景点"/>
+                </div>
+                <div v-else class="admin-table-scroll"><el-table v-if="filteredItems.length" :data="filteredItems" :row-key="rowKey" border stripe size="small" class="admin-data-table">
                   <el-table-column v-for="column in currentMenu.columns" :key="column.key" :prop="column.key" :label="column.label" :width="column.width" :min-width="column.width ? undefined : column.type==='image' ? 190 : column.type==='status' ? 125 : 135" :show-overflow-tooltip="column.type!=='image' && column.type!=='status' && column.type!=='tags'"><template slot-scope="{row}">
                     <div v-if="column.type==='image'" class="table-image-cell"><img v-if="row[column.key]" :src="assetUrl(row[column.key])" :alt="row[column.titleKey] || row.name || row.title || ''"/><span>{{ row[column.titleKey] || row.name || row.title || row.id }}</span></div>
                     <span v-else-if="column.type==='date'">{{ dateTime(row[column.key]) }}</span>
@@ -204,11 +226,29 @@ fields.countries.template='country'
 fields.guides.template='guide'
 export default {
   name:'AdminApp',
-  data(){return{token:sessionStorage.getItem(TOKEN)||'',password:'',error:'',active:'overview',settingsTab:'site',data:JSON.parse(JSON.stringify(emptyData)),stats:{},commerce:{},settings:this.defaultSettings(),loading:false,busy:false,filterText:'',filters:{enabled:'',featured:'',countryId:'',status:'',days:'',type:'',currency:'',priceCny:[null,null],city:'',tag:'',period:[],leadType:'',createdAt:[],bookingDate:[],member:'',productType:'',relation:'',visaStatus:'',expiry:[],expiresAt:[]},editor:null,form:{},jsonFields:{},dateRange:[],jsonError:'',confirmVisible:false,confirmText:'',confirmHandler:null,menuGroups:groups,rowStatusOptions:[{label:'发布',value:'published'},{label:'下架',value:'unpublished'}],settingTabs}},
+  data(){return{token:sessionStorage.getItem(TOKEN)||'',password:'',error:'',active:'overview',settingsTab:'site',attractionView:'list',attractionDestinationFilter:'',data:JSON.parse(JSON.stringify(emptyData)),stats:{},commerce:{},settings:this.defaultSettings(),loading:false,busy:false,filterText:'',filters:{enabled:'',featured:'',countryId:'',status:'',days:'',type:'',currency:'',priceCny:[null,null],city:'',tag:'',period:[],leadType:'',createdAt:[],bookingDate:[],member:'',productType:'',relation:'',visaStatus:'',expiry:[],expiresAt:[]},editor:null,form:{},jsonFields:{},dateRange:[],jsonError:'',confirmVisible:false,confirmText:'',confirmHandler:null,menuGroups:groups,rowStatusOptions:[{label:'发布',value:'published'},{label:'下架',value:'unpublished'}],settingTabs}},
   computed:{
     currentMenu(){const pair=groups.flatMap(g=>g.items).find(item=>item[0]===this.active);const config=fields[this.active]||{};return{id:this.active,label:pair?pair[1]:'总览',icon:pair?pair[2]:'',...config,columns:(config.columns||[]).map(column=>({key:column[0],label:column[1],type:column[2],width:column[3]})),editable:config.editable!==false&&!!config.fields?.length,eyebrow:'CONTENT MANAGEMENT'}},
     statusOptionsForCurrent(){const f=fields[this.active]?.fields?.find(x=>x.key==='status');return f?.options==='publish'?publish:(Array.isArray(f?.options)?f.options:this.rowStatusOptions)},
     items(){if(this.active==='miniprogramTrips')return(this.data.leads||[]).filter(x=>this.isMiniBooking(x)&&['customization','business-travel'].includes(x.leadType));if(this.active==='cities')return this.data.cities;if(this.active==='leads')return this.data.leads;if(this.active==='guideBookings')return this.data.guideBookings;if(this.active==='miniProgramBookings')return this.data.miniProgramBookings;if(this.active==='miniprogramUsers')return this.data.miniprogramUsers;if(this.active==='miniprogramOrders')return this.data.miniprogramOrders;return this.data[this.active]||[]},
+    attractionDestinationOptions(){return[{label:'未关联目的地',value:'__unassigned_destination__'},...(this.data.destinations||[]).filter(destination=>destination?.id).map(destination=>({value:String(destination.id),label:[destination.name||'未命名目的地',destination.cityId?`cityId: ${destination.cityId}`:'',`destinationId: ${destination.id}`].filter(Boolean).join(' · ')}))]},
+    visibleAttractionGroups(){
+      if(this.active!=='attractions')return[]
+      const attractions=this.filteredItems
+      const destinations=(this.data.destinations||[]).filter(destination=>destination?.id)
+      const groups=destinations.map(destination=>{
+        const linkedIds=new Set(this.destinationAttractionIds(destination))
+        return{key:`destination:${destination.id}`,title:destination.name||'未命名目的地',destinationId:String(destination.id),cityId:String(destination.cityId||''),items:attractions.filter(attraction=>linkedIds.has(String(attraction.id||'')))}
+      })
+      const linkedAttractionIds=new Set(destinations.flatMap(destination=>this.destinationAttractionIds(destination)))
+      const unassigned=attractions.filter(attraction=>!linkedAttractionIds.has(String(attraction.id||'')))
+      const unassignedGroup={key:'destination:unassigned',title:'未关联目的地',destinationId:'',cityId:'',items:unassigned}
+      let visible=groups.filter(group=>group.items.length>0)
+      if(unassigned.length)visible.push(unassignedGroup)
+      if(this.attractionDestinationFilter==='__unassigned_destination__')return[unassignedGroup]
+      if(this.attractionDestinationFilter)return groups.filter(group=>group.destinationId===String(this.attractionDestinationFilter))
+      return visible
+    },
     availableFilters(){return(listFilterKeys[this.active]||[]).map(key=>{const type=listDateFilterKeys.includes(key)?'daterange':listNumberFilterKeys.includes(key)?'numberrange':'select';let options=[];if(type==='select'){if(['status','enabled'].includes(key))options=this.active==='miniprogramOrders'?[{label:'待支付',value:'pending'},{label:'已支付',value:'paid'},{label:'失败',value:'failed'},{label:'已关闭 / 过期',value:'expired'}]:this.statusOptionsForCurrent;else if(key==='featured')options=[{label:'首页推荐',value:true},{label:'普通展示',value:false}];else if(key==='member')options=[{label:'终身会员',value:'member'},{label:'普通用户',value:'regular'}];else{const values=[...new Set(this.items.map(row=>this.filterValue(row,key)).filter(value=>value!==''&&value!=null))];options=values.map(value=>({value,label:this.filterOptionLabel(key,value)})).sort((a,b)=>a.label.localeCompare(b.label,'zh-CN'))}}const label=key==='createdAt'&&['leads','guideBookings','miniProgramBookings','miniprogramTrips'].includes(this.active)?'提交日期':listFilterLabels[key]||key;return{key,type,label,options}}).filter(filter=>this.items.length>0&&(filter.type==='daterange'?this.items.some(row=>this.filterValue(row,filter.key)):filter.type==='numberrange'?this.items.some(row=>Number.isFinite(Number(this.filterValue(row,filter.key)))):(['status','enabled','featured','member'].includes(filter.key)||filter.options.length>1)))},
     hasActiveFilters(){return Boolean(this.filterText.trim())||Object.values(this.filters).some(value=>Array.isArray(value)?value.some(item=>item!==''&&item!=null):Boolean(value))},
     filteredItems(){const q=this.filterText.trim().toLowerCase();return this.items.filter(row=>{if(q&&!JSON.stringify(row).toLowerCase().includes(q))return false;for(const filter of this.availableFilters){const selected=this.filters[filter.key];if(filter.type==='daterange'){if(selected?.length===2&&!this.matchesDateRange(row,filter.key,selected))return false}else if(filter.type==='numberrange'){const raw=this.filterValue(row,filter.key);if(raw==null||raw===''||!Number.isFinite(Number(raw)))return false;const number=Number(raw);if((selected?.[0]!=null&&number<selected[0])||(selected?.[1]!=null&&number>selected[1]))return false}else if(selected!==''&&selected!=null&&String(this.filterValue(row,filter.key))!==String(selected))return false}return true})},
@@ -219,13 +259,20 @@ export default {
   created(){if(this.token)this.loadAll()},
   methods:{
     rowKey(row){return row.id||row.key||row.orderNo||row.openid||undefined},
+    destinationAttractionIds(destination){
+      const hasExplicitIds=Array.isArray(destination.attractionIds)||Object.prototype.hasOwnProperty.call(destination,'attractionId')
+      if(hasExplicitIds){const ids=Array.isArray(destination.attractionIds)?destination.attractionIds:(destination.attractionId?[destination.attractionId]:[]);return ids.map(id=>String(id??'')).filter(Boolean)}
+      const cityId=String(destination.cityId||'').trim()
+      return cityId?(this.data.attractions||[]).filter(attraction=>String(attraction.city||'')===cityId).map(attraction=>String(attraction.id||'')).filter(Boolean):[]
+    },
     defaultSettings(){return{siteName:'',siteUrl:'',defaultTitle:'',defaultDescription:'',homeEyebrow:'',homeTitle:'',homeDescription:'',keywords:'',ogImage:'',googleVerification:'',robotsPolicy:'index,follow',wechat:'',phone:'',email:'',replyHours:'',miniprogramAccess:true,miniprogramKnowledge:{trialSeconds:60,products:{attraction:{name:'单景点永久讲解',price:19.9,enabled:true,currency:'CNY'},membership:{name:'终身会员',price:99,enabled:true,currency:'CNY'}}}}},
     async request(path,options={}){const headers={'Content-Type':'application/json',...(this.token?{Authorization:'Bearer '+this.token}:{}),...(options.headers||{})};const response=await fetch('/api'+path,{...options,headers});const result=response.status===204?null:await response.json();if(response.status===401&&path!=='/auth/login'){this.logout();throw new Error('登录已过期，请重新登录')}if(!response.ok)throw new Error(result?.error||'请求失败（'+response.status+'）');return result},
     async login(){if(!this.password){this.error='请输入管理员密码';return}this.busy=true;this.error='';try{const result=await this.request('/auth/login',{method:'POST',body:JSON.stringify({password:this.password})});this.token=result.token;sessionStorage.setItem(TOKEN,result.token);await this.loadAll()}catch(e){this.error=e.message}finally{this.busy=false}},
     logout(){sessionStorage.removeItem(TOKEN);this.token='';this.data=JSON.parse(JSON.stringify(emptyData))},
-    selectMenu(id){this.active=id;this.editor=null;this.filterText='';this.clearFilterValues()},
+    selectMenu(id){this.active=id;this.editor=null;this.filterText='';this.attractionDestinationFilter='';this.attractionView='list';this.clearFilterValues()},
+    editDestinationGroup(id){const destination=(this.data.destinations||[]).find(item=>String(item.id)===String(id));if(!destination)return;this.active='destinations';this.filterText='';this.clearFilterValues();this.openEditor(destination,false)},
     clearFilterValues(){Object.keys(this.filters).forEach(key=>this.$set(this.filters,key,listDateFilterKeys.includes(key)?[]:listNumberFilterKeys.includes(key)?[null,null]:''))},
-    resetFilters(){this.filterText='';this.clearFilterValues()},
+    resetFilters(){this.filterText='';this.attractionDestinationFilter='';this.clearFilterValues()},
     setNumberBound(key,index,value){const bounds=(this.filters[key]||[null,null]).slice();this.$set(bounds,index,value===''||value==null?null:Number(value));this.$set(this.filters,key,bounds)},
     filterValue(row,key){if(key==='status')return this.rowStatus(row);if(key==='enabled')return row.enabled===false?'unpublished':'published';if(key==='member')return row.member?'member':'regular';return row[key]},
     filterOptionLabel(key,value){if(key==='status'||key==='enabled')return this.statusLabel(value);if(key==='featured')return value?'首页推荐':'普通展示';if(key==='member')return value==='member'?'终身会员':'普通用户';const labels={customization:'定制行程', 'business-travel':'商务出行','guide-booking':'导游预约','vehicle-consultation':'用车咨询','mini-program-booking':'小程序预约',landmark:'景点',museum:'博物馆',published:'发布',unpublished:'下架'};if(key==='leadType'||key==='type')return labels[value]||this.displayValue(value);return this.displayValue(value)},

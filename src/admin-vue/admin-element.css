@@ -66,6 +66,16 @@
 .el-admin .list-filter-number .el-input { width:122px; }
 .el-admin .list-filter-summary { display:flex; flex:0 0 auto; align-items:center; gap:8px; color:var(--ea-muted); font-size:12px; white-space:nowrap; }
 .el-admin .list-filter-summary b { color:#33464b; font-weight:600; }
+.el-admin .attraction-view-toolbar { display:flex; align-items:center; flex-wrap:wrap; gap:12px; margin:0 0 14px; padding:11px 13px; border:1px solid #e8edef; border-radius:4px; background:#fafcfc; }
+.el-admin .filter-toolbar-label { color:#617176; font-size:12px; font-weight:600; }
+.el-admin .attraction-destination-select { width:min(460px,100%); }
+.el-admin .attraction-destination-groups { display:grid; gap:14px; }
+.el-admin .attraction-destination-card { border-top:2px solid #168c88; }
+.el-admin .attraction-destination-heading,.el-admin .attraction-destination-heading>div { display:flex; align-items:center; flex-wrap:wrap; gap:9px; }
+.el-admin .attraction-destination-heading { justify-content:space-between; }
+.el-admin .attraction-destination-heading strong { color:#2f4045; font-size:14px; font-weight:600; }
+.el-admin .attraction-group-count { color:#7b898f; font-size:11px; }
+.el-admin .attraction-destination-card .el-card__body { padding:0 16px 16px; }
 .el-admin .stat-grid { margin-bottom:4px; }
 .el-admin .stat-card { margin-bottom:16px; border-top:2px solid #238eab; }
 .el-admin .stat-card .el-card__body { display:flex; min-height:84px; flex-direction:column; justify-content:space-between; }
@@ -138,3 +148,4 @@
 .el-admin .lead-card .el-card__body>div { display:flex; justify-content:space-between; align-items:center; gap:10px; }
 .el-admin .lead-card p { display:flex; justify-content:space-between; gap:10px; margin:8px 0 0; color:#66747a; font-size:12px; }
 .el-admin .lead-card p span { color:#939da2; }
+@media(max-width:760px){.el-admin .attraction-view-toolbar{align-items:flex-start;flex-direction:column}.el-admin .attraction-destination-select{width:100%}.el-admin .attraction-destination-heading{align-items:flex-start;flex-direction:column}}
