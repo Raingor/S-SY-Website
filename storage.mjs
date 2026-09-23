@@ -5,7 +5,7 @@ import crypto from 'node:crypto'
 import mariadb from 'mariadb'
 
 const root = dirname(fileURLToPath(import.meta.url))
-const dataPath = resolve(root, 'data/site-data.json')
+const dataPath = resolve(root, 'seed/site-data.json')
 function loadLocalEnvFile() {
   const file = resolve(root, '.env')
   if (!existsSync(file)) return

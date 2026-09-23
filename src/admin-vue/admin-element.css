@@ -41,7 +41,10 @@
 .el-admin .brand-lockup small { display:block; margin-top:3px; color:#78808d; font-size:9px; letter-spacing:.13em; }
 .el-admin .side-menu { flex:1; overflow:auto; border-right:0; }
 .el-admin .side-menu .el-menu-item-group__title { padding:19px 16px 7px; color:#717985; font-size:10px; letter-spacing:.08em; }
+.el-admin .side-menu .el-submenu__title { height:42px; line-height:42px; margin:7px 7px 2px; padding-left:12px!important; border-radius:4px; font-size:12px; }
+.el-admin .side-menu .el-submenu__title:hover { background:#2d3039!important; }
 .el-admin .side-menu .el-menu-item { height:41px; line-height:41px; margin:2px 7px; padding-left:12px!important; border-radius:4px; font-size:12px; }
+.el-admin .side-menu .el-submenu .el-menu-item { padding-left:28px!important; }
 .el-admin .side-menu .el-menu-item i { margin-right:9px; color:#929aa4; }
 .el-admin .side-menu .el-menu-item:hover { background:#2d3039!important; }
 .el-admin .side-menu .el-menu-item.is-active { color:#fff; background:#008f83!important; }
@@ -69,6 +72,8 @@
 .el-admin .attraction-view-toolbar { display:flex; align-items:center; flex-wrap:wrap; gap:12px; margin:0 0 14px; padding:11px 13px; border:1px solid #e8edef; border-radius:4px; background:#fafcfc; }
 .el-admin .filter-toolbar-label { color:#617176; font-size:12px; font-weight:600; }
 .el-admin .attraction-destination-select { width:min(460px,100%); }
+.el-admin .group-page-size { display:flex; align-items:center; gap:8px; margin-left:auto; color:var(--ea-muted); font-size:12px; white-space:nowrap; }
+.el-admin .group-page-size .el-select { width:95px; }
 .el-admin .attraction-destination-groups { display:grid; gap:14px; }
 .el-admin .attraction-destination-card { border-top:2px solid #168c88; }
 .el-admin .attraction-destination-heading,.el-admin .attraction-destination-heading>div { display:flex; align-items:center; flex-wrap:wrap; gap:9px; }
@@ -127,6 +132,8 @@
 @media(max-width:1050px){.el-admin .admin-aside{width:194px!important}.el-admin .admin-main{margin-left:194px}.el-admin .admin-content{padding:20px 18px 34px}.el-admin .admin-header{padding:0 18px}}
 @media(max-width:760px){.el-admin .admin-aside{position:relative;inset:auto;width:100%!important;min-height:auto}.el-admin .admin-layout{display:block}.el-admin .admin-aside .side-menu{max-height:250px}.el-admin .admin-main{margin-left:0}.el-admin .admin-header{position:static;height:auto!important;min-height:72px;padding:12px 14px}.el-admin .header-actions .el-button{padding:8px}.el-admin .admin-content{padding:14px 10px 28px}.el-admin .card-heading{align-items:flex-start;flex-direction:column}.el-admin .card-actions{width:100%;justify-content:flex-start}.el-admin .list-search{width:100%}.el-admin .list-filter-toolbar{align-items:flex-start;flex-direction:column}.el-admin .list-filter-controls{width:100%}.el-admin .list-filter-select,.el-admin .list-filter-date{width:100%}.el-admin .list-filter-number{width:100%}.el-admin .list-filter-number .el-input{flex:1;width:1px}.el-admin .list-filter-summary{width:100%;justify-content:space-between}.el-admin .form-grid,.el-admin .array-fields{grid-template-columns:1fr}.el-admin .form-grid .full-field{grid-column:auto}.el-admin .editor-heading{flex-direction:column;gap:10px}.el-admin .editor-heading h1{font-size:22px}.el-admin .editor-card .el-card__body{padding:15px 12px}.el-admin .template-guide{align-items:flex-start;flex-direction:column}}
 .el-admin .admin-table-scroll { width:100%; min-width:0; max-height:calc(100vh - 330px); overflow:auto; scrollbar-gutter:stable; }
+.el-admin .list-pagination { margin-top:14px; overflow-x:auto; }
+.el-admin .list-pagination .el-pagination { width:max-content; min-width:100%; text-align:right; }
 .el-admin .admin-data-table { width:100%; color:#35444a; font-size:13px; }
 .el-admin .admin-data-table .cell { line-height:1.45; }
 .el-admin .admin-data-table .el-table__body tr:hover>td.el-table__cell { background:#f5faf9; }
@@ -148,4 +155,4 @@
 .el-admin .lead-card .el-card__body>div { display:flex; justify-content:space-between; align-items:center; gap:10px; }
 .el-admin .lead-card p { display:flex; justify-content:space-between; gap:10px; margin:8px 0 0; color:#66747a; font-size:12px; }
 .el-admin .lead-card p span { color:#939da2; }
-@media(max-width:760px){.el-admin .attraction-view-toolbar{align-items:flex-start;flex-direction:column}.el-admin .attraction-destination-select{width:100%}.el-admin .attraction-destination-heading{align-items:flex-start;flex-direction:column}}
+@media(max-width:760px){.el-admin .attraction-view-toolbar{align-items:flex-start;flex-direction:column}.el-admin .attraction-destination-select{width:100%}.el-admin .group-page-size{margin-left:0}.el-admin .attraction-destination-heading{align-items:flex-start;flex-direction:column}}
