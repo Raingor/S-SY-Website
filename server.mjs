@@ -471,6 +471,27 @@ function normalizePublicDestination(item, cities, attractions) {
     : undefined
   return { ...item, cityId, attractionIds, ...(Object.prototype.hasOwnProperty.call(item, 'attractionId') ? { attractionId: legacyAttractionId } : {}) }
 }
+function homeBannerPayload(input = {}, current = {}) {
+  const title = String(input.title ?? current.title ?? '').trim().slice(0, 120)
+  const description = String(input.description ?? current.description ?? '').trim().slice(0, 500)
+  const alt = String(input.alt ?? current.alt ?? title).trim().slice(0, 180)
+  const image = String(input.image ?? current.image ?? '').trim().slice(0, 500)
+  if (!title || !description || !alt || !image) return null
+  const sort = Math.max(1, Math.min(9999, Number(input.sort ?? current.sort ?? 1) || 1))
+  return { title, description, alt, image, enabled: input.enabled !== undefined ? input.enabled !== false : current.enabled !== false, sort, ...(current.createdAt ? { createdAt: current.createdAt } : {}) }
+}
+function publicHomeBanners(data) {
+  const imageUrl = (value) => { const image = String(value || ''); if (!image || /^(https?:)?\/\//i.test(image) || image.startsWith('/')) return image; const cleaned = image.replace(/^(?:\.\/|\/)?(?:images\/)+/, ''); return cleaned ? `./images/${cleaned}` : image }
+  return (data.home?.banners || []).filter((item) => item.enabled !== false).sort((a, b) => Number(a.sort || 0) - Number(b.sort || 0)).map((item) => ({ id: item.id, title: item.title, description: item.description || '', alt: item.alt || item.title, image: imageUrl(item.image), enabled: true, sort: Number(item.sort || 0), ...(item.path ? { path: item.path } : {}) }))
+}
+function publicHome(data) {
+  return {
+    eyebrow: data.settings?.homeEyebrow || 'Greece Travel Butler',
+    title: data.settings?.homeTitle || '希腊旅行管家',
+    description: data.settings?.homeDescription || '希伴旅 · 只为一生美好回忆',
+    banners: publicHomeBanners(data),
+  }
+}
 function publicContent(data, countryId = 'greece') {
   const imageUrl = (value) => {
   if (!value) return value
@@ -668,6 +689,7 @@ const server = http.createServer(async (req, res) => {
     const method = req.method || 'GET'
     if (method === 'OPTIONS' && url.pathname.startsWith('/api/')) return res.writeHead(204, corsHeaders()).end()
     if (url.pathname === '/api/health') return json(res, 200, { ok: true, service: 'sy-greece-admin', time: new Date().toISOString() })
+    if (url.pathname === '/api/miniprogram/home' && method === 'GET') { const data = readData(); return json(res, 200, { home: publicHome(data) }) }
     if (url.pathname === '/api/readiness' && method === 'GET') { const result = readiness(readData()); return json(res, result.ok ? 200 : 503, result) }
     if (url.pathname === '/robots.txt' && method === 'GET') { const data = readData(); const base = siteBase(data, req); return text(res, 200, `User-agent: *\nAllow: /\nDisallow: /manage-9f3k7\nDisallow: /api/\nSitemap: ${base}/sitemap.xml\n`, 'text/plain; charset=utf-8') }
     if (url.pathname === '/sitemap.xml' && method === 'GET') return text(res, 200, sitemap(readData(), req), 'application/xml; charset=utf-8')
@@ -940,6 +962,25 @@ const server = http.createServer(async (req, res) => {
         const { homeBanners: _savedHomeBanners, ...settings } = data.settings
         return json(res, 200, settings)
       }
+      const miniProgramBannerMatch = url.pathname.match(/^\/api\/admin\/miniprogram-home-banners(?:\/([^/]+))?$/)
+      if (miniProgramBannerMatch && ['GET', 'POST', 'PATCH', 'DELETE'].includes(method)) {
+        data.home = data.home && typeof data.home === 'object' ? data.home : {}
+        data.home.banners = Array.isArray(data.home.banners) ? data.home.banners : []
+        const itemId = miniProgramBannerMatch[1]
+        if (method === 'GET') return json(res, 200, { items: [...data.home.banners].sort((a, b) => Number(a.sort || 0) - Number(b.sort || 0)) })
+        if (method === 'POST') {
+          const input = await body(req); const payload = homeBannerPayload(input)
+          if (!payload) return json(res, 422, { error: '请填写标题、描述、替代文案并上传图片' })
+          const now = new Date().toISOString(); const item = { ...payload, id: input.id || id('home-banner'), createdAt: now, updatedAt: now }
+          data.home.banners.push(item); await saveData(data); return json(res, 201, item)
+        }
+        const index = data.home.banners.findIndex((item) => item.id === itemId)
+        if (index < 0) return json(res, 404, { error: 'not found' })
+        if (method === 'DELETE') { data.home.banners.splice(index, 1); await saveData(data); return res.writeHead(204).end() }
+        const input = await body(req); const payload = homeBannerPayload(input, data.home.banners[index])
+        if (!payload) return json(res, 422, { error: '请填写标题、描述、替代文案并上传图片' })
+        data.home.banners[index] = { ...data.home.banners[index], ...payload, id: itemId, updatedAt: new Date().toISOString() }; await saveData(data); return json(res, 200, data.home.banners[index])
+      }
       const homeBannerMatch = url.pathname.match(/^\/api\/admin\/home-banners(?:\/([^/]+))?$/)
       if (homeBannerMatch && ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'].includes(method)) {
         const bannerId = homeBannerMatch[1] ? decodeURIComponent(homeBannerMatch[1]) : ''
@@ -1125,6 +1166,8 @@ async function start() {
     }
     // Keep legacy admin routes and stored consumers functional during the migration.
     data.destinationTypes = data.destinationCategories.map((item) => ({ id: item.key, name: item.name, description: item.description || '', sort: item.sort || 0, status: item.enabled === false ? 'unpublished' : 'published' }))
+    data.home = data.home && typeof data.home === 'object' ? data.home : {}
+    data.home.banners = Array.isArray(data.home.banners) ? data.home.banners : []
     for (const lead of data.leads || []) lead.countryId = lead.countryId || 'greece'
     await saveData(data)
     server.listen(port, '127.0.0.1', () => console.log(`Greece Travel Butler server: http://127.0.0.1:${port}/ (console: /manage-9f3k7)`))

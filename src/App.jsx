@@ -407,6 +407,7 @@ function HomeHero({ countries = [], home = {} }) {
   const homeTitle = home.title || '只为一生美好回忆'
   const homeDescription = home.description || '希腊在地人文与行程咨询服务。雅典在地团队，一对一中文顾问，提供文化、行程与语言陪同咨询。'
   const [active, setActive] = useState(0)
+  const activeSlide = slides[active] || slides[0] || {}
   useEffect(() => { if (countries.length && !countries.some((item) => item.id === selectedCountry)) setSelectedCountry(countries[0].id) }, [countries, selectedCountry])
   useEffect(() => { const timer = window.setInterval(() => setActive((index) => (index + 1) % slides.length), 6500); return () => window.clearInterval(timer) }, [slides.length])
   return <div className="home-hero" style={{ '--hero-image': `url("${assetPath(slides[active]?.image || images.santorini)}")` }}>
