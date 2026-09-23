@@ -1,5 +1,5 @@
 import http from 'node:http'
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
+import { createReadStream, existsSync, mkdirSync, readFileSync, statSync, writeFileSync } from 'node:fs'
 import { dirname, extname, join, normalize, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import crypto from 'node:crypto'
@@ -1130,8 +1130,51 @@ const server = http.createServer(async (req, res) => {
     const target = existsSync(filePath) ? filePath : publicImagePath && existsSync(publicImagePath) ? publicImagePath : fallback
     const extension = extname(target)
     const cacheControl = immutableExtensions.has(extension) ? 'public, max-age=31536000, immutable' : extension === '.html' ? 'no-cache' : 'public, max-age=300'
+    if (['.m4a', '.mp3'].includes(extension.toLowerCase()) && ['GET', 'HEAD'].includes(method)) {
+      const size = statSync(target).size
+      const rangeHeader = method === 'GET' ? req.headers.range : ''
+      let start = 0
+      let end = size - 1
+      let status = 200
+      if (rangeHeader) {
+        const match = /^bytes=(\d*)-(\d*)$/i.exec(String(rangeHeader).trim())
+        if (!match || (!match[1] && !match[2]) || size === 0) {
+          res.writeHead(416, { 'Accept-Ranges': 'bytes', 'Content-Range': `bytes */${size}`, 'Content-Length': '0' })
+          return res.end()
+        }
+        if (!match[1]) {
+          const suffixLength = Number(match[2])
+          if (!Number.isSafeInteger(suffixLength) || suffixLength <= 0) {
+            res.writeHead(416, { 'Accept-Ranges': 'bytes', 'Content-Range': `bytes */${size}`, 'Content-Length': '0' })
+            return res.end()
+          }
+          start = Math.max(0, size - suffixLength)
+        } else {
+          start = Number(match[1])
+          end = match[2] ? Number(match[2]) : size - 1
+          if (!Number.isSafeInteger(start) || !Number.isSafeInteger(end) || start >= size || end < start) {
+            res.writeHead(416, { 'Accept-Ranges': 'bytes', 'Content-Range': `bytes */${size}`, 'Content-Length': '0' })
+            return res.end()
+          }
+          end = Math.min(end, size - 1)
+        }
+        status = 206
+      }
+      const headers = {
+        'Content-Type': mime[extension] || 'application/octet-stream',
+        'Cache-Control': cacheControl,
+        'Accept-Ranges': 'bytes',
+        'Content-Length': String(size === 0 ? 0 : end - start + 1),
+      }
+      if (status === 206) headers['Content-Range'] = `bytes ${start}-${end}/${size}`
+      res.writeHead(status, headers)
+      if (method === 'HEAD' || size === 0) return res.end()
+      const stream = createReadStream(target, { start, end })
+      stream.on('error', (error) => { console.error('Static audio stream failed:', error); if (!res.destroyed) res.destroy() })
+      return stream.pipe(res)
+    }
     res.writeHead(200, { 'Content-Type': mime[extension] || 'application/octet-stream', 'Cache-Control': cacheControl })
-    const page = extname(target) === '.html' && method === 'GET' ? injectSeoHtml(readFileSync(target), pageSeo(readData(), url.pathname, url.search, req)) : readFileSync(target)
+    const page = extension === '.html' && method === 'GET' ? injectSeoHtml(readFileSync(target), pageSeo(readData(), url.pathname, url.search, req)) : readFileSync(target)
     res.end(page)
   } catch (error) {
     console.error('Request handler failed:', error)
