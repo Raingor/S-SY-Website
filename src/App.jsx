@@ -6,7 +6,7 @@ import {
   MessageCircle, Phone, Plane, Search, ShipWheel, Sparkles, SunMedium,
   Users, Waves, X, Headphones, LockKeyhole, Pause, Play, RotateCcw, Home as HomeIcon, UserRound,
 } from 'lucide-react'
-import AdminPage from './admin'
+import AdminPage from './admin-element'
 import { AttractionsIndex, AttractionDetail, CityGuidePage, ItinerariesIndex, ItineraryDetail, CustomTripPage } from './attractions'
 import { assetPath, ComplianceNotice, Eyebrow, Footer, GoldCTA, Header, InnerHero, Logo, SectionTitle, images } from './chrome'
 import { translate, useLanguage } from './i18n'
@@ -1005,6 +1005,7 @@ function LegacyAdminRedirect() {
 }
 
 export default function App() {
+  const isAdminRoute = useLocation().pathname === '/manage-9f3k7'
   return <><ScrollToTop /><SEO /><Routes>
     <Route path="/" element={<Home />} />
     <Route path="/routes/:slug" element={<RouteDetail />} />
@@ -1043,5 +1044,5 @@ export default function App() {
     <Route path="/admin" element={<LegacyAdminRedirect />} />
     <Route path="/manage-9f3k7" element={<AdminPage />} />
     <Route path="*" element={<NotFound />} />
-  </Routes><ConsultationDock /><PublicBottomNav /></>
+  </Routes>{!isAdminRoute && <><ConsultationDock /><PublicBottomNav /></>}</>
 }
