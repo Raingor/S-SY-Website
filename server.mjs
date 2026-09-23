@@ -1134,6 +1134,11 @@ const server = http.createServer(async (req, res) => {
     const page = extname(target) === '.html' && method === 'GET' ? injectSeoHtml(readFileSync(target), pageSeo(readData(), url.pathname, url.search, req)) : readFileSync(target)
     res.end(page)
   } catch (error) {
+    console.error('Request handler failed:', error)
+    if (res.headersSent) {
+      if (!res.writableEnded) res.end()
+      return
+    }
     json(res, error.message === 'payload too large' ? 413 : 400, { error: error.message })
   }
 })
