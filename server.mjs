@@ -422,7 +422,7 @@ function destinationAttractionIds(item = {}) {
 }
 function homeSettings(data, imageUrl = (value) => value) {
   const settings = data.settings || {}
-  const configuredBanners = Array.isArray(data.homeBanners) ? data.homeBanners : settings.homeBanners
+  const configuredBanners = Array.isArray(data.homeBanners) ? data.homeBanners : (Array.isArray(settings.homeBanners) ? settings.homeBanners : data.home?.banners)
   const banners = Array.isArray(configuredBanners)
     ? configuredBanners
       .filter((item) => item && item.enabled !== false && item.image)
@@ -452,6 +452,7 @@ function setHomeBanners(data, banners) {
   const { homeBanners: _legacyHomeBanners, ...settings } = data.settings || {}
   data.settings = settings
   data.homeBanners = banners
+  data.home = { ...(data.home || {}), banners }
 }
 function normalizePublicDestination(item, cities, attractions) {
   const cityById = new Map(cities.map((city) => [city.id, city]))
@@ -482,7 +483,7 @@ function homeBannerPayload(input = {}, current = {}) {
 }
 function publicHomeBanners(data) {
   const imageUrl = (value) => { const image = String(value || ''); if (!image || /^(https?:)?\/\//i.test(image) || image.startsWith('/')) return image; const cleaned = image.replace(/^(?:\.\/|\/)?(?:images\/)+/, ''); return cleaned ? `./images/${cleaned}` : image }
-  return (data.home?.banners || []).filter((item) => item.enabled !== false).sort((a, b) => Number(a.sort || 0) - Number(b.sort || 0)).map((item) => ({ id: item.id, title: item.title, description: item.description || '', alt: item.alt || item.title, image: imageUrl(item.image), enabled: true, sort: Number(item.sort || 0), ...(item.path ? { path: item.path } : {}) }))
+  return homeSettings(data, imageUrl).banners.map((item) => ({ ...item, description: item.description || '', alt: item.alt || item.title, enabled: true, sort: Number(item.sort || 0) }))
 }
 function publicHome(data) {
   return {
@@ -965,26 +966,26 @@ const server = http.createServer(async (req, res) => {
       const miniProgramBannerMatch = url.pathname.match(/^\/api\/admin\/miniprogram-home-banners(?:\/([^/]+))?$/)
       if (miniProgramBannerMatch && ['GET', 'POST', 'PATCH', 'DELETE'].includes(method)) {
         data.home = data.home && typeof data.home === 'object' ? data.home : {}
-        data.home.banners = Array.isArray(data.home.banners) ? data.home.banners : []
+        const current = (Array.isArray(data.homeBanners) ? data.homeBanners : (Array.isArray(data.settings?.homeBanners) ? data.settings.homeBanners : data.home.banners || [])).map((item, index) => normalizeHomeBanner(item, index + 1))
         const itemId = miniProgramBannerMatch[1]
-        if (method === 'GET') return json(res, 200, { items: [...data.home.banners].sort((a, b) => Number(a.sort || 0) - Number(b.sort || 0)) })
+        if (method === 'GET') return json(res, 200, { items: current.sort((a, b) => a.sort - b.sort) })
         if (method === 'POST') {
           const input = await body(req); const payload = homeBannerPayload(input)
           if (!payload) return json(res, 422, { error: '请填写标题、描述、替代文案并上传图片' })
           const now = new Date().toISOString(); const item = { ...payload, id: input.id || id('home-banner'), createdAt: now, updatedAt: now }
-          data.home.banners.push(item); await saveData(data); return json(res, 201, item)
+          setHomeBanners(data, [...current, item]); await saveData(data); return json(res, 201, item)
         }
-        const index = data.home.banners.findIndex((item) => item.id === itemId)
+        const index = current.findIndex((item) => item.id === itemId)
         if (index < 0) return json(res, 404, { error: 'not found' })
-        if (method === 'DELETE') { data.home.banners.splice(index, 1); await saveData(data); return res.writeHead(204).end() }
-        const input = await body(req); const payload = homeBannerPayload(input, data.home.banners[index])
+        if (method === 'DELETE') { current.splice(index, 1); setHomeBanners(data, current); await saveData(data); return res.writeHead(204).end() }
+        const input = await body(req); const payload = homeBannerPayload(input, current[index])
         if (!payload) return json(res, 422, { error: '请填写标题、描述、替代文案并上传图片' })
-        data.home.banners[index] = { ...data.home.banners[index], ...payload, id: itemId, updatedAt: new Date().toISOString() }; await saveData(data); return json(res, 200, data.home.banners[index])
+        current[index] = { ...current[index], ...payload, id: itemId, updatedAt: new Date().toISOString() }; setHomeBanners(data, current); await saveData(data); return json(res, 200, current[index])
       }
       const homeBannerMatch = url.pathname.match(/^\/api\/admin\/home-banners(?:\/([^/]+))?$/)
       if (homeBannerMatch && ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'].includes(method)) {
         const bannerId = homeBannerMatch[1] ? decodeURIComponent(homeBannerMatch[1]) : ''
-        const current = (Array.isArray(data.homeBanners) ? data.homeBanners : data.settings?.homeBanners || []).map((item, index) => normalizeHomeBanner(item, index + 1))
+        const current = (Array.isArray(data.homeBanners) ? data.homeBanners : (Array.isArray(data.settings?.homeBanners) ? data.settings.homeBanners : data.home?.banners || [])).map((item, index) => normalizeHomeBanner(item, index + 1))
         if (method === 'GET') {
           const sorted = current.slice().sort((a, b) => a.sort - b.sort)
           if (!bannerId) return json(res, 200, sorted)
