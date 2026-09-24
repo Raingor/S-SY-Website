@@ -1,7 +1,9 @@
 import React, { useEffect, useState } from 'react'
 import { Link, NavLink, useLocation } from 'react-router-dom'
-import { ArrowRight, Check, ChevronRight, Menu, X } from 'lucide-react'
+import { ArrowRight, Check, ChevronRight, Heart, Link2, Menu, Share2, X } from 'lucide-react'
 import { LanguageSwitcher, translate, useLanguage } from './i18n'
+import { useSiteContent, visibleRecords } from './site-content'
+import { isContentSaved, toggleSavedContent, userContentChangeEvent } from './web-user-state'
 
 export const isRootPortableFile = window.location.protocol === 'file:' && !window.location.pathname.includes('/dist/')
 export const IMG = isRootPortableFile ? './public/images/' : '/images/'
@@ -35,13 +37,50 @@ export const images = {
   corinth: `${IMG}corinth.webp`,
 }
 
+export function ContentActions({ contentType, contentId, title = '' }) {
+  const [saved, setSaved] = useState(() => isContentSaved(contentType, contentId))
+  const [message, setMessage] = useState('')
+  useEffect(() => {
+    const update = () => setSaved(isContentSaved(contentType, contentId))
+    window.addEventListener(userContentChangeEvent(), update)
+    return () => window.removeEventListener(userContentChangeEvent(), update)
+  }, [contentType, contentId])
+  function save() {
+    const result = toggleSavedContent(contentType, contentId)
+    setSaved(result.saved)
+    setMessage(result.saved ? '已保存在此浏览器' : '已从收藏移除')
+  }
+  async function share() {
+    const url = window.location.href
+    const canNativeShare = typeof navigator !== 'undefined' && typeof navigator.share === 'function'
+    try {
+      if (canNativeShare) await navigator.share({ title: title || document.title, url })
+      else if (navigator.clipboard?.writeText) await navigator.clipboard.writeText(url)
+      else {
+        const input = document.createElement('textarea')
+        input.value = url
+        input.setAttribute('readonly', '')
+        input.style.position = 'fixed'
+        input.style.opacity = '0'
+        document.body.appendChild(input)
+        input.select()
+        const copied = document.execCommand('copy')
+        input.remove()
+        if (!copied) throw new Error('copy failed')
+      }
+      if (!canNativeShare) setMessage('链接已复制，可粘贴分享')
+    } catch (error) {
+      if (error?.name !== 'AbortError') setMessage('分享未完成，请复制浏览器地址栏链接')
+    }
+  }
+  const canNativeShare = typeof navigator !== 'undefined' && typeof navigator.share === 'function'
+  return <div className="content-actions"><button type="button" onClick={save} aria-pressed={saved} aria-label={saved ? '取消收藏' : '收藏到此浏览器'}><Heart size={16} fill={saved ? 'currentColor' : 'none'} />{saved ? '已收藏' : '收藏'}</button><button type="button" onClick={share} aria-label="分享或复制页面链接">{canNativeShare ? <Share2 size={16} /> : <Link2 size={16} />}分享</button>{message && <span role="status">{message}</span>}</div>
+}
+
 export function Logo() {
-  return (
-    <Link className="logo" to="/" aria-label="希腊旅行管家首页">
-      <span className="temple" aria-hidden="true"><i /><i /><i /></span>
-      <span>希腊旅行管家</span>
-    </Link>
-  )
+  const { content } = useSiteContent()
+  const siteName = content.settings?.siteName || '希腊旅行管家'
+  return <Link className="logo" to="/" aria-label={`${siteName}首页`}><span className="temple" aria-hidden="true"><i /><i /><i /></span><span>{siteName}</span></Link>
 }
 
 export function Header({ solid = false }) {
@@ -49,6 +88,11 @@ export function Header({ solid = false }) {
   const [language] = useLanguage()
   const t = (key) => translate(key, language)
   const location = useLocation()
+  const { content } = useSiteContent()
+  const route = visibleRecords(content.sampleItineraries)[0]
+  const destination = visibleRecords(content.destinations)[0]
+  const guide = visibleRecords(content.guides).find((item) => item.enabled !== false)
+  const experience = visibleRecords(content.experiences || content.settings?.experiences || [])[0]
   useEffect(() => setOpen(false), [location.pathname, location.search])
   useEffect(() => {
     document.body.classList.toggle('nav-menu-open', open)
@@ -62,8 +106,8 @@ export function Header({ solid = false }) {
     return () => window.removeEventListener('keydown', closeOnEscape)
   }, [])
   const links = [
-    ['/', t('nav.home')], ['/itineraries/sample-ae-6d', t('nav.routes')], ['/customize', t('nav.experiences')],
-    ['/destinations/santorini', t('nav.destinations')], ['/attractions', t('nav.attractions')], ['/guides/richard-li', t('nav.guide')], ['/tools', t('nav.tools')],
+    ['/', t('nav.home')], [route ? `/itineraries/${route.id}` : '/itineraries', t('nav.routes')], [experience ? `/experiences/${experience.id}` : '/customize', t('nav.experiences')],
+    [destination ? `/destinations/${destination.id}` : '/attractions', t('nav.destinations')], ['/attractions', t('nav.attractions')], [guide ? `/guides/${encodeURIComponent(guide.id)}` : '/', t('nav.guide')], ['/tools', t('nav.tools')], ['/my', '我的'],
   ]
   return (
     <header className={`site-header ${solid ? 'solid' : ''}`}>
@@ -136,15 +180,18 @@ export function ComplianceNotice() {
 
 export function Footer() {
   const [language] = useLanguage()
+  const { content } = useSiteContent()
   const t = (key) => translate(key, language)
-  const routeLabels = language === 'en' ? ['3 days · Athens highlights', '5 days · Athens + Santorini', '7 days · Family Greece', '9 days · Heritage circuit'] : language === 'zh-TW' ? ['3天2晚 · 雅典市區精華', '5天4晚 · 雅典 + 聖托里尼', '7天6晚 · 經典三城家庭遊', '9天8晚 · 全遺產環遊'] : ['3天2晚 · 雅典市区精华', '5天4晚 · 雅典 + 圣托里尼', '7天6晚 · 经典三城家庭游', '9天8晚 · 全遗产环游']
+  const settings = content.settings || {}
+  const trips = visibleRecords(content.sampleItineraries).slice(0, 4)
+  const experiences = visibleRecords(content.experiences || settings.experiences || [])
   return (
     <footer id="contact" className="site-footer">
       <div className="container footer-grid">
         <div className="footer-brand"><Logo /><p>{t('footer.brand')}</p><strong>sy-greece.com</strong></div>
-        <div><h3>{t('footer.routes')}</h3><Link to="/itineraries">参考行程</Link><Link to="/itineraries/sample-athens-3d">{routeLabels[0]}</Link><Link to="/itineraries/sample-ae-6d">{routeLabels[1]}</Link><Link to="/itineraries/sample-family-7d">{routeLabels[2]}</Link><Link to="/itineraries/sample-heritage-7d">{routeLabels[3]}</Link></div>
-        <div><h3>{t('footer.services')}</h3><Link to="/customize">{language === 'en' ? 'Private planning' : language === 'zh-TW' ? '私人定制' : '私人定制'}</Link><a href="#services">{language === 'en' ? 'Private transfers' : language === 'zh-TW' ? '專屬用車' : '专属用车'}</a><a href="#experiences">{language === 'en' ? 'Yachts & private flights' : language === 'zh-TW' ? '私人包機 / 遊艇出海' : '私人包机 / 游艇出海'}</a><Link to="/attractions">景点导览</Link><Link to="/knowledge-base">景点文史知识库</Link><Link to="/business-travel">商旅随行咨询</Link><Link to="/tools">{t('nav.tools')}</Link></div>
-        <div><h3>{t('footer.contact')}</h3><span>{t('footer.wechat')}</span><span>{t('footer.phone')}</span><span>{t('footer.email')}</span></div>
+        <div><h3>{t('footer.routes')}</h3><Link to="/itineraries">参考行程</Link>{trips.map((trip) => <Link key={trip.id} to={`/itineraries/${trip.id}`}>{trip.title}</Link>)}</div>
+        <div><h3>{t('footer.services')}</h3><Link to="/customize">{language === 'en' ? 'Private planning' : '行程咨询'}</Link><Link to="/attractions">{t('nav.attractions')}</Link><Link to="/knowledge-base">景点文史知识库</Link><Link to="/business-travel">商旅随行咨询</Link><Link to="/tools">{t('nav.tools')}</Link>{experiences.length > 0 && <Link to={`/experiences/${experiences[0].id}`}>{experiences[0].title}</Link>}</div>
+        <div><h3>{t('footer.contact')}</h3>{settings.wechat && <span>微信：{settings.wechat}</span>}{settings.phone && <a href={`tel:${String(settings.phone).replace(/[^\d+]/g, '')}`}>电话：{settings.phone}</a>}{settings.email && <a href={`mailto:${settings.email}`}>邮箱：{settings.email}</a>}</div>
       </div>
       <div className="container copyright"><span>2026 {language === 'en' ? 'Greece Travel Butler · All rights reserved' : language === 'zh-TW' ? '希臘旅行管家 · 版權所有' : '希腊旅行管家 · 版权所有'}</span><span>{language === 'en' ? 'Cultural consultation, itinerary planning and business language support' : language === 'zh-TW' ? '提供文化諮詢、行程策劃、知識付費與商務語言陪同諮詢' : '提供文化咨询、行程策划、知识付费与商务语言陪同咨询'}</span></div><div className="container footer-disclaimer"><ComplianceNotice /></div>
     </footer>

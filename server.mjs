@@ -1,4 +1,5 @@
 import http from 'node:http'
+import { createAdminSessionToken, verifyAdminSessionToken } from './admin-session.mjs'
 import { createReadStream, existsSync, mkdirSync, readFileSync, statSync, writeFileSync } from 'node:fs'
 import { dirname, extname, join, normalize, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -6,6 +7,7 @@ import crypto from 'node:crypto'
 import { setTimeout as delay } from 'node:timers/promises'
 import tls from 'node:tls'
 import { closeStorage, initStorage, readData, saveData, storageStatus } from './storage.mjs'
+import { audioEntitled, publicHeritage, signedAudioToken, streamPrivateAudio, uploadPrivateAudio, validateAttraction, validateHeritageRecord, verifySignedAudioToken, normalizeVisitorSections, sanitizeRichText, visibleTrack } from './heritage-content.mjs'
 import { amountToFen, createMiniProgramPrepay, decryptWechatNotify, queryWechatTransaction, realPayNotifyReady, realPayRequestReady, verifyWechatNotify, wechatPayConfig } from './wechat-pay.mjs'
 
 const root = dirname(fileURLToPath(import.meta.url))
@@ -20,8 +22,10 @@ const smtpHost = String(process.env.SY_SMTP_HOST || 'smtp.qq.com')
 const smtpPort = Number(process.env.SY_SMTP_PORT || 465)
 const smtpUser = String(process.env.SY_SMTP_USER || 'ro_ye@foxmail.com')
 const smtpPassword = String(process.env.SY_SMTP_PASSWORD || '')
-const tokens = new Map()
 const adminTokenTtlMs = 8 * 60 * 60 * 1000
+const adminSessionSecret = crypto.createHash('sha256')
+  .update(`sy-greece-admin-session-v1\0${process.env.SY_ADMIN_SESSION_SECRET || ''}\0${adminPassword}`)
+  .digest()
 const wechatPay = wechatPayConfig()
 let wechatAccessToken = { value: '', expiresAt: 0 }
 const mime = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8', '.json': 'application/json; charset=utf-8', '.png': 'image/png', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.webp': 'image/webp', '.svg': 'image/svg+xml', '.ico': 'image/x-icon', '.m4a': 'audio/mp4', '.mp3': 'audio/mpeg' }
@@ -44,10 +48,7 @@ function leadsOfType(leads, leadType) { return leadType ? leads.filter((lead) =>
 function isAdmin(req) {
   const auth = req.headers.authorization || ''
   if (!auth.startsWith('Bearer ')) return false
-  const token = auth.slice(7); const expiresAt = tokens.get(token)
-  if (!expiresAt) return false
-  if (expiresAt <= Date.now()) { tokens.delete(token); return false }
-  return true
+  return verifyAdminSessionToken(auth.slice(7), adminSessionSecret, adminTokenTtlMs)
 }
 function isMiniProgramLead(input) { return ['wechat-miniprogram', 'miniprogram'].includes(input.platform) || ['wechat-miniprogram', 'miniprogram'].includes(input.source) }
 function isMiniProgramAccessEnabled(data) { return data.settings?.miniprogramAccess !== false }
@@ -505,7 +506,17 @@ function publicContent(data, countryId = 'greece') {
   const countries = (data.countries || []).filter((item) => item.enabled !== false).sort((a, b) => Number(a.sort || 0) - Number(b.sort || 0))
   const guides = (data.guides || []).filter((item) => item.enabled !== false && (item.countryId || 'greece') === countryId).sort((a, b) => Number(a.sort || 0) - Number(b.sort || 0))
   const scoped = (items) => (items || []).filter((item) => (item.countryId || 'greece') === countryId)
-  const publicAttractions = scoped(data.attractions).filter((item) => item.status === 'published').map((item) => ({ ...item, image: `./images/${item.image}`, shareTitle: item.shareTitle || '', shareImage: imageUrl(item.shareImage), exhibits: (item.exhibits || []).map((exhibit) => ({ ...exhibit, image: exhibit.image ? `./images/${exhibit.image}` : '' })), articles: (item.articles || []).map((article) => ({ ...article, cover: `./images/${article.cover}` })) }))
+  const heritage = publicHeritage(data, countryId)
+  const publicAttractions = scoped(data.attractions).filter((item) => item.status === 'published').map((item) => {
+    const { audioGuides: _privateGuides, audioFile: _privateAudio, visitorSections: _privateVisitorSections, ...safe } = item
+    const detail = heritage.attractionDetails[item.id] || {}
+    const safeGuide = { ...(item.guide || {}) }
+    for (const key of ['hoursHtml','hoursHtmlTw','hoursHtmlEn','ticketsHtml','ticketsHtmlTw','ticketsHtmlEn','transportHtml','transportHtmlTw','transportHtmlEn','mapHtml','mapHtmlTw','mapHtmlEn']) if (safeGuide[key] != null) safeGuide[key] = sanitizeRichText(safeGuide[key]).html
+    safeGuide.mapUrl = detail.visitorInfo?.mapUrl || ''
+    safeGuide.mapImage = detail.visitorInfo?.mapImage || ''
+    safeGuide.sourceUrl = detail.visitorInfo?.sourceUrl || ''
+    return { ...safe, ...detail, guide: safeGuide, image: imageUrl(item.image), shareTitle: item.shareTitle || '', shareImage: imageUrl(item.shareImage), exhibits: detail.exhibits || [], highlights: detail.highlights || [], articles: (item.articles || []).map((article) => ({ ...article, cover: imageUrl(article.cover) })) }
+  })
   const publicCities = scoped(data.cities).filter((item) => item.status !== 'archived').map((item) => ({ ...item, mosaic: (item.mosaic || []).map((image) => `./images/${image}`) }))
   const publicDestinations = scoped(data.destinations).filter((item) => item.status === 'published').map((item) => ({ ...normalizePublicDestination(item, publicCities, publicAttractions), image: imageUrl(item.image) })).filter((item) => item.cityId && item.attractionIds.length > 0)
   const home = homeSettings(data, imageUrl)
@@ -518,6 +529,7 @@ function publicContent(data, countryId = 'greece') {
     routes: scoped(data.routes).filter((item) => item.status === 'published').map((item) => ({ ...item, image: `./images/${item.image}` })),
     destinations: publicDestinations,
     attractions: publicAttractions,
+    audioAlbums: heritage.audioAlbums,
     sampleItineraries: scoped(data.sampleItineraries).filter((item) => item.status === 'published').map((item) => ({ ...item, cover: `./images/${item.cover}` })),
     cities: publicCities,
     destinationCategories: activeDestinationCategories.map((item) => ({ key: item.key, name: item.name, nameTw: item.nameTw || item.name, nameEn: item.nameEn || item.name, sort: item.sort || 0, enabled: true })),
@@ -646,10 +658,17 @@ function injectSeoHtml(html, seo) {
   return output
 }
 function normalizeAttractionPayload(data, payload) {
-  if (!Object.prototype.hasOwnProperty.call(payload, 'city')) return payload
-  const cityId = String(payload.city || '').trim()
+  let normalized = payload
+  if (Object.prototype.hasOwnProperty.call(payload, 'visitorSections')) normalized = { ...normalized, visitorSections: normalizeVisitorSections(payload.visitorSections) }
+  if (Object.prototype.hasOwnProperty.call(payload, 'guide') && payload.guide && typeof payload.guide === 'object') {
+    const guide = { ...payload.guide }
+    for (const key of ['hoursHtml','hoursHtmlTw','hoursHtmlEn','ticketsHtml','ticketsHtmlTw','ticketsHtmlEn','transportHtml','transportHtmlTw','transportHtmlEn','mapHtml','mapHtmlTw','mapHtmlEn']) if (guide[key] != null) guide[key] = sanitizeRichText(guide[key]).html
+    normalized = { ...normalized, guide }
+  }
+  if (!Object.prototype.hasOwnProperty.call(normalized, 'city')) return normalized
+  const cityId = String(normalized.city || '').trim()
   const city = (data.cities || []).find((item) => item.id === cityId)
-  return { ...payload, cityName: city ? city.name : '' }
+  return { ...normalized, cityName: city ? city.name : '' }
 }
 function normalizeDestinationPayload(payload, method) {
   const next = { ...payload }
@@ -670,12 +689,20 @@ function normalizeDestinationPayload(payload, method) {
 async function collectionHandler(data, collection, method, pathname, payload) {
   const items = data[collection]
   const itemId = pathname.split('/').pop()
-  const normalizedPayload = collection === 'attractions'
-    ? normalizeAttractionPayload(data, payload)
-    : collection === 'destinations'
-      ? normalizeDestinationPayload(payload, method)
-      : payload
+  let normalizedPayload
+  try {
+    normalizedPayload = collection === 'attractions'
+      ? normalizeAttractionPayload(data, payload)
+      : collection === 'destinations'
+        ? normalizeDestinationPayload(payload, method)
+        : payload
+  } catch (error) { return { status: 422, body: { code: 'ATTRACTION_VALIDATION_FAILED', error: error.message || '景点资料无效' } } }
   if (method === 'GET') return { status: 200, body: items }
+  if (collection === 'attractions' && (method === 'POST' || method === 'PATCH')) {
+    const previous = method === 'PATCH' ? items.find((item) => item.id === itemId) : null
+    const problem = validateAttraction({ ...previous, ...normalizedPayload }, data)
+    if (problem) return { status: 422, body: { code: 'ATTRACTION_VALIDATION_FAILED', error: problem } }
+  }
   if (method === 'POST') { const next = { ...normalizedPayload, id: normalizedPayload.id || id(collection.slice(0, -1)) }; items.push(next); await saveData(data); return { status: 201, body: next } }
   const index = items.findIndex((item) => item.id === itemId)
   if (index < 0) return { status: 404, body: { error: 'not found' } }
@@ -699,7 +726,7 @@ const server = http.createServer(async (req, res) => {
       if (!adminPassword) return json(res, 503, { error: '后台安全密码尚未配置' })
       const input = await body(req)
       if (input.password !== adminPassword) return json(res, 401, { error: '密码不正确' })
-      const token = crypto.randomBytes(24).toString('hex'); tokens.set(token, Date.now() + adminTokenTtlMs)
+      const token = createAdminSessionToken(adminSessionSecret, adminTokenTtlMs)
       return json(res, 200, { token, tokenType: 'Bearer', expiresIn: Math.floor(adminTokenTtlMs / 1000), user: { name: 'SY Admin', role: 'editor' } })
     }
     if (url.pathname === '/api/content' && method === 'GET') return json(res, 200, publicContent(readData(), url.searchParams.get('country') || 'greece'))
@@ -708,6 +735,40 @@ const server = http.createServer(async (req, res) => {
     if (url.pathname.startsWith('/api/miniprogram/')) {
       const data = readData()
       if (!isMiniProgramAccessEnabled(data)) return miniProgramMaintenance(res)
+    }
+    const audioRoute = url.pathname.match(/^\/api\/miniprogram\/audio\/([^/]+)\/(preview|access|full)$/)
+    if (audioRoute && ['GET', 'HEAD'].includes(method)) {
+      const data = readData()
+      const track = visibleTrack(data, audioRoute[1])
+      if (!track) return json(res, 404, { code: 'AUDIO_NOT_FOUND', error: '音频不存在、未发布或不可播放' })
+      const section = audioRoute[2]
+      if (section === 'preview') {
+        if (streamPrivateAudio(req, res, { previewFile: track.previewFile, audioFile: track.audioFile }, corsHeaders())) return
+        return json(res, 404, { code: 'AUDIO_NOT_FOUND', error: '试听文件不可用' })
+      }
+      const simulation = miniProgramSimulationEnabled()
+      const identity = simulation ? simulationUserIdentity(req) : miniProgramUserFromRequest(req, data)
+      const subject = simulation ? identity && (identity.phoneHash ? `sim-phone:${identity.phoneHash}` : `sim-key:${identity.key}`) : identity && `user:${identity.id}`
+      const entitlements = identity ? (simulation ? simulationEntitlements(data, identity) : realPaymentEntitlements(data, identity)) : null
+      const authorized = audioEntitled(track, entitlements)
+      const previewUrl = `/api/miniprogram/audio/${encodeURIComponent(track.id)}/preview`
+      if (section === 'access') {
+        if (method !== 'GET') return json(res, 405, { code: 'METHOD_NOT_ALLOWED', error: 'method not allowed' })
+        const access = authorized ? 'full' : 'preview'
+        const token = authorized ? signedAudioToken(track.id, subject || 'anonymous', adminSessionSecret) : null
+        return json(res, 200, { id: track.id, access, unlockMode: track.unlockMode, previewSeconds: Math.min(60, Math.max(1, Number(track.previewSeconds) || 60)), previewUrl, fullUrl: token ? `/api/miniprogram/audio/${encodeURIComponent(track.id)}/full?token=${encodeURIComponent(token)}` : null, expiresIn: token ? 300 : null, reason: authorized ? null : track.unlockMode === 'locked' ? 'NO_PRODUCT_CONFIGURED' : !identity ? 'MINIPROGRAM_LOGIN_REQUIRED' : 'AUDIO_ENTITLEMENT_REQUIRED' })
+      }
+      const signedSubject = verifySignedAudioToken(url.searchParams.get('token'), adminSessionSecret, track.id)
+      if (!signedSubject) return json(res, 401, { code: 'AUDIO_TOKEN_REQUIRED', error: '请重新获取播放地址' })
+      let playbackIdentity = null
+      if (signedSubject === 'anonymous' && track.unlockMode === 'free') playbackIdentity = { anonymous: true }
+      else if (simulation && signedSubject.startsWith('sim-phone:')) playbackIdentity = { phoneHash: signedSubject.slice(10), key: '' }
+      else if (simulation && signedSubject.startsWith('sim-key:')) playbackIdentity = { key: signedSubject.slice(8) }
+      else if (!simulation && signedSubject.startsWith('user:')) playbackIdentity = (data.miniprogramUsers || []).find((user) => user.id === signedSubject.slice(5)) || null
+      const playbackEntitlements = playbackIdentity ? (playbackIdentity.anonymous ? null : simulation ? simulationEntitlements(data, playbackIdentity) : realPaymentEntitlements(data, playbackIdentity)) : null
+      if (!playbackIdentity || !audioEntitled(track, playbackEntitlements)) return json(res, 403, { code: 'AUDIO_ENTITLEMENT_REQUIRED', error: '尚未获得该音频完整播放权限' })
+      if (streamPrivateAudio(req, res, { previewFile: track.previewFile, audioFile: track.audioFile }, corsHeaders())) return
+      return json(res, 404, { code: 'AUDIO_NOT_FOUND', error: '音频文件不可用' })
     }
     if (url.pathname === '/api/miniprogram/simulation/session' && method === 'POST') {
       if (!miniProgramSimulationEnabled()) return miniProgramSimulationDisabled(res)
@@ -1026,6 +1087,46 @@ const server = http.createServer(async (req, res) => {
         setHomeBanners(data, current)
         await saveData(data)
         return json(res, 200, banner)
+      }
+      const heritageAdmin = url.pathname.match(/^\/api\/admin\/(audioAlbums|audioRoutes|audioTracks)(?:\/([^/]+))?$/)
+      if (heritageAdmin && ['GET', 'POST', 'PATCH', 'DELETE'].includes(method)) {
+        const collection = heritageAdmin[1]; const itemId = heritageAdmin[2] || ''
+        data[collection] = Array.isArray(data[collection]) ? data[collection] : []
+        const items = data[collection]
+        if (method === 'GET') return json(res, 200, items)
+        const index = items.findIndex((item) => item.id === itemId)
+        if (method === 'DELETE') {
+          if (index < 0) return json(res, 404, { code: 'CONTENT_NOT_FOUND', error: '记录不存在' })
+          if (collection === 'audioAlbums' && (data.audioTracks || []).some((track) => track.albumId === itemId)) return json(res, 409, { code: 'CONTENT_IN_USE', error: '专辑仍有关联节目，请先下架或移除节目' })
+          if (collection === 'audioRoutes' && (data.audioTracks || []).some((track) => track.routeId === itemId)) return json(res, 409, { code: 'CONTENT_IN_USE', error: '路线仍有关联音频，请先移除音频关联' })
+          items.splice(index, 1); await saveData(data); return res.writeHead(204).end()
+        }
+        if (method === 'PATCH' && index < 0) return json(res, 404, { code: 'CONTENT_NOT_FOUND', error: '记录不存在' })
+        const input = await body(req)
+        const previous = method === 'PATCH' ? items[index] : {}
+        const payload = { ...previous, ...input, id: method === 'PATCH' ? itemId : input.id || id(collection.slice(0, -1)), status: input.status || previous.status || 'unpublished' }
+        if (items.some((item, position) => item.id === payload.id && (method === 'POST' || position !== index))) return json(res, 409, { code: 'DUPLICATE_ID', error: 'ID 已存在' })
+        // Never accept client-selected paths. Only keys previously issued by the authenticated private upload endpoint.
+        if (collection === 'audioTracks' && (payload.audioFile !== previous.audioFile || payload.previewFile !== previous.previewFile || payload.durationSeconds !== previous.durationSeconds || payload.previewSeconds !== previous.previewSeconds)) {
+          const uploaded = data.audioUploads?.find((upload) => upload.audioFile === payload.audioFile && upload.previewFile === payload.previewFile && upload.durationSeconds === Number(payload.durationSeconds) && upload.previewSeconds === Number(payload.previewSeconds))
+          if (!uploaded) return json(res, 422, { code: 'INVALID_AUDIO_UPLOAD', error: '请通过后台音频上传后再保存' })
+        }
+        const error = validateHeritageRecord(collection, payload, data, previous)
+        if (error) return json(res, 422, { code: 'CONTENT_VALIDATION_FAILED', error })
+        if (method === 'POST') items.push(payload)
+        else items[index] = payload
+        await saveData(data)
+        return json(res, method === 'POST' ? 201 : 200, payload)
+      }
+      if (url.pathname === '/api/admin/upload-audio' && method === 'POST') {
+        const input = await body(req, 42 * 1024 * 1024)
+        try {
+          const result = uploadPrivateAudio(input)
+          data.audioUploads = Array.isArray(data.audioUploads) ? data.audioUploads : []
+          data.audioUploads.push(result)
+          await saveData(data)
+          return json(res, 201, result)
+        } catch (error) { return json(res, 422, { code: 'INVALID_AUDIO_UPLOAD', error: error.message }) }
       }
       if (url.pathname === '/api/admin/upload-image' && method === 'POST') {
         const input = await body(req, 8 * 1024 * 1024)

@@ -1,15 +1,18 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react'
 import { Link, Route, Routes, useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import {
-  ArrowRight, BusFront, CalendarDays, Check, ChevronRight, CircleDollarSign,
+  ArrowRight, BusFront, CalendarDays, Check, ChevronRight, CircleDollarSign, Info,
   Clock3, CloudSun, Compass, Euro, Heart, Landmark, Mail, Map, MapPin,
   MessageCircle, Phone, Plane, Search, ShipWheel, Sparkles, SunMedium,
   Users, Waves, X, Headphones, LockKeyhole, Pause, Play, RotateCcw, Home as HomeIcon, UserRound,
 } from 'lucide-react'
 import AdminPage from './admin-element'
 import { AttractionsIndex, AttractionDetail, CityGuidePage, ItinerariesIndex, ItineraryDetail, CustomTripPage } from './attractions'
-import { assetPath, ComplianceNotice, Eyebrow, Footer, GoldCTA, Header, InnerHero, Logo, SectionTitle, images } from './chrome'
+import { assetPath, ComplianceNotice, ContentActions, Eyebrow, Footer, GoldCTA, Header, InnerHero, Logo, SectionTitle, images } from './chrome'
 import { translate, useLanguage } from './i18n'
+import './user-experience.css'
+import { SiteContentProvider, useSiteContent, visibleRecords } from './site-content'
+import { clearRecentContent, readRecentContent, readSavedContent, recordRecentContent, removeSavedContent, userContentChangeEvent } from './web-user-state'
 
 const routes = [
   {
@@ -144,23 +147,17 @@ function upsertLink(rel, href) {
 
 function SEO() {
   const { pathname, search } = useLocation()
-  const [settings, setSettings] = useState(fallbackSeoSettings)
-  const [dynamicContent, setDynamicContent] = useState({ guides: [], attractions: [], cities: [], sampleItineraries: [] })
-  useEffect(() => {
-    if (window.location.protocol === 'file:') return
-    fetch('/api/content').then((response) => response.ok ? response.json() : null).then((payload) => {
-      if (payload?.settings) setSettings((current) => ({ ...current, ...payload.settings }))
-      if (payload) setDynamicContent({ guides: payload.guides || [], attractions: payload.attractions || [], cities: payload.cities || [], sampleItineraries: payload.sampleItineraries || [] })
-    }).catch(() => {})
-  }, [])
+  const { content } = useSiteContent()
+  const settings = { ...fallbackSeoSettings, ...(content.settings || {}) }
+  const dynamicContent = content
   useEffect(() => {
     const config = { ...fallbackSeoSettings, ...settings }
     const path = pathname || '/'
     const query = new URLSearchParams(search).get('q')
     const routeMatch = path.match(/^\/routes\/([^/]+)$/)
-    const matchedRoute = routeMatch ? routes.find((item) => item.slug === routeMatch[1]) : null
+    const matchedRoute = routeMatch ? dynamicContent.routes.find((item) => item.id === decodeURIComponent(routeMatch[1])) : null
     const destMatch = path.match(/^\/destinations\/([^/]+)$/)
-    const matchedDestination = destMatch ? destinations.find((item) => item.slug === destMatch[1]) : null
+    const matchedDestination = destMatch ? dynamicContent.destinations.find((item) => item.id === decodeURIComponent(destMatch[1])) : null
     const params = new URLSearchParams(search)
     const queryId = params.get('id') || ''
     const attractionMatch = path.match(/^\/attractions\/([^/]+)$/)
@@ -176,7 +173,10 @@ function SEO() {
     const aliasGuideId = path === '/pages/guide/guide' ? (queryId || 'richard-li') : ''
     const matchedGuide = dynamicContent.guides.find((item) => item.id === decodeURIComponent(guideMatch?.[1] || aliasGuideId)) || null
     const luxuryType = path === '/pages/luxury/detail' ? params.get('type') : ''
-    const luxurySlug = path.match(/^\/experiences\/([^/]+)$/)?.[1] || (luxuryType === 'jet' ? 'private-flight' : luxuryType === 'yacht' ? 'private-yacht' : '')
+    const luxurySlug = path.match(/^\/experiences\/([^/]+)$/)?.[1] || luxuryType
+    const matchedExperience = (dynamicContent.experiences || dynamicContent.settings?.experiences || []).find((item) => item.id === luxurySlug || item.shareType === luxuryType)
+    const knowledgeMatch = path.match(/^\/knowledge-base\/([^/]+)$/)
+    const matchedKnowledgeSpot = knowledgeMatch ? dynamicContent.attractions.find((item) => item.id === decodeURIComponent(knowledgeMatch[1])) : null
     const pages = {
       '/': [`${config.homeTitle || '只为一生美好回忆'}｜${config.siteName || '希腊旅行管家'}`, config.homeDescription || config.defaultDescription],
       '/customize': ['希腊行程咨询｜提交需求沟通方案', '告诉我们出行时间、人数与偏好，先沟通需求范围与行程规划方式。'],
@@ -185,18 +185,10 @@ function SEO() {
       '/heritage-guidance': ['古迹人文讲解预约｜希腊文化咨询', '预约雅典、德尔斐与克里特等古迹的人文知识讲解。'],
       '/vehicle-consultation': ['在地用车资源对接咨询｜希腊出行信息', '咨询希腊本地车型、司导资质与用车资源对接方式。'],
       '/knowledge-base': ['景点付费文史知识库｜免费预览', '浏览希腊景点的历史、神话与建筑知识预览。'],
-      '/knowledge-base/acropolis': ['雅典卫城文史知识库｜免费预览', '预览雅典卫城的历史、神话、建筑与参观知识。'],
-      '/knowledge-base/delphi': ['德尔斐文史知识库｜免费预览', '预览德尔斐的神谕、圣路、宝库与古剧场知识。'],
-      '/knowledge-base/santorini': ['圣托里尼文史知识库｜免费预览', '预览圣托里尼的火山地质、聚落与葡萄酒文化。'],
-      '/knowledge-base/knossos': ['克里特王宫文史知识库｜免费预览', '预览克诺索斯王宫、米诺斯文明与迷宫传说。'],
-      '/attractions': ['希腊景点导览｜景点 · 博物馆 · 参观指南', '按城市浏览雅典、圣托里尼、德尔斐等地的景点与博物馆，含展品讲解与参观指南 12 项。'],
+      '/attractions': ['希腊景点导览｜城市 · 景点 · 参观指南', '按 Website 已发布内容浏览城市、景点、参观指南与关联行程。'],
       '/itineraries': ['参考行程｜雅典 · 圣托里尼 · 世界遗产环线', '浏览参考行程框架，正式行程按需求定制后通过专属链接发送。'],
       '/business-travel': ['希腊商旅随行咨询｜商务语言与行程规划', '提供商务陪同、语言翻译、企业拜访与人文行程的咨询。'],
-      '/my': ['我的｜希腊旅行管家', '微信登录、手机号绑定、预约、行程与个人资料入口。'],
-      '/experiences/private-flight': ['私人包机｜希腊奢享体验', '按日期、人数与目的地沟通私人包机协调方案。'],
-      '/experiences/private-yacht': ['游艇出海｜希腊奢享体验', '按日期、人数与船型沟通私人游艇出海方案。'],
-
-      '/guides/richard-li': ['Richard 李名人导游｜希腊私人深度旅行与预约', '认识 Richard 李：武汉大学双学士、英国澳洲双硕士，提供希腊历史人文、小众秘境与私人摄影导览。'],
+      '/my': ['我的｜希腊旅行管家', '查看保存在当前浏览器的收藏和浏览记录；小程序账户资料不与 Website 共享。'],
       '/pages/itinerary/index': ['参考行程｜希腊旅行管家', '浏览可公开查看的参考行程框架。'],
       '/pages/customize/customize': ['希腊行程咨询｜提交需求沟通方案', '告诉我们出行时间、人数与偏好，先沟通需求范围与行程规划方式。'],
       '/pages/knowledge/knowledge': ['景点文史知识库｜免费预览', '从精选城市进入景点历史、神话与参观知识预览。'],
@@ -206,9 +198,9 @@ function SEO() {
       '/manage-9f3k7': ['网站管理后台｜希腊旅行管家', '希腊旅行管家网站内容与 SEO 管理后台'],
     }
     const [pageTitle, description] = matchedRoute
-      ? [`${matchedRoute.title}｜${matchedRoute.days}希腊定制路线`, matchedRoute.desc]
+      ? [`${matchedRoute.title}｜${matchedRoute.days || ''}希腊定制路线`, matchedRoute.desc || '希腊路线咨询']
       : matchedDestination
-        ? [`${matchedDestination.name}旅行指南｜${matchedDestination.headline}`, matchedDestination.intro[0]]
+        ? [`${matchedDestination.name || matchedDestination.id}旅行指南`, matchedDestination.description || matchedDestination.desc || '查看已发布的目的地关联内容。']
         : matchedCity
           ? [`${matchedCity.name}景点导览｜${matchedCity.subtitle || matchedCity.country}`, `${matchedCity.name}：${matchedCity.description || ''}`]
           : matchedAttraction
@@ -217,10 +209,10 @@ function SEO() {
               ? [`${matchedItinerary.title}｜参考行程`, matchedItinerary.summary || '']
               : matchedGuide
                 ? [`${matchedGuide.name}｜${matchedGuide.role || '希腊私人导游'}`, matchedGuide.intro || matchedGuide.storyNote || '希腊历史人文与私人路线顾问。']
-                : luxurySlug === 'private-flight'
-                  ? ['私人包机｜希腊奢享体验', '按日期、人数与目的地沟通私人包机协调方案。']
-                  : luxurySlug === 'private-yacht'
-                    ? ['游艇出海｜希腊奢享体验', '按日期、人数与船型沟通私人游艇出海方案。']
+                : matchedKnowledgeSpot
+                  ? [`${matchedKnowledgeSpot.name}文史知识｜免费预览`, matchedKnowledgeSpot.summary || '查看该景点已发布的文史与参观内容。']
+                  : matchedExperience
+                    ? [`${matchedExperience.title}｜体验服务`, matchedExperience.desc || matchedExperience.summary || '按实际条件咨询服务。']
                     : (pages[path] || [config.defaultTitle, config.defaultDescription])
     const isPrivate = path.startsWith('/trip/')
     const isAdmin = path === '/manage-9f3k7'
@@ -251,11 +243,11 @@ function SEO() {
     } else if (verification) verification.remove()
     const graph = [{ '@context': 'https://schema.org', '@type': 'Organization', name: config.siteName, url: baseUrl, logo: ogImage, description: config.defaultDescription, telephone: config.phone, email: config.email, areaServed: 'GR', knowsLanguage: ['zh-CN', 'en'] }, { '@context': 'https://schema.org', '@type': 'WebSite', name: config.siteName, url: baseUrl, inLanguage: 'zh-CN', potentialAction: { '@type': 'SearchAction', target: `${baseUrl}/search?q={search_term_string}`, 'query-input': 'required name=search_term_string' } }]
     if (path === '/') {
-      graph.push({ '@context': 'https://schema.org', '@type': 'ItemList', name: '希腊精选主题路线', itemListElement: routes.map((route, index) => ({ '@type': 'ListItem', position: index + 1, name: route.title, description: route.desc, url: `${baseUrl}${routePath(route)}` })) })
+      graph.push({ '@context': 'https://schema.org', '@type': 'ItemList', name: '希腊参考行程', itemListElement: visibleRecords(dynamicContent.sampleItineraries).map((trip, index) => ({ '@type': 'ListItem', position: index + 1, name: trip.title, description: trip.summary, url: `${baseUrl}/itineraries/${encodeURIComponent(trip.id)}` })) })
       graph.push({ '@context': 'https://schema.org', '@type': 'FAQPage', mainEntity: [{ '@type': 'Question', name: '希腊私人定制旅行多久可以出方案？', acceptedAnswer: { '@type': 'Answer', text: '提交出行时间、人数与预算后，定制师会在 24 小时内提供首版方案。' } }, { '@type': 'Question', name: '希腊旅行是否提供中文服务？', acceptedAnswer: { '@type': 'Answer', text: '雅典在地团队提供一对一中文定制师、中文司导和出行中的中文应急管家。' } }, { '@type': 'Question', name: '可以只定制圣托里尼或雅典吗？', acceptedAnswer: { '@type': 'Answer', text: '可以按目的地、天数、预算和旅行主题灵活定制单岛或多城行程。' } }] })
     }
-    if (matchedDestination) graph.push({ '@context': 'https://schema.org', '@type': 'TouristDestination', name: matchedDestination.name, description, touristType: ['情侣', '家庭', '蜜月旅行'], containedInPlace: { '@type': 'Country', name: '希腊' } })
-    if (matchedRoute) graph.push({ '@context': 'https://schema.org', '@type': 'TouristTrip', name: matchedRoute.title, description: matchedRoute.desc, itinerary: { '@type': 'ItemList', itemListElement: matchedRoute.itinerary.map(([day, title], index) => ({ '@type': 'ListItem', position: index + 1, name: `${day} ${title}` })) }, provider: { '@type': 'Organization', name: config.siteName, url: baseUrl } })
+    if (matchedDestination) graph.push({ '@context': 'https://schema.org', '@type': 'TouristDestination', name: matchedDestination.name || matchedDestination.id, description, containedInPlace: matchedDestination.country ? { '@type': 'Country', name: matchedDestination.country } : undefined })
+    if (matchedRoute) graph.push({ '@context': 'https://schema.org', '@type': 'TouristTrip', name: matchedRoute.title, description: matchedRoute.desc || '', provider: { '@type': 'Organization', name: config.siteName, url: baseUrl } })
     let schema = document.head.querySelector('#sy-seo-schema')
     if (!schema) { schema = document.createElement('script'); schema.id = 'sy-seo-schema'; schema.type = 'application/ld+json'; document.head.appendChild(schema) }
     schema.textContent = JSON.stringify({ '@context': 'https://schema.org', '@graph': graph })
@@ -290,16 +282,9 @@ function SearchBox({ initial = '', large = false }) {
   )
 }
 
-const ROUTE_TO_SAMPLE = {
-  'athens-3d': 'sample-athens-3d',
-  'honeymoon-5d': 'sample-ae-5d',
-  'family-7d': 'sample-family-7d',
-  'heritage-9d': 'sample-heritage-9d',
-}
-
 function routePath(route) {
-  const slug = route.slug || route.id || 'honeymoon-5d'
-  return ROUTE_TO_SAMPLE[slug] ? `/itineraries/${ROUTE_TO_SAMPLE[slug]}` : `/routes/${slug}`
+  const sampleId = route.sampleItineraryId || (Array.isArray(route.sampleItineraryIds) ? route.sampleItineraryIds[0] : '')
+  return sampleId ? `/itineraries/${encodeURIComponent(sampleId)}` : `/routes/${encodeURIComponent(route.id)}`
 }
 
 function RouteCard({ route, compact = false }) {
@@ -322,7 +307,7 @@ function RouteCard({ route, compact = false }) {
 
 function DestinationCard({ item }) {
   return (
-    <Link to={`/destinations/${item.slug || item.id || 'santorini'}`} className="destination-card">
+    <Link to={`/destinations/${encodeURIComponent(item.id)}`} className="destination-card">
       <img src={assetPath(item.image)} alt={`${item.name}风光`} loading="lazy" decoding="async" />
       <span><strong>{item.name}</strong><small>{item.en}</small></span>
     </Link>
@@ -330,26 +315,18 @@ function DestinationCard({ item }) {
 }
 
 function GuideTeaser({ guide }) {
-  const name = guide?.name || 'Richard 李'
-  const role = guide?.role || '名人司导'
-  const location = guide?.location || '雅典 / 伯罗奔尼撒半岛 / 德尔斐 / 梅黛奥拉 / 圣托里尼'
-  const proof = guide?.proof || '武汉大学双学士 · 英国澳洲双硕士 · 欧盟 / 美国 / 中国驾照'
-  const avatar = guide?.avatar || images.richardAvatar
-  const tags = (guide?.directions || []).slice(0, 3).map((item) => typeof item === 'string' ? item : item.title || item.name).filter(Boolean)
-  return (
-    <article className="guide-teaser">
-      <div className="guide-teaser-avatar"><img src={assetPath(avatar)} alt={`${name}头像`} loading="lazy" decoding="async" /></div>
-      <div className="guide-teaser-copy">
-        <Eyebrow>Signature Guide · {guide?.nameEn || 'Richard Li'}</Eyebrow>
-        <h2>名人导游 · {name}</h2>
-        <p>{guide?.intro || guide?.introTw || '旅居欧美多年，深耕希腊历史文化与小众秘境路线。'}</p>
-        <div className="guide-teaser-meta"><span>{role}</span><span>{location}</span></div>
-        <div className="guide-teaser-credentials">{(tags.length ? tags : ['名校教育', '欧洲精品文旅金牌从业者', '中英美驾照']).map((tag) => <span key={tag}>{tag}</span>)}</div>
-        <small className="guide-teaser-proof">{proof}</small>
-      </div>
-      <Link className="button button-primary" to="/guides/richard-li">查看档案 / 预约时间 <ArrowRight size={15} /></Link>
-    </article>
-  )
+  if (!guide) return null
+  const name = guide.name || guide.id
+  const tags = (guide.directions || []).slice(0, 3).map((item) => typeof item === 'string' ? item : item.title || item.name).filter(Boolean)
+  return <article className="guide-teaser">
+    <div className="guide-teaser-avatar">{guide.avatar ? <img src={assetPath(guide.avatar)} alt={`${name}头像`} loading="lazy" decoding="async" /> : <UserRound size={40} aria-hidden="true" />}</div>
+    <div className="guide-teaser-copy"><Eyebrow>{guide.nameEn || guide.role || 'GUIDE'}</Eyebrow><h2>{name}</h2>
+      {guide.intro && <p>{guide.intro}</p>}
+      <div className="guide-teaser-meta">{guide.role && <span>{guide.role}</span>}{guide.location && <span>{guide.location}</span>}</div>
+      {tags.length > 0 && <div className="guide-teaser-credentials">{tags.map((tag) => <span key={tag}>{tag}</span>)}</div>}
+      {guide.proof && <small className="guide-teaser-proof">{guide.proof}</small>}
+    </div><Link className="button button-primary" to={`/guides/${guide.id}`}>查看档案 / 预约咨询 <ArrowRight size={15} /></Link>
+  </article>
 }
 
 function destinationAssociationIds(item = {}) {
@@ -387,9 +364,7 @@ function normalizeDestinationCategories(destinations, primary, legacy) {
     .filter((item) => item.key && hasPublishedType(item.key))
     .sort((a, b) => Number(a.sort || 0) - Number(b.sort || 0))
   if (normalized.length > 0 || source.length > 0) return normalized
-  return ['culture', 'island']
-    .filter(hasPublishedType)
-    .map((key, index) => ({ key, name: key === 'culture' ? '文明溯源' : '海岛度假', nameTw: key === 'culture' ? '文明溯源' : '海島度假', nameEn: key === 'culture' ? 'Civilization Origins' : 'Aegean Escapes', sort: index + 1 }))
+  return []
 }
 
 function HomeDestinationTile({ item, cityId }) {
@@ -397,20 +372,19 @@ function HomeDestinationTile({ item, cityId }) {
   return <Link to={`/attractions/city/${cityId}`} className="destination-card">{content}</Link>
 }
 
-function HomeHero({ countries = [], home = {} }) {
+function HomeHero({ countries = [], home = {}, onCountryChange }) {
   const [selectedCountry, setSelectedCountry] = useState(countries[0]?.id || 'greece')
   const country = countries.find((item) => item.id === selectedCountry) || countries[0]
-  const fallbackSlides = [country?.heroImage, images.santorini, images.athens, images.plaka, images.delphi].filter(Boolean)
-  const configuredSlides = Array.isArray(home.banners) ? home.banners.filter((item) => item?.image).map((item) => ({ ...item, image: item.image })) : []
-  const slides = (configuredSlides.length ? configuredSlides : fallbackSlides.map((image) => ({ image }))).filter((slide, index, list) => slide.image && list.findIndex((item) => item.image === slide.image) === index)
+  const configuredSlides = Array.isArray(home.banners) ? home.banners.filter((item) => item?.enabled !== false && item?.image) : []
+  const slides = (configuredSlides.length ? configuredSlides : (country?.heroImage ? [{ image: country.heroImage, alt: country.name || '' }] : [])).filter((slide, index, list) => slide.image && list.findIndex((item) => item.image === slide.image) === index)
   const homeEyebrow = home.eyebrow || 'GREECE TRAVEL BUTLER · TAILOR-MADE JOURNEYS'
   const homeTitle = home.title || '只为一生美好回忆'
   const homeDescription = home.description || '希腊在地人文与行程咨询服务。雅典在地团队，一对一中文顾问，提供文化、行程与语言陪同咨询。'
   const [active, setActive] = useState(0)
-  const activeSlide = slides[active] || slides[0] || {}
-  useEffect(() => { if (countries.length && !countries.some((item) => item.id === selectedCountry)) setSelectedCountry(countries[0].id) }, [countries, selectedCountry])
-  useEffect(() => { const timer = window.setInterval(() => setActive((index) => (index + 1) % slides.length), 6500); return () => window.clearInterval(timer) }, [slides.length])
-  return <div className="home-hero" style={{ '--hero-image': `url("${assetPath(slides[active]?.image || images.santorini)}")` }}>
+  useEffect(() => { if (countries.length && !countries.some((item) => item.id === selectedCountry)) { setSelectedCountry(countries[0].id); onCountryChange?.(countries[0].id) } }, [countries, selectedCountry, onCountryChange])
+  useEffect(() => { if (slides.length <= 1) return undefined; const timer = window.setInterval(() => setActive((index) => (index + 1) % slides.length), 6500); return () => window.clearInterval(timer) }, [slides.length])
+  useEffect(() => setActive((index) => Math.min(index, Math.max(0, slides.length - 1))), [slides.length])
+  return <div className="home-hero" style={{ '--hero-image': slides[active]?.image ? `url("${assetPath(slides[active].image)}")` : 'none' }}>
     <Header />
     <div className="container hero-content">
       <div className="hero-brand-lockup"><strong>希腊旅行管家</strong><span>Greece Travel Butler</span></div>
@@ -418,10 +392,10 @@ function HomeHero({ countries = [], home = {} }) {
       <h1>{homeTitle}</h1>
       <p className="home-hero-description">{homeDescription}</p>
       <SearchBox />
-      <div className="hero-country-switcher" role="tablist" aria-label="选择国家"><span>探索国家</span>{(countries.length ? countries : [{ id: 'greece', name: '希腊', nameEn: 'Greece' }]).map((item) => <button type="button" className={selectedCountry === item.id ? 'active' : ''} key={item.id} onClick={() => { setSelectedCountry(item.id); setActive(0) }} role="tab" aria-selected={selectedCountry === item.id}>{item.nameEn || item.nameEn === '' ? `${item.name} / ${item.nameEn}` : item.name}</button>)}</div>
+      {countries.length > 0 && <div className="hero-country-switcher" role="tablist" aria-label="选择国家"><span>探索国家</span>{countries.map((item) => <button type="button" className={selectedCountry === item.id ? 'active' : ''} key={item.id} onClick={() => { setSelectedCountry(item.id); setActive(0); onCountryChange?.(item.id) }} role="tab" aria-selected={selectedCountry === item.id}>{item.nameEn || item.nameEn === '' ? `${item.name} / ${item.nameEn}` : item.name}</button>)}</div>}
       <div className="hero-actions"><Link className="button button-primary" to="/customize">提交行程咨询</Link><a className="button button-ghost" href="#routes">浏览甄选路线</a></div>
       <div className="trust-row"><span><Check size={14} />先沟通需求范围</span><span><Check size={14} />24 小时内回复</span><span><Check size={14} />中文 / English 咨询</span></div>
-      <div className="hero-slide-dots" aria-label="品牌头图轮播">{slides.map((slide, index) => <button type="button" key={slide.image} className={active === index ? 'active' : ''} onClick={() => setActive(index)} aria-label={`查看第 ${index + 1} 张头图`} />)}</div>
+      {slides.length > 1 && <div className="hero-slide-dots" aria-label="品牌头图轮播">{slides.map((slide, index) => <button type="button" key={slide.image} className={active === index ? 'active' : ''} onClick={() => setActive(index)} aria-label={`查看第 ${index + 1} 张头图`} />)}</div>}
     </div>
   </div>
 }
@@ -432,7 +406,7 @@ function SampleItineraryCard({ trip }) {
 
 function RouteAudioPreview({ itinerary }) {
   const audioRef = useRef(null)
-  const source = itinerary?.audioUrl || itinerary?.audioSrc || (typeof itinerary?.audio === 'string' ? itinerary.audio : '') || '/audio/selected-routes-intro.m4a'
+  const source = itinerary?.previewAudioUrl || itinerary?.audioUrl || itinerary?.audioSrc || (typeof itinerary?.audio === 'string' ? itinerary.audio : '')
   const [playing, setPlaying] = useState(false)
   const [current, setCurrent] = useState(0)
   const [duration, setDuration] = useState(60)
@@ -450,45 +424,24 @@ function RouteAudioPreview({ itinerary }) {
   }
   return <article className={`route-audio-preview ${source ? 'has-audio' : 'no-audio'}`}>
     {source && <audio ref={audioRef} src={assetPath(source)} preload="metadata" onLoadedMetadata={(event) => setDuration(Math.min(60, event.currentTarget.duration || 60))} onTimeUpdate={(event) => { const value = Math.min(60, event.currentTarget.currentTime); setCurrent(value); if (event.currentTarget.currentTime >= 60) { event.currentTarget.pause(); event.currentTarget.currentTime = 60; setPlaying(false) } }} onPlay={() => setPlaying(true)} onPause={() => setPlaying(false)} onEnded={() => setPlaying(false)} />}
-    <div className="route-audio-icon"><Headphones size={21} /></div><div className="route-audio-copy"><Eyebrow>LISTEN BEFORE YOU GO</Eyebrow><h3>甄选路线语音导览</h3><p>{itinerary ? `先听一段「${itinerary.title}」的路线导览，试听时长限制 1 分钟。` : '路线语音导览试听，时长限制 1 分钟。'}</p><div className="route-audio-controls"><button type="button" disabled={!source} onClick={toggle} aria-label={playing ? '暂停试听' : '播放试听'}>{playing ? <Pause size={15} /> : <Play size={15} />}</button><input type="range" min="0" max={maxDuration} step="0.1" value={Math.min(current, maxDuration)} disabled={!source} onChange={(event) => seek(event.target.value)} aria-label="试听进度" /><span>{timeLabel(current)} / {timeLabel(maxDuration)}</span><button type="button" disabled={!source} onClick={() => seek(0)} aria-label="从头播放"><RotateCcw size={14} /></button></div>{!source && <small>试听音频与 MpApp 共用，播放到 1:00 自动停止。</small>}</div>
+    <div className="route-audio-icon"><Headphones size={21} /></div><div className="route-audio-copy"><Eyebrow>LISTEN BEFORE YOU GO</Eyebrow><h3>甄选路线语音导览</h3><p>{itinerary ? `先听一段「${itinerary.title}」的路线导览，试听时长限制 1 分钟。` : '路线语音导览试听，时长限制 1 分钟。'}</p><div className="route-audio-controls"><button type="button" disabled={!source} onClick={toggle} aria-label={playing ? '暂停试听' : '播放试听'}>{playing ? <Pause size={15} /> : <Play size={15} />}</button><input type="range" min="0" max={maxDuration} step="0.1" value={Math.min(current, maxDuration)} disabled={!source} onChange={(event) => seek(event.target.value)} aria-label="试听进度" /><span>{timeLabel(current)} / {timeLabel(maxDuration)}</span><button type="button" disabled={!source} onClick={() => seek(0)} aria-label="从头播放"><RotateCcw size={14} /></button></div>{!source && <small>尚未配置公开试听音频。</small>}</div>
   </article>
 }
 
-const LUXURY_EXPERIENCES = [
-  { id: 'private-flight', title: '私人包机', image: images.jet, desc: '雅典往返圣托里尼 / 米克诺斯，跳过轮渡排队，清晨出发，落地即开始假期。', points: ['可协调雅典、圣托里尼、米克诺斯等目的地', '按日期、人数与机型沟通报价', '确认航班、接送与地面安排后再出行'] },
-  { id: 'private-yacht', title: '游艇出海', image: images.yacht, desc: '私人游艇 + 船长 + 轻食下午茶，火山湖浮潜、隐秘海湾与海面落日。', points: ['可协调圣托里尼火山湖、隐秘海湾与日落航线', '按日期、人数、船型与餐饮偏好沟通', '出发前确认天气、码头、时长与报价'] },
-]
-
 function Home() {
   const [activeCategory, setActiveCategory] = useState('')
-  const [content, setContent] = useState({ routes: [], destinations: [], attractions: [], sampleItineraries: [], destinationCategories: [], destinationTypes: [], guides: [], countries: [], cities: [], home: {} })
-  useEffect(() => {
-    if (window.location.protocol === 'file:') return
-    fetch('/api/content').then((response) => response.ok ? response.json() : null).then((next) => {
-      if (next) setContent({
-        routes: next.routes || [],
-        destinations: next.destinations || [],
-        attractions: next.attractions || [],
-        sampleItineraries: next.sampleItineraries || [],
-        destinationCategories: next.destinationCategories || [],
-        destinationTypes: next.destinationTypes || [],
-        guides: next.guides || [],
-        countries: next.countries || [],
-        cities: next.cities || [],
-        home: next.home || {},
-      })
-    }).catch(() => {})
-  }, [])
+  const { content, status, error, setCountryId, reload } = useSiteContent()
   const visibleDestinationItems = useMemo(() => visibleDestinations(content.destinations, content.cities, content.attractions), [content.destinations, content.cities, content.attractions])
   const destinationCategories = useMemo(() => normalizeDestinationCategories(visibleDestinationItems, content.destinationCategories, content.destinationTypes), [visibleDestinationItems, content.destinationCategories, content.destinationTypes])
   useEffect(() => {
     if (!destinationCategories.some((item) => item.key === activeCategory)) setActiveCategory(destinationCategories[0]?.key || '')
   }, [destinationCategories, activeCategory])
-  const featuredGuide = content.guides.find((item) => item.enabled !== false) || null
-  const featuredItinerary = content.sampleItineraries[0]
+  const featuredGuide = visibleRecords(content.guides).find((item) => item.enabled !== false && item.featured !== false) || null
+  const featuredItinerary = visibleRecords(content.sampleItineraries)[0]
+  const experiences = visibleRecords(content.experiences || content.settings?.experiences || [])
   const services = [
     [Compass, '行程定制', '围绕历史文明、海岛、餐厅与特别安排，沟通一份专属行程规划', '/customize'],
-    [Landmark, '古迹讲解', '预约 Richard 李的中文 / 英文文史讲解，先理解，再看见遗址细节', '/heritage-guidance'],
+    [Landmark, '古迹讲解', '咨询在地导游的文史讲解服务与预约方式', '/heritage-guidance'],
     [BusFront, '在地用车', '咨询车型、司导资质、机场与城际移动等实际用车信息', '/vehicle-consultation'],
     [Map, '文史知识库', '精选城市、景点、参观指南与免费预览，内容随真实数据更新', '/knowledge-base'],
     [Users, '希腊商旅', '商务陪同、语言翻译、企业拜访与人文行程的综合咨询', '/business-travel'],
@@ -496,7 +449,8 @@ function Home() {
   ]
   return (
     <>
-      <HomeHero countries={content.countries} home={content.home} />
+      <HomeHero countries={visibleRecords(content.countries)} home={content.home} onCountryChange={setCountryId} />
+      {status === 'error' && <div className="container"><div className="content-state error" role="alert">{error} <button type="button" onClick={reload}>重新加载</button></div></div>}
 
       <section id="services" className="section services-section">
         <div className="container">
@@ -505,13 +459,13 @@ function Home() {
         </div>
       </section>
 
-      <section className="section home-guide-section">
-        <div className="container"><SectionTitle eyebrow="SIGNATURE GUIDE" title="先认识 Richard，再决定如何深入希腊" action={{ to: '/guides/richard-li', label: '查看完整档案' }} /><GuideTeaser guide={featuredGuide} /></div>
-      </section>
+      {featuredGuide && <section className="section home-guide-section">
+        <div className="container"><SectionTitle eyebrow="SIGNATURE GUIDE" title={featuredGuide.name || featuredGuide.role || '导游资料'} action={{ to: `/guides/${featuredGuide.id}`, label: '查看完整档案' }} /><GuideTeaser guide={featuredGuide} /></div>
+      </section>}
 
-      <section className="section route-audio-section">
+      {(featuredItinerary?.previewAudioUrl || featuredItinerary?.audioUrl) && <section className="section route-audio-section">
         <div className="container"><RouteAudioPreview itinerary={featuredItinerary} /></div>
-      </section>
+      </section>}
 
       <section id="routes" className="section routes-section">
         <div className="container">
@@ -535,12 +489,12 @@ function Home() {
         </div>
       </section>}
 
-      <section id="experiences" className="section experiences-section">
+      {experiences.length > 0 && <section id="experiences" className="section experiences-section">
         <div className="container">
-          <SectionTitle dark eyebrow="SIGNATURE EXPERIENCES" title="奢享体验" action={{ to: '/experiences/private-flight', label: '了解奢享定制' }} />
-          <div className="horizontal-card-track experience-home-track">{LUXURY_EXPERIENCES.map((item) => <Link className="experience-card" to={`/experiences/${item.id}`} key={item.id}><div className="experience-image"><img src={assetPath(item.image)} alt={item.title} loading="lazy" decoding="async" /><span>高端定制</span></div><div><h3>{item.title}</h3><p>{item.desc}</p><span className="text-link">查看服务内容 <ArrowRight size={14} /></span></div></Link>)}</div>
+          <SectionTitle dark eyebrow="SIGNATURE EXPERIENCES" title="奢享体验" action={{ to: `/experiences/${experiences[0].id}`, label: '了解奢享定制' }} />
+          <div className="horizontal-card-track experience-home-track">{experiences.map((item) => <Link className="experience-card" to={`/experiences/${item.id}`} key={item.id}><div className="experience-image">{item.image && <img src={assetPath(item.image)} alt={item.title} loading="lazy" decoding="async" />}<span>{item.label || '体验服务'}</span></div><div><h3>{item.title}</h3><p>{item.desc || item.summary}</p><span className="text-link">查看服务内容 <ArrowRight size={14} /></span></div></Link>)}</div>
         </div>
-      </section>
+      </section>}
 
       <GoldCTA /><Footer />
     </>
@@ -549,71 +503,72 @@ function Home() {
 
 function RouteDetail() {
   const { slug } = useParams()
-  const route = routes.find((item) => item.slug === slug)
-  if (!route) return <NotFound />
-  const relatedDestinations = destinations.filter((item) => (route.destinations || []).includes(item.slug))
-  return (
-    <>
-      <InnerHero image={route.image} eyebrow={route.eyebrow} title={route.title} subtitle={`${route.days} · ${route.kicker} · ${route.tags} · 2 人即成行`} breadcrumb={`甄选路线 / ${route.title}`}>
-        <div className="detail-hero-actions"><strong>咨询费用沟通</strong><Link className="button button-primary" to="/customize">咨询这条线路</Link></div>
-      </InnerHero>
-      <main className="detail-page section">
-        <div className="container detail-layout">
-          <div>
-            <article className="intro-card"><h2>为什么选择这条线</h2><p>{route.intro}</p></article>
-            <h2 className="timeline-title">逐日行程</h2>
-            <div className="timeline">{route.itinerary.map(([day, title, desc], index) => <article className="day-card" key={day}><span className={index > 1 ? 'gold' : ''}>{day}</span><div><h3>{title}</h3><p>{desc}</p></div></article>)}</div>
-            {relatedDestinations.length > 0 && (
-              <section className="included-routes">
-                <SectionTitle eyebrow="DESTINATIONS" title="这条线经过的目的地" />
-                <div className="destination-grid">{relatedDestinations.map((item) => <DestinationCard key={item.slug} item={item} />)}</div>
-              </section>
-            )}
-          </div>
-          <aside className="trip-aside"><div className="summary-card"><h2>行程速览</h2><dl>{route.summary.map(([term, value]) => <div key={term}><dt>{term}</dt><dd>{value}</dd></div>)}</dl><div className="aside-price"><strong>咨询费用沟通</strong><small>按人数 / 日期报价</small></div><Link className="button button-primary button-block" to="/customize">咨询这条线路 · 沟通费用</Link></div><div className="wechat-tip"><MessageCircle /><span>加定制师微信直接沟通<br /><strong>平均 3 分钟回复 · 先沟通服务范围</strong></span></div></aside>
-        </div>
-      </main>
-      <div className="mobile-sticky-cta"><span>咨询费用沟通</span><Link to="/customize">提交行程咨询</Link></div>
-      <Footer />
-    </>
-  )
+  const { content, status, error } = useSiteContent()
+  const route = visibleRecords(content.routes).find((item) => String(item.id) === String(slug))
+  const destinationIds = Array.isArray(route?.destinationIds) ? route.destinationIds.map(String) : []
+  const itineraryIds = Array.isArray(route?.sampleItineraryIds) ? route.sampleItineraryIds.map(String) : (route?.sampleItineraryId ? [String(route.sampleItineraryId)] : [])
+  const relatedDestinations = visibleRecords(content.destinations).filter((item) => destinationIds.includes(String(item.id)))
+  const relatedItineraries = visibleRecords(content.sampleItineraries).filter((item) => itineraryIds.includes(String(item.id)))
+  useEffect(() => { if (status === 'ready' && route) recordRecentContent('route', route.id) }, [status, route?.id])
+  if (status === 'loading') return <><Header solid /><main className="section"><div className="container content-state" role="status">正在读取路线内容…</div></main><Footer /></>
+  if (status === 'error') return <><Header solid /><main className="section"><div className="container content-state error" role="alert">{error}。请稍后重试。</div></main><Footer /></>
+  if (!route) return <><Header solid /><NotFound /><Footer /></>
+  const inquiryUrl = `/customize?routeId=${encodeURIComponent(route.id)}`
+  return <>
+    <InnerHero image={route.image} eyebrow={route.kicker || route.tags || 'ROUTE'} title={route.title || route.id} subtitle={route.desc || ''} breadcrumb={`甄选路线 / ${route.title || route.id}`}>
+      <div className="detail-hero-actions"><strong>咨询费用沟通</strong><Link className="button button-primary" to={inquiryUrl}>咨询这条线路</Link></div>
+    </InnerHero>
+    <main className="detail-page section"><div className="container"><ContentActions contentType="route" contentId={route.id} title={route.title || route.id} />
+      {route.desc && <article className="intro-card"><h2>路线介绍</h2><p>{route.desc}</p></article>}
+      {relatedItineraries.length > 0 && <section className="included-routes"><SectionTitle eyebrow="SAMPLE ITINERARIES" title="关联参考行程" /><div className="itinerary-card-grid">{relatedItineraries.map((trip) => <Link to={`/itineraries/${encodeURIComponent(trip.id)}`} className="itinerary-mini-card" key={trip.id}>{trip.cover && <img src={assetPath(trip.cover)} alt={trip.title} loading="lazy" decoding="async" />}<span className="itinerary-days-chip">{trip.days} 天</span><div><h3>{trip.title}</h3><p>{trip.summary}</p></div></Link>)}</div></section>}
+      {relatedDestinations.length > 0 && <section className="included-routes"><SectionTitle eyebrow="DESTINATIONS" title="关联目的地"/><div className="destination-grid">{relatedDestinations.map((item) => <DestinationCard key={item.id} item={item}/>)}</div></section>}
+      {!relatedItineraries.length && !relatedDestinations.length && <div className="itinerary-notice"><Info size={16}/><span>此路线尚未在后台配置关联的参考行程或目的地；关联后会按稳定 ID 展示。</span></div>}
+      <div className="summary-card"><h2>路线速览</h2><dl><div><dt>天数</dt><dd>{route.days || '待配置'}</dd></div><div><dt>主题</dt><dd>{route.tags || '待配置'}</dd></div></dl><Link className="button button-primary" to={inquiryUrl}>咨询这条路线</Link></div>
+    </div></main><Footer />
+  </>
 }
 
 async function postLead(payload) {
   const next = { ...payload, source: payload.source || 'website', platform: payload.platform || 'website', createdAt: payload.createdAt || new Date().toISOString(), status: 'new' }
-  try {
-    const response = await fetch('/api/leads', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(next) })
-    if (!response.ok) throw new Error('lead api failed')
-  } catch {
-    const local = JSON.parse(localStorage.getItem('sy-greece-leads') || '[]')
-    localStorage.setItem('sy-greece-leads', JSON.stringify([{ ...next, id: `${next.leadType || 'lead'}-${Date.now()}` }, ...local]))
-  }
+  const response = await fetch('/api/leads', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(next) })
+  if (!response.ok) throw new Error(`lead api failed (${response.status})`)
+  return true
 }
 
 function ServiceInquiryForm({ leadType, title = '提交咨询需求', intro = '留下基本信息，我们会先沟通需求范围与服务方式。', fields = [], submitLabel = '提交咨询' }) {
   const [sent, setSent] = useState(false)
+  const [error, setError] = useState('')
   const [saving, setSaving] = useState(false)
   async function submit(event) {
-    event.preventDefault(); setSaving(true)
+    event.preventDefault(); setSaving(true); setError(''); setSent(false)
     const form = event.currentTarget
-    await postLead({ ...Object.fromEntries(new FormData(form)), leadType })
-    form.reset(); setSaving(false); setSent(true); window.setTimeout(() => setSent(false), 5000)
+    try {
+      await postLead({ ...Object.fromEntries(new FormData(form)), leadType })
+      form.reset(); setSent(true); window.setTimeout(() => setSent(false), 5000)
+    } catch { setError('提交失败，服务器尚未收到这条咨询。请稍后重试或使用页面上的联系信息。') }
+    finally { setSaving(false) }
   }
-  return <form className="service-inquiry-form" onSubmit={submit}><h2>{title}</h2><p className="form-intro">{intro}</p><div className="field-grid">{fields.map((field) => <label key={field.name}>{field.label}{field.options ? <select name={field.name} defaultValue="" required={field.required}><option value="" disabled>{field.placeholder || '请选择'}</option>{field.options.map((option) => <option key={option}>{option}</option>)}</select> : <input name={field.name} type={field.type || 'text'} placeholder={field.placeholder} required={field.required} />}</label>)}</div><label className="service-form-wide">补充说明<textarea name="requirements" rows="4" placeholder="请写下希望了解的内容、时间和特殊要求" /></label><button className="button button-gold button-block submit-button" type="submit" disabled={saving}>{saving ? '正在提交…' : submitLabel}</button>{sent && <p className="success-inline" role="status"><Check size={15} />已收到，我们会尽快联系你沟通。</p>}</form>
+  return <form className="service-inquiry-form" onSubmit={submit}><h2>{title}</h2><p className="form-intro">{intro}</p><div className="field-grid">{fields.map((field) => <label key={field.name}>{field.label}{field.options ? <select name={field.name} defaultValue="" required={field.required}><option value="" disabled>{field.placeholder || '请选择'}</option>{field.options.map((option) => <option key={option}>{option}</option>)}</select> : <input name={field.name} type={field.type || 'text'} placeholder={field.placeholder} required={field.required} />}</label>)}</div><label className="service-form-wide">补充说明<textarea name="requirements" rows="4" placeholder="请写下希望了解的内容、时间和特殊要求" /></label><button className="button button-gold button-block submit-button" type="submit" disabled={saving}>{saving ? '正在提交…' : submitLabel}</button>{error && <p className="form-error" role="alert">{error}</p>}{sent && <p className="success-inline" role="status"><Check size={15} />咨询已由服务器接收，后续将联系沟通。</p>}</form>
 }
 
 function ConsultationDock() {
   const { pathname } = useLocation()
+  const { content } = useSiteContent()
   const [open, setOpen] = useState(false)
   const [sent, setSent] = useState(false)
+  const [submitError, setSubmitError] = useState('')
   if (pathname.startsWith('/manage-9f3k7')) return null
-  const context = pathname.startsWith('/guides/') ? '预约 Richard' : pathname.startsWith('/heritage-guidance') ? '咨询古迹讲解' : pathname.startsWith('/attractions') ? '咨询景点导览' : pathname.startsWith('/business-travel') ? '咨询商旅方案' : pathname.startsWith('/experiences/') ? '咨询奢享体验' : pathname.startsWith('/knowledge-base') ? '咨询知识库' : '在线咨询'
+  const guideId = pathname.startsWith('/guides/') ? decodeURIComponent(pathname.slice('/guides/'.length).split('/')[0]) : ''
+  const guide = visibleRecords(content.guides).find((item) => String(item.id) === guideId)
+  const context = guide ? `预约${guide.name || guide.id}` : pathname.startsWith('/heritage-guidance') ? '咨询古迹讲解' : pathname.startsWith('/attractions') ? '咨询景点导览' : pathname.startsWith('/business-travel') ? '咨询商旅方案' : pathname.startsWith('/experiences/') ? '咨询奢享体验' : pathname.startsWith('/knowledge-base') ? '咨询知识库' : '在线咨询'
   async function submit(event) {
-    event.preventDefault(); const form = event.currentTarget
-    await postLead({ ...Object.fromEntries(new FormData(form)), leadType: form.leadType.value || 'customization' })
-    form.reset(); setSent(true); window.setTimeout(() => { setSent(false); setOpen(false) }, 3500)
+    event.preventDefault(); const form = event.currentTarget; setSubmitError('')
+    try {
+      await postLead({ ...Object.fromEntries(new FormData(form)), leadType: form.leadType.value || 'customization' })
+      form.reset(); setSent(true); window.setTimeout(() => { setSent(false); setOpen(false) }, 3500)
+    } catch { setSubmitError('提交失败，服务器尚未收到咨询。请稍后重试。') }
   }
-  return <div className="consultation-dock">{open && <div id="consultation-form" className="consultation-popover"><button className="consultation-close" onClick={() => setOpen(false)} aria-label="关闭"><X size={17} /></button>{sent ? <div className="consultation-sent"><Check size={22} /><strong>咨询已收到</strong><span>我们会尽快与你沟通需求范围。</span></div> : <form onSubmit={submit}><Eyebrow>ONLINE CONSULTATION</Eyebrow><h3>先说说你想了解什么</h3><p className="consultation-context">当前页面：{context}</p><label>咨询类型<select name="leadType" defaultValue="customization"><option value="customization">行程定制咨询</option><option value="guide-booking">古迹人文讲解预约</option><option value="vehicle-consultation">在地用车资源对接咨询</option><option value="knowledge-base">景点文史知识库</option><option value="business-travel">商旅随行咨询</option></select></label><label>联系方式<input name="contact" required placeholder="微信 / 手机号 / 邮箱" /></label><label>一句话需求<textarea name="requirements" rows="3" placeholder="例如：想了解雅典古迹讲解或商务陪同"></textarea></label><button className="button button-primary button-block" type="submit">提交咨询</button></form>}</div>}<button className="consultation-trigger" onClick={() => setOpen((value) => !value)} aria-expanded={open} aria-controls="consultation-form"><MessageCircle size={18} />{context}</button></div>
+  return <div className="consultation-dock">{open && <div id="consultation-form" className="consultation-popover"><button className="consultation-close" onClick={() => setOpen(false)} aria-label="关闭"><X size={17} /></button>{sent ? <div className="consultation-sent"><Check size={22} /><strong>咨询已收到</strong><span>我们会尽快与你沟通需求范围。</span></div> : <form onSubmit={submit}><Eyebrow>ONLINE CONSULTATION</Eyebrow><h3>先说说你想了解什么</h3><p className="consultation-context">当前页面：{context}</p><label>咨询类型<select name="leadType" defaultValue="customization"><option value="customization">行程定制咨询</option><option value="guide-booking">古迹人文讲解预约</option><option value="vehicle-consultation">在地用车资源对接咨询</option><option value="knowledge-base">景点文史知识库</option><option value="business-travel">商旅随行咨询</option></select></label><label>联系方式<input name="contact" required placeholder="微信 / 手机号 / 邮箱" /></label><label>一句话需求<textarea name="requirements" rows="3" placeholder="例如：想了解雅典古迹讲解或商务陪同"></textarea></label><button className="button button-primary button-block" type="submit">提交咨询</button>{submitError && <p className="form-error" role="alert">{submitError}</p>}</form>}</div>}<button className="consultation-trigger" onClick={() => setOpen((value) => !value)} aria-expanded={open} aria-controls="consultation-form"><MessageCircle size={18} />{context}</button></div>
 }
 
 function HeritageGuidance() {
@@ -628,51 +583,57 @@ function BusinessTravel() {
   return <><InnerHero eyebrow="BUSINESS TRAVEL CONSULTATION" title="希腊商旅一站式随行服务" subtitle="面向企业拜访、展会、会议和商务接待的行程策划、语言陪同与资源对接咨询。" breadcrumb="商旅随行服务" /><main className="service-page section"><div className="container service-page-grid"><div><SectionTitle eyebrow="BUSINESS TRAVEL" title="把商务沟通与人文体验放在同一条线上" /><p className="service-lead">Richard 李具备武汉大学及英澳双硕士背景，提供高阶中英双语翻译与商旅行程咨询。</p><div className="business-points"><span>涉外商务全程陪同咨询</span><span>商务会议口译、文件笔译需求沟通</span><span>企业拜访、展厅参观与商务晚宴安排咨询</span><span>商务间隙古迹人文深度解读</span><span>宝马 SUV 私享出行资源对接</span><span>商旅与人文融合的一站式方案咨询</span></div></div><ServiceInquiryForm leadType="business-travel" title="提交商旅咨询" intro="请填写商务周期、陪同时长、行业对接需求与随行人数，我们会先确认服务范围与沟通方式。" submitLabel="提交商旅咨询" fields={[{ name: 'businessPeriod', label: '商务周期', placeholder: '如：2026 年 10 月 12–16 日', required: true }, { name: 'companionDuration', label: '陪同时长', placeholder: '如：3 天 / 每天 8 小时', required: true }, { name: 'industryNeeds', label: '行业对接需求', placeholder: '如：医疗器械企业拜访 / 展会陪同', required: true }, { name: 'travelers', label: '随行人数', placeholder: '如：3 人', required: true }, { name: 'contact', label: '联系方式', placeholder: '微信 / 手机号 / 邮箱', required: true }]} /></div></main><ComplianceNotice /><Footer /></>
 }
 
-const knowledgeSpots = [
-  { slug: 'acropolis', name: '雅典卫城', en: 'ACROPOLIS', image: images.athens, preview: '免费预览：从山门、帕特农神庙到城市守护神，先建立一张古典雅典的地图。', audio: '1:00 试听片段占位', unlocked: ['历史与神话音频深度讲解', '建筑细节图文手册', '现场观看顺序与知识点'] },
-  { slug: 'delphi', name: '德尔斐', en: 'DELPHI', image: images.delphi, preview: '免费预览：为什么古希腊人把德尔斐称为世界中心？从神谕、圣路与山谷开始。', audio: '1:00 试听片段占位', unlocked: ['阿波罗神庙与神谕传统', '宝库、剧场与圣路图文', '一对一线上人文咨询入口'] },
-  { slug: 'santorini', name: '圣托里尼', en: 'SANTORINI', image: images.santorini, preview: '免费预览：火山岛、海风与葡萄酒，蓝顶之外的圣岛地质与聚落故事。', audio: '1:00 试听片段占位', unlocked: ['火山地质与岛屿历史音频', '村落、建筑与观景点手册', '行前人文主题咨询'] },
-  { slug: 'knossos', name: '克里特王宫', en: 'KNOSSOS', image: images.crete, preview: '免费预览：米诺斯文明的宫殿、迷宫传说与克里特岛的海上交流。', audio: '1:00 试听片段占位', unlocked: ['米诺斯文明时间线', '宫殿布局与神话图文', '深度阅读与视频咨询'] },
-]
-
 function KnowledgeBaseIndex() {
-  const [content, setContent] = useState({ cities: [], attractions: [] })
-  useEffect(() => {
-    fetch('/api/content').then((response) => response.ok ? response.json() : null).then((payload) => setContent({ cities: payload?.cities || [], attractions: payload?.attractions || [] })).catch(() => {})
-  }, [])
-  const cities = content.cities.filter((city) => city.status !== 'unpublished' && city.status !== 'archived')
-  const attractions = content.attractions.filter((item) => item.status !== 'unpublished' && item.status !== 'archived')
-  return <><InnerHero image={images.athens} eyebrow="KNOWLEDGE BASE" title="景点文史知识库" subtitle="从精选城市进入城市导览，再打开景点详情、参观指南与免费内容预览。" breadcrumb="景点文史知识库"><div className="hero-actions"><Link className="button button-primary" to="/attractions">进入完整城市导览</Link><Link className="button button-ghost" to="/itineraries">查看关联行程</Link></div></InnerHero><main className="knowledge-index section"><div className="container"><SectionTitle eyebrow="SELECT A CITY" title="精选城市" action={{ to: '/attractions', label: '查看全部城市导览' }} /><div className="knowledge-city-grid">{cities.map((city) => <Link className="knowledge-city-card" to={`/attractions/city/${city.id}`} key={city.id}><div>{(city.mosaic || []).slice(0, 3).map((image, index) => <img key={index} src={assetPath(image)} alt="" loading="lazy" decoding="async" />)}</div><strong>{city.name}</strong><span>{city.subtitle || city.country}</span><small>{city.museumCount || 0} 个景点 · {city.audioMinutes || 0} 分钟讲解</small></Link>)}</div>{attractions.length > 0 && <section className="knowledge-featured-attractions"><SectionTitle eyebrow="FREE PREVIEW" title="从一个景点开始" /><div className="knowledge-grid">{attractions.slice(0, 4).map((item) => <Link className="knowledge-card" to={`/attractions/${item.id}`} key={item.id}><img src={assetPath(item.image)} alt={item.name} loading="lazy" decoding="async" /><div><Eyebrow>{item.en || item.cityName}</Eyebrow><h3>{item.name}</h3><p>{item.summary}</p><span className="text-link">查看景点详情 <ArrowRight size={14} /></span></div></Link>)}</div></section>}<div className="knowledge-notice"><LockKeyhole size={18} /><span>景点详情、参观指南、视频 / 语音字段与关联行程均读取 Website 内容接口；付费解锁能力按当前生产支付与会员状态开放。</span></div></div></main><ComplianceNotice /><Footer /></>
+  const { content, status, error } = useSiteContent()
+  const cities = visibleRecords(content.cities)
+  const attractions = visibleRecords(content.attractions)
+  return <><InnerHero image={visibleRecords(content.countries)[0]?.heroImage} eyebrow="KNOWLEDGE BASE" title="景点文史知识库" subtitle="按 Website 已发布的城市与景点内容浏览参观资料和免费预览。" breadcrumb="景点文史知识库"><div className="hero-actions"><Link className="button button-primary" to="/attractions">进入城市导览</Link><Link className="button button-ghost" to="/itineraries">查看参考行程</Link></div></InnerHero><main className="knowledge-index section"><div className="container">
+    {status === 'loading' && <div className="content-state" role="status">正在读取 Website 内容…</div>}{status === 'error' && <div className="content-state error" role="alert">{error}</div>}
+    <SectionTitle eyebrow="SELECT A CITY" title="已发布城市" action={{ to: '/attractions', label: '查看全部城市导览' }} /><div className="knowledge-city-grid">{cities.map((city) => <Link className="knowledge-city-card" to={`/attractions/city/${city.id}`} key={city.id}><div>{(city.mosaic || []).slice(0, 3).map((image, index) => <img key={index} src={assetPath(image)} alt="" loading="lazy" decoding="async" />)}</div><strong>{city.name}</strong><span>{city.subtitle || city.country}</span><small>{city.museumCount ?? ''}{city.audioMinutes ? ` · ${city.audioMinutes} 分钟音频` : ''}</small></Link>)}</div>
+    {attractions.length > 0 && <section className="knowledge-featured-attractions"><SectionTitle eyebrow="PUBLISHED ATTRACTIONS" title="景点免费预览" /><div className="knowledge-grid">{attractions.slice(0, 4).map((item) => <Link className="knowledge-card" to={`/knowledge-base/${item.id}`} key={item.id}>{item.image && <img src={assetPath(item.image)} alt={item.name} loading="lazy" decoding="async" />}<div><Eyebrow>{item.en || item.cityName || item.city}</Eyebrow><h3>{item.name}</h3><p>{item.deepDive?.preview || item.summary}</p><span className="text-link">查看内容 <ArrowRight size={14} /></span></div></Link>)}</div></section>}
+    {status === 'ready' && !cities.length && !attractions.length && <div className="empty-state"><Compass/><h2>暂未发布城市或景点内容</h2><p>内容发布后会在这里显示。</p></div>}
+    <div className="knowledge-notice"><LockKeyhole size={18} /><span>Web 只展示后台公开字段和公开媒体地址；城市购买、会员和微信支付尚未形成可验证的 Web 权益链路，不能在此解锁付费内容。</span></div>
+  </div></main><ComplianceNotice /><Footer /></>
 }
 
 function KnowledgeBase() {
   const { slug } = useParams()
-  const spot = knowledgeSpots.find((item) => item.slug === slug)
-  if (!spot) return <KnowledgeBaseIndex />
-  if (spot) return <><InnerHero image={spot.image} eyebrow={`KNOWLEDGE BASE · ${spot.en}`} title={spot.name} subtitle="免费预览一段景点背景，完整音频与图文内容将在真实支付/会员能力接入后开放。" breadcrumb={`景点文史知识库 / ${spot.name}`} /><main className="knowledge-detail section"><div className="container knowledge-detail-grid"><article className="knowledge-preview"><Eyebrow>FREE PREVIEW</Eyebrow><h2>{spot.name}：先听懂，再看见</h2><p>{spot.preview}</p><div className="audio-placeholder"><Headphones size={20} /><span>{spot.audio}</span><button type="button" disabled>试听占位</button></div><p className="knowledge-disclaimer">当前为内容结构与免费预览展示，未上线真实购买、支付或会员权益。</p></article><aside className="knowledge-unlock"><Eyebrow>UNLOCK LATER</Eyebrow><h3>付费解锁板块（占位）</h3>{spot.unlocked.map((item) => <div key={item}><Check size={15} />{item}</div>)}<button className="button button-deep button-block" type="button" disabled>支付 / 会员功能后续接入</button><Link className="text-link" to="/knowledge-base">返回知识库目录 <ChevronRight size={15} /></Link></aside></div></main><ComplianceNotice /><Footer /></>
-  return <><InnerHero eyebrow="KNOWLEDGE BASE" title="景点付费文史知识库" subtitle="先从免费预览认识雅典卫城、德尔斐、圣岛与克里特王宫，完整内容能力后续接入。" breadcrumb="景点文史知识库" /><main className="knowledge-index section"><div className="container"><SectionTitle eyebrow="GREEK HISTORY · AUDIO · GUIDE" title="把景点从打卡变成理解" /><div className="knowledge-grid">{knowledgeSpots.map((item) => <article className="knowledge-card" key={item.slug}><img src={assetPath(item.image)} alt={item.name} loading="lazy" decoding="async" /><div><Eyebrow>{item.en}</Eyebrow><h3>{item.name}</h3><p>{item.preview}</p><Link className="text-link" to={`/knowledge-base/${item.slug}`}>查看免费预览 <ArrowRight size={14} /></Link></div></article>)}</div><div className="knowledge-notice"><LockKeyhole size={18} /><span>音频深度讲解、图文手册和会员订阅目前仅做页面占位，真实支付与会员系统需后续接入，不代表已上线购买。</span></div></div></main><ComplianceNotice /><Footer /></>
+  const { content, status, error } = useSiteContent()
+  const spot = visibleRecords(content.attractions).find((item) => item.id === slug)
+  useEffect(() => { if (slug && status === 'ready' && spot) recordRecentContent('attraction', spot.id) }, [slug, status, spot?.id])
+  if (!slug) return <KnowledgeBaseIndex />
+  if (status === 'loading') return <main className="section"><div className="container content-state" role="status">正在读取景点内容…</div></main>
+  if (status === 'error') return <main className="section"><div className="container content-state error" role="alert">{error}</div></main>
+  if (!spot) return <ContentNotFound title="没有找到此景点内容" description="该 attractionId 尚未发布或已下架。" backTo="/knowledge-base" backLabel="返回知识库" />
+  const preview = spot.deepDive?.preview || spot.summary || ''
+  const previewAudio = spot.deepDive?.previewAudioUrl || spot.deepDive?.audioUrl || ''
+  const locked = Array.isArray(spot.deepDive?.locked) ? spot.deepDive.locked : []
+  return <><InnerHero image={spot.image} eyebrow={`KNOWLEDGE BASE · ${spot.en || spot.city}`} title={spot.name} subtitle={spot.summary || ''} breadcrumb={`景点文史知识库 / ${spot.name}`} />
+    <main className="knowledge-detail section"><div className="container"><ContentActions contentType="attraction" contentId={spot.id} title={spot.name}/><div className="knowledge-detail-grid"><article className="knowledge-preview"><Eyebrow>PUBLIC PREVIEW</Eyebrow><h2>{spot.name}</h2>{preview && <p>{preview}</p>}{previewAudio ? <audio className="exhibit-audio" controls preload="none" src={assetPath(previewAudio)}>当前浏览器不支持音频播放。</audio> : <p className="knowledge-disclaimer">该景点尚未配置公开试听音频。</p>}<Link className="text-link" to={`/attractions/${spot.id}`}>查看完整参观指南 <ArrowRight size={14}/></Link></article>
+      <aside className="knowledge-unlock"><Eyebrow>WEB LIMITATION</Eyebrow><h3>付费权益未在 Website 开通</h3>{locked.map((item, index) => <div key={typeof item === 'string' ? item : item.id || index}><Check size={15}/>{typeof item === 'string' ? item : item.title || item.text}</div>)}<p>小程序城市购买仍处于接入说明状态，且其支付曾返回商户权限错误。Web 不模拟支付或解锁状态。</p><Link className="button button-deep button-block" to={`/customize?attractionId=${encodeURIComponent(spot.id)}`}>咨询该景点内容</Link><Link className="text-link" to="/knowledge-base">返回知识库目录 <ChevronRight size={15} /></Link></aside></div></div></main><ComplianceNotice/><Footer/>
+  </>
 }
 
 function Customize() {
   const [language] = useLanguage()
+  const [params] = useSearchParams()
+  const linkedIds = Object.fromEntries(['routeId', 'destinationId', 'cityId', 'attractionId', 'experienceId'].map((key) => [key, params.get(key) || '']).filter(([, value]) => value))
   const [themes, setThemes] = useState(['历史文明'])
   const [sent, setSent] = useState(false)
+  const [submitError, setSubmitError] = useState('')
   const [saving, setSaving] = useState(false)
   const themeOptions = ['历史文明', '海滩海岛', '餐厅偏好', '特别安排', '体育活动', '高端私旅', '商务', '司导', '翻译']
   function toggleTheme(theme) { setThemes((current) => current.includes(theme) ? current.filter((t) => t !== theme) : [...current, theme]) }
   async function submit(e) {
     e.preventDefault(); setSaving(true)
     const form = e.currentTarget
-    const payload = { ...Object.fromEntries(new FormData(form)), themes, leadType: 'customization', createdAt: new Date().toISOString(), status: 'new' }
+    const payload = { ...Object.fromEntries(new FormData(form)), ...linkedIds, themes, leadType: 'customization', createdAt: new Date().toISOString(), status: 'new' }
+    setSubmitError(''); setSent(false)
     try {
-      const response = await fetch('/api/leads', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) })
-      if (!response.ok) throw new Error('lead api failed')
-    } catch {
-      const local = JSON.parse(localStorage.getItem('sy-greece-leads') || '[]')
-      localStorage.setItem('sy-greece-leads', JSON.stringify([{ ...payload, id: `lead-${Date.now()}` }, ...local]))
-    } finally {
-      setSaving(false); setSent(true); form.reset(); setThemes(['历史文明']); setTimeout(() => setSent(false), 5000)
-    }
+      await postLead(payload)
+      form.reset(); setThemes(['历史文明']); setSent(true); setTimeout(() => setSent(false), 5000)
+    } catch { setSubmitError('提交失败，服务器尚未收到这条需求。请稍后重试或直接联系顾问。') }
+    finally { setSaving(false) }
   }
   return (
     <>
@@ -681,13 +642,15 @@ function Customize() {
         <div className="container form-layout">
           <form className="custom-form" onSubmit={submit}>
             <h2>行程定制咨询问卷</h2>
+            {Object.entries(linkedIds).map(([key, value]) => <input key={key} type="hidden" name={key} value={value} />)}
             <div className="field-grid"><label>意向目的地<input name="destination" required placeholder="如：雅典 + 圣托里尼" /></label><label>出行日期<input name="travelDate" type="date" required /></label><label>预计天数<input name="duration" required placeholder="如：7 天" /></label><label>出行人数<input name="travelers" required placeholder="如：2 大 1 小" /></label><label>儿童年龄<input name="childAges" placeholder="如：4 岁、8 岁；无儿童可留空" /></label><label>单日车程上限<input name="maxDriveHours" type="number" min="0" max="12" placeholder="如：3 小时" /></label><label>预算范围<select name="budget" defaultValue=""><option value="">请选择预算范围</option><option>先沟通需求</option><option>1–2 万元 / 人</option><option>2–4 万元 / 人</option><option>4 万元以上 / 人</option></select></label></div>
             <fieldset><legend>关注方向（可多选）</legend><div className="theme-chips">{themeOptions.map((theme) => <button type="button" key={theme} className={themes.includes(theme) ? 'active' : ''} onClick={() => toggleTheme(theme)}>{themes.includes(theme) && <Check size={14} />}{theme}</button>)}</div></fieldset>
             <label>特别需求<textarea name="requirements" rows="5" placeholder="请补充历史兴趣、餐厅偏好、特别安排、体育活动或语言陪同需求" /></label>
             <label>联系电话 / 微信<input name="contact" required placeholder="用于顾问联系你沟通" /></label>
             <button className="button button-gold button-block submit-button" type="submit" disabled={saving}>{saving ? '正在提交…' : '提交行程咨询'}</button>
             <p className="privacy">提交即表示同意我们通过电话 / 微信联系你，信息仅用于咨询沟通与方案规划。</p>
-            {sent && <div className="success-message"><Check />需求已收到，定制师会在 24 小时内联系你。</div>}
+            {submitError && <p className="form-error" role="alert">{submitError}</p>}
+            {sent && <div className="success-message"><Check />服务器已接收需求，顾问会按页面公布的回复时限联系你。</div>}
           </form>
           <aside className="custom-aside"><div className="advisor-card"><h2>{language === 'en' ? 'Prefer a direct conversation?' : language === 'zh-TW' ? '想直接聊聊？' : '更想直接聊？'}</h2><div className="advisor"><img className="advisor-avatar" src={images.consultantAvatar} alt="Jenny" /><div><h3>{language === 'en' ? 'Jenny · Greece Trip Planner' : language === 'zh-TW' ? 'Jenny · 希臘行程規劃師' : 'Jenny · 希腊行程规划师'}</h3><p>{language === 'en' ? 'Local Greece planning for families and businesses' : language === 'zh-TW' ? '希臘在地行程規劃，服務家庭與企業客戶' : '希腊在地行程规划，服务家庭与企业客户'}</p></div></div><p className="advisor-wechat">{language === 'en' ? 'WeChat: SYGJ1130 · replies within 24 hours' : language === 'zh-TW' ? '微信號：SYGJ1130 · 24 小時內回覆' : '微信号：SYGJ1130 · 24 小时内回复'}</p><div className="qr"><img src={images.consultantQr} alt="Jenny WeChat QR code" /><span>{language === 'en' ? 'Scan to add WeChat' : language === 'zh-TW' ? '掃碼添加微信' : '扫码添加微信'}</span></div><a className="advisor-phone" href="tel:+8615071465661">{language === 'en' ? 'Call Jenny · +86 150 7146 5661' : language === 'zh-TW' ? '致電 Jenny · +86 150 7146 5661' : '致电 Jenny · +86 150 7146 5661'}</a></div><div className="promise-card"><h2>咨询流程</h2><p>· 提交问卷 → 需求沟通</p><p>· 输出行程规划建议 → 沟通咨询费用</p><p>· 交通、场地与劳务由客户与本土主体直接确认</p></div></aside>
         </div>
@@ -699,49 +662,60 @@ function Customize() {
 
 function DestinationDetail() {
   const { slug } = useParams()
-  const item = destinations.find((entry) => entry.slug === slug)
+  const { content, status, error } = useSiteContent()
+  const destinationsById = visibleRecords(content.destinations)
+  const cities = visibleRecords(content.cities)
+  const attractions = visibleRecords(content.attractions)
+  const item = destinationsById.find((entry) => entry.id === slug)
+  const city = item?.cityId ? cities.find((entry) => entry.id === item.cityId) : null
+  const associationIds = Array.isArray(item?.attractionIds) ? item.attractionIds.map(String) : item?.attractionId ? [String(item.attractionId)] : []
+  const attractionIds = new Set(associationIds)
+  const relatedAttractions = attractions.filter((entry) => attractionIds.has(String(entry.id)))
+  const relatedRoutes = visibleRecords(content.routes).filter((route) => (route.destinationIds || []).map(String).includes(String(item?.id)))
+  const relatedItineraries = visibleRecords(content.sampleItineraries).filter((trip) => (trip.itinerary || []).some((day) => (day.attractionIds || []).some((id) => attractionIds.has(String(id)))))
+  useEffect(() => { if (status === 'ready' && item) recordRecentContent('destination', item.id) }, [status, item?.id])
+  if (status === 'loading') return <main className="section"><div className="container content-state" role="status">正在读取目的地内容…</div></main>
+  if (status === 'error') return <main className="section"><div className="container content-state error" role="alert">{error}。请稍后重试。</div></main>
   if (!item) return <NotFound />
-  const factIcons = [SunMedium, Clock3, Plane]
-  const relatedRoutes = routes.filter((route) => (route.destinations || []).includes(item.slug))
-  return (
-    <>
-      <InnerHero image={item.image} eyebrow={item.eyebrow} title={item.name} subtitle={item.headline} breadcrumb={`精选目的地 / ${item.name}`} />
-      <main className="destination-detail section">
-        <div className="container">
-          <article className="destination-intro"><div><Eyebrow>ABOUT {item.en}</Eyebrow><h2>{item.headline}</h2>{item.intro.map((paragraph, index) => <p key={index}>{paragraph}</p>)}</div><div className="destination-facts">{item.facts.map(([label, value], index) => { const Icon = factIcons[index] || SunMedium; return <div key={label}><Icon /><span><small>{label}</small><strong>{value}</strong></span></div> })}</div></article>
-          {relatedRoutes.length > 0 && (
-            <section className="included-routes"><SectionTitle eyebrow="CURATED ROUTES" title={`含${item.name}的线路`} action={{ to: '/customize', label: `定制我的${item.name}行程` }} /><div className="route-grid">{relatedRoutes.map((route) => <RouteCard key={route.slug} route={route} />)}</div></section>
-          )}
-          {relatedRoutes.length === 0 && (
-            <section className="included-routes"><SectionTitle eyebrow="TAILOR-MADE" title={`${item.name}暂无固定线路`} action={{ to: '/customize', label: `定制我的${item.name}行程` }} /><div className="empty-state"><Compass /><h2>按你的节奏定制</h2><p>{item.name}目前以行程规划咨询方式沟通，告诉我们出行时间与偏好，我们会先确认需求范围与服务方式。</p><Link className="button button-primary" to="/customize">提交行程咨询</Link></div></section>
-          )}
-        </div>
-      </main>
-      <GoldCTA /><Footer />
-    </>
-  )
+  const heading = item.name || item.title || item.id
+  const summary = city?.description || city?.summary || item.description || item.desc || ''
+  return <>
+    <InnerHero image={item.image || city?.mosaic?.[0]} eyebrow={item.nameEn || item.type || 'DESTINATION'} title={heading} subtitle={summary} breadcrumb={`精选目的地 / ${heading}`} />
+    <main className="destination-detail section"><div className="container"><ContentActions contentType="destination" contentId={item.id} title={heading} />
+      <article className="destination-intro"><div><Eyebrow>{city?.nameEn || item.nameEn || 'DESTINATION GUIDE'}</Eyebrow><h2>{city?.subtitle || heading}</h2>{summary && <p>{summary}</p>}{city?.country && <p>{city.country}</p>}</div>
+        {(city?.mosaic || []).length > 0 && <div className="destination-mosaic">{city.mosaic.map((image, index) => <img key={`${image}-${index}`} src={assetPath(image)} alt="" loading="lazy" decoding="async" />)}</div>}
+      </article>
+      {relatedAttractions.length > 0 && <section className="included-routes"><SectionTitle eyebrow="ATTRACTIONS" title={`${heading} · 景点导览`} /><div className="search-attraction-grid">{relatedAttractions.map((attraction) => <SearchAttractionCard key={attraction.id} item={attraction} />)}</div></section>}
+      {relatedItineraries.length > 0 && <section className="included-routes"><SectionTitle eyebrow="SAMPLE ITINERARIES" title="关联参考行程" /><div className="itinerary-card-grid">{relatedItineraries.map((trip) => <Link to={`/itineraries/${trip.id}`} className="itinerary-mini-card" key={trip.id}><img src={assetPath(trip.cover)} alt={trip.title} loading="lazy" decoding="async"/><div><h3>{trip.title}</h3><p>{trip.summary}</p></div></Link>)}</div></section>}
+      {relatedRoutes.length > 0 && <section className="included-routes"><SectionTitle eyebrow="CURATED ROUTES" title="关联路线" action={{ to: `/customize?destinationId=${encodeURIComponent(item.id)}`, label: '咨询此目的地' }} /><div className="route-grid">{relatedRoutes.map((route) => <RouteCard key={route.id} route={route} />)}</div></section>}
+      {!relatedAttractions.length && !relatedItineraries.length && !relatedRoutes.length && <div className="itinerary-notice"><Info size={16}/><span>此目的地目前没有配置关联景点、参考行程或路线。可提交咨询，后台配置后会在此展示。</span></div>}
+    </div></main><GoldCTA /><Footer />
+  </>
 }
-
-const SEARCH_EXPERIENCES = LUXURY_EXPERIENCES.map(({ id, title, desc, image }) => ({ id, title, desc, image }))
 
 function LuxuryExperienceDetail({ slugOverride = '' }) {
   const { slug: routeSlug } = useParams()
   const slug = slugOverride || routeSlug || ''
-  const item = LUXURY_EXPERIENCES.find((entry) => entry.id === slug)
-  const [phone, setPhone] = useState('15071465661')
-  useEffect(() => {
-    fetch('/api/content').then((response) => response.ok ? response.json() : null).then((payload) => {
-      const configured = payload?.settings?.consultPhone || (payload?.settings?.phone && !String(payload.settings.phone).includes('000 000') ? payload.settings.phone : '')
-      if (configured) setPhone(configured)
-    }).catch(() => {})
-  }, [])
+  const { content, status, error } = useSiteContent()
+  const experiences = visibleRecords(content.experiences || content.settings?.experiences || [])
+  const item = experiences.find((entry) => entry.id === slug)
+  const phone = String(content.settings?.consultPhone || content.settings?.phone || '').trim()
+  const tel = phone.replace(/[^\d+]/g, '')
+  useEffect(() => { if (status === 'ready' && item) recordRecentContent('experience', item.id) }, [status, item?.id])
+  if (status === 'loading') return <main className="section"><div className="container content-state" role="status">正在读取体验内容…</div></main>
+  if (status === 'error') return <main className="section"><div className="container content-state error" role="alert">{error}</div></main>
   if (!item) return <NotFound />
-  const tel = String(phone).replace(/[^\d+]/g, '')
+  const points = Array.isArray(item.points) ? item.points : []
   return <>
-    <InnerHero image={item.image} eyebrow="SIGNATURE EXPERIENCE" title={item.title} subtitle={item.desc} breadcrumb={`奢享体验 / ${item.title}`}>
-      <div className="detail-hero-actions"><strong>按日期与人数沟通报价</strong><a className="button button-primary" href={`tel:${tel}`}>直接电话咨询 <Phone size={15} /></a></div>
+    <InnerHero image={item.image} eyebrow={item.nameEn || item.label || 'EXPERIENCE'} title={item.title} subtitle={item.desc || item.summary} breadcrumb={`体验服务 / ${item.title}`}>
+      <div className="detail-hero-actions"><strong>按实际条件咨询</strong><Link className="button button-primary" to={`/customize?experienceId=${encodeURIComponent(item.id)}`}>咨询此项服务 <ArrowRight size={15} /></Link></div>
     </InnerHero>
-    <main className="detail-page section luxury-detail-page"><div className="container detail-layout"><div><article className="intro-card"><Eyebrow>PRIVATE ARRANGEMENT</Eyebrow><h2>把重要的时光，交给一份从容安排</h2><p>{item.desc} 我们会先确认出行日期、人数、目的地与服务边界，再提供可执行的协调方案与报价。</p></article><section className="luxury-detail-section"><SectionTitle eyebrow="WHAT WE COORDINATE" title="服务内容" /><div className="service-points">{item.points.map((point) => <div key={point}><Check size={16} /><span>{point}</span></div>)}</div></section><section className="luxury-detail-section"><SectionTitle eyebrow="BEFORE CONFIRMATION" title="准备与确认" /><div className="luxury-preparation"><p>请提前提供预计日期、人数、行李或餐饮偏好，以及希望前往的目的地。实际可行性会结合天气、机位 / 船期、码头与当地运营方确认。</p><p>本页面仅提供文化与行程咨询、资源信息和沟通入口；交通、场地及劳务由客户与希腊本土主体直接确认和结算。</p></div></section></div><aside className="trip-aside"><div className="summary-card"><h2>直接咨询</h2><p>告诉顾问你的日期、人数与目的地，我们会先确认资源与报价。</p><a className="button button-primary button-block" href={`tel:${tel}`}><Phone size={15} />拨打顾问电话</a><Link className="button button-gold button-block" to="/customize">填写详细需求</Link><small className="luxury-phone-note">咨询电话：{phone}</small></div></aside></div></main><GoldCTA /><Footer />
+    <main className="detail-page section luxury-detail-page"><div className="container"><ContentActions contentType="experience" contentId={item.id} title={item.title} /></div><div className="container detail-layout"><div>
+      {(item.desc || item.summary) && <article className="intro-card"><Eyebrow>{item.nameEn || item.label || 'EXPERIENCE'}</Eyebrow><h2>{item.subtitle || item.title}</h2><p>{item.desc || item.summary}</p></article>}
+      {points.length > 0 && <section className="luxury-detail-section"><SectionTitle eyebrow="SERVICE DETAILS" title="服务内容" /><div className="service-points">{points.map((point, index) => <div key={typeof point === 'string' ? point : point.id || index}><Check size={16} /><span>{typeof point === 'string' ? point : point.text || point.title}</span></div>)}</div></section>}
+      {item.notice && <section className="luxury-detail-section"><SectionTitle eyebrow="BEFORE CONFIRMATION" title="说明" /><div className="luxury-preparation"><p>{item.notice}</p></div></section>}
+      <div className="itinerary-notice"><Info size={16}/><span>页面仅用于咨询；资源、可行性和费用需经服务方确认，本页面不收款。</span></div>
+    </div><aside className="trip-aside"><div className="summary-card"><h2>咨询服务</h2><p>提交日期、人数及需求，由顾问确认资源与服务范围。</p>{tel && <a className="button button-primary button-block" href={`tel:${tel}`}><Phone size={15} />拨打咨询电话</a>}<Link className="button button-gold button-block" to={`/customize?experienceId=${encodeURIComponent(item.id)}`}>填写详细需求</Link>{phone && <small className="luxury-phone-note">咨询电话：{phone}</small>}</div></aside></div></main><GoldCTA /><Footer />
   </>
 }
 
@@ -754,36 +728,26 @@ function SearchAttractionCard({ item }) {
 }
 
 function SearchExperienceCard({ item }) {
-  return <article className="experience-card"><div className="experience-image"><img src={assetPath(item.image)} alt={item.title} loading="lazy" decoding="async" /><span>高端定制</span></div><div><h3>{item.title}</h3><p>{item.desc}</p><Link to="/customize">咨询{item.title}方案 <ArrowRight size={14} /></Link></div></article>
+  return <article className="experience-card"><div className="experience-image">{item.image && <img src={assetPath(item.image)} alt={item.title} loading="lazy" decoding="async" />}<span>{item.label || '体验服务'}</span></div><div><h3>{item.title}</h3><p>{item.desc || item.summary}</p><Link to={`/experiences/${item.id}`}>查看服务详情 <ArrowRight size={14} /></Link></div></article>
 }
 
 function SearchPage() {
   const [params] = useSearchParams()
   const keyword = (params.get('q') || '').trim()
   const [filter, setFilter] = useState('all')
-  const [content, setContent] = useState({ routes, destinations, attractions: [] })
-  useEffect(() => {
-    if (window.location.protocol === 'file:') return
-    fetch('/api/content').then((response) => response.ok ? response.json() : null).then((payload) => {
-      if (!payload) return
-      setContent({
-        routes: payload.routes?.length ? payload.routes : routes,
-        destinations: payload.destinations?.length ? payload.destinations : destinations,
-        attractions: payload.attractions || [],
-      })
-    }).catch(() => {})
-  }, [])
+  const { content, status, error } = useSiteContent()
+  const experiences = visibleRecords(content.experiences || content.settings?.experiences || [])
   const results = useMemo(() => {
     const records = [
-      ...content.routes.map((item) => ({ type: 'route', item })),
-      ...content.destinations.map((item) => ({ type: 'destination', item })),
-      ...content.attractions.map((item) => ({ type: 'attraction', item })),
-      ...SEARCH_EXPERIENCES.map((item) => ({ type: 'experience', item })),
+      ...visibleRecords(content.routes).map((item) => ({ type: 'route', item })),
+      ...visibleRecords(content.destinations).map((item) => ({ type: 'destination', item })),
+      ...visibleRecords(content.attractions).map((item) => ({ type: 'attraction', item })),
+      ...experiences.map((item) => ({ type: 'experience', item })),
     ]
     if (!keyword) return records
     const normalized = keyword.toLocaleLowerCase()
     return records.filter(({ item }) => searchText(item).includes(normalized))
-  }, [content, keyword])
+  }, [content, experiences, keyword])
   const counts = useMemo(() => Object.fromEntries(['route', 'destination', 'attraction', 'experience'].map((type) => [type, results.filter((entry) => entry.type === type).length])), [results])
   const filters = [['all', `全部 ${results.length}`], ['route', `路线 ${counts.route}`], ['destination', `目的地 ${counts.destination}`], ['attraction', `景点 ${counts.attraction}`], ['experience', `奢享体验 ${counts.experience}`]].filter(([id]) => id === 'all' || counts[id] > 0)
   useEffect(() => {
@@ -799,7 +763,7 @@ function SearchPage() {
     <>
       <section className="search-top"><Header solid /><div className="container search-intro"><Eyebrow dark>SEARCH GREECE TRAVEL BUTLER</Eyebrow><h1>搜索希腊灵感</h1><SearchBox initial={keyword} large /></div></section>
       <main className="search-results section">
-        <div className="container"><p className="result-summary">{keyword ? `“${keyword}” 的相关结果` : '全部可探索内容'} · 共 {results.length} 条</p><div className="filter-chips">{filters.map(([id, label]) => <button key={id} className={filter === id ? 'active' : ''} aria-pressed={filter === id} onClick={() => setFilter(id)}>{label}</button>)}</div>
+        <div className="container">{status === 'loading' && <div className="content-state" role="status">正在搜索 Website 内容…</div>}{status === 'error' && <div className="content-state error" role="alert">{error}</div>}<p className="result-summary">{keyword ? `“${keyword}” 的相关结果` : '全部可探索内容'} · 共 {results.length} 条</p><div className="filter-chips">{filters.map(([id, label]) => <button key={id} className={filter === id ? 'active' : ''} aria-pressed={filter === id} onClick={() => setFilter(id)}>{label}</button>)}</div>
           {routeResults.length > 0 && <section><SectionTitle eyebrow="CURATED ROUTES" title="相关路线" /><div className="route-grid">{routeResults.map((route) => <RouteCard compact key={route.id || route.slug || route.title} route={route} />)}</div></section>}
           {destinationResults.length > 0 && <section className="search-destinations"><SectionTitle eyebrow="DESTINATIONS" title="相关目的地" /><div className="destination-grid">{destinationResults.map((item) => <DestinationCard key={item.id || item.slug || item.name} item={item} />)}</div></section>}
           {attractionResults.length > 0 && <section className="search-attractions"><SectionTitle eyebrow="ATTRACTIONS & MUSEUMS" title="相关景点" /><div className="search-attraction-grid">{attractionResults.map((item) => <SearchAttractionCard key={item.id} item={item} />)}</div></section>}
@@ -812,81 +776,110 @@ function SearchPage() {
 }
 
 function ToolsPage() {
-  const [cny, setCny] = useState(783)
-  const eur = useMemo(() => (Number(cny || 0) / 7.83).toFixed(2), [cny])
-  return (
-    <>
-      <section className="tools-top"><Header solid /><div className="container tools-intro"><Eyebrow dark>TRAVEL ESSENTIALS</Eyebrow><h1>希腊旅行工具箱</h1><p>签证、汇率、天气与行程日历，出发前最需要的信息都在这里。</p></div></section>
-      <main className="tools-section section"><div className="container tool-grid">
-        <article className="tool-card"><div className="tool-icon"><Landmark /></div><div><Eyebrow>SCHENGEN VISA</Eyebrow><h2>签证指引</h2><p>希腊属于申根区，建议至少提前 45 天准备申请。</p><ul><li>护照、照片、申请表与在职 / 在读证明</li><li>机酒预订单、旅行保险与银行流水</li><li>按常住地选择北京、上海或广州领区</li></ul><Link to="/customize">获取材料清单与预审服务 <ArrowRight size={14} /></Link></div></article>
-        <article className="tool-card"><div className="tool-icon"><Euro /></div><div><Eyebrow>EXCHANGE RATE</Eyebrow><h2>汇率换算</h2><div className="rate-banner">1 EUR <span>≈</span> 7.83 CNY</div><label className="converter"><span>人民币 CNY</span><input name="cny" type="number" value={cny} onChange={(e) => setCny(e.target.value)} /><strong>≈ {eur} EUR</strong></label><p>建议在国内兑换少量欧元现金，大额消费使用免货币转换费的银行卡。</p></div></article>
-        <article className="tool-card"><div className="tool-icon"><CloudSun /></div><div><Eyebrow>WEATHER NOW</Eyebrow><h2>希腊天气</h2><div className="weather-list"><div><span>雅典</span><strong>28°</strong><small>晴</small></div><div><span>圣托里尼</span><strong>25°</strong><small>海风</small></div><div><span>米克诺斯</span><strong>24°</strong><small>晴间云</small></div></div><p>岛上日照强、风力大，建议携带 SPF50 防晒与薄外套。天气为行前示意。</p></div></article>
-        <article className="tool-card"><div className="tool-icon"><CalendarDays /></div><div><Eyebrow>TRIP CALENDAR</Eyebrow><h2>行程日历</h2><p>定制方案确认后，可将每日酒店、用车、航班与预约信息同步到手机日历，并支持离线查看。</p><div className="calendar-preview"><span>OCT</span><strong>12</strong><small>雅典卫城 · 09:00</small></div><Link className="button button-primary" to="/customize">开始定制我的行程</Link></div></article>
-      </div></main><GoldCTA /><Footer />
-    </>
-  )
+  const { content, status, error } = useSiteContent()
+  const [cny, setCny] = useState('')
+  const [startDate, setStartDate] = useState('')
+  const [selectedTripId, setSelectedTripId] = useState('')
+  const tools = content.settings?.travelTools || {}
+  const trips = visibleRecords(content.sampleItineraries)
+  const rate = Number(tools.eurCny || 0)
+  const eur = rate > 0 ? (Number(cny || 0) / rate).toFixed(2) : ''
+  const weatherCities = Array.isArray(tools.weatherCities) ? tools.weatherCities : []
+  const visa = tools.visa && typeof tools.visa === 'object' ? tools.visa : {}
+  const selectedTrip = trips.find((trip) => trip.id === selectedTripId)
+  useEffect(() => { if (trips.length && !trips.some((trip) => trip.id === selectedTripId)) setSelectedTripId(trips[0].id) }, [trips, selectedTripId])
+  function exportCalendar() {
+    if (!selectedTrip || !startDate) return
+    const base = new Date(`${startDate}T12:00:00`)
+    const escape = (value) => String(value || '').replace(/\\/g, '\\\\').replace(/\n/g, '\\n').replace(/,/g, '\\,').replace(/;/g, '\\;')
+    const events = (selectedTrip.itinerary || []).map((day, index) => {
+      const start = new Date(base); start.setDate(start.getDate() + Math.max(0, Number(day.day || index + 1) - 1))
+      const end = new Date(start); end.setDate(end.getDate() + 1)
+      const dateCode = (date) => `${date.getFullYear()}${String(date.getMonth() + 1).padStart(2, '0')}${String(date.getDate()).padStart(2, '0')}`
+      const summary = `D${day.day || index + 1} ${day.title || selectedTrip.title}`
+      const description = [day.city, day.desc].filter(Boolean).join(' · ')
+      return ['BEGIN:VEVENT', `UID:${selectedTrip.id}-${index + 1}@sy-greece`, `DTSTAMP:${new Date().toISOString().replace(/[-:]/g, '').replace(/\.\d{3}/, '')}`, `DTSTART;VALUE=DATE:${dateCode(start)}`, `DTEND;VALUE=DATE:${dateCode(end)}`, `SUMMARY:${escape(summary)}`, `DESCRIPTION:${escape(description)}`, `URL:${window.location.origin}/itineraries/${encodeURIComponent(selectedTrip.id)}`, 'END:VEVENT'].join('\r\n')
+    })
+    const calendar = ['BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//SY Greece Website//Trip Calendar//ZH', 'CALSCALE:GREGORIAN', ...events, 'END:VCALENDAR'].join('\r\n')
+    const url = URL.createObjectURL(new Blob([calendar], { type: 'text/calendar;charset=utf-8' }))
+    const link = document.createElement('a'); link.href = url; link.download = `${selectedTrip.id}.ics`; link.click(); window.setTimeout(() => URL.revokeObjectURL(url), 1000)
+  }
+  return <>
+    <section className="tools-top"><Header solid /><div className="container tools-intro"><Eyebrow dark>TRAVEL ESSENTIALS</Eyebrow><h1>希腊旅行工具箱</h1><p>公开参考资料由 Website 后台维护；汇率和天气不会被标记为实时数据。</p></div></section>
+    <main className="tools-section section"><div className="container tool-grid">
+      {status === 'error' && <div className="content-state error" role="alert">{error}</div>}
+      <article className="tool-card"><div className="tool-icon"><Landmark /></div><div><Eyebrow>SCHENGEN VISA</Eyebrow><h2>{visa.title || '签证参考'}</h2>{visa.summary && <p>{visa.summary}</p>}{Array.isArray(visa.checklist) && visa.checklist.length > 0 ? <ul>{visa.checklist.map((item, index) => <li key={index}>{typeof item === 'string' ? item : item.text || item.title}</li>)}</ul> : <p>Website 后台尚未配置签证材料清单；出行前请以官方签证机构信息为准。</p>}{visa.url && <a href={visa.url} target="_blank" rel="noreferrer">查看参考来源 <ArrowRight size={14} /></a>}</div></article>
+      <article className="tool-card"><div className="tool-icon"><Euro /></div><div><Eyebrow>EXCHANGE RATE</Eyebrow><h2>汇率换算</h2>{rate > 0 ? <><div className="rate-banner">1 EUR <span>≈</span> {rate} CNY</div><label className="converter"><span>人民币 CNY</span><input name="cny" type="number" min="0" value={cny} onChange={(e) => setCny(e.target.value)} /><strong>≈ {eur} EUR</strong></label><p>后台参考数据{tools.rateUpdatedAt ? ` · ${tools.rateUpdatedAt}` : ''}{tools.rateSource ? ` · ${tools.rateSource}` : ''}，不代表实时成交汇率。</p></> : <p>后台尚未配置参考汇率，暂不显示换算结果。</p>}</div></article>
+      <article className="tool-card"><div className="tool-icon"><CloudSun /></div><div><Eyebrow>WEATHER REFERENCE</Eyebrow><h2>希腊天气参考</h2>{weatherCities.length ? <div className="weather-list">{weatherCities.map((item, index) => <div key={item.id || item.name || index}><span>{item.name}</span><strong>{item.temperature || item.temp || '—'}</strong><small>{item.condition || ''}</small></div>)}</div> : <p>后台尚未配置天气参考资料；此页面不调用实时天气服务。</p>}{tools.weatherUpdatedAt && <small>参考更新时间：{tools.weatherUpdatedAt}</small>}</div></article>
+      <article className="tool-card"><div className="tool-icon"><CalendarDays /></div><div><Eyebrow>TRIP CALENDAR</Eyebrow><h2>参考行程日历</h2><p>选择一条已发布参考行程和开始日期，可下载按日拆分的 iCalendar（.ics）文件。本工具不会读取私人订单或锁定服务。</p>{trips.length ? <><label className="calendar-export-field">参考行程<select value={selectedTripId} onChange={(event) => setSelectedTripId(event.target.value)}>{trips.map((trip) => <option key={trip.id} value={trip.id}>{trip.title}</option>)}</select></label><label className="calendar-export-field">开始日期<input type="date" value={startDate} onChange={(event) => setStartDate(event.target.value)} /></label><button className="button button-primary" type="button" disabled={!startDate || !selectedTrip || !selectedTrip.itinerary?.length} onClick={exportCalendar}>下载日历文件</button></> : <p>{status === 'loading' ? '正在读取参考行程…' : '暂无已发布参考行程。'}</p>}</div></article>
+    </div></main><GoldCTA /><Footer />
+  </>
 }
 
 function GuidePage({ guideIdOverride = '' }) {
   const { id: routeGuideId } = useParams()
   const guideId = guideIdOverride || routeGuideId || 'richard-li'
   const [language] = useLanguage()
-  const fallbackCopy = translate('guide', language)
-  const [guide, setGuide] = useState(null)
-  const [loaded, setLoaded] = useState(false)
-  useEffect(() => {
-    setLoaded(false)
-    fetch('/api/content').then((response) => response.ok ? response.json() : null).then((payload) => {
-      setGuide(payload?.guides?.find((item) => item.id === guideId && item.enabled !== false) || null)
-      setLoaded(true)
-    }).catch(() => setLoaded(true))
-  }, [guideId])
-  if (loaded && guideId !== 'richard-li' && !guide) return <ContentNotFound title="没有找到这位导游" description="导游资料可能已下线或链接中的 guideId 无效。" backTo="/" backLabel="返回首页" />
+  const labels = translate('guide', language)
+  const { content, status, error } = useSiteContent()
+  const guide = visibleRecords(content.guides).find((item) => item.id === guideId && item.enabled !== false)
+  const directions = Array.isArray(guide?.directions) ? guide.directions : []
+  const guideCredentials = Array.isArray(guide?.credentials) ? guide.credentials : []
+  const guideReviews = Array.isArray(guide?.reviews) ? guide.reviews : []
+  useEffect(() => { if (status === 'ready' && guide) recordRecentContent('guide', guide.id) }, [status, guide?.id])
   const copy = {
-    ...fallbackCopy,
-    eyebrow: guide?.eyebrow || fallbackCopy.eyebrow,
-    title: guide?.name ? `${guide.name}|${guide.role || fallbackCopy.role}` : fallbackCopy.title,
-    role: guide?.role || fallbackCopy.role,
-    note: guide?.storyNote || guide?.intro || fallbackCopy.note,
-    profileTitle: guide?.name || fallbackCopy.profileTitle,
-    profileEyebrow: guide?.nameEn || fallbackCopy.profileEyebrow,
-    profileEducation: guide?.proof || fallbackCopy.profileEducation,
-    profileBio: guide?.intro || fallbackCopy.profileBio,
-    profileTags: (guide?.directions || []).slice(0, 3).map((item) => typeof item === 'string' ? item : item.title || item.name).filter(Boolean).length ? (guide.directions || []).slice(0, 3).map((item) => typeof item === 'string' ? item : item.title || item.name).filter(Boolean) : fallbackCopy.profileTags,
-    storyTitle: guide?.storyTitle || fallbackCopy.storyTitle,
-    storyParagraphs: [guide?.story1, guide?.story2].filter(Boolean).length ? [guide.story1, guide.story2].filter(Boolean) : fallbackCopy.storyParagraphs,
-    quote: guide?.quote || fallbackCopy.quote,
-    credentialsTitle: guide?.credentialsTitle || fallbackCopy.credentialsTitle,
-    guestbookTitle: guide?.reviewsTitle || fallbackCopy.guestbookTitle,
-    quotes: (guide?.reviews || []).map((item) => [item.quote || item.text || item.content, item.author || item.name]).filter(([quote, author]) => quote && author).length ? (guide.reviews || []).map((item) => [item.quote || item.text || item.content, item.author || item.name]).filter(([quote, author]) => quote && author) : fallbackCopy.quotes,
+    ...labels,
+    eyebrow: guide?.eyebrow || guide?.nameEn || '',
+    title: `${guide?.name || guide?.id || ''}|${guide?.role || ''}`,
+    role: guide?.role || '',
+    note: guide?.storyNote || guide?.intro || '',
+    profileTitle: guide?.name || guide?.id || '',
+    profileEyebrow: guide?.nameEn || '',
+    profileEducation: guide?.proof || '',
+    profileBio: guide?.intro || '',
+    profileTags: directions.slice(0, 3).map((item) => typeof item === 'string' ? item : item.title || item.name).filter(Boolean),
+    storyTitle: guide?.storyTitle || guide?.name || '',
+    storyParagraphs: [guide?.story1, guide?.story2].filter(Boolean),
+    quote: guide?.quote || '',
+    credentialsTitle: guide?.credentialsTitle || labels.credentialsTitle,
+    guestbookTitle: guide?.reviewsTitle || labels.guestbookTitle,
+    signature: directions.map((item) => typeof item === 'string' ? [item, '', '', ''] : [item.title || item.name || '', item.desc || '', item.duration || '', item.suitable || '']),
+    credentials: guideCredentials.map((item) => [item.title || '', item.desc || '', '']),
+    quotes: guideReviews.map((item) => [item.quote || item.text || item.content || '', item.name || item.author || '']).filter(([quote, author]) => quote && author),
+    reserveLead: '选择一个意向日期并提交需求；此页面不读取实时档期，也不会自动锁定服务。',
+    calendarTitle: '选择预约意向日期',
+    formTitle: `提交${guide?.name || '导游'}预约意向`,
+    formLead: `成功提交后由顾问人工确认实际档期与服务范围，预计 ${Number(content.settings?.replyHours) || 24} 小时内回复。`,
   }
-  const bookingLabel = translate('common.booking', language)
+  const bookingLabel = `${guide?.name || '导游'} 的预约咨询`
   const [selectedDate, setSelectedDate] = useState('')
   const [bookingMessage, setBookingMessage] = useState('')
+  const [bookingSucceeded, setBookingSucceeded] = useState(false)
   const [submitting, setSubmitting] = useState(false)
-  const dateStates = { 8: 'booked', 9: 'booked', 12: 'pending', 16: 'available', 17: 'available', 21: 'pending', 24: 'available', 25: 'available' }
-  const calendarDays = [null, null, ...Array.from({ length: 30 }, (_, index) => index + 1)]
-  const signatureImages = [images.athens, images.meteora, images.zakynthos, images.delphi]
-  const signature = copy.signature.map((item, index) => [signatureImages[index], ...item])
+  const minimumBookingDate = useMemo(() => { const date = new Date(); date.setDate(date.getDate() + 1); return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}` }, [])
+  const signature = directions.map((item, index) => [typeof item === 'string' ? '' : item.image || '', ...copy.signature[index]])
   const credentials = copy.credentials.map(([title, line1, line2], index) => [`0${index + 1}`, title, `${line1}\n${line2}`])
   const quotes = copy.quotes
   const services = copy.signature
   async function submitBooking(event) {
     event.preventDefault()
     if (!selectedDate) { setBookingMessage(copy.chooseDate); return }
-    setSubmitting(true); setBookingMessage('')
+    setSubmitting(true); setBookingMessage(''); setBookingSucceeded(false)
     const form = event.currentTarget
-    const payload = { ...Object.fromEntries(new FormData(form)), guide: 'Richard 李', guideSlug: 'richard-li', bookingDate: selectedDate, leadType: 'guide-booking', destination: 'Richard 李私人导游预约', createdAt: new Date().toISOString(), status: 'new' }
+    const payload = { ...Object.fromEntries(new FormData(form)), guideId: guide.id, guideName: guide.name || guide.id, guideSlug: guide.id, bookingDate: selectedDate, leadType: 'guide-booking', destination: `${guide.name || guide.id} 导游预约`, createdAt: new Date().toISOString(), status: 'new' }
     try {
       const response = await fetch('/api/leads', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) })
       if (!response.ok) throw new Error('booking api failed')
+      setBookingMessage('预约申请已提交，档期需由顾问确认后生效。'); setBookingSucceeded(true)
     } catch {
-      setBookingMessage('提交失败，请稍后重试或直接联系我们。')
-      return
+      setBookingMessage('提交失败，预约尚未发送。请稍后重试或直接联系我们。'); setBookingSucceeded(false)
     } finally {
       setSubmitting(false)
     }
   }
+  if (status === 'loading') return <main className="section"><div className="container content-state" role="status">正在读取导游资料…</div></main>
+  if (status === 'error') return <main className="section"><div className="container content-state error" role="alert">{error}。请稍后重试。</div></main>
+  if (!guide) return <ContentNotFound title="没有找到这位导游" description="该导游资料尚未发布或链接中的 guideId 无效。" backTo="/" backLabel="返回首页" />
   return (
     <>
       <section className="guide-hero">
@@ -900,7 +893,7 @@ function GuidePage({ guideIdOverride = '' }) {
             <div className="guide-hero-actions"><a className="button button-gold" href="#reserve">{bookingLabel} <ArrowRight size={15} /></a><a className="button button-ghost" href="#contact">{translate('common.addWechat', language)}</a></div>
           </div>
           <div className="guide-profile-card">
-            <div className="guide-avatar"><img src={assetPath(guide?.fullImage || guide?.avatar || images.richardAvatar)} alt={`${guide?.name || 'Richard 李'}头像`} loading="lazy" decoding="async" /></div>
+            <div className="guide-avatar">{(guide.fullImage || guide.avatar) ? <img src={assetPath(guide.fullImage || guide.avatar)} alt={`${guide.name || guide.id}头像`} loading="lazy" decoding="async" /> : <UserRound size={48} aria-hidden="true" />}</div>
             <h2>{copy.profileTitle}</h2><Eyebrow>{copy.profileEyebrow}</Eyebrow>
             <div className="profile-rule" />
             <p><strong>{copy.profileEducation}</strong><br />{copy.profileBio}</p>
@@ -908,31 +901,32 @@ function GuidePage({ guideIdOverride = '' }) {
           </div>
         </div>
       </section>
+      <div className="container guide-content-actions"><ContentActions contentType="guide" contentId={guide.id} title={guide.name || guide.id} /></div>
 
       <main>
-        <section className="guide-section guide-story-section">
+        {(copy.storyParagraphs.length > 0 || copy.quote) && <section className="guide-section guide-story-section">
           <div className="container guide-story-grid">
             <div className="guide-story-copy"><Eyebrow>{copy.storyEyebrow}</Eyebrow><h2>{copy.storyTitle.split('|').map((line) => <React.Fragment key={line}>{line}<br /></React.Fragment>)}</h2>{copy.storyParagraphs.map((paragraph) => <p key={paragraph}>{paragraph}</p>)}</div>
-            <blockquote className="guide-quote"><span>“</span><p>{copy.quote}</p><small>— Richard Li / SIGNATURE GUIDE</small></blockquote>
+            <blockquote className="guide-quote"><span>“</span><p>{copy.quote}</p><small>— {guide.name || guide.id} / {guide.role || 'GUIDE'}</small></blockquote>
           </div>
-        </section>
+        </section>}
 
-        <section className="guide-section credentials-section">
-          <div className="container"><Eyebrow>{copy.credentialsEyebrow}</Eyebrow><h2>{copy.credentialsTitle}</h2><div className="credentials-grid">{credentials.map(([number, title, text]) => <article key={number} className="credential-card"><small>{number}</small><h3>{title}</h3><p>{text.split('\n').map((line) => <span key={line}>{line}</span>)}</p></article>)}</div></div>
-        </section>
+        {credentials.length > 0 && <section className="guide-section credentials-section">
+          <div className="container"><Eyebrow>{copy.credentialsEyebrow}</Eyebrow><h2>{copy.credentialsTitle}</h2><div className="credentials-grid">{credentials.map(([number, title, text]) => <article key={number} className="credential-card"><small>{number}</small><h3>{title}</h3><p>{text.split('\n').filter(Boolean).map((line) => <span key={line}>{line}</span>)}</p></article>)}</div></div>
+        </section>}
 
-        <section className="guide-section signature-section">
-          <div className="container"><Eyebrow>{copy.signatureEyebrow}</Eyebrow><h2>{copy.signatureTitle}</h2><p className="section-lead">{copy.signatureLead}</p><div className="signature-grid">{services.map(([title, desc, duration, audience], index) => <article className={`signature-card ${index === 3 ? 'signature-gold' : ''}`} key={title}><img src={signature[index][0]} alt={title} loading="lazy" decoding="async" /><div><h3>{title}</h3><p>{desc}</p><div><span>{duration}</span><small>{audience}</small></div></div></article>)}</div></div>
-        </section>
+        {services.length > 0 && <section className="guide-section signature-section">
+          <div className="container"><Eyebrow>{copy.signatureEyebrow}</Eyebrow><h2>{copy.signatureTitle}</h2><p className="section-lead">{copy.signatureLead}</p><div className="signature-grid">{services.map(([title, desc, duration, audience], index) => <article className="signature-card" key={title}>{signature[index]?.[0] && <img src={assetPath(signature[index][0])} alt={title} loading="lazy" decoding="async" />}<div><h3>{title}</h3><p>{desc}</p><div><span>{duration}</span><small>{audience}</small></div></div></article>)}</div></div>
+        </section>}
 
-        <section className="guide-section guestbook-section">
+        {quotes.length > 0 && <section className="guide-section guestbook-section">
           <div className="container"><Eyebrow dark>{copy.guestbookEyebrow}</Eyebrow><h2>{copy.guestbookTitle}</h2><div className="guestbook-grid">{quotes.map(([quote, author]) => <blockquote key={author}><p>{quote}</p><cite>— {author}</cite></blockquote>)}</div></div>
-        </section>
+        </section>}
 
         <section className="guide-section reserve-section" id="reserve">
           <div className="container"><Eyebrow>{copy.reserveEyebrow}</Eyebrow><h2>{copy.reserveTitle}</h2><p className="section-lead">{copy.reserveLead}</p><div className="booking-layout">
-            <div className="calendar-card"><div className="calendar-head"><div><strong>{copy.calendarTitle}</strong><small>{copy.calendarMonth}</small></div><span>‹</span><span>›</span></div><div className="calendar-week">{(language === 'en' ? ['M', 'T', 'W', 'T', 'F', 'S', 'S'] : language === 'zh-TW' ? ['一', '二', '三', '四', '五', '六', '日'] : ['一', '二', '三', '四', '五', '六', '日']).map((day, index) => <span key={`${day}-${index}`}>{day}</span>)}</div><div className="calendar-grid">{calendarDays.map((day, index) => day ? <button key={day} type="button" className={`calendar-day ${dateStates[day] || ''} ${selectedDate === `2026-09-${String(day).padStart(2, '0')}` ? 'selected' : ''}`} disabled={dateStates[day] !== 'available'} onClick={() => setSelectedDate(`2026-09-${String(day).padStart(2, '0')}`)}>{day}</button> : <span key={`blank-${index}`} />)}</div><div className="calendar-legend"><span><i className="available-dot" />{copy.available}</span><span><i className="pending-dot" />{copy.pending}</span><span><i className="booked-dot" />{copy.booked}</span></div></div>
-            <form className="booking-form" onSubmit={submitBooking}><div className="booking-form-head"><h3>{copy.formTitle}</h3><p>{copy.formLead}</p></div><label>{copy.duration}<select name="serviceLength" defaultValue={copy.durations[0]}>{copy.durations.map((option) => <option key={option}>{option}</option>)}</select></label><label>{copy.travelers}<select name="travelers" defaultValue={copy.travelerOptions[1]}>{copy.travelerOptions.map((option) => <option key={option}>{option}</option>)}</select></label><label>{copy.requirements}<input name="requirements" required placeholder={copy.requirementsPlaceholder} /></label><label>{copy.contact}<input name="contact" required placeholder={copy.contactPlaceholder} /></label><button className="button button-deep button-block" type="submit" disabled={submitting}>{submitting ? copy.submitting : copy.submit}</button>{bookingMessage && <p className={`booking-message ${bookingMessage === copy.success ? 'success' : ''}`} role="status">{bookingMessage}</p>}</form>
+            <div className="calendar-card"><div className="calendar-head"><div><strong>{copy.calendarTitle}</strong><small>提交后由顾问确认实际档期</small></div></div><label className="booking-date-field">选择意向日期<input type="date" name="bookingDate" value={selectedDate} min={minimumBookingDate} required onChange={(event) => setSelectedDate(event.target.value)} /></label><p className="booking-date-note">此页面不连接实时日历库存；日期仅表示预约意向，不代表已锁定档期。</p></div>
+            <form className="booking-form" onSubmit={submitBooking}><div className="booking-form-head"><h3>{copy.formTitle}</h3><p>{copy.formLead}</p></div><label>{copy.duration}<select name="serviceLength" defaultValue={copy.durations[0]}>{copy.durations.map((option) => <option key={option}>{option}</option>)}</select></label><label>{copy.travelers}<select name="travelers" defaultValue={copy.travelerOptions[1]}>{copy.travelerOptions.map((option) => <option key={option}>{option}</option>)}</select></label><label>{copy.requirements}<input name="requirements" required placeholder={copy.requirementsPlaceholder} /></label><label>{copy.contact}<input name="contact" required placeholder={copy.contactPlaceholder} /></label><button className="button button-deep button-block" type="submit" disabled={submitting}>{submitting ? copy.submitting : copy.submit}</button>{bookingMessage && <p className={`booking-message ${bookingSucceeded ? 'success' : ''}`} role="status">{bookingMessage}</p>}</form>
 
           </div></div>
         </section>
@@ -945,9 +939,55 @@ function GuidePage({ guideIdOverride = '' }) {
 }
 
 function MyPage() {
+  const { content, status, error } = useSiteContent()
+  const [saved, setSaved] = useState(() => readSavedContent())
+  const [recent, setRecent] = useState(() => readRecentContent())
+  useEffect(() => {
+    const refresh = () => { setSaved(readSavedContent()); setRecent(readRecentContent()) }
+    window.addEventListener(userContentChangeEvent(), refresh)
+    window.addEventListener('storage', refresh)
+    return () => { window.removeEventListener(userContentChangeEvent(), refresh); window.removeEventListener('storage', refresh) }
+  }, [])
+  const collections = {
+    city: visibleRecords(content.cities), attraction: visibleRecords(content.attractions),
+    itinerary: visibleRecords(content.sampleItineraries), destination: visibleRecords(content.destinations),
+    route: visibleRecords(content.routes), guide: visibleRecords(content.guides), experience: visibleRecords(content.experiences || content.settings?.experiences || []),
+  }
+  const labels = { city: '城市', attraction: '景点', itinerary: '参考行程', destination: '目的地', route: '路线', guide: '导游', experience: '体验' }
+  const paths = { city: (id) => `/attractions/city/${id}`, attraction: (id) => `/attractions/${id}`, itinerary: (id) => `/itineraries/${id}`, destination: (id) => `/destinations/${id}`, route: (id) => `/routes/${id}`, guide: (id) => `/guides/${id}`, experience: (id) => `/experiences/${id}` }
+  const resolveRecord = (entry) => collections[entry.type]?.find((item) => item.id === entry.id) || null
+  const siteName = content.settings?.miniprogramName || content.settings?.siteName || '希腊旅行管家'
+  const phone = String(content.settings?.consultPhone || content.settings?.phone || '').trim()
+  const tel = phone.replace(/[^\d+]/g, '')
+  function contentCard(entry, recentItem = false) {
+    const item = resolveRecord(entry)
+    const title = item?.title || item?.name || item?.id || entry.id
+    const image = item?.cover || item?.image
+    const href = item && paths[entry.type] ? paths[entry.type](item.id) : ''
+    const timestamp = entry.savedAt || entry.viewedAt
+    return <article className="web-user-content-card" key={`${entry.type}:${entry.id}`}>
+      {image && <img src={assetPath(image)} alt="" loading="lazy" decoding="async" />}
+      <div className="web-user-content-copy"><small>{labels[entry.type] || '内容'}{timestamp ? ` · ${new Date(timestamp).toLocaleDateString()}` : ''}</small>
+        {href ? <Link to={href}><strong>{title}</strong></Link> : <strong>{title}（已下架或不可用）</strong>}
+      </div>
+      {!recentItem && <button type="button" className="web-user-remove" onClick={() => removeSavedContent(entry.type, entry.id)}>移除收藏</button>}
+    </article>
+  }
   return <>
-    <InnerHero image={images.athens} eyebrow="MY GREECE TRAVEL BUTLER" title="我的" subtitle="登录、绑定手机号后，在小程序中查看预约、行程与个人资料。" breadcrumb="我的" short />
-    <main className="section my-page"><div className="container"><div className="my-profile-card"><div className="my-profile-icon"><UserRound size={25} /></div><div><Eyebrow>WECHAT ACCOUNT</Eyebrow><h2>微信登录与手机号绑定</h2><p>Website 保留同一套内容与咨询入口；微信登录、手机号绑定及个人数据由 MpApp 安全承载。</p></div><Link className="button button-primary" to="/customize">立即联系顾问</Link></div><div className="my-feature-grid"><article><CalendarDays /><h3>预约与行程</h3><p>查看已提交的导游预约、定制需求与专属行程链接。</p></article><article><Heart /><h3>优惠券与收藏</h3><p>小程序登录后查看可用优惠券及已保存的旅行内容。</p></article><article><Users /><h3>出行人资料</h3><p>维护同行人、护照与签证资料，出发前集中查看。</p></article><article><UserRound /><h3>个人资料与关于我们</h3><p>编辑个人资料，了解希腊旅行管家的服务边界与联系方式。</p></article></div><div className="my-about-card"><Eyebrow>GREECE TRAVEL BUTLER</Eyebrow><h2>只为一生美好回忆</h2><p>sy-greece.com 提供希腊文化咨询、行程策划与语言陪同咨询。需要登录或资料协助时，请在微信小程序中完成操作，或直接联系顾问。</p><a className="button button-gold" href="tel:+8615071465661">电话咨询 · +86 150 7146 5661</a></div></div></main><GoldCTA /><Footer />
+    <InnerHero image={images.athens} eyebrow="MY GREECE TRAVEL BUTLER" title="我的" subtitle="此页面提供仅保存在当前浏览器的收藏与浏览记录；账户资料和跨设备数据仍需安全登录。" breadcrumb="我的" short />
+    <main className="section my-page"><div className="container">
+      <div className="my-profile-card"><div className="my-profile-icon"><UserRound size={25} /></div><div><Eyebrow>WEB · LOCAL ONLY</Eyebrow><h2>浏览器收藏与记录</h2><p>Website 不会用小程序身份令牌冒充网页登录，也不会在本地保存手机号、证件或订单资料。</p></div><Link className="button button-primary" to="/customize">联系顾问</Link></div>
+      <section className="web-user-section"><div className="web-user-section-head"><div><Eyebrow>SAVED CONTENT</Eyebrow><h2>我的收藏 <small>{saved.length}</small></h2></div><p>仅在此浏览器可见；清理浏览器数据后将无法恢复。</p></div>
+        {status === 'loading' && <div className="content-state" role="status">正在读取收藏对应的公开内容…</div>}
+        {status === 'error' && <div className="content-state error" role="alert">{error}</div>}
+        {saved.length ? <div className="web-user-content-list">{saved.map((entry) => contentCard(entry))}</div> : <div className="web-user-empty"><Heart size={20}/><span>还没有收藏内容。打开城市、景点或参考行程页面后，使用“收藏”按钮即可保存。</span></div>}
+      </section>
+      <section className="web-user-section"><div className="web-user-section-head"><div><Eyebrow>RECENTLY VIEWED</Eyebrow><h2>最近浏览 <small>{recent.length}</small></h2></div><button className="web-user-remove" type="button" onClick={() => { clearRecentContent(); setRecent([]) }} disabled={!recent.length}>清除记录</button></div>
+        {recent.length ? <div className="web-user-content-list">{recent.map((entry) => contentCard(entry, true))}</div> : <div className="web-user-empty"><Clock3 size={20}/><span>浏览过的公开城市、景点、路线和参考行程会记录在当前浏览器。</span></div>}
+      </section>
+      <div className="my-feature-grid"><article><CalendarDays /><h3>预约与订单</h3><p>Website 暂无登录态查询接口；提交的咨询会由顾问跟进，私密订单请在微信小程序中查看。</p></article><article><Heart /><h3>会员与优惠券</h3><p>小程序收藏/观看历史目前仅显示计数；Web 收藏独立保存在本机，不跨端同步。</p></article><article><Users /><h3>出行人和证件</h3><p>需要认证后的安全账户接口。当前 Web 不收集护照、签证或同行人证件资料。</p></article><article><UserRound /><h3>登录与支付</h3><p>微信登录、手机号授权和支付属于小程序原生能力；Web 不声明等价登录或支付。</p></article></div>
+      <div className="my-about-card"><Eyebrow>{siteName}</Eyebrow><h2>微信原生账户功能</h2><p>如需手机号绑定、订单/预约、优惠券或私密资料，请在微信中搜索“{siteName}”。城市讲解购买尚未接通；小程序支付曾遇到商户权限错误，请以实际开通状态为准。</p>{tel && <a className="button button-gold" href={`tel:${tel}`}>电话咨询 · {phone}</a>}</div>
+    </div></main><GoldCTA /><Footer />
   </>
 }
 
@@ -979,9 +1019,11 @@ function ItinerarySharePage() {
 
 function LuxurySharePage() {
   const [params] = useSearchParams()
+  const { content } = useSiteContent()
+  const id = params.get('id') || ''
   const type = params.get('type') || ''
-  const slug = type === 'jet' ? 'private-flight' : type === 'yacht' ? 'private-yacht' : ''
-  return slug ? <LuxuryExperienceDetail slugOverride={slug} /> : <ContentNotFound title="缺少奢享类型" description="请使用 type=jet 或 type=yacht 打开奢享体验。" backTo="/" backLabel="返回首页" />
+  const experience = visibleRecords(content.experiences || content.settings?.experiences || []).find((item) => item.id === id || item.shareType === type)
+  return experience ? <LuxuryExperienceDetail slugOverride={experience.id} /> : <ContentNotFound title="没有找到此项体验" description="请使用 Website 后台配置的体验 ID 或分享类型链接。" backTo="/" backLabel="返回首页" />
 }
 
 function PublicBottomNav() {
@@ -1005,6 +1047,10 @@ function LegacyAdminRedirect() {
 }
 
 export default function App() {
+  return <SiteContentProvider><AppRoutes /></SiteContentProvider>
+}
+
+function AppRoutes() {
   const isAdminRoute = useLocation().pathname === '/manage-9f3k7'
   return <><ScrollToTop /><SEO /><Routes>
     <Route path="/" element={<Home />} />

@@ -6,31 +6,10 @@ import {
   Lightbulb, Map as MapIcon, MapPin, Megaphone, Ship, Sparkles, Star, Store, Ticket,
   TrainFront, Volume2,
 } from 'lucide-react'
-import { assetPath, ComplianceNotice, Eyebrow, Footer, GoldCTA, Header, InnerHero, SectionTitle, images } from './chrome'
-import staticData from './attractions-data.json'
+import { assetPath, ComplianceNotice, ContentActions, Eyebrow, Footer, GoldCTA, Header, InnerHero, SectionTitle, images } from './chrome'
+import { useSiteContent, visibleRecords } from './site-content'
+import { recordRecentContent } from './web-user-state'
 
-const isFile = window.location.protocol === 'file:'
-const FALLBACK_ATTRACTIONS = staticData.attractions || []
-const FALLBACK_ITINERARIES = staticData.sampleItineraries || []
-const FALLBACK_CITIES = staticData.cities || []
-
-function useSiteContent() {
-  const [content, setContent] = useState({ attractions: FALLBACK_ATTRACTIONS, sampleItineraries: FALLBACK_ITINERARIES, cities: FALLBACK_CITIES })
-  useEffect(() => {
-    if (isFile) return
-    fetch('/api/content').then((response) => response.ok ? response.json() : null).then((payload) => {
-      if (!payload) return
-      setContent({
-        attractions: payload.attractions?.length ? payload.attractions : FALLBACK_ATTRACTIONS,
-        sampleItineraries: payload.sampleItineraries?.length ? payload.sampleItineraries : FALLBACK_ITINERARIES,
-        cities: payload.cities?.length ? payload.cities : FALLBACK_CITIES,
-      })
-    }).catch(() => {})
-  }, [])
-  return content
-}
-
-const CITY_EN = { athens: 'ATHENS', santorini: 'SANTORINI', delphi: 'DELPHI', meteora: 'METEORA', crete: 'CRETE', mykonos: 'MYKONOS' }
 
 function sizeLabelOf(item) { return item.sizeLabel || item.scale || '' }
 function audioMinutes(attraction) {
@@ -44,9 +23,10 @@ function NotFoundMini() {
 /* ---------------- 景点首页（城市选择） ---------------- */
 
 export function AttractionsIndex() {
-  const { attractions, sampleItineraries, cities } = useSiteContent()
-  const enriched = useMemo(() => cities.map((city) => {
-    const items = attractions.filter((item) => item.city === city.id)
+  const { content, status, error } = useSiteContent()
+  const { attractions, sampleItineraries, cities } = content
+  const enriched = useMemo(() => visibleRecords(cities).map((city) => {
+    const items = visibleRecords(attractions).filter((item) => item.city === city.id)
     return {
       ...city,
       items,
@@ -61,13 +41,15 @@ export function AttractionsIndex() {
       </InnerHero>
       <main className="section">
         <div className="container">
+          {status === 'loading' && <div className="content-state" role="status">正在读取网站城市与景点内容…</div>}
+          {status === 'error' && <div className="content-state error" role="alert">{error}。请稍后重试，当前不展示本地静态副本。</div>}
           <div id="cities" className="city-card-grid">
             {enriched.map((city) => (
               <Link to={`/attractions/city/${city.id}`} className="city-entry-card" key={city.id}>
                 <div className="city-entry-mosaic">
                   {(city.mosaic || []).slice(0, 4).map((image, index) => <img src={assetPath(image)} alt="" loading="lazy" decoding="async" key={index} />)}
                   <div className="city-entry-overlay">
-                    <Eyebrow dark>{CITY_EN[city.id] || city.name}</Eyebrow>
+                    <Eyebrow dark>{city.nameEn || city.en || city.id}</Eyebrow>
                     <h3>{city.name}</h3>
                     <small>{city.country}</small>
                   </div>
@@ -107,14 +89,18 @@ export function AttractionsIndex() {
 export function CityGuidePage({ cityIdOverride = '' }) {
   const { cityId: routeCityId } = useParams()
   const cityId = cityIdOverride || routeCityId || ''
-  const { attractions, cities } = useSiteContent()
-  const city = cities.find((item) => item.id === cityId)
-  const cityAttractions = attractions.filter((item) => item.city === cityId)
+  const { content, status, error } = useSiteContent()
+  const { attractions, cities } = content
+  const city = visibleRecords(cities).find((item) => item.id === cityId)
+  const cityAttractions = visibleRecords(attractions).filter((item) => item.city === cityId)
+  useEffect(() => { if (status === 'ready' && city) recordRecentContent('city', city.id) }, [status, city?.id])
   const stats = [
     [city?.museumCount ?? cityAttractions.length, '个景点'],
     [city?.guidePointCount ?? cityAttractions.reduce((t, i) => t + (i.exhibits || []).length, 0), '个讲解点'],
     [city?.audioMinutes ?? cityAttractions.reduce((t, i) => t + audioMinutes(i), 0), '分钟讲解'],
   ]
+  if (status === 'loading') return <><Header solid /><main className="section"><div className="container content-state" role="status">正在读取城市导览…</div></main><Footer /></>
+  if (status === 'error') return <><Header solid /><main className="section"><div className="container content-state error" role="alert">{error}。请稍后重试。</div></main><Footer /></>
   if (!city && !cityAttractions.length) return <><Header solid /><NotFoundMini /><Footer /></>
   const mosaic = (city?.mosaic || cityAttractions.map((item) => item.image)).slice(0, 4)
   const mosaicRows = mosaic.length >= 3 ? [mosaic.slice(0, 2), mosaic.slice(2, 4)] : [mosaic]
@@ -129,32 +115,32 @@ export function CityGuidePage({ cityIdOverride = '' }) {
         </div>
         <div className="container city-guide-content">
           <h1>{city?.name || cityAttractions[0]?.cityName}</h1>
-          <p className="city-guide-country">{city?.country || '希腊'}</p>
+          {city?.country && <p className="city-guide-country">{city.country}</p>}
           {city?.subtitle && <p className="city-guide-subtitle">{city.subtitle}</p>}
           <div className="city-guide-stats">
             {stats.map(([value, label]) => <div key={label}><strong>{Number(value).toLocaleString()}</strong><span>{label}</span></div>)}
           </div>
           <Link to="#city-guide-note" className="city-guide-link"><Lightbulb size={15} />了解「SY 希腊」导览讲解的不同之处</Link>
           <div className="city-guide-actions">
-            <a className="city-guide-buy" href="#city-guide-note">购买 {city?.price || ''}</a>
-            <Link className="city-guide-view" to={`#city-attractions`} onClick={(event) => { event.preventDefault(); document.getElementById('city-attractions')?.scrollIntoView({ behavior: 'smooth' }) }}>查看</Link>
+            <Link className="city-guide-buy" to={`/customize?cityId=${encodeURIComponent(cityId)}`}>咨询城市导览</Link>
+            <Link className="city-guide-view" to="#city-attractions" onClick={(event) => { event.preventDefault(); document.getElementById('city-attractions')?.scrollIntoView({ behavior: 'smooth' }) }}>查看景点</Link>
           </div>
         </div>
       </div>
       <main className="section">
         <div className="container">
           <div className="city-guide-note" id="city-guide-note">
-            <Eyebrow>WHAT MAKES US DIFFERENT</Eyebrow>
-            <p>{city?.description || ''}每个景点配有逐展品的中文语音讲解、路线导览与完整参观指南（开放时间、门票、交通、亲子、无障碍等 12 项）。</p>
+            <Eyebrow>CITY GUIDE</Eyebrow>
+            <p>{city?.description || city?.summary || ''}</p>
             <div className="city-guide-note-pricing">
-              <div><strong>{city?.price || '€9.99'}</strong><span>{city?.purchaseNote || '一次购买，城市内全部景点讲解永久有效。'}</span></div>
-              <Link className="button button-gold" to="/customize">咨询购买讲解</Link>
+              <div><strong>在线咨询</strong><span>Website 目前不提供城市讲解购买或会员权益；请先咨询内容与服务范围。</span></div>
+              <Link className="button button-gold" to={`/customize?cityId=${encodeURIComponent(cityId)}`}>咨询城市导览</Link>
             </div>
-            <p className="knowledge-disclaimer">当前为内容结构与免费预览展示，真实支付能力接入前，讲解内容请通过顾问咨询获取。</p>
           </div>
+          <ContentActions contentType="city" contentId={cityId} title={city?.name || cityId} />
 
           <section id="city-attractions">
-            <SectionTitle eyebrow={`${CITY_EN[cityId] || ''} · ATTRACTIONS`} title={`${city?.name || ''}的景点与博物馆`} />
+            <SectionTitle eyebrow={`${city?.nameEn || city?.en || cityId} · ATTRACTIONS`} title={`${city?.name || ''}的景点与博物馆`} />
             {cityAttractions.length ? <div className="city-attraction-list">
               {cityAttractions.map((item) => (
                 <Link to={`/attractions/${item.id}`} className="dark-attraction-card" key={item.id}>
@@ -194,10 +180,14 @@ const GUIDE_ITEMS = [
 export function AttractionDetail({ idOverride = '' }) {
   const { id: routeId } = useParams()
   const id = idOverride || routeId || ''
-  const { attractions, sampleItineraries } = useSiteContent()
-  const attraction = attractions.find((item) => item.id === id)
+  const { content, status, error } = useSiteContent()
+  const { attractions, sampleItineraries } = content
+  const attraction = visibleRecords(attractions).find((item) => item.id === id)
   const [guideTab, setGuideTab] = useState('all')
   useEffect(() => { setGuideTab('all') }, [id])
+  useEffect(() => { if (status === 'ready' && attraction) recordRecentContent('attraction', attraction.id) }, [status, attraction?.id])
+  if (status === 'loading') return <><Header solid /><main className="section"><div className="container content-state" role="status">正在读取景点内容…</div></main><Footer /></>
+  if (status === 'error') return <><Header solid /><main className="section"><div className="container content-state error" role="alert">{error}。请稍后重试。</div></main><Footer /></>
   if (!attraction) return <><Header solid /><NotFoundMini /><Footer /></>
   const relatedItineraries = sampleItineraries.filter((trip) => (trip.itinerary || []).some((day) => (day.attractionIds || []).includes(attraction.id)))
   const guideEntries = GUIDE_ITEMS.filter(([key]) => attraction.guide?.[key])
@@ -209,10 +199,11 @@ export function AttractionDetail({ idOverride = '' }) {
   ]
   return (
     <>
-      <InnerHero image={attraction.image} eyebrow={`${attraction.en} · ${CITY_EN[attraction.city] || attraction.cityName}`} title={attraction.name} subtitle={attraction.summary} breadcrumb={`景点导览 / ${attraction.name}`}>
-        <div className="detail-hero-actions"><strong>{attraction.category}{sizeLabelOf(attraction) ? ` · ${sizeLabelOf(attraction)}` : ''}</strong><Link className="button button-primary" to="/customize">咨询讲解与行程</Link></div>
+      <InnerHero image={attraction.image} eyebrow={`${attraction.en || attraction.cityName} · ${attraction.city}`} title={attraction.name} subtitle={attraction.summary} breadcrumb={`景点导览 / ${attraction.name}`}>
+        <div className="detail-hero-actions"><strong>{attraction.category}{sizeLabelOf(attraction) ? ` · ${sizeLabelOf(attraction)}` : ''}</strong><Link className="button button-primary" to={`/customize?attractionId=${encodeURIComponent(attraction.id)}`}>咨询讲解与行程</Link></div>
       </InnerHero>
       <main className="detail-page section">
+        <div className="container"><ContentActions contentType="attraction" contentId={attraction.id} title={attraction.name} /></div>
         <div className="container detail-layout">
           <div>
             <div className="attraction-tag-row">{(attraction.tags || []).map((tag) => <span key={tag}>{tag}</span>)}</div>
@@ -234,16 +225,17 @@ export function AttractionDetail({ idOverride = '' }) {
                 <div className="exhibit-grid">
                   {(attraction.exhibits || []).map((exhibit) => (
                     <article className="exhibit-card" key={exhibit.id}>
-                      <div className="exhibit-image"><img src={assetPath(exhibit.image)} alt={exhibit.name} loading="lazy" decoding="async" /><span className="exhibit-duration"><Headphones size={13} />{exhibit.duration}</span></div>
+                      <div className="exhibit-image">{exhibit.image && <img src={assetPath(exhibit.image)} alt={exhibit.name} loading="lazy" decoding="async" />}<span className="exhibit-duration"><Headphones size={13} />{exhibit.duration}</span></div>
                       <div className="exhibit-copy">
                         <h3>{exhibit.name}</h3>
                         <small>{exhibit.author}</small>
-                        {exhibit.location && <span className="exhibit-location"><MapPin size={12} />{exhibit.location.floor}{exhibit.location.hall ? ` · ${exhibit.location.hall}` : ''}</span>}
+                        {exhibit.location && <span className="exhibit-location"><MapPin size={12} />{typeof exhibit.location === 'string' ? exhibit.location : [exhibit.location.floor, exhibit.location.hall].filter(Boolean).join(' · ')}</span>}
+                        {exhibit.audioUrl && <audio className="exhibit-audio" controls preload="none" src={assetPath(exhibit.audioUrl)}>当前浏览器不支持音频播放。</audio>}
                       </div>
                     </article>
                   ))}
                 </div>
-                <p className="exhibit-note"><Volume2 size={14} /> 语音讲解与楼层定位为内容结构展示，完整深度讲解将在付费能力接入后开放。</p>
+                <p className="exhibit-note"><Volume2 size={14} /> 仅当后台配置公开音频地址时可直接试听；付费讲解与会员权益未接入 Website。</p>
               </section>
             )}
 
@@ -315,7 +307,7 @@ export function AttractionDetail({ idOverride = '' }) {
                 <div className="deep-dive-box">
                   <Eyebrow>FREE PREVIEW</Eyebrow>
                   <p>{attraction.deepDive.preview}</p>
-                  <div className="audio-placeholder"><Headphones size={18} /><span>深度讲解 · 试听占位</span><button type="button" disabled>即将开放</button></div>
+                  {attraction.deepDive.previewAudioUrl || attraction.deepDive.audioUrl ? <audio className="exhibit-audio" controls preload="none" src={assetPath(attraction.deepDive.previewAudioUrl || attraction.deepDive.audioUrl)}>当前浏览器不支持音频播放。</audio> : <div className="audio-placeholder"><Headphones size={18} /><span>该内容尚未配置公开试听音频</span></div>}
                 </div>
               )}
               <Link className="button button-primary button-block" to="/customize">预约讲解 · 咨询行程</Link>
@@ -333,7 +325,8 @@ export function AttractionDetail({ idOverride = '' }) {
 /* ---------------- 参考行程（简单版） ---------------- */
 
 export function ItinerariesIndex() {
-  const { sampleItineraries } = useSiteContent()
+  const { content, status, error } = useSiteContent()
+  const sampleItineraries = visibleRecords(content.sampleItineraries)
   return (
     <>
       <InnerHero image={images.santorini} eyebrow="SAMPLE ITINERARIES" title="参考行程" subtitle="几种经典玩法框架，正式行程按你的需求定制后通过专属链接发送。" breadcrumb="参考行程">
@@ -341,6 +334,8 @@ export function ItinerariesIndex() {
       </InnerHero>
       <main className="section" id="list">
         <div className="container">
+          {status === 'loading' && <div className="content-state" role="status">正在读取参考行程…</div>}
+          {status === 'error' && <div className="content-state error" role="alert">{error}</div>}
           <div className="itinerary-notice"><Info size={16} /><span>以下为参考行程框架（简版），用于了解节奏与组合方式；每一段正式行程都会按出行时间、人数与偏好单独定制，并通过专属链接发送。行程中的景点可直接点击查看详情。</span></div>
           <div className="itinerary-list">
             {sampleItineraries.map((trip) => (
@@ -368,8 +363,13 @@ export function ItinerariesIndex() {
 export function ItineraryDetail({ idOverride = '' }) {
   const { id: routeId } = useParams()
   const id = idOverride || routeId || ''
-  const { attractions, sampleItineraries } = useSiteContent()
+  const { content, status, error } = useSiteContent()
+  const attractions = visibleRecords(content.attractions)
+  const sampleItineraries = visibleRecords(content.sampleItineraries)
   const trip = sampleItineraries.find((item) => item.id === id)
+  useEffect(() => { if (status === 'ready' && trip) recordRecentContent('itinerary', trip.id) }, [status, trip?.id])
+  if (status === 'loading') return <><Header solid /><main className="section"><div className="container content-state" role="status">正在读取参考行程…</div></main><Footer /></>
+  if (status === 'error') return <><Header solid /><main className="section"><div className="container content-state error" role="alert">{error}。请稍后重试。</div></main><Footer /></>
   if (!trip) return <><Header solid /><NotFoundMini /><Footer /></>
   const attractionById = (attractionId) => attractions.find((item) => item.id === attractionId)
   return (
@@ -378,6 +378,7 @@ export function ItineraryDetail({ idOverride = '' }) {
         <div className="detail-hero-actions"><strong>参考行程框架</strong><Link className="button button-primary" to="/customize">按此定制我的行程</Link></div>
       </InnerHero>
       <main className="detail-page section">
+        <div className="container"><ContentActions contentType="itinerary" contentId={trip.id} title={trip.title} /></div>
         <div className="container detail-layout">
           <div>
             <h2 className="timeline-title">逐日安排</h2>
@@ -436,12 +437,8 @@ export function CustomTripPage({ tokenOverride = '' }) {
   const token = tokenOverride || routeToken || ''
   const [trip, setTrip] = useState(null)
   const [state, setState] = useState('loading')
-  const [attractionNames, setAttractionNames] = useState({})
-  useEffect(() => {
-    fetch('/api/content').then((response) => response.ok ? response.json() : null).then((payload) => {
-      if (payload?.attractions) setAttractionNames(Object.fromEntries(payload.attractions.map((item) => [item.id, item.name])))
-    }).catch(() => {})
-  }, [])
+  const { content } = useSiteContent()
+  const attractionNames = useMemo(() => Object.fromEntries(visibleRecords(content.attractions).map((item) => [item.id, item.name])), [content.attractions])
   useEffect(() => {
     fetch(`/api/trip/${token}`).then((response) => response.ok ? response.json() : null).then((payload) => {
       if (payload) { setTrip(payload); setState('ready') } else setState('missing')

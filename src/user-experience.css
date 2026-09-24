@@ -1,0 +1,38 @@
+.content-state { margin: 18px 0; padding: 18px 20px; border: 1px solid rgba(16,56,68,.12); border-radius: 14px; color: var(--muted); background: #fff; }
+.content-state.error, .form-error { color: #9a3f31; border-color: rgba(154,63,49,.2); background: #fff5f2; }
+.content-state button { margin-left: 10px; color: var(--blue); text-decoration: underline; }
+.content-actions { display: flex; align-items: center; flex-wrap: wrap; gap: 9px; margin: 0 0 22px; }
+.content-actions button { display: inline-flex; align-items: center; gap: 7px; min-height: 38px; padding: 8px 13px; border: 1px solid rgba(16,56,68,.14); border-radius: 999px; color: var(--deep); background: #fff; font-size: 12px; cursor: pointer; transition: background .18s, border-color .18s, transform .18s; }
+.content-actions button:hover { transform: translateY(-1px); border-color: var(--gold); }
+.content-actions button[aria-pressed="true"] { color: #9b513f; border-color: rgba(155,81,63,.24); background: #fcf2ef; }
+.content-actions > span { color: var(--muted); font-size: 11px; }
+.guide-content-actions { position: relative; z-index: 1; margin-top: -16px; }
+.exhibit-audio { display: block; width: 100%; max-width: 440px; height: 38px; margin-top: 12px; }
+.booking-date-field, .calendar-export-field { display: grid; gap: 8px; margin-top: 16px; color: var(--ink); font-size: 12px; }
+.booking-date-field input, .calendar-export-field :is(input, select) { width: 100%; min-height: 43px; padding: 9px 11px; border: 1px solid rgba(16,56,68,.15); border-radius: 10px; color: var(--ink); background: #fff; font: inherit; }
+.booking-date-note { margin: 14px 0 0; color: var(--muted); font-size: 11px; line-height: 1.7; }
+.form-error { margin: 12px 0 0; padding: 11px 13px; border: 1px solid rgba(154,63,49,.2); border-radius: 10px; font-size: 12px; line-height: 1.65; }
+.destination-mosaic { display: grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap: 8px; max-height: 280px; overflow: hidden; border-radius: 14px; }
+.destination-mosaic img { width: 100%; height: 136px; object-fit: cover; }
+.web-user-section { margin-top: 34px; padding: clamp(19px, 3vw, 30px); border: 1px solid rgba(16,56,68,.1); border-radius: 20px; background: #fff; box-shadow: 0 12px 30px rgba(16,56,68,.06); }
+.web-user-section-head { display: flex; align-items: end; justify-content: space-between; gap: 20px; margin-bottom: 20px; }
+.web-user-section-head h2 { margin: 7px 0 0; color: var(--ink); font: 600 25px var(--serif); }
+.web-user-section-head h2 small { margin-left: 8px; color: var(--muted); font: 500 12px var(--sans); }
+.web-user-section-head p { margin: 0; color: var(--muted); font-size: 11px; }
+.web-user-content-list { display: grid; gap: 10px; }
+.web-user-content-card { display: flex; align-items: center; gap: 14px; min-width: 0; padding: 11px; border: 1px solid rgba(16,56,68,.08); border-radius: 13px; background: #fdfcf9; }
+.web-user-content-card > img { width: 70px; height: 58px; flex: 0 0 70px; border-radius: 9px; object-fit: cover; }
+.web-user-content-copy { display: grid; flex: 1; min-width: 0; gap: 5px; }
+.web-user-content-copy small { color: var(--muted); font-size: 10px; }
+.web-user-content-copy a, .web-user-content-copy strong { overflow: hidden; color: var(--ink); font-size: 13px; text-decoration: none; text-overflow: ellipsis; white-space: nowrap; }
+.web-user-content-copy a:hover { color: var(--blue); }
+.web-user-remove { padding: 7px 10px; border: 1px solid rgba(16,56,68,.12); border-radius: 8px; color: var(--muted); background: #fff; font-size: 10px; cursor: pointer; }
+.web-user-remove:hover { color: #9a3f31; border-color: rgba(154,63,49,.3); }
+.web-user-remove:disabled { opacity: .45; cursor: not-allowed; }
+.web-user-empty { display: flex; align-items: center; gap: 11px; padding: 20px; border-radius: 12px; color: var(--muted); background: #f8f6f1; font-size: 12px; line-height: 1.7; }
+@media (max-width: 640px) {
+  .web-user-section-head { align-items: flex-start; flex-direction: column; }
+  .web-user-content-card { gap: 9px; padding: 9px; }
+  .web-user-content-card > img { width: 54px; height: 50px; flex-basis: 54px; }
+  .web-user-remove { padding: 7px; }
+}

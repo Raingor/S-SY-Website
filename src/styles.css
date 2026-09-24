@@ -633,6 +633,11 @@ h1, h2, h3, p { margin-top: 0; }
 .admin-file-picker { min-height: 42px; padding: 5px 11px; display: flex; align-items: center; gap: 10px; color: var(--blue); background: #f7fafb; border: 1px solid #dbe5eb; border-radius: 9px; cursor: pointer; }
 .admin-file-picker input[type="file"] { min-height: auto; padding: 0; border: 0; background: transparent; cursor: pointer; font-size: 11px; }
 .admin-file-picker strong { flex: 0 0 auto; font-size: 11px; white-space: nowrap; }
+.admin-image-controls { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.admin-image-controls .admin-file-picker { flex: 1 1 200px; }
+.admin-image-remove { min-height: 42px; padding: 0 12px; color: #9f3939; background: #fff; border: 1px solid #e5c8c5; border-radius: 9px; cursor: pointer; font-size: 11px; }
+.admin-image-remove:hover:not(:disabled) { color: #812b2b; background: #fff5f4; border-color: #d6a7a2; }
+.admin-image-remove:disabled { opacity: .55; cursor: not-allowed; }
 .admin-image-field small, .admin-date-field small { color: var(--pale); font-size: 10px; font-weight: 400; line-height: 1.5; }
 .admin-date-field input[type="date"] { color-scheme: light; }
 .admin-content:has(.admin-editor-page) { max-width: none; padding: 0; }
