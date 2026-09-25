@@ -4,7 +4,7 @@
 
 ## GET `/api/content?country=greece`
 
-原有 `attractions`, `routes`（旅游路线）等字段保留；以下是新增、规范化的字段：
+原有 `attractions`, `routes`（旅游路线）等字段保留；以下 JSON 仅作字段形状示意，实际缺失值按下文的 Website 演示回退填充：
 
 ```json
 {
@@ -22,18 +22,20 @@
     "customSections": [],
     "highlights": [{"id":"existing-id-highlight-1", "name":"", "nameTw":"", "nameEn":"", "desc":"", "descTw":"", "descEn":"", "image":"", "sort":1, "exhibitId":null}],
     "exhibits": [{"id":"point-id", "name":"", "nameTw":"", "nameEn":"", "description":"", "descriptionTw":"", "descriptionEn":"", "author":"", "duration":"", "location":{}, "image":"", "sort":1, "routeOrder":0, "status":"published"}],
-    "routes": [], "audioGuides": []
+    "routes": [{"id":"existing-id-demo-route","title":"示例参观路线","description":"演示路线由已录入讲解点组成，真实路线待发布。","pointIds":["point-id"],"isDemo":true}],
+    "audioGuides": [{"id":"existing-id-demo-audio-route","category":"route","title":"路线讲解（演示）","exhibitId":"point-id","routeId":"existing-id-demo-route","previewUrl":"","accessUrl":"","fullUrl":null,"playable":false,"isDemo":true}],
+    "demoFields": {"routes":true,"audioGuides":true}
   }]
 }
 ```
 
-固定 `visitorInfoSections` **始终恰好返回四项**，依序以稳定 id `hours`/`tickets`/`transport`/`map` 表示开放时间、门票信息、交通信息、景点地图；内容缺失时 `bodyHtml*` 为空、`nodes*` 为空数组，客户端仍保留板块并展示空态，不因无地图图片/链接而隐藏 map section。自定义 `customSections` 只返回 `status:"published"` 项，按 `sort` 升序；各项含 `{id,kind:"custom",title,titleTw,titleEn,bodyHtml,bodyHtmlTw,bodyHtmlEn,nodes,nodesTw,nodesEn,sort,status}`。
+固定 `visitorInfoSections` **始终恰好返回四项**，依序以稳定 id `hours`/`tickets`/`transport`/`map` 表示开放时间、门票信息、交通信息、景点地图；对应正文与地图资产都缺失时，Website 从 `seed/content-demo.json` 填入明确写有「演示内容／待发布」的三语提示及 `nodes*`，并给该板块 `isDemo:true`、在景点 `demoFields.visitorInfo` 列出字段名；已有真实正文或地图则保留原样。客户端仍保留固定板块，不因无地图图片/链接而隐藏 map section。自定义 `customSections` 只返回 `status:"published"` 项，按 `sort` 升序；各项含 `{id,kind:"custom",title,titleTw,titleEn,bodyHtml,bodyHtmlTw,bodyHtmlEn,nodes,nodesTw,nodesEn,sort,status}`。
 
 `nodes`、`nodesTw`、`nodesEn` 是可直接用于微信 `<rich-text nodes="{{nodes}}"/>` 的标准节点数组：文本节点 `{type:"text",text:"…"}`；元素节点 `{type:"element",name:"p",attrs:{},children:[…]}`。HTML 与 nodes 由同一服务器 allowlist sanitizer 派生、语义一致；App 优先渲染 nodes，不执行原始 HTML/JS。允许标签 `p,div,br,strong,b,em,i,ul,ol,li,blockquote,h2,h3,a,img`；所有 `on*`、style 与未允许属性剥除，script/style 标签剥除；链接仅 HTTPS、mailto 或安全站内路径；图片仅 HTTPS 或站内 `/images/...`。拒绝 `javascript:`、协议相对 URL、反斜线及路径上跳。
 
 地图固定板块的 `map` 字段为 `{image,url,description,descriptionTw,descriptionEn}`，用于独立地图图片/链接操作；`visitorInfo.mapImage/mapUrl` 保持向后兼容并映射到新 map 结构。旧 `guide.map/mapTw/mapEn` 作为地图说明纯文本回退并进行转义/安全渲染；新 `guide.mapHtml/mapHtmlTw/mapHtmlEn` 优先；繁体/英文富文本缺失时先回退旧 `mapTw/mapEn`，再由客户端回退简体。其他固定板块也读取 `guide.hoursHtml*`, `ticketsHtml*`, `transportHtml*`；同语种富文本缺失时先回退旧的 `hoursTw/En`、`ticketsTw/En`、`transportTw/En`，再由客户端回退简体 plain text。`sourceUrl/sourceTitle* /verifiedAt` 继续用于来源与人工核对标注。
 
-`attractions[].routes` **是讲解点路线**，不是顶层旅游路线；形状 `{id,title,titleTw,titleEn,description,sort,pointIds:[exhibitId]}`。`audioGuides` 按 `sort` 升序，包含 `category: "route"|"online"|"expert"`，以及下文统一的播放元数据。仅本景点已发布路线/有效点位能关联；旧缺字段自动填 `""`/`null`/`[]`。未设置来源/核对日期的参观信息不能展示为“实时最新”。图片路径使用 `./images/…`；旧 `guide` 对象继续提供兼容旧页面，地图链接/图片等新增字段读 `visitorInfo`。亮点缺图时 `image:""`；`exhibitId:null` 时隐藏点位跳转。
+`attractions[].routes` **是讲解点路线**，不是顶层旅游路线；形状 `{id,title,titleTw,titleEn,description,sort,pointIds:[exhibitId]}`。`audioGuides` 按 `sort` 升序，包含 `category: "route"|"online"|"expert"`，以及下文统一的播放元数据。真实路线或音轨存在时优先返回真实数据；该景点缺路线时从 Website 版本化 `seed/content-demo.json` 回填一条路线（`isDemo:true`，`pointIds` 优先使用已发布 `exhibits[].id`），缺音轨时回填 route/online/expert 三条演示元数据（`isDemo:true`,`playable:false`,`previewUrl:""`,`accessUrl:""`,`fullUrl:null`），**不得**当可播放音频或解锁商品。仅本景点已发布路线/有效点位能关联；演示点位仅在原有 `exhibits` 为空时由 API 回填，永不写回数据表。`summary`、`highlights`、四个固定参观字段缺失时亦从该文件返回明确的演示内容；条目有 `isDemo:true`，字符串通过景点 `demoFields.summary`、`demoFields.visitorInfo` 标记。演示文案维护方式：编辑 `seed/content-demo.json`，验证后随 Website 代码部署并重启服务；目前后台不提供演示文案编辑入口。未设置来源/核对日期的参观信息不能展示为“实时最新”。图片路径使用 `./images/…`；旧 `guide` 对象继续提供兼容旧页面，地图链接/图片等新增字段读 `visitorInfo`。亮点缺图时 `image:""`；`exhibitId:null` 时隐藏点位跳转。
 
 `audioAlbums` 只包含已发布且至少一集**真实已上传可播放**节目的专辑，形状 `{id,title,titleTw,titleEn,description,descriptionTw,descriptionEn,cover,sort,episodes:[…]}`。空列表确实表示无可播放节目；无音频草稿、下架节目和无效跨景点关联不对外暴露。节目字段与 `audioGuides` 一致：
 

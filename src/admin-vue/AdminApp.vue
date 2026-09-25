@@ -72,6 +72,57 @@
                         <el-form-item label="终身会员商品状态"><el-switch v-model="settings.miniprogramKnowledge.products.membership.enabled" active-text="启用" inactive-text="停用"/></el-form-item>
                         <el-form-item label="终身会员币种"><el-input v-model="settings.miniprogramKnowledge.products.membership.currency"/></el-form-item>
                       </div>
+                      <template v-if="tab.name==='site'">
+                        <section class="settings-structured">
+                          <div class="settings-structured-head"><div><h3>奢享体验内容</h3><p>每条体验使用固定 ID；服务要点可逐条添加。</p></div><el-button plain size="small" icon="el-icon-plus" @click="settings.experiences.push(newExperience())">新增体验</el-button></div>
+                          <div v-for="(experience,index) in settings.experiences" :key="index" class="array-entry">
+                            <div class="array-entry-head"><b>体验 {{ index+1 }}</b><el-button type="text" class="danger-text" @click="settings.experiences.splice(index,1)">移除</el-button></div>
+                            <div class="array-fields">
+                              <el-form-item label="体验 ID"><el-input v-model="experience.id" placeholder="如 private-yacht"/></el-form-item>
+                              <el-form-item label="标题"><el-input v-model="experience.title"/></el-form-item>
+                              <el-form-item label="分类标签"><el-input v-model="experience.label"/></el-form-item>
+                              <el-form-item label="英文名称"><el-input v-model="experience.nameEn"/></el-form-item>
+                              <el-form-item label="副标题"><el-input v-model="experience.subtitle"/></el-form-item>
+                              <el-form-item label="分享类型"><el-input v-model="experience.shareType" placeholder="可选，如 yacht"/></el-form-item>
+                              <el-form-item label="介绍" class="full-field"><el-input v-model="experience.desc"/></el-form-item>
+                              <el-form-item label="图片路径" class="full-field"><el-input v-model="experience.image" placeholder="如 images/yacht.webp"/></el-form-item>
+                              <el-form-item label="预订说明" class="full-field"><el-input v-model="experience.notice"/></el-form-item>
+                              <el-form-item label="发布状态"><el-select v-model="experience.status"><el-option label="发布" value="published"/><el-option label="下架" value="unpublished"/></el-select></el-form-item>
+                              <el-form-item label="启用"><el-switch :value="experience.enabled!==false" @change="value=>$set(experience,'enabled',value)"/></el-form-item>
+                            </div>
+                            <div class="settings-list-head"><b>服务要点</b><el-button plain size="mini" icon="el-icon-plus" @click="experience.points.push('')">添加要点</el-button></div>
+                            <div v-for="(point,pointIndex) in experience.points" :key="pointIndex" class="settings-list-row"><el-input :value="settingListText(point)" @input="value=>updateSettingListText(experience.points,pointIndex,value)"/><el-button type="text" class="danger-text" @click="experience.points.splice(pointIndex,1)">移除</el-button></div>
+                          </div>
+                        </section>
+                        <section class="settings-structured">
+                          <div class="settings-structured-head"><div><h3>出行工具公开资料</h3><p>汇率与天气为人工维护的参考数据，不会自动更新。</p></div></div>
+                          <h4>签证参考</h4>
+                          <div class="array-fields">
+                            <el-form-item label="标题"><el-input v-model="settings.travelTools.visa.title"/></el-form-item>
+                            <el-form-item label="参考来源链接"><el-input v-model="settings.travelTools.visa.url" placeholder="https://"/></el-form-item>
+                            <el-form-item label="摘要" class="full-field"><el-input v-model="settings.travelTools.visa.summary"/></el-form-item>
+                          </div>
+                          <div class="settings-list-head"><b>签证材料清单</b><el-button plain size="mini" icon="el-icon-plus" @click="settings.travelTools.visa.checklist.push('')">添加项目</el-button></div>
+                          <div v-for="(item,index) in settings.travelTools.visa.checklist" :key="index" class="settings-list-row"><el-input :value="settingListText(item)" @input="value=>updateSettingListText(settings.travelTools.visa.checklist,index,value)"/><el-button type="text" class="danger-text" @click="settings.travelTools.visa.checklist.splice(index,1)">移除</el-button></div>
+                          <h4>汇率参考</h4>
+                          <div class="array-fields">
+                            <el-form-item label="1 EUR 约合人民币"><el-input-number v-model="settings.travelTools.eurCny" :min="0" :step="0.01" :precision="2"/></el-form-item>
+                            <el-form-item label="汇率更新时间"><el-input v-model="settings.travelTools.rateUpdatedAt" placeholder="YYYY-MM-DD"/></el-form-item>
+                            <el-form-item label="汇率来源" class="full-field"><el-input v-model="settings.travelTools.rateSource"/></el-form-item>
+                          </div>
+                          <div class="settings-list-head"><b>天气参考城市</b><el-button plain size="mini" icon="el-icon-plus" @click="settings.travelTools.weatherCities.push({name:'',temperature:'',condition:''})">添加城市</el-button></div>
+                          <div v-for="(city,index) in settings.travelTools.weatherCities" :key="index" class="array-entry">
+                            <div class="array-entry-head"><b>城市 {{ index+1 }}</b><el-button type="text" class="danger-text" @click="settings.travelTools.weatherCities.splice(index,1)">移除</el-button></div>
+                            <div class="array-fields">
+                              <el-form-item label="城市 ID（可选）"><el-input v-model="city.id"/></el-form-item>
+                              <el-form-item label="城市名称"><el-input v-model="city.name"/></el-form-item>
+                              <el-form-item label="参考温度"><el-input :value="weatherTemperature(city)" placeholder="如 22°C" @input="value=>updateWeatherTemperature(city,value)"/></el-form-item>
+                              <el-form-item label="天气状况"><el-input v-model="city.condition"/></el-form-item>
+                            </div>
+                          </div>
+                          <div class="array-fields"><el-form-item label="天气更新时间" class="full-field"><el-input v-model="settings.travelTools.weatherUpdatedAt" placeholder="YYYY-MM-DD"/></el-form-item></div>
+                        </section>
+                      </template>
                     </el-tab-pane>
                   </el-tabs>
                   <div class="form-actions"><el-button type="primary" icon="el-icon-check" :loading="busy" @click="saveSettings">保存配置</el-button></div>
@@ -229,7 +280,7 @@ fields.miniprogramTravelers.endpoint='miniprogram-travelers'
 fields.miniprogramDocuments.endpoint='miniprogram-documents'
 fields.miniprogramCoupons.endpoint='miniprogram-coupons'
 const settingTabs = [
-  {name:'site',label:'站点与 SEO',description:'网站名称、默认 SEO、首页文案及联系信息。',fields:[basic('siteName','站点名称'),basic('siteUrl','站点正式网址'),basic('defaultTitle','默认页面标题'),basic('defaultDescription','默认 SEO 描述','textarea',{full:true}),basic('homeEyebrow','首页眉题'),basic('homeTitle','首页标题'),basic('homeDescription','首页描述','textarea',{full:true}),basic('keywords','关键词'),basic('googleVerification','Google 验证码'),basic('robotsPolicy','Robots 策略','select'),basic('wechat','微信号'),basic('phone','联系电话'),basic('email','联系邮箱'),basic('replyHours','回复承诺'),basic('experiences','奢享体验内容','json',{rows:12,full:true,help:'仅维护公开内容。每项使用稳定 id，并填写 title、desc、image、points；不含支付密钥。'}),basic('travelTools','出行工具公开资料','json',{rows:12,full:true,help:'仅维护公开参考信息：visa、eurCny、rateUpdatedAt、rateSource、weatherCities；汇率和天气不是自动实时数据。'})]},
+  {name:'site',label:'站点与 SEO',description:'网站名称、默认 SEO、首页文案及联系信息。',fields:[basic('siteName','站点名称'),basic('siteUrl','站点正式网址'),basic('defaultTitle','默认页面标题'),basic('defaultDescription','默认 SEO 描述','textarea',{full:true}),basic('homeEyebrow','首页眉题'),basic('homeTitle','首页标题'),basic('homeDescription','首页描述','textarea',{full:true}),basic('keywords','关键词'),basic('googleVerification','Google 验证码'),basic('robotsPolicy','Robots 策略','select'),basic('wechat','微信号'),basic('phone','联系电话'),basic('email','联系邮箱'),basic('replyHours','回复承诺')]},
   {name:'share',label:'分享图片',description:'维护网站社交分享卡片使用的 OG 图片。',fields:[basic('ogImage','OG 分享图片','image',{full:true})]},
   {name:'miniprogram',label:'小程序访问',description:'控制小程序是否正常提供内容访问。',fields:[basic('miniprogramAccess','小程序访问控制','switch')]},
   {name:'knowledge',label:'景点讲解',description:'景点讲解试听时长与单景点永久讲解商品设置。',fields:[]},
@@ -296,7 +347,12 @@ export default {
       const cityId=String(destination.cityId||'').trim()
       return cityId?(this.data.attractions||[]).filter(attraction=>String(attraction.city||'')===cityId).map(attraction=>String(attraction.id||'')).filter(Boolean):[]
     },
-    defaultSettings(){return{siteName:'',siteUrl:'',defaultTitle:'',defaultDescription:'',homeEyebrow:'',homeTitle:'',homeDescription:'',keywords:'',ogImage:'',googleVerification:'',robotsPolicy:'index,follow',wechat:'',phone:'',email:'',replyHours:'',experiences:[],travelTools:{},miniprogramAccess:true,miniprogramKnowledge:{trialSeconds:60,products:{attraction:{name:'单景点永久讲解',price:19.9,enabled:true,currency:'CNY'},membership:{name:'终身会员',price:99,enabled:true,currency:'CNY'}}}}},
+    newExperience(item={}){return{id:'',title:'',label:'',nameEn:'',subtitle:'',shareType:'',desc:'',image:'',notice:'',status:'published',enabled:true,...item,points:Array.isArray(item.points)?item.points:[]}},
+    settingListText(item){return typeof item==='string'?item:item?.text??item?.title??''},
+    weatherTemperature(city){return city.temperature??city.temp??''},
+    updateSettingListText(list,index,value){const item=list[index];if(item&&typeof item==='object')this.$set(item,Object.prototype.hasOwnProperty.call(item,'text')?'text':'title',value);else this.$set(list,index,value)},
+    updateWeatherTemperature(city,value){this.$set(city,Object.prototype.hasOwnProperty.call(city,'temperature')?'temperature':Object.prototype.hasOwnProperty.call(city,'temp')?'temp':'temperature',value)},
+    defaultSettings(){return{siteName:'',siteUrl:'',defaultTitle:'',defaultDescription:'',homeEyebrow:'',homeTitle:'',homeDescription:'',keywords:'',ogImage:'',googleVerification:'',robotsPolicy:'index,follow',wechat:'',phone:'',email:'',replyHours:'',experiences:[],travelTools:{visa:{title:'',summary:'',url:'',checklist:[]},eurCny:null,rateUpdatedAt:'',rateSource:'',weatherCities:[],weatherUpdatedAt:''},miniprogramAccess:true,miniprogramKnowledge:{trialSeconds:60,products:{attraction:{name:'单景点永久讲解',price:19.9,enabled:true,currency:'CNY'},membership:{name:'终身会员',price:99,enabled:true,currency:'CNY'}}}}},
     async request(path,options={}){const headers={'Content-Type':'application/json',...(this.token?{Authorization:'Bearer '+this.token}:{}),...(options.headers||{})};const response=await fetch('/api'+path,{...options,headers});const result=response.status===204?null:await response.json();if(response.status===401&&path!=='/auth/login'){this.logout();throw new Error('登录已过期，请重新登录')}if(!response.ok)throw new Error(result?.error||'请求失败（'+response.status+'）');return result},
     async login(){if(!this.password){this.error='请输入管理员密码';return}this.busy=true;this.error='';try{const result=await this.request('/auth/login',{method:'POST',body:JSON.stringify({password:this.password})});this.token=result.token;sessionStorage.setItem(TOKEN,result.token);await this.loadAll()}catch(e){this.error=e.message}finally{this.busy=false}},
     logout(){sessionStorage.removeItem(TOKEN);this.token='';this.data=JSON.parse(JSON.stringify(emptyData))},
@@ -312,7 +368,7 @@ export default {
     filterValue(row,key){if(key==='status')return this.rowStatus(row);if(key==='enabled')return row.enabled===false?'unpublished':'published';if(key==='member')return row.member?'member':'regular';return row[key]},
     filterOptionLabel(key,value){if(key==='status'||key==='enabled')return this.statusLabel(value);if(key==='featured')return value?'首页推荐':'普通展示';if(key==='member')return value==='member'?'终身会员':'普通用户';const labels={customization:'定制行程', 'business-travel':'商务出行','guide-booking':'导游预约','vehicle-consultation':'用车咨询','mini-program-booking':'小程序预约',landmark:'景点',museum:'博物馆',published:'发布',unpublished:'下架'};if(key==='leadType'||key==='type')return labels[value]||this.displayValue(value);return this.displayValue(value)},
     matchesDateRange(row,key,range){const value=this.filterValue(row,key);if(!value)return false;const start=range[0],end=range[1];let from='',to='';if(key==='period'){const raw=String(value).trim();const compact=raw.match(/^(\d{4})(\d{2})(\d{2})\s*[~～至—–]\s*(?:(\d{4}))?(\d{2})(\d{2})$/);if(compact){from=`${compact[1]}-${compact[2]}-${compact[3]}`;const year=Number(compact[4]||compact[1])+(compact[4]?0:Number(compact[5]+compact[6])<Number(compact[2]+compact[3])?1:0);to=`${year}-${compact[5]}-${compact[6]}`}else{const parts=raw.split(/\s*[~～至—–]\s*/);from=String(parts[0]||'').slice(0,10);to=String(parts[1]||parts[0]||'').slice(0,10)}}else from=to=String(value).slice(0,10);return Boolean(from&&to&&from<=end&&to>=start)},
-    async loadAll(){if(!this.token)return;this.loading=true;const keys=Object.keys(routes);const results=await Promise.allSettled(keys.map(key=>this.request(routes[key])));results.forEach((res,i)=>{if(res.status!=='fulfilled')return;const key=keys[i],value=res.value;if(key==='stats'){this.stats=value||{};this.commerce=value?.commerce||{};return}if(key==='settings'){const defaults=this.defaultSettings();this.settings={...defaults,...value,miniprogramKnowledge:{...defaults.miniprogramKnowledge,...(value?.miniprogramKnowledge||{}),products:{...defaults.miniprogramKnowledge.products,...(value?.miniprogramKnowledge?.products||{})}}};for(const product of ['attraction','membership'])this.settings.miniprogramKnowledge.products[product]={...defaults.miniprogramKnowledge.products[product],...(this.settings.miniprogramKnowledge.products[product]||{})};return}const rows=Array.isArray(value)?value:(value?.items||[]);if(key==='destinationTypes')this.data.destinationTypes=rows.map(x=>({...x,id:x.key||x.id,enabled:x.enabled!==false}));else this.data[key]=rows;if(key==='leads'){this.data.guideBookings=rows.filter(x=>x.leadType==='guide-booking'||Boolean(x.guideSlug));this.data.miniProgramBookings=rows.filter(x=>this.isMiniBooking(x))}});const failure=results.find(x=>x.status==='rejected');if(failure&&this.token)this.$message.error('部分数据加载失败：'+failure.reason.message);this.loading=false},
+    async loadAll(){if(!this.token)return;this.loading=true;const keys=Object.keys(routes);const results=await Promise.allSettled(keys.map(key=>this.request(routes[key])));results.forEach((res,i)=>{if(res.status!=='fulfilled')return;const key=keys[i],value=res.value;if(key==='stats'){this.stats=value||{};this.commerce=value?.commerce||{};return}if(key==='settings'){const defaults=this.defaultSettings();const tools=value?.travelTools&&typeof value.travelTools==='object'&&!Array.isArray(value.travelTools)?value.travelTools:{};const visa=tools.visa&&typeof tools.visa==='object'&&!Array.isArray(tools.visa)?tools.visa:{};this.settings={...defaults,...value,experiences:Array.isArray(value?.experiences)?value.experiences.map(item=>this.newExperience(item)):[],travelTools:{...defaults.travelTools,...tools,visa:{...defaults.travelTools.visa,...visa,checklist:Array.isArray(visa.checklist)?visa.checklist:[]},weatherCities:Array.isArray(tools.weatherCities)?tools.weatherCities.map(city=>({id:'',name:'',condition:'',...city})):[]},miniprogramKnowledge:{...defaults.miniprogramKnowledge,...(value?.miniprogramKnowledge||{}),products:{...defaults.miniprogramKnowledge.products,...(value?.miniprogramKnowledge?.products||{})}}};for(const product of ['attraction','membership'])this.settings.miniprogramKnowledge.products[product]={...defaults.miniprogramKnowledge.products[product],...(this.settings.miniprogramKnowledge.products[product]||{})};return}const rows=Array.isArray(value)?value:(value?.items||[]);if(key==='destinationTypes')this.data.destinationTypes=rows.map(x=>({...x,id:x.key||x.id,enabled:x.enabled!==false}));else this.data[key]=rows;if(key==='leads'){this.data.guideBookings=rows.filter(x=>x.leadType==='guide-booking'||Boolean(x.guideSlug));this.data.miniProgramBookings=rows.filter(x=>this.isMiniBooking(x))}});const failure=results.find(x=>x.status==='rejected');if(failure&&this.token)this.$message.error('部分数据加载失败：'+failure.reason.message);this.loading=false},
     openWebsite(){window.open('/','_blank','noopener')},
     statusLabel(value){return({published:'发布',unpublished:'下架',active:'生效中',archived:'已停用',new:'待处理',contacted:'已联系',quoted:'已报价',closed:'已完成',paid:'已支付',pending:'待支付',failed:'失败',expired:'已过期',used:'已使用'})[value]||value||'—'},
     statusTone(value){return value==='new'?'warning':(['published','active','paid','closed'].includes(value)?'success':'info')},

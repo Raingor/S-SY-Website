@@ -11,6 +11,8 @@ import { audioEntitled, publicHeritage, signedAudioToken, streamPrivateAudio, up
 import { amountToFen, createMiniProgramPrepay, decryptWechatNotify, queryWechatTransaction, realPayNotifyReady, realPayRequestReady, verifyWechatNotify, wechatPayConfig } from './wechat-pay.mjs'
 
 const root = dirname(fileURLToPath(import.meta.url))
+const demoContentPath = resolve(root, 'seed/content-demo.json')
+const demoContent = existsSync(demoContentPath) ? JSON.parse(readFileSync(demoContentPath, 'utf8')) : null
 const distDir = resolve(root, 'dist')
 const port = Number(process.env.PORT || 4173)
 const adminPassword = String(process.env.SY_ADMIN_PASSWORD || '')
@@ -494,6 +496,28 @@ function publicHome(data) {
     banners: publicHomeBanners(data),
   }
 }
+function demoAttractionContent(item, detail, imageUrl) {
+  if (!demoContent) return detail
+  const exhibits = detail.exhibits?.length ? detail.exhibits : [{ id: `${item.id}-demo-point`, ...demoContent.exhibit, image: '', sort: 1, status: 'published', isDemo: true }]
+  const highlights = detail.highlights?.length ? detail.highlights : [{ id: `${item.id}-demo-highlight`, ...demoContent.highlight, image: '', sort: 1, exhibitId: exhibits[0].id, isDemo: true }]
+  const visitorInfo = { ...detail.visitorInfo }
+  const demoVisitorFields = []
+  const visitorInfoSections = (detail.visitorInfoSections || []).map((section) => {
+    if (section.bodyHtml || section.bodyHtmlTw || section.bodyHtmlEn || section.map?.image || section.map?.url) return section
+    const { zh, tw, en } = demoContent.visitorInfo[section.id] || {}
+    if (!zh) return section
+    const body = sanitizeRichText(`<p>${zh}</p>`), bodyTw = sanitizeRichText(`<p>${tw}</p>`), bodyEn = sanitizeRichText(`<p>${en}</p>`)
+    visitorInfo[section.id] = zh
+    visitorInfo[`${section.id}Tw`] = tw
+    visitorInfo[`${section.id}En`] = en
+    demoVisitorFields.push(section.id)
+    return { ...section, bodyHtml: body.html, bodyHtmlTw: bodyTw.html, bodyHtmlEn: bodyEn.html, nodes: body.nodes, nodesTw: bodyTw.nodes, nodesEn: bodyEn.nodes, ...(section.map ? { map: { ...section.map, description: body.html, descriptionTw: bodyTw.html, descriptionEn: bodyEn.html } } : {}), isDemo: true }
+  })
+  const routes = detail.routes?.length ? detail.routes : [{ id: `${item.id}-demo-route`, ...demoContent.route, sort: 1, pointIds: exhibits.slice(0, 3).map((point) => point.id), isDemo: true }]
+  const audioGuides = detail.audioGuides?.length ? detail.audioGuides : demoContent.audioGuides.map((entry, index) => ({ ...entry, id: `${item.id}-demo-audio-${entry.category}`, cover: imageUrl(item.image) || '', attractionId: item.id, exhibitId: exhibits[0].id, routeId: entry.category === 'route' ? routes[0].id : null, durationSeconds: 0, previewSeconds: 0, previewUrl: '', accessUrl: '', fullUrl: null, playable: false, sort: index + 1, isDemo: true }))
+  const summaryIsDemo = !String(item.summary || '').trim()
+  return { ...detail, summary: summaryIsDemo ? demoContent.summary.zh : item.summary, ...(summaryIsDemo ? { summaryTw: demoContent.summary.tw, summaryEn: demoContent.summary.en } : {}), visitorInfo, visitorInfoSections, exhibits, highlights, routes, audioGuides, demoFields: { ...(summaryIsDemo ? { summary: true } : {}), ...(!detail.highlights?.length ? { highlights: true } : {}), ...(!detail.exhibits?.length ? { exhibits: true } : {}), ...(!detail.routes?.length ? { routes: true } : {}), ...(!detail.audioGuides?.length ? { audioGuides: true } : {}), ...(demoVisitorFields.length ? { visitorInfo: demoVisitorFields } : {}) } }
+}
 function publicContent(data, countryId = 'greece') {
   const imageUrl = (value) => {
   if (!value) return value
@@ -509,7 +533,7 @@ function publicContent(data, countryId = 'greece') {
   const heritage = publicHeritage(data, countryId)
   const publicAttractions = scoped(data.attractions).filter((item) => item.status === 'published').map((item) => {
     const { audioGuides: _privateGuides, audioFile: _privateAudio, visitorSections: _privateVisitorSections, ...safe } = item
-    const detail = heritage.attractionDetails[item.id] || {}
+    const detail = demoAttractionContent(item, heritage.attractionDetails[item.id] || {}, imageUrl)
     const safeGuide = { ...(item.guide || {}) }
     for (const key of ['hoursHtml','hoursHtmlTw','hoursHtmlEn','ticketsHtml','ticketsHtmlTw','ticketsHtmlEn','transportHtml','transportHtmlTw','transportHtmlEn','mapHtml','mapHtmlTw','mapHtmlEn']) if (safeGuide[key] != null) safeGuide[key] = sanitizeRichText(safeGuide[key]).html
     safeGuide.mapUrl = detail.visitorInfo?.mapUrl || ''

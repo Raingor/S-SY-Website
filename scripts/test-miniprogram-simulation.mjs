@@ -2,11 +2,20 @@ import { cp, mkdir, rm, symlink } from 'node:fs/promises'
 import { mkdtemp } from 'node:fs/promises'
 import { join, resolve } from 'node:path'
 import { spawn } from 'node:child_process'
+import net from 'node:net'
 import { tmpdir } from 'node:os'
+
+async function availablePort() {
+  const server = net.createServer()
+  await new Promise((resolveListen, reject) => server.once('error', reject).listen(0, '127.0.0.1', resolveListen))
+  const { port } = server.address()
+  await new Promise((resolveClose, reject) => server.close((error) => error ? reject(error) : resolveClose()))
+  return port
+}
 
 const root = resolve(new URL('..', import.meta.url).pathname)
 const tempRoot = await mkdtemp(join(tmpdir(), 'sy-miniprogram-simulation-'))
-const port = 4190 + Math.floor(Math.random() * 100)
+const port = await availablePort()
 const base = `http://127.0.0.1:${port}`
 let child
 
@@ -18,6 +27,7 @@ async function prepare() {
   await cp(join(root, 'admin-session.mjs'), join(tempRoot, 'admin-session.mjs'))
   await cp(join(root, 'heritage-content.mjs'), join(tempRoot, 'heritage-content.mjs'))
   await cp(join(root, 'seed/site-data.json'), join(tempRoot, 'seed/site-data.json'))
+  await cp(join(root, 'seed/content-demo.json'), join(tempRoot, 'seed/content-demo.json'))
   await symlink(join(root, 'node_modules'), join(tempRoot, 'node_modules'), 'dir')
 }
 
@@ -42,7 +52,8 @@ function start(simulationEnabled) {
 }
 
 async function waitForServer() {
-  for (let attempt = 0; attempt < 50; attempt += 1) {
+  for (let attempt = 0; attempt < 100; attempt += 1) {
+    if (child.exitCode !== null) throw new Error(`server exited before ready (${child.exitCode})`)
     try {
       const response = await fetch(`${base}/api/health`)
       if (response.ok) return

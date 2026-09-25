@@ -1,0 +1,74 @@
+{
+  "summary": {
+    "zh": "景点简介待发布（演示内容），请以官方信息为准。",
+    "tw": "景點簡介待發佈（演示內容），請以官方資訊為準。",
+    "en": "Attraction summary pending publication (demo); consult official sources."
+  },
+  "exhibit": {
+    "name": "示例讲解点",
+    "nameTw": "示例講解點",
+    "nameEn": "Demo point",
+    "description": "讲解点内容待发布，此处仅供界面演示。",
+    "descriptionTw": "講解點內容待發佈，此處僅供介面演示。",
+    "descriptionEn": "Point content pending publication; display demo only."
+  },
+  "highlight": {
+    "name": "示例亮点",
+    "nameTw": "示例亮點",
+    "nameEn": "Demo highlight",
+    "desc": "亮点介绍待发布，此处仅供界面演示。",
+    "descTw": "亮點介紹待發佈，此處僅供介面演示。",
+    "descEn": "Highlight details pending publication; display demo only."
+  },
+  "visitorInfo": {
+    "hours": {
+      "zh": "开放时间待发布（演示内容），出行前请以官方公告为准。",
+      "tw": "開放時間待發佈（演示內容），出行前請以官方公告為準。",
+      "en": "Opening hours pending publication (demo); consult the official site before visiting."
+    },
+    "tickets": {
+      "zh": "门票与预约信息待发布（演示内容），请以官方渠道为准。",
+      "tw": "門票與預約資訊待發佈（演示內容），請以官方渠道為準。",
+      "en": "Tickets and booking details pending publication (demo); consult official sources."
+    },
+    "transport": {
+      "zh": "交通方式待发布（演示内容），请在出行前核对路线。",
+      "tw": "交通方式待發佈（演示內容），請在出行前核對路線。",
+      "en": "Transport details pending publication (demo); verify your route before travel."
+    },
+    "map": {
+      "zh": "地图说明待发布（演示内容），请以官方地图为准。",
+      "tw": "地圖說明待發佈（演示內容），請以官方地圖為準。",
+      "en": "Map description pending publication (demo); consult the official map."
+    }
+  },
+  "route": {
+    "title": "示例参观路线",
+    "titleTw": "示例參觀路線",
+    "titleEn": "Demo visitor route",
+    "description": "演示路线由已录入讲解点组成，真实路线待发布。"
+  },
+  "audioGuides": [
+    {
+      "category": "route",
+      "title": "路线讲解（演示）",
+      "titleTw": "路線講解（演示）",
+      "titleEn": "Route audio (demo)",
+      "description": "此为展示用条目，尚无可播放音频。"
+    },
+    {
+      "category": "online",
+      "title": "线上讲解（演示）",
+      "titleTw": "線上講解（演示）",
+      "titleEn": "Online guide (demo)",
+      "description": "此为展示用条目，尚无可播放音频。"
+    },
+    {
+      "category": "expert",
+      "title": "名导讲解（演示）",
+      "titleTw": "名導講解（演示）",
+      "titleEn": "Expert guide (demo)",
+      "description": "此为展示用条目，尚无可播放音频。"
+    }
+  ]
+}
