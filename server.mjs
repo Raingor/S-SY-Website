@@ -13,6 +13,58 @@ import { amountToFen, createMiniProgramPrepay, decryptWechatNotify, queryWechatT
 const root = dirname(fileURLToPath(import.meta.url))
 const demoContentPath = resolve(root, 'seed/content-demo.json')
 const demoContent = existsSync(demoContentPath) ? JSON.parse(readFileSync(demoContentPath, 'utf8')) : null
+const demoLocaleShape = { zh: '', tw: '', en: '' }
+const demoTrilingualFields = (fields) => Object.fromEntries(fields.flatMap((field) => [[field, ''], [`${field}Tw`, ''], [`${field}En`, '']]))
+const detailDemoShape = {
+  summary: demoLocaleShape,
+  exhibit: { ...demoTrilingualFields(['name', 'description']) },
+  highlight: { ...demoTrilingualFields(['name', 'desc']) },
+  visitorInfo: Object.fromEntries(['hours', 'tickets', 'transport', 'map', 'faq'].map((key) => [key, demoLocaleShape])),
+  route: { ...demoTrilingualFields(['title', 'description']) },
+  audioGuides: ['route', 'online', 'expert'].map((category) => ({ category, ...demoTrilingualFields(['title', 'description']) })),
+}
+const detailSectionDefaults = {
+  overview: { label: { zh: '景点概览', tw: '景點概覽', en: 'Overview' }, subtitle: { zh: '认识这处景点', tw: '認識這處景點', en: 'Get to know this attraction' } },
+  visitor: { label: { zh: '参观指南', tw: '參觀指南', en: 'Visitor guide' }, subtitle: { zh: '开放、门票、交通、地图与常见问题', tw: '開放、門票、交通、地圖與常見問題', en: 'Hours, tickets, transport, map and FAQ' }, notice: { zh: '参观信息可能变化，出行前请查看官方公告', tw: '參觀資訊可能變動，出行前請查看官方公告', en: 'Visiting details may change. Check the official site before you go.' } },
+  highlights: { label: { zh: '必看亮点', tw: '必看亮點', en: 'Highlights' }, subtitle: { zh: '值得关注的内容', tw: '值得關注的內容', en: 'What to look for' } },
+  audioHow: { label: { zh: '语音导览使用指南', tw: '語音導覽使用指南', en: 'How to use audio guides' }, subtitle: { zh: '了解试听与正式讲解', tw: '了解試聽與正式講解', en: 'Learn about previews and full guides' } },
+  route: { label: { zh: '路线导览', tw: '路線導覽', en: 'Route guide' }, subtitle: { zh: '按路线探索讲解点', tw: '按路線探索講解點', en: 'Explore interpretation points by route' } },
+  online: { label: { zh: '线上预览', tw: '線上預覽', en: 'Online preview' }, subtitle: { zh: '远程了解景点内容', tw: '遠端了解景點內容', en: 'Explore the attraction remotely' } },
+  expert: { label: { zh: '名导讲解', tw: '名導講解', en: 'Expert guide' }, subtitle: { zh: '专业讲解内容', tw: '專業講解內容', en: 'Expert interpretation' } },
+}
+const detailAudioHowDefaults = {
+  steps: [
+    { zh: '选择景点与讲解内容，先阅读简介。', tw: '選擇景點與講解內容，先閱讀簡介。', en: 'Choose an attraction and guide, then read its introduction.' },
+    { zh: '有真实音频时可试听；演示条目不可播放。', tw: '有真實音訊時可試聽；演示條目不可播放。', en: 'Preview real audio when available; demo entries cannot play.' },
+    { zh: '如需完整讲解，请按正式页面提示确认访问权益。', tw: '如需完整講解，請依正式頁面提示確認存取權益。', en: 'For a full guide, follow the official page to check access.' },
+  ],
+  note: { zh: '演示内容不提供音频、购买或解锁功能；请以真实发布内容和官方信息为准。', tw: '演示內容不提供音訊、購買或解鎖功能；請以真實發佈內容與官方資訊為準。', en: 'Demo content has no audio, purchase or unlock action. Rely on published content and official sources.' },
+}
+const detailVisitorSectionDefaults = {
+  hours: { zh: '开放时间', tw: '開放時間', en: 'Opening hours' },
+  tickets: { zh: '门票信息', tw: '門票資訊', en: 'Tickets' },
+  transport: { zh: '交通信息', tw: '交通資訊', en: 'Transport' },
+  map: { zh: '景点地图', tw: '景點地圖', en: 'Map' },
+  faq: { zh: '常见问题', tw: '常見問題', en: 'FAQ' },
+}
+function mergeDetailDefaults(shape, values) {
+  if (typeof shape === 'string') return typeof values === 'string' ? values : shape
+  if (Array.isArray(shape)) return shape.map((entry, index) => mergeDetailDefaults(entry, values?.[index]))
+  return Object.fromEntries(Object.entries(shape).map(([key, entry]) => [key, mergeDetailDefaults(entry, values?.[key])]))
+}
+function defaultAttractionDetailPage() { return { sections: structuredClone(detailSectionDefaults), visitorSections: structuredClone(detailVisitorSectionDefaults), audioHow: structuredClone(detailAudioHowDefaults), demo: mergeDetailDefaults(detailDemoShape, demoContent) } }
+function normalizeAttractionDetailPage(input) {
+  const defaults = defaultAttractionDetailPage()
+  const walk = (value, fallback) => {
+    if (typeof fallback === 'string') return typeof value === 'string' && value.trim() ? value.trim().slice(0, 2000) : fallback
+    if (Array.isArray(fallback)) return fallback.map((entry, index) => walk(value?.[index], entry))
+    return Object.fromEntries(Object.entries(fallback).map(([key, entry]) => [key, walk(value?.[key], entry)]))
+  }
+  const page = walk(input, defaults)
+  page.demo.audioGuides.forEach((entry, index) => { entry.category = defaults.demo.audioGuides[index].category })
+  return page
+}
+const escapeDetailText = (value) => String(value || '').replace(/[&<>"']/g, (char) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[char]))
 const distDir = resolve(root, 'dist')
 const port = Number(process.env.PORT || 4173)
 const adminPassword = String(process.env.SY_ADMIN_PASSWORD || '')
@@ -36,6 +88,15 @@ const runtimeImageDir = resolve(root, 'public/images')
 const DEFAULT_HOME_EYEBROW = 'GREECE TRAVEL BUTLER · TAILOR-MADE JOURNEYS'
 const DEFAULT_HOME_TITLE = '只为一生美好回忆'
 const DEFAULT_HOME_DESCRIPTION = '希腊在地人文与行程咨询服务。雅典在地团队，一对一中文顾问，提供文化、行程与语言陪同咨询。'
+const MINIPROGRAM_SERVICE_ACTIONS = ['customization', 'guide', 'vehicle', 'knowledge', 'business', 'travel-guide']
+const DEFAULT_MINIPROGRAM_SERVICE_ENTRIES = [
+  { key: 'customization', title: { 'zh-CN': '行程定制', 'zh-TW': '行程定製', en: 'Trip planning' }, subtitle: { 'zh-CN': '资讯咨询', 'zh-TW': '資訊諮詢', en: 'Trip advice' }, iconImage: 'miniprogram-service-icons/entry-customization.png' },
+  { key: 'guide', title: { 'zh-CN': '古迹讲解', 'zh-TW': '古蹟講解', en: 'Heritage guide' }, subtitle: { 'zh-CN': '预约咨询', 'zh-TW': '預約諮詢', en: 'Booking advice' }, iconImage: 'miniprogram-service-icons/entry-guide.png' },
+  { key: 'vehicle', title: { 'zh-CN': '在地用车', 'zh-TW': '在地用車', en: 'Local transport' }, subtitle: { 'zh-CN': '资源对接', 'zh-TW': '資源對接', en: 'Local resources' }, iconImage: 'miniprogram-service-icons/entry-vehicle.png' },
+  { key: 'knowledge', title: { 'zh-CN': '文史知识库', 'zh-TW': '文史知識庫', en: 'Cultural knowledge' }, subtitle: { 'zh-CN': '免费预览', 'zh-TW': '免費預覽', en: 'Free preview' }, iconImage: 'miniprogram-service-icons/entry-knowledge.png' },
+  { key: 'business', title: { 'zh-CN': '希腊商旅', 'zh-TW': '希臘商旅', en: 'Business travel' }, subtitle: { 'zh-CN': '随行咨询', 'zh-TW': '隨行諮詢', en: 'Travel support' }, iconImage: 'miniprogram-service-icons/entry-business.png' },
+  { key: 'travel-guide', title: { 'zh-CN': '出行指南', 'zh-TW': '出行指南', en: 'Travel guide' }, subtitle: { 'zh-CN': '实用攻略', 'zh-TW': '實用攻略', en: 'Practical guide' }, iconImage: 'miniprogram-service-icons/entry-travel-guide.svg' },
+]
 
 function writeRuntimeImage(filename, buffer) {
   mkdirSync(runtimeImageDir, { recursive: true })
@@ -457,6 +518,63 @@ function setHomeBanners(data, banners) {
   data.homeBanners = banners
   data.home = { ...(data.home || {}), banners }
 }
+function normalizeHeritageGuideBanner(item = {}, fallbackSort = 1) {
+  const title = String(item.title || '').trim().slice(0, 180)
+  const description = String(item.description || '').trim().slice(0, 1000)
+  const alt = String(item.alt || title).trim().slice(0, 180)
+  const image = String(item.image || '').trim().slice(0, 500)
+  const sortValue = Number(item.sort)
+  const sort = Number.isFinite(sortValue) && sortValue > 0 ? sortValue : fallbackSort
+  return {
+    id: String(item.id || id('heritage-guide-banner')),
+    image,
+    title,
+    description,
+    alt,
+    enabled: item.enabled !== false,
+    sort,
+    ...(item.createdAt ? { createdAt: item.createdAt } : {}),
+    ...(item.updatedAt ? { updatedAt: item.updatedAt } : {}),
+  }
+}
+function publicHeritageGuideBanners(data, imageUrl = (value) => value) {
+  return (Array.isArray(data.heritageGuideBanners) ? data.heritageGuideBanners : [])
+    .filter((item) => item && item.enabled !== false && String(item.image || '').trim())
+    .map((item, index) => {
+      const banner = normalizeHeritageGuideBanner(item, index + 1)
+      return { id: banner.id, image: imageUrl(banner.image), title: banner.title, description: banner.description, alt: banner.alt || banner.title, enabled: true, sort: Number(banner.sort) }
+    })
+    .sort((a, b) => a.sort - b.sort)
+}
+function normalizeMiniprogramServiceEntry(item = {}, fallbackSort = 1) {
+  const key = String(item.key || '').trim()
+  if (!MINIPROGRAM_SERVICE_ACTIONS.includes(key)) throw new Error('请选择有效的小程序服务入口')
+  const localeMap = (value) => Object.fromEntries(['zh-CN', 'zh-TW', 'en'].map((locale) => [locale, String(value?.[locale] || '').trim().slice(0, 160)]))
+  const sortValue = Number(item.sort)
+  return {
+    id: String(item.id || key).trim().slice(0, 100),
+    key,
+    title: localeMap(item.title),
+    subtitle: localeMap(item.subtitle),
+    iconImage: String(item.iconImage || '').trim().slice(0, 500),
+    enabled: item.enabled !== false,
+    sort: Number.isFinite(sortValue) && sortValue > 0 ? Math.min(9999, sortValue) : fallbackSort,
+    ...(item.createdAt ? { createdAt: item.createdAt } : {}),
+    ...(item.updatedAt ? { updatedAt: item.updatedAt } : {}),
+  }
+}
+function defaultMiniprogramServiceEntries() {
+  return DEFAULT_MINIPROGRAM_SERVICE_ENTRIES.map((item, index) => normalizeMiniprogramServiceEntry({ ...item, id: item.key, enabled: true, sort: index + 1 }, index + 1))
+}
+function publicMiniprogramServiceEntries(data, imageUrl = (value) => value) {
+  return (Array.isArray(data.miniprogramServiceEntries) ? data.miniprogramServiceEntries : [])
+    .filter((item) => item && item.enabled !== false && String(item.iconImage || '').trim())
+    .map((item, index) => {
+      const entry = normalizeMiniprogramServiceEntry(item, index + 1)
+      return { id: entry.id, key: entry.key, title: entry.title, subtitle: entry.subtitle, iconImage: imageUrl(entry.iconImage), enabled: true, sort: entry.sort }
+    })
+    .sort((a, b) => a.sort - b.sort)
+}
 function normalizePublicDestination(item, cities, attractions) {
   const cityById = new Map(cities.map((city) => [city.id, city]))
   const explicitCityId = String(item.cityId || '').trim()
@@ -496,27 +614,43 @@ function publicHome(data) {
     banners: publicHomeBanners(data),
   }
 }
-function demoAttractionContent(item, detail, imageUrl) {
-  if (!demoContent) return detail
-  const exhibits = detail.exhibits?.length ? detail.exhibits : [{ id: `${item.id}-demo-point`, ...demoContent.exhibit, image: '', sort: 1, status: 'published', isDemo: true }]
-  const highlights = detail.highlights?.length ? detail.highlights : [{ id: `${item.id}-demo-highlight`, ...demoContent.highlight, image: '', sort: 1, exhibitId: exhibits[0].id, isDemo: true }]
+function demoAttractionContent(item, detail, imageUrl, page) {
+  const demo = page.demo
+  const exhibits = detail.exhibits?.length ? detail.exhibits : [{ id: `${item.id}-demo-point`, ...demo.exhibit, image: '', sort: 1, status: 'published', isDemo: true }]
+  const highlights = detail.highlights?.length ? detail.highlights : [{ id: `${item.id}-demo-highlight`, ...demo.highlight, image: '', sort: 1, exhibitId: exhibits[0].id, isDemo: true }]
   const visitorInfo = { ...detail.visitorInfo }
   const demoVisitorFields = []
   const visitorInfoSections = (detail.visitorInfoSections || []).map((section) => {
-    if (section.bodyHtml || section.bodyHtmlTw || section.bodyHtmlEn || section.map?.image || section.map?.url) return section
-    const { zh, tw, en } = demoContent.visitorInfo[section.id] || {}
-    if (!zh) return section
-    const body = sanitizeRichText(`<p>${zh}</p>`), bodyTw = sanitizeRichText(`<p>${tw}</p>`), bodyEn = sanitizeRichText(`<p>${en}</p>`)
+    const labels = page.visitorSections[section.id]
+    const labeled = labels ? { ...section, title: labels.zh, titleTw: labels.tw, titleEn: labels.en } : section
+    if (section.bodyHtml || section.bodyHtmlTw || section.bodyHtmlEn || section.map?.image || section.map?.url) return labeled
+    const { zh, tw, en } = demo.visitorInfo[section.id] || {}
+    if (!zh) return labeled
+    const body = sanitizeRichText(`<p>${escapeDetailText(zh)}</p>`), bodyTw = sanitizeRichText(`<p>${escapeDetailText(tw)}</p>`), bodyEn = sanitizeRichText(`<p>${escapeDetailText(en)}</p>`)
     visitorInfo[section.id] = zh
     visitorInfo[`${section.id}Tw`] = tw
     visitorInfo[`${section.id}En`] = en
     demoVisitorFields.push(section.id)
-    return { ...section, bodyHtml: body.html, bodyHtmlTw: bodyTw.html, bodyHtmlEn: bodyEn.html, nodes: body.nodes, nodesTw: bodyTw.nodes, nodesEn: bodyEn.nodes, ...(section.map ? { map: { ...section.map, description: body.html, descriptionTw: bodyTw.html, descriptionEn: bodyEn.html } } : {}), isDemo: true }
+    return { ...labeled, bodyHtml: body.html, bodyHtmlTw: bodyTw.html, bodyHtmlEn: bodyEn.html, nodes: body.nodes, nodesTw: bodyTw.nodes, nodesEn: bodyEn.nodes, ...(section.map ? { map: { ...section.map, description: body.html, descriptionTw: bodyTw.html, descriptionEn: bodyEn.html } } : {}), isDemo: true }
   })
-  const routes = detail.routes?.length ? detail.routes : [{ id: `${item.id}-demo-route`, ...demoContent.route, sort: 1, pointIds: exhibits.slice(0, 3).map((point) => point.id), isDemo: true }]
-  const audioGuides = detail.audioGuides?.length ? detail.audioGuides : demoContent.audioGuides.map((entry, index) => ({ ...entry, id: `${item.id}-demo-audio-${entry.category}`, cover: imageUrl(item.image) || '', attractionId: item.id, exhibitId: exhibits[0].id, routeId: entry.category === 'route' ? routes[0].id : null, durationSeconds: 0, previewSeconds: 0, previewUrl: '', accessUrl: '', fullUrl: null, playable: false, sort: index + 1, isDemo: true }))
+  const realFaq = String(item.guide?.faq || item.guide?.faqTw || item.guide?.faqEn || detail.visitorInfo?.faq || '').trim()
+  const hasPublishedFaq = (detail.customSections || []).some((section) => /faq|常见问题|常見問題/i.test([section.title, section.titleTw, section.titleEn].join(' ')))
+  if (realFaq || !hasPublishedFaq) {
+    const faq = realFaq
+      ? { zh: String(item.guide?.faq || item.guide?.faqTw || item.guide?.faqEn || detail.visitorInfo?.faq || ''), tw: String(item.guide?.faqTw || item.guide?.faq || item.guide?.faqEn || detail.visitorInfo?.faq || ''), en: String(item.guide?.faqEn || item.guide?.faq || item.guide?.faqTw || detail.visitorInfo?.faq || '') }
+      : demo.visitorInfo.faq
+    visitorInfo.faq = faq.zh; visitorInfo.faqTw = faq.tw; visitorInfo.faqEn = faq.en
+    const html = sanitizeRichText(`<p>${escapeDetailText(faq.zh)}</p>`), htmlTw = sanitizeRichText(`<p>${escapeDetailText(faq.tw)}</p>`), htmlEn = sanitizeRichText(`<p>${escapeDetailText(faq.en)}</p>`)
+    const labels = page.visitorSections.faq
+    visitorInfoSections.push({ id: 'faq', kind: 'faq', title: labels.zh, titleTw: labels.tw, titleEn: labels.en, bodyHtml: html.html, bodyHtmlTw: htmlTw.html, bodyHtmlEn: htmlEn.html, nodes: html.nodes, nodesTw: htmlTw.nodes, nodesEn: htmlEn.nodes, sort: 5, status: 'published', ...(realFaq ? {} : { isDemo: true }) })
+    if (!realFaq) demoVisitorFields.push('faq')
+  }
+  const routes = detail.routes?.length ? detail.routes : [{ id: `${item.id}-demo-route`, ...demo.route, sort: 1, pointIds: [], playable: false, isDemo: true }]
+  const realAudioGuides = detail.audioGuides || []
+  const missingAudioCategories = demo.audioGuides.filter((entry) => !realAudioGuides.some((real) => real.category === entry.category))
+  const audioGuides = [...realAudioGuides, ...missingAudioCategories.map((entry, index) => ({ ...entry, id: `${item.id}-demo-audio-${entry.category}`, cover: imageUrl(item.image) || '', attractionId: item.id, exhibitId: null, routeId: entry.category === 'route' ? routes[0].id : null, durationSeconds: 0, previewSeconds: 0, previewUrl: '', accessUrl: '', fullUrl: null, playable: false, sort: realAudioGuides.length + index + 1, isDemo: true }))]
   const summaryIsDemo = !String(item.summary || '').trim()
-  return { ...detail, summary: summaryIsDemo ? demoContent.summary.zh : item.summary, ...(summaryIsDemo ? { summaryTw: demoContent.summary.tw, summaryEn: demoContent.summary.en } : {}), visitorInfo, visitorInfoSections, exhibits, highlights, routes, audioGuides, demoFields: { ...(summaryIsDemo ? { summary: true } : {}), ...(!detail.highlights?.length ? { highlights: true } : {}), ...(!detail.exhibits?.length ? { exhibits: true } : {}), ...(!detail.routes?.length ? { routes: true } : {}), ...(!detail.audioGuides?.length ? { audioGuides: true } : {}), ...(demoVisitorFields.length ? { visitorInfo: demoVisitorFields } : {}) } }
+  return { ...detail, summary: summaryIsDemo ? demo.summary.zh : item.summary, ...(summaryIsDemo ? { summaryTw: demo.summary.tw, summaryEn: demo.summary.en } : {}), visitorInfo, visitorInfoSections, exhibits, highlights, routes, audioGuides, demoFields: { ...(summaryIsDemo ? { summary: true } : {}), ...(!detail.highlights?.length ? { highlights: true } : {}), ...(!detail.exhibits?.length ? { exhibits: true } : {}), ...(!detail.routes?.length ? { routes: true } : {}), ...(missingAudioCategories.length ? { audioGuides: true, audioGuideCategories: missingAudioCategories.map((entry) => entry.category) } : {}), ...(demoVisitorFields.length ? { visitorInfo: demoVisitorFields } : {}) } }
 }
 function publicContent(data, countryId = 'greece') {
   const imageUrl = (value) => {
@@ -531,9 +665,10 @@ function publicContent(data, countryId = 'greece') {
   const guides = (data.guides || []).filter((item) => item.enabled !== false && (item.countryId || 'greece') === countryId).sort((a, b) => Number(a.sort || 0) - Number(b.sort || 0))
   const scoped = (items) => (items || []).filter((item) => (item.countryId || 'greece') === countryId)
   const heritage = publicHeritage(data, countryId)
+  const attractionDetailPage = normalizeAttractionDetailPage(data.attractionDetailPage)
   const publicAttractions = scoped(data.attractions).filter((item) => item.status === 'published').map((item) => {
     const { audioGuides: _privateGuides, audioFile: _privateAudio, visitorSections: _privateVisitorSections, ...safe } = item
-    const detail = demoAttractionContent(item, heritage.attractionDetails[item.id] || {}, imageUrl)
+    const detail = demoAttractionContent(item, heritage.attractionDetails[item.id] || {}, imageUrl, attractionDetailPage)
     const safeGuide = { ...(item.guide || {}) }
     for (const key of ['hoursHtml','hoursHtmlTw','hoursHtmlEn','ticketsHtml','ticketsHtmlTw','ticketsHtmlEn','transportHtml','transportHtmlTw','transportHtmlEn','mapHtml','mapHtmlTw','mapHtmlEn']) if (safeGuide[key] != null) safeGuide[key] = sanitizeRichText(safeGuide[key]).html
     safeGuide.mapUrl = detail.visitorInfo?.mapUrl || ''
@@ -548,6 +683,9 @@ function publicContent(data, countryId = 'greece') {
   return {
     settings: { ...data.settings, homeEyebrow: home.eyebrow, homeTitle: home.title, homeDescription: home.description, homeBanners: home.banners },
     home,
+    attractionDetailPage,
+    heritageGuideBanners: publicHeritageGuideBanners(data, imageUrl),
+    miniprogramServiceEntries: publicMiniprogramServiceEntries(data, imageUrl),
     countries: countries.map((item) => ({ ...item, heroImage: imageUrl(item.heroImage) })),
     guides: guides.map((item) => ({ ...item, avatar: imageUrl(item.avatar), fullImage: imageUrl(item.fullImage) })),
     routes: scoped(data.routes).filter((item) => item.status === 'published').map((item) => ({ ...item, image: `./images/${item.image}` })),
@@ -1037,6 +1175,14 @@ const server = http.createServer(async (req, res) => {
       if (url.pathname === '/api/admin/guide-bookings' && method === 'GET') return json(res, 200, data.leads.filter(isGuideBooking))
       if (url.pathname === '/api/admin/miniprogram-bookings' && method === 'GET') return json(res, 200, data.leads.filter(isMiniProgramBooking))
       if (url.pathname === '/api/admin/miniprogram-orders' && method === 'GET') return json(res, 200, adminPaymentSummary(data))
+      if (url.pathname === '/api/admin/attraction-detail-page' && method === 'GET') return json(res, 200, normalizeAttractionDetailPage(data.attractionDetailPage))
+      if (url.pathname === '/api/admin/attraction-detail-page' && method === 'PATCH') {
+        const input = await body(req)
+        if (!input || typeof input !== 'object' || Array.isArray(input)) return json(res, 422, { error: '景点详情配置格式无效' })
+        data.attractionDetailPage = normalizeAttractionDetailPage(input)
+        await saveData(data)
+        return json(res, 200, data.attractionDetailPage)
+      }
       if (url.pathname === '/api/admin/settings' && method === 'GET') {
         const { homeBanners: _homeBanners, ...settings } = data.settings || {}
         return json(res, 200, settings)
@@ -1111,6 +1257,67 @@ const server = http.createServer(async (req, res) => {
         setHomeBanners(data, current)
         await saveData(data)
         return json(res, 200, banner)
+      }
+      const heritageGuideBannerMatch = url.pathname.match(/^\/api\/admin\/heritage-guide-banners(?:\/([^/]+))?$/)
+      if (heritageGuideBannerMatch && ['GET', 'POST', 'PATCH', 'DELETE'].includes(method)) {
+        data.heritageGuideBanners = Array.isArray(data.heritageGuideBanners) ? data.heritageGuideBanners : []
+        const items = data.heritageGuideBanners
+        const bannerId = heritageGuideBannerMatch[1] ? decodeURIComponent(heritageGuideBannerMatch[1]) : ''
+        const sorted = () => items.slice().sort((a, b) => Number(a.sort || 0) - Number(b.sort || 0))
+        if (method === 'GET') {
+          if (!bannerId) return json(res, 200, { items: sorted() })
+          const banner = items.find((item) => item.id === bannerId)
+          return banner ? json(res, 200, banner) : json(res, 404, { code: 'CONTENT_NOT_FOUND', error: '记录不存在' })
+        }
+        const index = items.findIndex((item) => item.id === bannerId)
+        if (method === 'PATCH' && index < 0) return json(res, 404, { code: 'CONTENT_NOT_FOUND', error: '记录不存在' })
+        if (method === 'DELETE') {
+          if (index < 0) return json(res, 404, { code: 'CONTENT_NOT_FOUND', error: '记录不存在' })
+          items.splice(index, 1)
+          await saveData(data)
+          return res.writeHead(204).end()
+        }
+        const input = await body(req)
+        const previous = method === 'PATCH' ? items[index] : {}
+        const payload = normalizeHeritageGuideBanner({ ...previous, ...input, id: method === 'PATCH' ? bannerId : input.id || id('heritage-guide-banner'), createdAt: previous.createdAt || new Date().toISOString(), updatedAt: new Date().toISOString() }, index + 1)
+        if (!payload.title || !payload.image) return json(res, 422, { code: 'CONTENT_VALIDATION_FAILED', error: '请填写标题并上传图片' })
+        if (items.some((item, position) => item.id === payload.id && (method === 'POST' || position !== index))) return json(res, 409, { code: 'DUPLICATE_ID', error: 'Banner ID 已存在' })
+        if (method === 'POST') items.push(payload)
+        else items[index] = payload
+        await saveData(data)
+        return json(res, method === 'POST' ? 201 : 200, payload)
+      }
+      const miniprogramServiceEntryMatch = url.pathname.match(/^\/api\/admin\/miniprogram-service-entries(?:\/([^/]+))?$/)
+      if (miniprogramServiceEntryMatch && ['GET', 'POST', 'PATCH', 'DELETE'].includes(method)) {
+        data.miniprogramServiceEntries = Array.isArray(data.miniprogramServiceEntries) ? data.miniprogramServiceEntries : []
+        const items = data.miniprogramServiceEntries
+        const entryId = miniprogramServiceEntryMatch[1] ? decodeURIComponent(miniprogramServiceEntryMatch[1]) : ''
+        const sorted = () => items.slice().sort((a, b) => Number(a.sort || 0) - Number(b.sort || 0))
+        if (method === 'GET') {
+          if (!entryId) return json(res, 200, { items: sorted() })
+          const entry = items.find((item) => item.id === entryId)
+          return entry ? json(res, 200, entry) : json(res, 404, { code: 'CONTENT_NOT_FOUND', error: '记录不存在' })
+        }
+        const index = items.findIndex((item) => item.id === entryId)
+        if (method === 'PATCH' && index < 0) return json(res, 404, { code: 'CONTENT_NOT_FOUND', error: '记录不存在' })
+        if (method === 'DELETE') {
+          if (index < 0) return json(res, 404, { code: 'CONTENT_NOT_FOUND', error: '记录不存在' })
+          items.splice(index, 1)
+          await saveData(data)
+          return res.writeHead(204).end()
+        }
+        const input = await body(req)
+        const previous = method === 'PATCH' ? items[index] : {}
+        let payload
+        try {
+          payload = normalizeMiniprogramServiceEntry({ ...previous, ...input, id: method === 'PATCH' ? entryId : input.id || input.key, createdAt: previous.createdAt || new Date().toISOString(), updatedAt: new Date().toISOString() }, index + 1)
+        } catch (error) { return json(res, 422, { code: 'CONTENT_VALIDATION_FAILED', error: error.message }) }
+        if (!payload.id || !payload.iconImage || ['zh-CN', 'zh-TW', 'en'].some((locale) => !payload.title[locale] || !payload.subtitle[locale])) return json(res, 422, { code: 'CONTENT_VALIDATION_FAILED', error: '请填写三种语言的标题、副标题并设置图标' })
+        if (items.some((item, position) => (item.id === payload.id || item.key === payload.key) && (method === 'POST' || position !== index))) return json(res, 409, { code: 'DUPLICATE_SERVICE_ENTRY', error: '该入口已存在；每个小程序服务入口只能配置一条' })
+        if (method === 'POST') items.push(payload)
+        else items[index] = payload
+        await saveData(data)
+        return json(res, method === 'POST' ? 201 : 200, payload)
       }
       const heritageAdmin = url.pathname.match(/^\/api\/admin\/(audioAlbums|audioRoutes|audioTracks)(?:\/([^/]+))?$/)
       if (heritageAdmin && ['GET', 'POST', 'PATCH', 'DELETE'].includes(method)) {
@@ -1342,6 +1549,12 @@ async function start() {
     data.destinationTypes = data.destinationCategories.map((item) => ({ id: item.key, name: item.name, description: item.description || '', sort: item.sort || 0, status: item.enabled === false ? 'unpublished' : 'published' }))
     data.home = data.home && typeof data.home === 'object' ? data.home : {}
     data.home.banners = Array.isArray(data.home.banners) ? data.home.banners : []
+    data.heritageGuideBanners = Array.isArray(data.heritageGuideBanners) ? data.heritageGuideBanners.map((item, index) => normalizeHeritageGuideBanner(item, index + 1)) : []
+    if (!Array.isArray(data.miniprogramServiceEntries)) data.miniprogramServiceEntries = defaultMiniprogramServiceEntries()
+    if (!data.attractionDetailPage || typeof data.attractionDetailPage !== 'object' || Array.isArray(data.attractionDetailPage)) {
+      if (!demoContent) throw new Error('seed/content-demo.json is required for the first attraction-detail-page migration')
+      data.attractionDetailPage = normalizeAttractionDetailPage(defaultAttractionDetailPage())
+    }
     for (const lead of data.leads || []) lead.countryId = lead.countryId || 'greece'
     await saveData(data)
     server.listen(port, '127.0.0.1', () => console.log(`Greece Travel Butler server: http://127.0.0.1:${port}/ (console: /manage-9f3k7)`))

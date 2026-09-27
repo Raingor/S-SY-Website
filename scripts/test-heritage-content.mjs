@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import { spawn, spawnSync } from 'node:child_process'
 import { createHash } from 'node:crypto'
-import { copyFileSync, existsSync, mkdtempSync, mkdirSync, readFileSync, rmSync, statSync, symlinkSync } from 'node:fs'
+import { copyFileSync, existsSync, mkdtempSync, mkdirSync, readFileSync, rmSync, statSync, symlinkSync, writeFileSync } from 'node:fs'
 import { signedAudioToken } from '../heritage-content.mjs'
 import { dirname, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -24,6 +24,11 @@ async function main() {
   for (const name of ['server.mjs', 'storage.mjs', 'wechat-pay.mjs', 'admin-session.mjs', 'heritage-content.mjs', 'package.json']) copyFileSync(join(root, name), join(tmp, name))
   copyFileSync(join(root, 'seed/site-data.json'), join(tmp, 'seed/site-data.json'))
   copyFileSync(join(root, 'seed/content-demo.json'), join(tmp, 'seed/content-demo.json'))
+  const fixturePath = join(tmp, 'seed/site-data.json')
+  const fixture = JSON.parse(readFileSync(fixturePath, 'utf8'))
+  const baseAttraction = fixture.attractions.at(-1)
+  while (fixture.attractions.length < 87) fixture.attractions.push({ ...baseAttraction, id: `isolated-demo-attraction-${fixture.attractions.length + 1}`, guide: {}, exhibits: [], highlights: [], summary: '' })
+  writeFileSync(fixturePath, JSON.stringify(fixture))
   symlinkSync(join(root, 'node_modules'), join(tmp, 'node_modules'), 'dir')
   child = spawn(process.execPath, [join(tmp, 'server.mjs')], { cwd: tmp, env: { ...process.env, SY_STORAGE: 'json', PORT: String(port), SY_ADMIN_PASSWORD: 'test-only-admin-password', SY_ADMIN_SESSION_SECRET: 'test-only-heritage-session-secret', SY_MINIPROGRAM_SIMULATION_ENABLED: 'true', SY_MINIPROGRAM_SIMULATION_SECRET: 'test-only-simulation-secret', SY_AUDIO_PRIVATE_DIR: join(tmp, 'private-audio') }, stdio: ['ignore', 'pipe', 'pipe'] })
   child.stdout.on('data', (chunk) => { logs += chunk.toString() })
@@ -37,6 +42,19 @@ async function main() {
   assert.equal(initial.response.status, 200)
   assert.deepEqual(initial.data.audioAlbums, [])
   assert.equal(initial.data.attractions.length > 0, true)
+  assert.equal(initial.data.attractions.length, 87)
+  assert.ok(initial.data.attractionDetailPage.sections.visitor.subtitle.en)
+  assert.equal(initial.data.attractionDetailPage.sections.overview.label.zh, '景点概览')
+  assert.equal(initial.data.attractionDetailPage.sections.overview.label.tw, '景點概覽')
+  assert.equal(initial.data.attractionDetailPage.sections.visitor.notice.zh, '参观信息可能变化，出行前请查看官方公告')
+  assert.equal(initial.data.attractionDetailPage.audioHow.steps.length, 3)
+  assert.equal(initial.data.attractions.filter((spot) => spot.visitorInfoSections.find((section) => section.id === 'faq')?.isDemo).length, 72)
+  assert.ok(initial.data.attractions.slice(0, 15).every((spot) => !spot.visitorInfoSections.find((section) => section.id === 'faq')?.isDemo), 'real FAQ remains unmarked and takes priority')
+  for (const spot of initial.data.attractions) {
+    assert.ok(spot.summary && spot.highlights.length && spot.visitorInfoSections.length === 5 && spot.routes.length && ['route','online','expert'].every((category) => spot.audioGuides.some((guide) => guide.category === category)))
+    assert.ok(spot.visitorInfo.faq)
+    assert.ok(!spot.audioGuides.some((guide) => guide.isDemo && (guide.playable || guide.previewUrl || guide.accessUrl || guide.fullUrl)))
+  }
   assert.equal(initial.data.attractions[0].routes[0].isDemo, true)
   assert.deepEqual(initial.data.attractions[0].audioGuides.map((guide) => guide.category), ['route','online','expert'])
   assert.ok(initial.data.attractions[0].audioGuides.every((guide) => guide.isDemo && !guide.playable && !guide.previewUrl && !guide.accessUrl && !guide.fullUrl))
@@ -45,7 +63,7 @@ async function main() {
   assert.equal(typeof initial.data.attractions[0].visitorInfo, 'object')
   for (const key of ['hoursTw', 'hoursEn', 'ticketsTw', 'ticketsEn', 'transportTw', 'transportEn', 'mapTw', 'mapEn', 'noticesTw', 'noticesEn', 'sourceTitleTw', 'sourceTitleEn']) assert.equal(typeof initial.data.attractions[0].visitorInfo[key], 'string', `missing multilingual visitorInfo.${key}`)
   const attractionId = initial.data.attractions[0].id
-  assert.deepEqual(initial.data.attractions[0].visitorInfoSections.map((section) => section.id), ['hours','tickets','transport','map'])
+  assert.deepEqual(initial.data.attractions[0].visitorInfoSections.map((section) => section.id), ['hours','tickets','transport','map','faq'])
   assert.ok(initial.data.attractions[0].visitorInfoSections.every((section) => section.status === 'published' && ['bodyHtml','bodyHtmlTw','bodyHtmlEn'].every((key) => typeof section[key] === 'string') && ['nodes','nodesTw','nodesEn'].every((key) => Array.isArray(section[key]))))
   assert.deepEqual(initial.data.attractions[0].customSections, [])
   const exhibitId = initial.data.attractions[0].exhibits[0]?.id
@@ -54,6 +72,27 @@ async function main() {
   assert.equal(admin.response.status, 200)
   const token = admin.data.token
   const adminRequest = (path, opts) => request(path, { token, ...opts })
+  assert.equal((await request('/api/admin/attraction-detail-page')).response.status, 401)
+  const page = (await adminRequest('/api/admin/attraction-detail-page')).data
+  page.sections.visitor.subtitle.en = 'Isolated visitor subtitle'
+  page.sections.visitor.notice.en = 'Isolated official notice'
+  page.visitorSections.faq.en = 'Isolated FAQ heading'
+  page.audioHow.note.en = 'Isolated audio note'
+  page.demo.visitorInfo.faq.zh = '测试前要核对什么？请以官方渠道为准。此处为演示。'
+  page.demo.audioGuides[0].category = 'invalid-category'
+  page.unexpected = 'must not persist'
+  const savedPage = await adminRequest('/api/admin/attraction-detail-page', { method: 'PATCH', body: page })
+  assert.equal(savedPage.response.status, 200)
+  assert.equal(savedPage.data.sections.visitor.subtitle.en, 'Isolated visitor subtitle')
+  assert.equal(savedPage.data.demo.audioGuides[0].category, 'route')
+  assert.equal(savedPage.data.unexpected, undefined)
+  assert.equal(JSON.parse(readFileSync(fixturePath, 'utf8')).attractionDetailPage.audioHow.note.en, 'Isolated audio note', 'config must persist outside seed defaults')
+  const contentWithPage = (await request('/api/content')).data
+  assert.equal(contentWithPage.attractionDetailPage.sections.visitor.subtitle.en, 'Isolated visitor subtitle')
+  assert.equal(contentWithPage.attractionDetailPage.sections.visitor.notice.en, 'Isolated official notice')
+  assert.equal(contentWithPage.attractions.at(-1).visitorInfoSections.at(-1).titleEn, 'Isolated FAQ heading')
+  assert.equal(contentWithPage.attractions.at(-1).visitorInfo.faq, page.demo.visitorInfo.faq.zh)
+  assert.notEqual(contentWithPage.attractions[0].visitorInfo.faq, page.demo.visitorInfo.faq.zh, 'real guide.faq must take priority')
   const emptyAttractionId = initial.data.attractions.at(-1).id
   assert.notEqual(emptyAttractionId, attractionId)
   assert.equal((await adminRequest(`/api/admin/attractions/${encodeURIComponent(emptyAttractionId)}`, { method: 'PATCH', body: { summary: '', highlights: [], exhibits: [], guide: {} } })).response.status, 200)
@@ -61,9 +100,9 @@ async function main() {
   assert.equal(demoAttraction.demoFields.summary, true)
   assert.equal(demoAttraction.demoFields.highlights, true)
   assert.equal(demoAttraction.demoFields.exhibits, true)
-  assert.deepEqual(demoAttraction.demoFields.visitorInfo, ['hours','tickets','transport','map'])
+  assert.deepEqual(demoAttraction.demoFields.visitorInfo, ['hours','tickets','transport','map','faq'])
   assert.ok(demoAttraction.highlights[0].isDemo && demoAttraction.exhibits[0].isDemo)
-  assert.deepEqual(demoAttraction.routes[0].pointIds, [demoAttraction.exhibits[0].id])
+  assert.deepEqual(demoAttraction.routes[0].pointIds, [], 'demo route must not invent navigable points')
   assert.equal(demoAttraction.audioGuides[1].category, 'online')
   assert.equal(demoAttraction.audioGuides[2].category, 'expert')
   assert.ok(demoAttraction.visitorInfoSections.every((section) => section.isDemo && section.bodyHtml.includes('演示') && section.nodes.length && section.nodesTw.length && section.nodesEn.length))
@@ -74,7 +113,7 @@ async function main() {
   assert.equal(richPatch.response.status, 200)
   const safeContent = await request('/api/content')
   const safeAttraction = safeContent.data.attractions.find((item) => item.id === attractionId)
-  assert.equal(safeAttraction.visitorInfoSections.length, 4)
+  assert.equal(safeAttraction.visitorInfoSections.length, 5)
   assert.ok(!safeAttraction.demoFields.visitorInfo?.includes('hours'), 'real rich text must not be replaced by demo')
   assert.ok(safeAttraction.visitorInfoSections[0].bodyHtml.includes('<strong>'))
   assert.ok(!/script|onclick|javascript:/i.test(safeAttraction.visitorInfoSections[0].bodyHtml))
@@ -94,7 +133,7 @@ async function main() {
   const hiddenSections = await adminRequest(`/api/admin/attractions/${encodeURIComponent(attractionId)}`, { method: 'PATCH', body: { visitorSections: [{ id: 'only-hidden', title: '【TEST ONLY】下架', bodyHtml: '<p>not public</p>', status: 'unpublished' }] } })
   assert.equal(hiddenSections.response.status, 200)
   const afterHide = (await request('/api/content')).data.attractions.find((item) => item.id === attractionId)
-  assert.equal(afterHide.visitorInfoSections.length, 4)
+  assert.equal(afterHide.visitorInfoSections.length, 5)
   assert.deepEqual(afterHide.customSections, [])
   const invalidAttraction = await adminRequest(`/api/admin/attractions/${encodeURIComponent(attractionId)}`, { method: 'PATCH', body: { highlights: [{ name: 'TEST ONLY', exhibitId: 'other-attraction-exhibit' }] } })
   assert.equal(invalidAttraction.response.status, 422)
@@ -171,6 +210,7 @@ async function main() {
   assert.notEqual(attraction.routes[0].isDemo, true)
   assert.equal(attraction.audioGuides[0].category, 'route')
   assert.notEqual(attraction.audioGuides[0].isDemo, true)
+  assert.deepEqual(attraction.audioGuides.filter((guide) => guide.isDemo).map((guide) => guide.category), ['online','expert'], 'missing categories must still be safe demo entries')
   assert.equal((await request(`/api/miniprogram/audio/${routeTrack.data.id}/access`, { token: 'sim-membership' })).data.access, 'preview', 'old membership does not implicitly grant attraction audio')
   const attractionAccess = await request(`/api/miniprogram/audio/${routeTrack.data.id}/access`, { token: 'sim-attraction' })
   assert.equal(attractionAccess.data.access, 'full')
@@ -192,7 +232,23 @@ async function main() {
   assert.equal(unpublished.response.status, 200)
   assert.equal((await request(member.data.fullUrl)).response.status, 404)
   assert.deepEqual((await request('/api/content')).data.audioAlbums, [])
-  console.log('PASS: API-only flagged demo fallback, real-content priority, multilingual visitorInfo, rich-text sanitizer/nodes, private audio preview<=60s, Range 206/out-of-bounds 416, signed URL tamper/expiry 401, exact entitlements, maintenance and unpublished 404')
+  child.kill('SIGTERM')
+  await new Promise((resolve) => child.once('exit', resolve))
+  rmSync(join(tmp, 'seed/content-demo.json'))
+  child = spawn(process.execPath, [join(tmp, 'server.mjs')], { cwd: tmp, env: { ...process.env, SY_STORAGE: 'json', PORT: String(port), SY_ADMIN_PASSWORD: 'test-only-admin-password', SY_ADMIN_SESSION_SECRET: 'test-only-heritage-session-secret', SY_MINIPROGRAM_SIMULATION_ENABLED: 'true', SY_MINIPROGRAM_SIMULATION_SECRET: 'test-only-simulation-secret', SY_AUDIO_PRIVATE_DIR: join(tmp, 'private-audio') }, stdio: ['ignore', 'pipe', 'pipe'] })
+  child.stdout.on('data', (chunk) => { logs += chunk.toString() })
+  child.stderr.on('data', (chunk) => { logs += chunk.toString() })
+  let restarted = false
+  for (let i = 0; i < 100; i++) {
+    try { if ((await request('/api/health')).response.status === 200) { restarted = true; break } } catch { /* server is starting */ }
+    await delay(50)
+  }
+  assert.equal(restarted, true, 'persisted content should boot without the migration seed')
+  const afterRestart = (await request('/api/content')).data
+  assert.equal(afterRestart.attractionDetailPage.audioHow.note.en, 'Isolated audio note')
+  assert.equal(afterRestart.attractionDetailPage.sections.visitor.notice.en, 'Isolated official notice')
+  assert.equal(afterRestart.attractions.at(-1).visitorInfo.faq, page.demo.visitorInfo.faq.zh)
+  console.log('PASS: 87 attractions, persisted config without seed, real FAQ priority, demo FAQ and category fallback, flagged non-playable entries, multilingual visitorInfo, rich-text sanitizer/nodes, private audio access controls')
   console.log('Storage: temp JSON copy only; local MariaDB and production unchanged')
 }
 try { await main() } catch (error) { console.error(error); console.error(logs); process.exitCode = 1 } finally { if (child) { child.kill('SIGTERM'); await delay(200); if (child.exitCode === null) child.kill('SIGKILL') } rmSync(tmp, { recursive: true, force: true }) }

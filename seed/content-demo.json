@@ -40,13 +40,20 @@
       "zh": "地图说明待发布（演示内容），请以官方地图为准。",
       "tw": "地圖說明待發佈（演示內容），請以官方地圖為準。",
       "en": "Map description pending publication (demo); consult the official map."
+    },
+    "faq": {
+      "zh": "参观前需要核对什么？请通过景点官方渠道核对开放安排、预约要求和现场规则。此问答仅为演示内容。",
+      "tw": "參觀前需要核對什麼？請透過景點官方渠道核對開放安排、預約要求與現場規則。此問答僅為演示內容。",
+      "en": "What should I check before visiting? Check the attraction's official channels for opening arrangements, booking requirements and on-site rules. This is demo content."
     }
   },
   "route": {
     "title": "示例参观路线",
     "titleTw": "示例參觀路線",
     "titleEn": "Demo visitor route",
-    "description": "演示路线由已录入讲解点组成，真实路线待发布。"
+    "description": "演示路线仅供界面展示，真实路线待发布；请勿作为现场导航使用。",
+    "descriptionTw": "演示路線僅供介面展示，真實路線待發佈；請勿作為現場導航使用。",
+    "descriptionEn": "This demo route is for display only; a real route is pending. Do not use it for on-site navigation."
   },
   "audioGuides": [
     {
@@ -54,21 +61,27 @@
       "title": "路线讲解（演示）",
       "titleTw": "路線講解（演示）",
       "titleEn": "Route audio (demo)",
-      "description": "此为展示用条目，尚无可播放音频。"
+      "description": "此为展示用条目，尚无可播放音频。",
+      "descriptionTw": "此為展示用條目，尚無可播放音訊。",
+      "descriptionEn": "Display-only entry; no playable audio is available."
     },
     {
       "category": "online",
       "title": "线上讲解（演示）",
       "titleTw": "線上講解（演示）",
       "titleEn": "Online guide (demo)",
-      "description": "此为展示用条目，尚无可播放音频。"
+      "description": "此为展示用条目，尚无可播放音频。",
+      "descriptionTw": "此為展示用條目，尚無可播放音訊。",
+      "descriptionEn": "Display-only entry; no playable audio is available."
     },
     {
       "category": "expert",
       "title": "名导讲解（演示）",
       "titleTw": "名導講解（演示）",
       "titleEn": "Expert guide (demo)",
-      "description": "此为展示用条目，尚无可播放音频。"
+      "description": "此为展示用条目，尚无可播放音频。",
+      "descriptionTw": "此為展示用條目，尚無可播放音訊。",
+      "descriptionEn": "Display-only entry; no playable audio is available."
     }
   ]
 }
