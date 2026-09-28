@@ -171,6 +171,11 @@ h1, h2, h3, p { margin-top: 0; }
 .day-card > span.gold { background: var(--gold); }
 .day-card h3 { margin: 2px 0 7px; font-size: 15px; }
 .day-card p { margin: 0; color: var(--muted); font-size: 12px; line-height: 1.7; }
+.highlight-card { align-items: center; }
+.highlight-photo { position: relative; flex: 0 0 clamp(128px, 22%, 210px); aspect-ratio: 4 / 3; overflow: hidden; border-radius: 12px; background: #e8edef; }
+.highlight-photo img { display: block; width: 100%; height: 100%; object-fit: cover; }
+.highlight-photo small { position: absolute; right: 8px; bottom: 8px; padding: 4px 7px; color: #fff; background: rgba(16,56,68,.76); border-radius: 999px; font-size: 9px; letter-spacing: .04em; }
+.highlight-copy { flex: 1; min-width: 0; }
 .trip-aside { position: sticky; top: 24px; display: grid; gap: 18px; }
 .summary-card { padding: 28px; }
 .summary-card dl { margin: 0; }
@@ -382,6 +387,9 @@ h1, h2, h3, p { margin-top: 0; }
   .day-card::before { left: 37px; }
   .day-card > span { flex-basis: 42px; height: 42px; font-size: 13px; }
   .day-card h3 { font-size: 14px; line-height: 1.5; }
+  .highlight-card { gap: 11px; padding: 15px 12px; }
+  .highlight-photo { flex-basis: 86px; aspect-ratio: 1 / 1; border-radius: 9px; }
+  .highlight-photo small { right: 4px; bottom: 4px; padding: 3px 5px; font-size: 8px; }
   .trip-aside { display: none; }
   .mobile-sticky-cta { position: fixed; z-index: 80; left: 0; right: 0; bottom: 0; min-height: 66px; padding: 9px 15px calc(9px + env(safe-area-inset-bottom)); display: grid; grid-template-columns: .8fr 1.2fr; gap: 10px; align-items: center; background: #fff; box-shadow: 0 -8px 30px rgba(11,60,93,.14); }
   .mobile-sticky-cta span { color: var(--gold); text-align: center; font: 600 17px var(--serif); }

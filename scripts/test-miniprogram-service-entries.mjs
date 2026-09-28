@@ -30,7 +30,7 @@ function assertStatus(result, status, label) {
 }
 
 async function prepare() {
-  for (const file of ['server.mjs', 'storage.mjs', 'wechat-pay.mjs', 'admin-session.mjs', 'heritage-content.mjs', 'package.json']) await cp(join(root, file), join(tempRoot, file))
+  for (const file of ['server.mjs', 'storage.mjs', 'wechat-pay.mjs', 'admin-session.mjs', 'heritage-content.mjs', 'attraction-ai-fill.mjs', 'package.json']) await cp(join(root, file), join(tempRoot, file))
   for (const file of ['site-data.json', 'content-demo.json']) await cp(join(root, 'seed', file), join(tempRoot, 'seed', file))
   await symlink(join(root, 'node_modules'), join(tempRoot, 'node_modules'), 'dir')
 }

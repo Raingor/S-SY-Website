@@ -21,7 +21,7 @@ async function request(path, { token, method = 'GET', body, headers } = {}) {
 }
 async function main() {
   mkdirSync(join(tmp, 'seed'))
-  for (const name of ['server.mjs', 'storage.mjs', 'wechat-pay.mjs', 'admin-session.mjs', 'heritage-content.mjs', 'package.json']) copyFileSync(join(root, name), join(tmp, name))
+  for (const name of ['server.mjs', 'storage.mjs', 'wechat-pay.mjs', 'admin-session.mjs', 'heritage-content.mjs', 'attraction-ai-fill.mjs', 'package.json']) copyFileSync(join(root, name), join(tmp, name))
   copyFileSync(join(root, 'seed/site-data.json'), join(tmp, 'seed/site-data.json'))
   copyFileSync(join(root, 'seed/content-demo.json'), join(tmp, 'seed/content-demo.json'))
   const fixturePath = join(tmp, 'seed/site-data.json')

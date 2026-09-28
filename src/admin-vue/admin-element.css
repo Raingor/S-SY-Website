@@ -78,7 +78,9 @@
 .el-admin .attraction-destination-card { border-top:2px solid #168c88; }
 .el-admin .attraction-destination-heading,.el-admin .attraction-destination-heading>div { display:flex; align-items:center; flex-wrap:wrap; gap:9px; }
 .el-admin .attraction-destination-heading { justify-content:space-between; }
+.el-admin .attraction-destination-actions { display:flex; align-items:center; justify-content:flex-end; flex-wrap:wrap; gap:8px; }
 .el-admin .attraction-destination-heading strong { color:#2f4045; font-size:14px; font-weight:600; }
+.el-admin .attraction-link-select { width:100%; min-width:210px; }
 .el-admin .attraction-group-count { color:#7b898f; font-size:11px; }
 .el-admin .attraction-destination-card .el-card__body { padding:0 16px 16px; }
 .el-admin .stat-grid { margin-bottom:4px; }
@@ -87,7 +89,7 @@
 .el-admin .stat-card span { color:var(--ea-muted); font-size:12px; }
 .el-admin .stat-card strong { color:#24343a; font-size:24px; font-weight:600; }
 .el-admin .banner-note { margin:0 0 15px; }
-.el-admin .status-inline { width:112px; }
+.el-admin .status-inline { width:100%; }
 .el-admin .row-actions { display:flex; align-items:center; gap:10px; }
 .el-admin .danger-text { color:#e35b51; }
 .el-admin .table-image-cell { display:flex; align-items:center; gap:9px; min-width:0; }
@@ -103,6 +105,13 @@
 .el-admin .editor-card { width:100%; border-top:3px solid #07988c; }
 .el-admin .editor-card .el-card__body { padding:22px 24px 26px; }
 .el-admin .template-guide { display:flex; justify-content:space-between; align-items:center; gap:18px; margin-bottom:22px; padding:17px 19px; border:1px solid #e7dfcc; border-left:3px solid #c59148; border-radius:4px; background:#fbfaf6; }
+.el-admin .template-guide-actions { display:flex; align-items:center; justify-content:flex-end; gap:9px; flex-wrap:wrap; }
+.el-admin .ai-fill-note { margin:0; color:#7b878d; font-size:13px; line-height:1.7; }
+.el-admin .ai-live-progress { margin:4px 0 2px; }
+.el-admin .ai-live-progress .el-alert__title { font-weight:650; }
+.el-admin .ai-live-progress .el-alert__description { margin-top:5px; }
+.el-admin .ai-live-progress .el-alert__icon { animation:ai-progress-spin 1.25s linear infinite; }
+@keyframes ai-progress-spin { to { transform:rotate(360deg); } }
 .el-admin .template-guide h3 { margin:5px 0 3px; font-size:16px; font-weight:600; }
 .el-admin .template-guide p { margin:0; color:#758188; font-size:12px; }
 .el-admin .edit-form,.el-admin .settings-form { max-width:none; }
@@ -175,4 +184,4 @@
 .el-admin .lead-card .el-card__body>div { display:flex; justify-content:space-between; align-items:center; gap:10px; }
 .el-admin .lead-card p { display:flex; justify-content:space-between; gap:10px; margin:8px 0 0; color:#66747a; font-size:12px; }
 .el-admin .lead-card p span { color:#939da2; }
-@media(max-width:760px){.el-admin .attraction-view-toolbar{align-items:flex-start;flex-direction:column}.el-admin .attraction-destination-select{width:100%}.el-admin .group-page-size{margin-left:0}.el-admin .attraction-destination-heading{align-items:flex-start;flex-direction:column}}
+@media(max-width:760px){.el-admin .attraction-view-toolbar{align-items:flex-start;flex-direction:column}.el-admin .attraction-destination-select{width:100%}.el-admin .group-page-size{margin-left:0}.el-admin .attraction-destination-heading{align-items:flex-start;flex-direction:column}.el-admin .attraction-destination-actions{justify-content:flex-start;width:100%}}

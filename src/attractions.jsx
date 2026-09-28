@@ -12,6 +12,19 @@ import { recordRecentContent } from './web-user-state'
 
 
 function sizeLabelOf(item) { return item.sizeLabel || item.scale || '' }
+const HIGHLIGHT_FALLBACK_IMAGES = {
+  athens: [images.athens, images.plaka, images.corinth, images.athens],
+  santorini: [images.santorini, images.mykonos, images.crete, images.santorini],
+  delphi: [images.delphi, images.meteora, images.corinth, images.delphi],
+  meteora: [images.meteora, images.delphi, images.crete, images.meteora],
+  crete: [images.crete, images.santorini, images.mykonos, images.crete],
+  nafplio: [images.nafplio, images.corinth, images.athens, images.nafplio],
+}
+function highlightImageOf(attraction, highlight, index) {
+  if (highlight.image) return { source: highlight.image, isMock: false }
+  const fallbacks = HIGHLIGHT_FALLBACK_IMAGES[attraction.city] || [attraction.image || images.athens]
+  return { source: fallbacks[index % fallbacks.length], isMock: true }
+}
 function audioMinutes(attraction) {
   return (attraction.exhibits || []).reduce((total, exhibit) => total + (parseInt(exhibit.duration, 10) || 0), 0)
 }
@@ -212,9 +225,14 @@ export function AttractionDetail({ idOverride = '' }) {
               <section>
                 <h2 className="timeline-title">路线导览</h2>
                 <div className="timeline">
-                  {(attraction.highlights || []).map((highlight, index) => (
-                    <article className="day-card" key={highlight.name}><span className={index > 3 ? 'gold' : ''}>{String(index + 1).padStart(2, '0')}</span><div><h3>{highlight.name}</h3><p>{highlight.desc}</p></div></article>
-                  ))}
+                  {(attraction.highlights || []).map((highlight, index) => {
+                    const image = highlightImageOf(attraction, highlight, index)
+                    return <article className="day-card highlight-card" key={highlight.name}>
+                      <span className={index > 3 ? 'gold' : ''}>{String(index + 1).padStart(2, '0')}</span>
+                      <div className="highlight-photo"><img src={assetPath(image.source)} alt={image.isMock ? `${highlight.name} 示意图片` : highlight.name} loading="lazy" decoding="async" />{image.isMock && <small>场景示意</small>}</div>
+                      <div className="highlight-copy"><h3>{highlight.name}</h3><p>{highlight.desc}</p></div>
+                    </article>
+                  })}
                 </div>
               </section>
             )}
