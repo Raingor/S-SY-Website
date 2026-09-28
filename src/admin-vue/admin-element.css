@@ -163,7 +163,7 @@
 .el-admin .table-image-cell img { display:block; flex:0 0 64px; width:64px; height:44px; object-fit:cover; border-radius:3px; background:#eef2f1; }
 .el-admin .table-image-cell span { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 .el-admin .table-tags { display:flex; align-items:center; flex-wrap:wrap; gap:4px; }
-.el-admin .admin-data-table .status-inline { width:112px; }
+.el-admin .admin-data-table .status-inline { width:100%; }
 .el-admin .overview-leads-table { margin-bottom:2px; }
 .el-admin .commerce-window { margin-bottom:8px; border-color:#edf0f1; background:#fafcfc; }
 .el-admin .commerce-window>span { display:block; margin-bottom:12px; color:#4b5a60; font-size:12px; font-weight:600; }

@@ -227,8 +227,16 @@
           <section v-else class="editor-page">
             <div class="editor-heading"><el-button plain icon="el-icon-arrow-left" @click="closeEditor">返回列表</el-button><div><span class="eyebrow">EDIT CONTENT / 独立编辑</span><h1>{{ editor.title }}</h1><p>在完整宽度页面编辑内容；保存后返回列表。</p></div></div>
             <el-alert v-if="currentMenu.miniProgramDisplay" :title="'小程序展示位置：'+currentMenu.miniProgramDisplay" type="info" :closable="false" show-icon class="banner-note module-display-note"/>
+            <el-dialog :title="'智能填写'+aiEntityLabel+'资料'" :visible.sync="aiFillDialogVisible" width="520px" :close-on-click-modal="false" :close-on-press-escape="!aiFilling" :show-close="!aiFilling" @closed="aiAttractionName='';aiProgressMessage='正在准备…'">
+              <el-form @submit.native.prevent="submitAiFill">
+                <el-form-item :label="aiNameLabel" required><el-input ref="aiAttractionNameInput" v-model.trim="aiAttractionName" maxlength="120" show-word-limit :placeholder="aiNamePlaceholder" :disabled="aiFilling" @keyup.enter.native="submitAiFill"/></el-form-item>
+                <el-alert v-if="aiFilling" :title="aiProgressMessage" description="实时显示资料整理阶段；不展示模型原始思维内容。" type="info" :closable="false" show-icon class="ai-live-progress"><i slot="icon" class="el-icon-loading"/></el-alert>
+                <p v-else class="ai-fill-note">{{ aiFillDescription }} AI 内容可能不准确或非实时，请核对后再保存。</p>
+              </el-form>
+              <span slot="footer"><el-button :disabled="aiFilling" @click="aiFillDialogVisible=false">取消</el-button><el-button type="primary" :loading="aiFilling" :disabled="!aiAttractionName" @click="submitAiFill">确认并填写</el-button></span>
+            </el-dialog>
             <el-card shadow="never" class="editor-card">
-              <div v-if="editor.template" class="template-guide"><div><span class="eyebrow">FILLING TEMPLATE / 填写引导</span><h3>{{ editor.template.title }}</h3><p>{{ editor.template.tip }}</p></div><el-button type="warning" plain @click="fillTemplate">一键填写拟真示例</el-button></div>
+              <div v-if="editor.template" class="template-guide"><div><span class="eyebrow">FILLING TEMPLATE / 填写引导</span><h3>{{ editor.template.title }}</h3><p>{{ editor.template.tip }}</p></div><div class="template-guide-actions"><el-button v-if="['routes','destinations','attractions'].includes(active)&&localAiEnabled" type="primary" icon="el-icon-magic-stick" @click="openAiFillDialog">智能填写</el-button><el-button type="warning" plain @click="fillTemplate">一键填写拟真示例</el-button></div></div>
               <el-form ref="editForm" :model="form" :rules="formRules" label-position="top" class="edit-form" @submit.native.prevent="saveEditor"><div class="form-grid">
                 <el-form-item v-for="field in editor.fields" :key="field.key" :label="field.label" :prop="field.required ? field.key : undefined" :class="{ 'full-field': field.full || ['json','array','image','object','deepDive'].includes(field.type) }">
                   <el-input v-if="field.type==='textarea'" v-model="form[field.key]" type="textarea" :rows="field.rows || 3" :placeholder="field.placeholder"/>
@@ -352,12 +360,17 @@ fields.countries.template='country'
 fields.guides.template='guide'
 export default {
   name:'AdminApp',
-  data(){return{token:sessionStorage.getItem(TOKEN)||'',password:'',error:'',active:'overview',settingsTab:'site',detailTab:'sections',detailPage:null,detailLocales,detailSectionKeys,detailVisitorKeys,detailExhibitFields,detailHighlightFields,detailRouteFields,detailAudioFields,detailAudioCategoryLabels,attractionView:'list',attractionDestinationFilter:'',data:JSON.parse(JSON.stringify(emptyData)),stats:{},commerce:{},settings:this.defaultSettings(),loading:false,busy:false,filterText:'',page:1,pageSize:10,pageSizes:[5,10,20,50,100],groupPages:{},filters:{enabled:'',featured:'',countryId:'',status:'',days:'',type:'',currency:'',priceCny:[null,null],city:'',tag:'',period:[],leadType:'',createdAt:[],bookingDate:[],member:'',productType:'',relation:'',visaStatus:'',expiry:[],expiresAt:[]},editor:null,form:{},jsonFields:{},dateRange:[],jsonError:'',confirmVisible:false,confirmText:'',confirmHandler:null,menuGroups:groups,rowStatusOptions:[{label:'发布',value:'published'},{label:'下架',value:'unpublished'}],settingTabs}},
+  data(){return{token:sessionStorage.getItem(TOKEN)||'',password:'',error:'',active:'overview',settingsTab:'site',detailTab:'sections',detailPage:null,detailLocales,detailSectionKeys,detailVisitorKeys,detailExhibitFields,detailHighlightFields,detailRouteFields,detailAudioFields,detailAudioCategoryLabels,attractionView:'list',attractionDestinationFilter:'',destinationLinkSaving:{},data:JSON.parse(JSON.stringify(emptyData)),stats:{},commerce:{},settings:this.defaultSettings(),loading:false,busy:false,localAiEnabled:false,aiFillDialogVisible:false,aiFilling:false,aiAttractionName:'',aiEntityType:'attraction',aiProgressMessage:'正在准备…',filterText:'',page:1,pageSize:10,pageSizes:[5,10,20,50,100],groupPages:{},filters:{enabled:'',featured:'',countryId:'',status:'',days:'',type:'',currency:'',priceCny:[null,null],city:'',tag:'',period:[],leadType:'',createdAt:[],bookingDate:[],member:'',productType:'',relation:'',visaStatus:'',expiry:[],expiresAt:[]},editor:null,form:{},jsonFields:{},dateRange:[],jsonError:'',confirmVisible:false,confirmText:'',confirmHandler:null,menuGroups:groups,rowStatusOptions:[{label:'发布',value:'published'},{label:'下架',value:'unpublished'}],settingTabs}},
   computed:{
     currentMenu(){const pair=groups.flatMap(g=>g.items).find(item=>item[0]===this.active);const config=fields[this.active]||{};return{id:this.active,label:pair?pair[1]:'总览',icon:pair?pair[2]:'',...config,columns:(config.columns||[]).map(column=>({key:column[0],label:column[1],type:column[2],width:column[3]})),editable:config.editable!==false&&!!config.fields?.length,eyebrow:'CONTENT MANAGEMENT'}},
+    aiEntityLabel(){return({attractions:'景点',routes:'路线',destinations:'目的地'})[this.aiEntityType]||'内容'},
+    aiNameLabel(){return({attractions:'景点名称',routes:'路线名称',destinations:'目的地名称'})[this.aiEntityType]||'名称'},
+    aiNamePlaceholder(){return({attractions:'例如：雅典卫城',routes:'例如：雅典古城与爱琴海 8 日游',destinations:'例如：圣托里尼'})[this.aiEntityType]||'请输入名称'},
+    aiFillDescription(){return({attractions:'仅将名称发送至 SenseNova DeepSeek V4 Flash。会生成基本资料、亮点、讲解点、参观服务、文史文章和深度内容；图片、关联及发布状态会保留。',routes:'仅将路线名称发送至 SenseNova DeepSeek V4 Flash。会生成路线副标题、天数、主题标签和路线介绍；图片、目的地/行程关联及发布状态会保留。',destinations:'仅将目的地名称发送至 SenseNova DeepSeek V4 Flash。会生成规范中英文名称和目的地分类；图片、城市/景点关联及发布状态会保留。'})[this.aiEntityType]||''},
     statusOptionsForCurrent(){const f=fields[this.active]?.fields?.find(x=>x.key==='status');return f?.options==='publish'?publish:(Array.isArray(f?.options)?f.options:this.rowStatusOptions)},
     items(){if(this.active==='miniprogramTrips')return(this.data.leads||[]).filter(x=>this.isMiniBooking(x)&&['customization','business-travel'].includes(x.leadType));if(this.active==='cities')return this.data.cities;if(this.active==='leads')return this.data.leads;if(this.active==='guideBookings')return this.data.guideBookings;if(this.active==='miniProgramBookings')return this.data.miniProgramBookings;if(this.active==='miniprogramUsers')return this.data.miniprogramUsers;if(this.active==='miniprogramOrders')return this.data.miniprogramOrders;return this.data[this.active]||[]},
     attractionDestinationOptions(){return[{label:'未关联目的地',value:'__unassigned_destination__'},...(this.data.destinations||[]).filter(destination=>destination?.id).map(destination=>({value:String(destination.id),label:[destination.name||'未命名目的地',destination.cityId?`cityId: ${destination.cityId}`:'',`destinationId: ${destination.id}`].filter(Boolean).join(' · ')}))]},
+    associationDestinationOptions(){return(this.data.destinations||[]).filter(destination=>destination?.id).map(destination=>({value:String(destination.id),label:[destination.name||'未命名目的地',destination.cityId?`城市：${destination.cityId}`:''].filter(Boolean).join(' · ')}))},
     visibleAttractionGroups(){
       if(this.active!=='attractions')return[]
       const attractions=this.filteredItems
@@ -390,7 +403,7 @@ export default {
     attractionDestinationFilter(){this.resetPagination()},
     attractionView(){this.resetPagination()},
   },
-  created(){if(this.token)this.loadAll()},
+  created(){if(this.token){this.loadAll();this.checkLocalAiAvailability()}},
   methods:{
     rowKey(row){return row.id||row.key||row.orderNo||row.openid||undefined},
     destinationAttractionIds(destination){
@@ -406,12 +419,48 @@ export default {
     updateWeatherTemperature(city,value){this.$set(city,Object.prototype.hasOwnProperty.call(city,'temperature')?'temperature':Object.prototype.hasOwnProperty.call(city,'temp')?'temp':'temperature',value)},
     defaultSettings(){return{siteName:'',siteUrl:'',defaultTitle:'',defaultDescription:'',homeEyebrow:'',homeTitle:'',homeDescription:'',keywords:'',ogImage:'',googleVerification:'',robotsPolicy:'index,follow',wechat:'',phone:'',email:'',replyHours:'',experiences:[],travelTools:{visa:{title:'',summary:'',url:'',checklist:[]},eurCny:null,rateUpdatedAt:'',rateSource:'',weatherCities:[],weatherUpdatedAt:''},miniprogramAccess:true,miniprogramKnowledge:{trialSeconds:60,products:{attraction:{name:'单景点永久讲解',price:19.9,enabled:true,currency:'CNY'},membership:{name:'终身会员',price:99,enabled:true,currency:'CNY'}}}}},
     async request(path,options={}){const headers={'Content-Type':'application/json',...(this.token?{Authorization:'Bearer '+this.token}:{}),...(options.headers||{})};const response=await fetch('/api'+path,{...options,headers});const result=response.status===204?null:await response.json();if(response.status===401&&path!=='/auth/login'){this.logout();throw new Error('登录已过期，请重新登录')}if(!response.ok)throw new Error(result?.error||'请求失败（'+response.status+'）');return result},
-    async login(){if(!this.password){this.error='请输入管理员密码';return}this.busy=true;this.error='';try{const result=await this.request('/auth/login',{method:'POST',body:JSON.stringify({password:this.password})});this.token=result.token;sessionStorage.setItem(TOKEN,result.token);await this.loadAll()}catch(e){this.error=e.message}finally{this.busy=false}},
-    logout(){sessionStorage.removeItem(TOKEN);this.token='';this.data=JSON.parse(JSON.stringify(emptyData))},
+    async checkLocalAiAvailability(){try{const result=await this.request('/admin/ai-fill/status');this.localAiEnabled=result?.enabled===true}catch{this.localAiEnabled=false}},
+    openAiFillDialog(){this.aiEntityType=this.active;this.aiAttractionName=this.active==='routes'?(this.form.title||''):(this.form.name||'');this.aiFillDialogVisible=true;this.$nextTick(()=>this.$refs.aiAttractionNameInput?.focus())},
+    async submitAiFill(){
+      const name=this.aiAttractionName.trim();if(!name||this.aiFilling)return
+      this.aiFilling=true;this.aiProgressMessage='正在连接 SenseNova…'
+      try{
+        const contentType=({attractions:'attraction',routes:'route',destinations:'destination'})[this.aiEntityType]||'attraction'
+        const response=await fetch('/api/admin/ai-fill',{method:'POST',headers:{'Content-Type':'application/json',...(this.token?{Authorization:'Bearer '+this.token}:{})},body:JSON.stringify({type:contentType,name})})
+        if(response.status===401){this.logout();throw new Error('登录已过期，请重新登录')}
+        if(!response.ok){let failure={};try{failure=await response.json()}catch{};throw new Error(failure.error||'请求失败（'+response.status+'）')}
+        if(!response.body?.getReader)throw new Error('当前浏览器不支持实时反馈，请更新浏览器后重试')
+        const reader=response.body.getReader(),decoder=new TextDecoder();let buffer='',draft=null,streamError=null
+        const consume=eventText=>{const event=eventText.split(/\r?\n/).find(line=>line.startsWith('event:'))?.slice(6).trim();const data=eventText.split(/\r?\n/).filter(line=>line.startsWith('data:')).map(line=>line.slice(5).trimStart()).join('\n');if(!data)return;let value;try{value=JSON.parse(data)}catch{return}if(event==='progress'&&typeof value.message==='string')this.aiProgressMessage=value.message;if(event==='result')draft=value.data||{};if(event==='error')streamError=new Error(value.error||'AI 服务暂不可用')}
+        while(true){const{value,done}=await reader.read();buffer+=decoder.decode(value||new Uint8Array(),{stream:!done});let boundary;while((boundary=buffer.search(/\r?\n\r?\n/))>=0){const eventText=buffer.slice(0,boundary),separator=buffer.slice(boundary).match(/^\r?\n\r?\n/)[0];buffer=buffer.slice(boundary+separator.length);consume(eventText)}if(done)break}
+        if(buffer.trim())consume(buffer)
+        if(streamError)throw streamError
+        if(!draft)throw new Error('AI 实时连接已结束，但没有收到完整资料，请重试')
+        if(this.aiEntityType==='routes'){
+          ;['title','kicker','tags','desc'].forEach(key=>{if(typeof draft[key]==='string'&&draft[key].trim())this.$set(this.form,key,draft[key])})
+          if(Number.isInteger(draft.days)&&draft.days>0)this.$set(this.form,'days',draft.days)
+        }else if(this.aiEntityType==='destinations'){
+          ;['name','en','type'].forEach(key=>{if(typeof draft[key]==='string'&&draft[key].trim())this.$set(this.form,key,draft[key])})
+        }else{
+        const textKeys=['name','en','originalName','cityName','type','category','sizeLabel','tags','summary'];textKeys.forEach(key=>{if(typeof draft[key]==='string'&&draft[key].trim())this.$set(this.form,key,draft[key])})
+        if(draft.cityName){const normalize=value=>String(value||'').trim().toLocaleLowerCase();const city=(this.data.cities||[]).find(item=>[item.name,item.nameTw,item.nameEn,item.id].some(value=>normalize(value)===normalize(draft.cityName)));if(city)this.$set(this.form,'city',city.id)}
+        const mergeArray=(key,rows,merge)=>{if(!Array.isArray(rows)||!rows.length)return;const existing=Array.isArray(this.form[key])?this.form[key]:[];this.$set(this.form,key,[...rows.map((entry,index)=>merge(existing[index]||{},entry)),...existing.slice(rows.length)])}
+        mergeArray('highlights',draft.highlights,(existing,entry)=>({...existing,...entry}))
+        mergeArray('exhibits',draft.exhibits,(existing,entry)=>({...existing,...entry,location:{...(existing.location||{}),...(entry.location||{})}}))
+        if(draft.guide&&typeof draft.guide==='object'){const guide={...(this.form.guide||{})};Object.entries(draft.guide).forEach(([key,value])=>{if(typeof value==='string'&&value.trim())guide[key]=value});this.$set(this.form,'guide',guide)}
+        mergeArray('articles',draft.articles,(existing,entry)=>({...existing,...entry}))
+        if(draft.deepDive&&typeof draft.deepDive==='object'){const existing=this.form.deepDive||{preview:'',locked:[]};const locked=Array.isArray(draft.deepDive.locked)?draft.deepDive.locked:[];this.$set(this.form,'deepDive',{...existing,...(draft.deepDive.preview?{preview:draft.deepDive.preview}:{}),locked:locked.length?[...locked,...(Array.isArray(existing.locked)?existing.locked.slice(locked.length):[])]:existing.locked||[]})}
+        }
+        this.aiFillDialogVisible=false;this.$message.success('AI 资料已填入，请核实内容后再保存')
+      }catch(error){this.$message.error('智能填写失败：'+error.message)}finally{this.aiFilling=false}
+    },
+    async login(){if(!this.password){this.error='请输入管理员密码';return}this.busy=true;this.error='';try{const result=await this.request('/auth/login',{method:'POST',body:JSON.stringify({password:this.password})});this.token=result.token;sessionStorage.setItem(TOKEN,result.token);await Promise.all([this.loadAll(),this.checkLocalAiAvailability()])}catch(e){this.error=e.message}finally{this.busy=false}},
+    logout(){sessionStorage.removeItem(TOKEN);this.token='';this.localAiEnabled=false;this.data=JSON.parse(JSON.stringify(emptyData))},
     selectMenu(id){this.active=id;this.editor=null;this.filterText='';this.attractionDestinationFilter='';this.attractionView='list';this.clearFilterValues();this.resetPagination();if(id==='attractionDetailPage')this.loadDetailPage()},
     async loadDetailPage(){try{this.detailPage=await this.request('/admin/attraction-detail-page')}catch(e){this.$message.error('景点详情配置加载失败：'+e.message)}},
     async reloadAll(){await this.loadAll();if(this.active==='attractionDetailPage')await this.loadDetailPage()},
     editDestinationGroup(id){const destination=(this.data.destinations||[]).find(item=>String(item.id)===String(id));if(!destination)return;this.active='destinations';this.filterText='';this.clearFilterValues();this.resetPagination();this.openEditor(destination,false)},
+    startCreateAttractionForGroup(destinationId){this.active='attractions';this.startCreate();this.$set(this.form,'linkedDestinationIds',destinationId?[String(destinationId)]:[])},
     clearFilterValues(){Object.keys(this.filters).forEach(key=>this.$set(this.filters,key,listDateFilterKeys.includes(key)?[]:listNumberFilterKeys.includes(key)?[null,null]:''))},
     resetFilters(){this.filterText='';this.attractionDestinationFilter='';this.clearFilterValues();this.resetPagination()},
     resetPagination(){this.page=1;this.groupPages={}},

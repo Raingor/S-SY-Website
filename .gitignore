@@ -3,5 +3,6 @@ private-audio/
 dist/
 .pi/
 .env
+.env.local
 *.log
 .DS_Store

@@ -9,6 +9,7 @@ import tls from 'node:tls'
 import { closeStorage, initStorage, readData, saveData, storageStatus } from './storage.mjs'
 import { audioEntitled, publicHeritage, signedAudioToken, streamPrivateAudio, uploadPrivateAudio, validateAttraction, validateHeritageRecord, verifySignedAudioToken, normalizeVisitorSections, sanitizeRichText, visibleTrack } from './heritage-content.mjs'
 import { amountToFen, createMiniProgramPrepay, decryptWechatNotify, queryWechatTransaction, realPayNotifyReady, realPayRequestReady, verifyWechatNotify, wechatPayConfig } from './wechat-pay.mjs'
+import { requestAdminDraft } from './attraction-ai-fill.mjs'
 
 const root = dirname(fileURLToPath(import.meta.url))
 const demoContentPath = resolve(root, 'seed/content-demo.json')
@@ -112,6 +113,9 @@ function isAdmin(req) {
   const auth = req.headers.authorization || ''
   if (!auth.startsWith('Bearer ')) return false
   return verifyAdminSessionToken(auth.slice(7), adminSessionSecret, adminTokenTtlMs)
+}
+function localAttractionAiEnabled() {
+  return process.env.NODE_ENV !== 'production' && process.env.SY_LOCAL_ASSISTANT_ENABLED === 'true' && Boolean(process.env.SY_SENSENOVA_API_KEY)
 }
 function isMiniProgramLead(input) { return ['wechat-miniprogram', 'miniprogram'].includes(input.platform) || ['wechat-miniprogram', 'miniprogram'].includes(input.source) }
 function isMiniProgramAccessEnabled(data) { return data.settings?.miniprogramAccess !== false }
@@ -1192,6 +1196,44 @@ const server = http.createServer(async (req, res) => {
     }
     if (url.pathname.startsWith('/api/admin/')) {
       if (!isAdmin(req)) return json(res, 401, { error: '未授权，请先登录后台' })
+      if (['/api/admin/ai-fill/status', '/api/admin/attractions/ai-fill/status'].includes(url.pathname) && method === 'GET') {
+        return localAttractionAiEnabled() ? json(res, 200, { enabled: true }) : json(res, 404, { enabled: false })
+      }
+      if (['/api/admin/ai-fill', '/api/admin/attractions/ai-fill'].includes(url.pathname) && method === 'POST') {
+        if (!localAttractionAiEnabled()) return json(res, 404, { error: '智能填写仅在配置完成的本地环境启用' })
+        let input
+        try { input = await body(req) } catch { return json(res, 400, { error: '请求内容无效' }) }
+        res.writeHead(200, {
+          'Content-Type': 'text/event-stream; charset=utf-8',
+          'Cache-Control': 'no-cache, no-transform',
+          Connection: 'keep-alive',
+          'X-Accel-Buffering': 'no',
+        })
+        const sendAiEvent = (event, value) => res.write(`event: ${event}\ndata: ${JSON.stringify(value)}\n\n`)
+        try {
+          const result = await requestAdminDraft({
+            type: input?.type || 'attraction',
+            name: input?.name,
+            apiKey: process.env.SY_SENSENOVA_API_KEY,
+            onProgress: (message) => sendAiEvent('progress', { message }),
+          })
+          sendAiEvent('result', { data: result })
+          return res.end()
+        } catch (error) {
+          const status = /请先填写.*名称|不支持的智能填写类型/.test(error.message) ? 422 : 502
+          if (error.providerDetails) {
+            console.error('[admin-ai-fill] provider request failed', JSON.stringify({
+              time: new Date().toISOString(), ...error.providerDetails,
+            }))
+          } else if (status !== 422) {
+            console.error('[admin-ai-fill] request failed', JSON.stringify({
+              time: new Date().toISOString(), type: ['attraction', 'route', 'destination'].includes(input?.type) ? input.type : 'attraction', provider: 'sensenova', model: process.env.SY_SENSENOVA_MODEL || 'deepseek-v4-flash', category: 'connection_or_response_error',
+            }))
+          }
+          sendAiEvent('error', { status, error: error.message })
+          return res.end()
+        }
+      }
       const data = readData()
       const masterMatch = url.pathname.match(/^\/api\/admin\/(countries|guides)(?:\/([^/]+))?$/)
       if (masterMatch && ['GET', 'POST', 'PATCH', 'DELETE'].includes(method)) {
