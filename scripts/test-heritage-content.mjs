@@ -27,6 +27,14 @@ async function main() {
   const fixturePath = join(tmp, 'seed/site-data.json')
   const fixture = JSON.parse(readFileSync(fixturePath, 'utf8'))
   const baseAttraction = fixture.attractions.at(-1)
+  fixture.attractions[0].guide = { ...(fixture.attractions[0].guide || {}), mapImage: 'mapImage-legacy123-abcdef.jpg' }
+  fixture.attractions[0].highlights = Array.from({ length: 7 }, (_, index) => ({
+    id: `acropolis-highlight-${index + 1}`,
+    name: `【TEST ONLY】管理亮点 ${index + 1}`,
+    desc: `【TEST ONLY】管理端录入描述 ${index + 1}`,
+    image: index % 2 ? `images/highlights-test-only-${index + 1}.webp` : `highlights-test-only-${index + 1}.jpg`,
+    sort: index + 1,
+  }))
   while (fixture.attractions.length < 87) fixture.attractions.push({ ...baseAttraction, id: `isolated-demo-attraction-${fixture.attractions.length + 1}`, guide: {}, exhibits: [], highlights: [], summary: '' })
   writeFileSync(fixturePath, JSON.stringify(fixture))
   symlinkSync(join(root, 'node_modules'), join(tmp, 'node_modules'), 'dir')
@@ -43,6 +51,11 @@ async function main() {
   assert.deepEqual(initial.data.audioAlbums, [])
   assert.equal(initial.data.attractions.length > 0, true)
   assert.equal(initial.data.attractions.length, 87)
+  assert.equal(initial.data.attractions[0].visitorInfo.mapImage, './images/mapImage-legacy123-abcdef.jpg', 'legacy uploaded map filenames remain publicly usable')
+  assert.equal(initial.data.attractions[0].visitorInfoSections.find((section) => section.id === 'map').map.image, './images/mapImage-legacy123-abcdef.jpg')
+  assert.equal(initial.data.attractions[0].highlights.length, 7, 'published API must retain all saved highlights')
+  assert.ok(initial.data.attractions[0].highlights.every((entry, index) => entry.id === `acropolis-highlight-${index + 1}` && entry.name === `【TEST ONLY】管理亮点 ${index + 1}` && entry.desc === `【TEST ONLY】管理端录入描述 ${index + 1}` && entry.image === `./images/highlights-test-only-${index + 1}.${index % 2 ? 'webp' : 'jpg'}`), 'saved highlight text and uploaded image paths must be preserved and normalized for MpApp')
+  assert.ok(!initial.data.attractions[0].demoFields?.highlights, 'saved highlights must not be marked as demo content')
   assert.ok(initial.data.attractionDetailPage.sections.visitor.subtitle.en)
   assert.equal(initial.data.attractionDetailPage.sections.overview.label.zh, '景点概览')
   assert.equal(initial.data.attractionDetailPage.sections.overview.label.tw, '景點概覽')
@@ -93,9 +106,30 @@ async function main() {
   assert.equal(contentWithPage.attractions.at(-1).visitorInfoSections.at(-1).titleEn, 'Isolated FAQ heading')
   assert.equal(contentWithPage.attractions.at(-1).visitorInfo.faq, page.demo.visitorInfo.faq.zh)
   assert.notEqual(contentWithPage.attractions[0].visitorInfo.faq, page.demo.visitorInfo.faq.zh, 'real guide.faq must take priority')
+  const existingAttractionForMap = initial.data.attractions[0]
+  const existingAttractionIdForMap = existingAttractionForMap.id
+  const legacyMapPath = 'mapImage-legacy123-abcdef.jpg'
+  const preservedGuide = { ...(existingAttractionForMap.guide || {}), hours: '【TEST ONLY】原有开放时间应保留', mapImage: legacyMapPath }
+  const savedLegacyMap = await adminRequest(`/api/admin/attractions/${encodeURIComponent(existingAttractionIdForMap)}`, { method: 'PATCH', body: { guide: preservedGuide } })
+  assert.equal(savedLegacyMap.response.status, 200, JSON.stringify(savedLegacyMap.data))
+  assert.equal(savedLegacyMap.data.guide.mapImage, `images/${legacyMapPath}`, 'legacy file name is normalized so existing data can be saved without re-entry')
   const emptyAttractionId = initial.data.attractions.at(-1).id
   assert.notEqual(emptyAttractionId, attractionId)
   assert.equal((await adminRequest(`/api/admin/attractions/${encodeURIComponent(emptyAttractionId)}`, { method: 'PATCH', body: { summary: '', highlights: [], exhibits: [], guide: {} } })).response.status, 200)
+  const mapUpload = await adminRequest('/api/admin/upload-image', { method: 'POST', body: { name: 'TEST-ONLY-map.png', type: 'image/png', data: 'data:image/png;base64,iVBORw0KGgo=', prefix: 'mapImage', updateSettings: false } })
+  assert.equal(mapUpload.response.status, 201)
+  assert.match(mapUpload.data.path, /^images\/mapImage-[\w-]+\.png$/, 'admin image uploads must return a persistable images/ path')
+  const savedMap = await adminRequest(`/api/admin/attractions/${encodeURIComponent(existingAttractionIdForMap)}`, { method: 'PATCH', body: { guide: { mapImage: mapUpload.data.path } } })
+  assert.equal(savedMap.response.status, 200, JSON.stringify(savedMap.data))
+  assert.equal(savedMap.data.guide.mapImage, mapUpload.data.path, 'uploaded visitor map must pass validation and persist')
+  assert.equal(savedMap.data.guide.hours, preservedGuide.hours, 'saving the map must preserve existing visitor guide content')
+  const persistedMappedAttraction = JSON.parse(readFileSync(fixturePath, 'utf8')).attractions.find((item) => item.id === existingAttractionIdForMap)
+  assert.equal(persistedMappedAttraction.guide.mapImage, mapUpload.data.path, 'uploaded map reference must persist outside seed defaults')
+  assert.equal(persistedMappedAttraction.guide.hours, preservedGuide.hours, 'saving the map must not require re-entering existing guide data')
+  const removedMap = await adminRequest(`/api/admin/attractions/${encodeURIComponent(existingAttractionIdForMap)}`, { method: 'PATCH', body: { guide: { mapImage: '' } } })
+  assert.equal(removedMap.response.status, 200)
+  assert.equal(removedMap.data.guide.mapImage, '', 'visitor map can be removed by clearing its reference')
+  assert.equal(removedMap.data.guide.hours, preservedGuide.hours, 'removing the map must preserve existing visitor guide content')
   const demoAttraction = (await request('/api/content')).data.attractions.find((item) => item.id === emptyAttractionId)
   assert.equal(demoAttraction.demoFields.summary, true)
   assert.equal(demoAttraction.demoFields.highlights, true)

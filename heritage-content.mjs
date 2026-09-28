@@ -37,7 +37,8 @@ function decodeEntities(value) {
 }
 function safeMapImage(value) {
   const raw = text(value, 1000).trim()
-  const url = safeUrl(raw, true)
+  const normalized = /^[a-z0-9][a-z0-9._-]*\.(?:png|jpe?g|webp)$/i.test(raw) ? `images/${raw}` : raw
+  const url = safeUrl(normalized, true)
   if (!url) return ''
   return publicImage(url)
 }

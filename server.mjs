@@ -614,10 +614,38 @@ function publicHome(data) {
     banners: publicHomeBanners(data),
   }
 }
+function managedHighlightImage(value) {
+  const raw = typeof value === 'string' ? value.trim() : String(value?.url || value?.path || '').trim()
+  if (!raw || raw.startsWith('//') || /[\\\u0000-\u001f]/.test(raw)) return ''
+  if (/^https:\/\//i.test(raw)) {
+    try { const url = new URL(raw); return url.protocol === 'https:' && !url.username && !url.password ? raw : '' } catch { return '' }
+  }
+  const filename = raw.replace(/^(?:\.\/|\/)?(?:images\/)+/i, '')
+  if (!/^[a-z0-9][a-z0-9._-]*\.(?:png|jpe?g|webp)$/i.test(filename) || filename.split('/').includes('..')) return ''
+  return `./images/${filename}`
+}
+function mergeAttractionHighlights(item, detail) {
+  const saved = Array.isArray(item.highlights) ? item.highlights : []
+  const mapped = Array.isArray(detail.highlights) ? detail.highlights : []
+  if (!saved.length) return mapped.length ? mapped.map((highlight) => ({ ...highlight, image: managedHighlightImage(highlight.image) })) : null
+  return saved.map((source, index) => {
+    const matching = mapped.find((entry) => source.id && entry.id === source.id) || mapped[index] || {}
+    const value = { ...matching }
+    for (const key of ['name', 'nameTw', 'nameEn', 'desc', 'descTw', 'descEn']) {
+      if (source[key] != null) value[key] = String(source[key]).trim().slice(0, 2000)
+    }
+    value.id = String(source.id || matching.id || `${item.id}-highlight-${index + 1}`).slice(0, 160)
+    value.sort = Number.isFinite(Number(source.sort)) ? Number(source.sort) : (Number(matching.sort) || index + 1)
+    value.image = managedHighlightImage(source.image) || managedHighlightImage(source.imageUrl) || managedHighlightImage(source.cover) || managedHighlightImage(matching.image)
+    delete value.isDemo
+    return value
+  })
+}
 function demoAttractionContent(item, detail, imageUrl, page) {
   const demo = page.demo
   const exhibits = detail.exhibits?.length ? detail.exhibits : [{ id: `${item.id}-demo-point`, ...demo.exhibit, image: '', sort: 1, status: 'published', isDemo: true }]
-  const highlights = detail.highlights?.length ? detail.highlights : [{ id: `${item.id}-demo-highlight`, ...demo.highlight, image: '', sort: 1, exhibitId: exhibits[0].id, isDemo: true }]
+  const savedHighlights = mergeAttractionHighlights(item, detail)
+  const highlights = savedHighlights?.length ? savedHighlights : [{ id: `${item.id}-demo-highlight`, ...demo.highlight, image: '', sort: 1, exhibitId: exhibits[0].id, isDemo: true }]
   const visitorInfo = { ...detail.visitorInfo }
   const demoVisitorFields = []
   const visitorInfoSections = (detail.visitorInfoSections || []).map((section) => {
@@ -650,7 +678,7 @@ function demoAttractionContent(item, detail, imageUrl, page) {
   const missingAudioCategories = demo.audioGuides.filter((entry) => !realAudioGuides.some((real) => real.category === entry.category))
   const audioGuides = [...realAudioGuides, ...missingAudioCategories.map((entry, index) => ({ ...entry, id: `${item.id}-demo-audio-${entry.category}`, cover: imageUrl(item.image) || '', attractionId: item.id, exhibitId: null, routeId: entry.category === 'route' ? routes[0].id : null, durationSeconds: 0, previewSeconds: 0, previewUrl: '', accessUrl: '', fullUrl: null, playable: false, sort: realAudioGuides.length + index + 1, isDemo: true }))]
   const summaryIsDemo = !String(item.summary || '').trim()
-  return { ...detail, summary: summaryIsDemo ? demo.summary.zh : item.summary, ...(summaryIsDemo ? { summaryTw: demo.summary.tw, summaryEn: demo.summary.en } : {}), visitorInfo, visitorInfoSections, exhibits, highlights, routes, audioGuides, demoFields: { ...(summaryIsDemo ? { summary: true } : {}), ...(!detail.highlights?.length ? { highlights: true } : {}), ...(!detail.exhibits?.length ? { exhibits: true } : {}), ...(!detail.routes?.length ? { routes: true } : {}), ...(missingAudioCategories.length ? { audioGuides: true, audioGuideCategories: missingAudioCategories.map((entry) => entry.category) } : {}), ...(demoVisitorFields.length ? { visitorInfo: demoVisitorFields } : {}) } }
+  return { ...detail, summary: summaryIsDemo ? demo.summary.zh : item.summary, ...(summaryIsDemo ? { summaryTw: demo.summary.tw, summaryEn: demo.summary.en } : {}), visitorInfo, visitorInfoSections, exhibits, highlights, routes, audioGuides, demoFields: { ...(summaryIsDemo ? { summary: true } : {}), ...(!savedHighlights?.length && !detail.highlights?.length ? { highlights: true } : {}), ...(!detail.exhibits?.length ? { exhibits: true } : {}), ...(!detail.routes?.length ? { routes: true } : {}), ...(missingAudioCategories.length ? { audioGuides: true, audioGuideCategories: missingAudioCategories.map((entry) => entry.category) } : {}), ...(demoVisitorFields.length ? { visitorInfo: demoVisitorFields } : {}) } }
 }
 function publicContent(data, countryId = 'greece') {
   const imageUrl = (value) => {
@@ -824,6 +852,7 @@ function normalizeAttractionPayload(data, payload) {
   if (Object.prototype.hasOwnProperty.call(payload, 'visitorSections')) normalized = { ...normalized, visitorSections: normalizeVisitorSections(payload.visitorSections) }
   if (Object.prototype.hasOwnProperty.call(payload, 'guide') && payload.guide && typeof payload.guide === 'object') {
     const guide = { ...payload.guide }
+    if (/^[a-z0-9][a-z0-9._-]*\.(?:png|jpe?g|webp)$/i.test(String(guide.mapImage || ''))) guide.mapImage = `images/${guide.mapImage}`
     for (const key of ['hoursHtml','hoursHtmlTw','hoursHtmlEn','ticketsHtml','ticketsHtmlTw','ticketsHtmlEn','transportHtml','transportHtmlTw','transportHtmlEn','mapHtml','mapHtmlTw','mapHtmlEn']) if (guide[key] != null) guide[key] = sanitizeRichText(guide[key]).html
     normalized = { ...normalized, guide }
   }
@@ -862,6 +891,9 @@ async function collectionHandler(data, collection, method, pathname, payload) {
   if (method === 'GET') return { status: 200, body: items }
   if (collection === 'attractions' && (method === 'POST' || method === 'PATCH')) {
     const previous = method === 'PATCH' ? items.find((item) => item.id === itemId) : null
+    if (previous && normalizedPayload.guide && typeof normalizedPayload.guide === 'object') {
+      normalizedPayload = { ...normalizedPayload, guide: { ...(previous.guide || {}), ...normalizedPayload.guide } }
+    }
     const problem = validateAttraction({ ...previous, ...normalizedPayload }, data)
     if (problem) return { status: 422, body: { code: 'ATTRACTION_VALIDATION_FAILED', error: problem } }
   }
@@ -1373,7 +1405,7 @@ const server = http.createServer(async (req, res) => {
           data.settings = { ...data.settings, ogImage: `images/${filename}` }
           await saveData(data)
         }
-        return json(res, 201, { path: input.updateSettings === false ? filename : `images/${filename}`, url: `/${`images/${filename}`}` })
+        return json(res, 201, { path: `images/${filename}`, url: `/images/${filename}` })
       }
       if (url.pathname === '/api/admin/miniprogram-users' && method === 'GET') return json(res, 200, { items: (data.miniprogramUsers || []).map((user) => adminMiniUserSummary(data, user)) })
       const miniUserMatch = url.pathname.match(/^\/api\/admin\/miniprogram-users\/([^/]+)$/)
