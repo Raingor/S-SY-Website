@@ -29,6 +29,29 @@
 }
 ```
 
+`attractionDetailPage` 是 `/api/content` 顶层的必需对象，**不得返回 `null` 或省略**。Website 从后台配置读取，并对缺失字段补默认值；全新初始化和配置缺失时也会提供可用默认值。MpApp 应读取此顶层字段配置景点详情页标题与语音导览说明，不能以特定的个性化文案判断配置有效。最低结构如下（`zh/tw/en` 分别为简体、繁体、英文；实际返回包含所有字段）：
+
+```json
+{
+  "attractionDetailPage": {
+    "sections": {
+      "overview": {"label":{"zh":"景点概览","tw":"景點概覽","en":"Overview"},"subtitle":{"zh":"…","tw":"…","en":"…"}},
+      "visitor": {"label":{"zh":"参观指南","tw":"…","en":"…"},"subtitle":{"zh":"…","tw":"…","en":"…"},"notice":{"zh":"…","tw":"…","en":"…"}},
+      "highlights": {"label":{"zh":"…","tw":"…","en":"…"},"subtitle":{"zh":"…","tw":"…","en":"…"}},
+      "audioHow": {"label":{"zh":"…","tw":"…","en":"…"},"subtitle":{"zh":"…","tw":"…","en":"…"}},
+      "route": {"label":{"zh":"…","tw":"…","en":"…"},"subtitle":{"zh":"…","tw":"…","en":"…"}},
+      "online": {"label":{"zh":"…","tw":"…","en":"…"},"subtitle":{"zh":"…","tw":"…","en":"…"}},
+      "expert": {"label":{"zh":"…","tw":"…","en":"…"},"subtitle":{"zh":"…","tw":"…","en":"…"}}
+    },
+    "visitorSections": {"hours":{"zh":"…","tw":"…","en":"…"},"tickets":{"zh":"…","tw":"…","en":"…"},"transport":{"zh":"…","tw":"…","en":"…"},"map":{"zh":"…","tw":"…","en":"…"},"faq":{"zh":"…","tw":"…","en":"…"}},
+    "audioHow": {"steps":[{"zh":"…","tw":"…","en":"…"}],"note":{"zh":"…","tw":"…","en":"…"}},
+    "demo": {"summary":{},"exhibit":{},"highlight":{},"visitorInfo":{},"route":{},"audioGuides":[]}
+  }
+}
+```
+
+`sections` 固定包含 `overview`、`visitor`、`highlights`、`audioHow`、`route`、`online`、`expert`；每项必须有非空三语 `label` 与 `subtitle`，`visitor` 还包含三语 `notice`。`audioHow.steps` 必须是至少一项的数组，每项含非空三语文案；`note` 含三语文案。当前 Website 默认提供 3 个步骤。`visitorSections` 固定提供 `hours`、`tickets`、`transport`、`map`、`faq` 五个三语标签。`demo` 提供 `summary`、`exhibit`、`highlight`、`visitorInfo`、`route`、`audioGuides` 演示文案；具体默认文案由 Website 版本化 `seed/content-demo.json` 管理。较旧服务端可能未返回此字段，客户端可为兼容旧版本使用本地 UI fallback，但该响应不符合当前契约；服务端升级后须验证字段存在且 `audioHow.steps` 非空。
+
 固定 `visitorInfoSections` **始终恰好返回四项**，依序以稳定 id `hours`/`tickets`/`transport`/`map` 表示开放时间、门票信息、交通信息、景点地图；对应正文与地图资产都缺失时，Website 从 `seed/content-demo.json` 填入明确写有「演示内容／待发布」的三语提示及 `nodes*`，并给该板块 `isDemo:true`、在景点 `demoFields.visitorInfo` 列出字段名；已有真实正文或地图则保留原样。客户端仍保留固定板块，不因无地图图片/链接而隐藏 map section。自定义 `customSections` 只返回 `status:"published"` 项，按 `sort` 升序；各项含 `{id,kind:"custom",title,titleTw,titleEn,bodyHtml,bodyHtmlTw,bodyHtmlEn,nodes,nodesTw,nodesEn,sort,status}`。
 
 `nodes`、`nodesTw`、`nodesEn` 是可直接用于微信 `<rich-text nodes="{{nodes}}"/>` 的标准节点数组：文本节点 `{type:"text",text:"…"}`；元素节点 `{type:"element",name:"p",attrs:{},children:[…]}`。HTML 与 nodes 由同一服务器 allowlist sanitizer 派生、语义一致；App 优先渲染 nodes，不执行原始 HTML/JS。允许标签 `p,div,br,strong,b,em,i,ul,ol,li,blockquote,h2,h3,a,img`；所有 `on*`、style 与未允许属性剥除，script/style 标签剥除；链接仅 HTTPS、mailto 或安全站内路径；图片仅 HTTPS 或站内 `/images/...`。拒绝 `javascript:`、协议相对 URL、反斜线及路径上跳。
