@@ -712,6 +712,7 @@ function publicContent(data, countryId = 'greece') {
     settings: { ...data.settings, homeEyebrow: home.eyebrow, homeTitle: home.title, homeDescription: home.description, homeBanners: home.banners },
     home,
     attractionDetailPage,
+    attractionDetails: heritage.attractionDetails,
     heritageGuideBanners: publicHeritageGuideBanners(data, imageUrl),
     miniprogramServiceEntries: publicMiniprogramServiceEntries(data, imageUrl),
     countries: countries.map((item) => ({ ...item, heroImage: imageUrl(item.heroImage) })),
