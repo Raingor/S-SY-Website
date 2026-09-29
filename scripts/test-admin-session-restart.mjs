@@ -2,7 +2,9 @@ import assert from 'node:assert/strict'
 import { spawn } from 'node:child_process'
 import net from 'node:net'
 import { fileURLToPath } from 'node:url'
-import { dirname, resolve } from 'node:path'
+import { dirname, join, resolve } from 'node:path'
+import { cp, mkdir, mkdtemp, rm, symlink } from 'node:fs/promises'
+import { tmpdir } from 'node:os'
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..')
 const testPassword = 'local-admin-session-restart-test-password'
@@ -16,6 +18,24 @@ async function availablePort() {
   return port
 }
 
+let serverCwd = root
+
+// Run the server from an isolated copy so its JSON-storage startup write-back
+// never touches the version-controlled seed/site-data.json.
+async function prepareIsolatedServer() {
+  const tempRoot = await mkdtemp(join(tmpdir(), 'sy-admin-session-restart-'))
+  for (const name of ['server.mjs', 'storage.mjs', 'wechat-pay.mjs', 'admin-session.mjs', 'heritage-content.mjs', 'attraction-ai-fill.mjs', 'package.json']) {
+    await cp(join(root, name), join(tempRoot, name))
+  }
+  await symlink(join(root, 'node_modules'), join(tempRoot, 'node_modules'), 'dir')
+  await mkdir(join(tempRoot, 'seed'), { recursive: true })
+  for (const name of ['site-data.json', 'content-demo.json']) {
+    await cp(join(root, 'seed', name), join(tempRoot, 'seed', name))
+  }
+  serverCwd = tempRoot
+  return tempRoot
+}
+
 function startServer(port) {
   const env = {
     ...process.env,
@@ -27,7 +47,7 @@ function startServer(port) {
   delete env.SY_DB_NAME
   delete env.SY_DB_USER
   delete env.SY_DB_PASSWORD
-  return spawn(process.execPath, ['server.mjs'], { cwd: root, env, stdio: 'ignore' })
+  return spawn(process.execPath, ['server.mjs'], { cwd: serverCwd, env, stdio: 'ignore' })
 }
 
 async function waitUntilReady(child, baseUrl) {
@@ -52,6 +72,7 @@ async function stopServer(child) {
   })
 }
 
+const tempRoot = await prepareIsolatedServer()
 const port = await availablePort()
 const baseUrl = `http://127.0.0.1:${port}`
 let server = startServer(port)
@@ -80,4 +101,5 @@ try {
   console.log('Admin session restart integration test passed.')
 } finally {
   await stopServer(server)
+  await rm(tempRoot, { recursive: true, force: true })
 }
