@@ -114,8 +114,9 @@ function isAdmin(req) {
   if (!auth.startsWith('Bearer ')) return false
   return verifyAdminSessionToken(auth.slice(7), adminSessionSecret, adminTokenTtlMs)
 }
-function localAttractionAiEnabled() {
-  return process.env.NODE_ENV !== 'production' && process.env.SY_LOCAL_ASSISTANT_ENABLED === 'true' && Boolean(process.env.SY_SENSENOVA_API_KEY)
+function attractionAiEnabled() {
+  // Explicit opt-in so the same build can run in any environment; otherwise disabled.
+  return process.env.SY_LOCAL_ASSISTANT_ENABLED === 'true' && Boolean(process.env.SY_SENSENOVA_API_KEY)
 }
 function isMiniProgramLead(input) { return ['wechat-miniprogram', 'miniprogram'].includes(input.platform) || ['wechat-miniprogram', 'miniprogram'].includes(input.source) }
 function isMiniProgramAccessEnabled(data) { return data.settings?.miniprogramAccess !== false }
@@ -1197,10 +1198,10 @@ const server = http.createServer(async (req, res) => {
     if (url.pathname.startsWith('/api/admin/')) {
       if (!isAdmin(req)) return json(res, 401, { error: '未授权，请先登录后台' })
       if (['/api/admin/ai-fill/status', '/api/admin/attractions/ai-fill/status'].includes(url.pathname) && method === 'GET') {
-        return localAttractionAiEnabled() ? json(res, 200, { enabled: true }) : json(res, 404, { enabled: false })
+        return attractionAiEnabled() ? json(res, 200, { enabled: true }) : json(res, 404, { enabled: false })
       }
       if (['/api/admin/ai-fill', '/api/admin/attractions/ai-fill'].includes(url.pathname) && method === 'POST') {
-        if (!localAttractionAiEnabled()) return json(res, 404, { error: '智能填写仅在配置完成的本地环境启用' })
+        if (!attractionAiEnabled()) return json(res, 404, { error: '智能填写未启用：服务端未配置 SY_LOCAL_ASSISTANT_ENABLED 或 SY_SENSENOVA_API_KEY' })
         let input
         try { input = await body(req) } catch { return json(res, 400, { error: '请求内容无效' }) }
         res.writeHead(200, {
