@@ -185,4 +185,10 @@
 .el-admin .lead-card .el-card__body>div { display:flex; justify-content:space-between; align-items:center; gap:10px; }
 .el-admin .lead-card p { display:flex; justify-content:space-between; gap:10px; margin:8px 0 0; color:#66747a; font-size:12px; }
 .el-admin .lead-card p span { color:#939da2; }
+/* 复选清单：用于「关联目的地」等需要罗列全部选项并勾选的多选字段（单独占一整行） */
+.el-admin .checkbox-list { border:1px solid #dcdfe6; border-radius:6px; padding:10px 12px; background:#fff; }
+.el-admin .checkbox-list-body { display:grid; grid-template-columns:repeat(auto-fill,minmax(220px,1fr)); gap:2px 18px; max-height:280px; overflow:auto; }
+.el-admin .checkbox-list-body .el-checkbox { display:flex; align-items:center; margin:0; height:30px; }
+.el-admin .checkbox-list-body .el-checkbox__label { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-size:13px; }
+.el-admin .checkbox-list-foot { display:flex; align-items:center; justify-content:space-between; margin-top:8px; color:#909399; font-size:12px; }
 @media(max-width:760px){.el-admin .attraction-view-toolbar{align-items:flex-start;flex-direction:column}.el-admin .attraction-destination-select{width:100%}.el-admin .group-page-size{margin-left:0}.el-admin .attraction-destination-heading{align-items:flex-start;flex-direction:column}.el-admin .attraction-destination-actions{justify-content:flex-start;width:100%}}
