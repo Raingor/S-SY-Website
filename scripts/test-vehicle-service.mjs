@@ -169,6 +169,20 @@ try {
   assert.equal(stored.durationId, 'duration-one-day', 'option ids submitted by the client are persisted')
   assert.equal(leads.filter((lead) => lead.leadType === 'vehicle-consultation').length >= 1, true)
 
+  // 8b. Mini-program style key names are normalized on ingest so no column is empty.
+  const mpInquiry = await request('/api/leads', {
+    method: 'POST',
+    body: { leadType: 'vehicle-consultation', contact: 'mp-contact', bookingDate: '2026-10-05', route: '机场 → 市区', vehicleType: '宝马 SUV / 5座', duration: '1日', people: '3-5人' },
+  })
+  assertStatus(mpInquiry, 201, 'mini-program style vehicle inquiry is accepted')
+  const mpStored = (await admin('/api/admin/leads')).data.find((lead) => lead.id === mpInquiry.data.id)
+  assert.ok(mpStored, 'normalized inquiry appears in the admin list')
+  assert.equal(mpStored.vehicleDate, '2026-10-05', 'bookingDate is normalized to vehicleDate')
+  assert.equal(mpStored.vehicleNeed, '宝马 SUV / 5座 · 1日 · 机场 → 市区', 'vehicle type / duration / route are combined into vehicleNeed')
+  assert.equal(mpStored.travelers, '3-5人', 'people is normalized to travelers')
+  assert.equal(mpStored.bookingDate, '2026-10-05', 'original client keys are preserved')
+  assert.equal(mpStored.route, '机场 → 市区')
+
   // 9. Restart keeps the stored configuration instead of reseeding defaults.
   await stop()
   start()

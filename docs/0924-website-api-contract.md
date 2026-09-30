@@ -141,3 +141,14 @@
 小程序 / 官网提交的用车咨询以 `POST /api/leads` 写入，`leadType` 固定为 `vehicle-consultation`；后台「小程序管理 → 用车询盘」按该类型筛选展示，支持查看与跟进状态（`PATCH /api/admin/leads/:id`，`status` 为 `new / contacted / quoted / closed`）。
 
 常见字段：`vehicleDate`（用车日期）、`vehicleNeed`（用车场景）、`duration`（时长）、`vehicleType`（车型）、`travelers`（随行人数）、`contact`（联系方式）、`requirements`（补充说明）；若客户端使用后台选项，可同时回传稳定 `id`：`vehicleTypeId / durationId / peopleId`。`POST /api/leads` **不做字段白名单**，上述附加字段会原样持久化，后台列表与详情直接可用。
+
+**键名归一化（服务端自动，客户端无需适配）**：官网与小程序使用不同键名，入库时 `leadType === 'vehicle-consultation'` 的线索会自动补齐别名，保证同一列表不出现空列：
+
+| 后台列表列 | 读取键 | 归一化来源 |
+| --- | --- | --- |
+| 用车日期 | `vehicleDate` | `vehicleDate \|\| bookingDate \|\| travelDate` |
+| 用车场景 | `vehicleNeed` | `vehicleNeed \|\| [vehicleType, duration, route] 以 ` · ` 拼接` |
+| 随行人数 | `travelers` | `travelers \|\| people` |
+| 联系方式 | `contact` | 原值 |
+
+原始键（`bookingDate / route / vehicleType / duration / people`）仍会保留，不会丢失。因此小程序按现有键名提交即可，无需额外补别名。

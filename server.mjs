@@ -1305,6 +1305,13 @@ const server = http.createServer(async (req, res) => {
         if (!miniProgramUser.phone) return json(res, 403, { code: 'PHONE_BIND_REQUIRED', error: '提交前请先绑定手机号' })
       } else if (!input.contact) return json(res, 422, { error: '请填写联系方式' })
       const lead = { ...input, id: input.id || id('lead'), countryId: input.countryId || 'greece', source: input.source || input.platform || 'website', platform: input.platform || input.source || 'website', leadType: input.leadType || 'customization', status: 'new', createdAt: input.createdAt || new Date().toISOString() }
+      // 用车咨询字段归一化：小程序与官网使用不同键名，入库时补齐别名，
+      // 这样后台「用车询盘」列表与通知在两种来源下都不会出现空列。
+      if (lead.leadType === 'vehicle-consultation') {
+        lead.vehicleDate = lead.vehicleDate || lead.bookingDate || lead.travelDate || ''
+        lead.vehicleNeed = lead.vehicleNeed || [lead.vehicleType, lead.duration, lead.route].filter(Boolean).join(' · ')
+        lead.travelers = lead.travelers || lead.people || ''
+      }
       if (miniProgramUser) { lead.userId = miniProgramUser.id; lead.contact = miniProgramUser.phone; lead.contactType = 'phone' }
       data.leads.unshift(lead); await saveData(data); void sendLeadNotification(lead)
       return json(res, 201, lead)
