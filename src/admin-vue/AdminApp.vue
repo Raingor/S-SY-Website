@@ -170,8 +170,8 @@
               <el-empty v-else description="正在加载景点详情配置"/>
             </section>
             <section v-else-if="active === 'vehicleService'">
-              <el-card shadow="never" class="section-card" v-if="vehicleService">
-                <div slot="header" class="card-heading"><div><span class="eyebrow">VEHICLE SERVICE / 在地用车</span><h2>在地用车</h2></div><el-button type="primary" icon="el-icon-check" :loading="busy" @click="saveVehicleService">保存配置</el-button></div>
+              <el-card shadow="never" class="section-card" v-if="vehicleView === 'config' && vehicleService">
+                <div slot="header" class="card-heading"><div><span class="eyebrow">VEHICLE SERVICE / CONFIG</span><h2>在地用车配置</h2><p class="admin-muted">配置页面文案与车型 / 时长 / 人数选项；保存后返回询盘列表。</p></div><div class="header-actions"><el-button icon="el-icon-arrow-left" @click="vehicleView='list'">返回询盘列表</el-button><el-button type="primary" icon="el-icon-check" :loading="busy" @click="saveVehicleService">保存配置</el-button></div></div>
                 <el-alert title="只维护简体：繁体 / 英文缺失时服务端自动回退简体，公开接口仍返回三语字段。保存校验：页面标题 / 副标题 / 页面说明（简体）必填，选项非空且组内排序唯一。小程序界面固定文案不在此维护。" type="info" :closable="false" show-icon class="banner-note"/>
                 <el-form label-position="top">
                   <div class="settings-structured"><h3>基础</h3>
@@ -185,6 +185,22 @@
                   <div class="settings-structured"><h3>服务标签</h3>
                     <el-form-item label="简体（每行一条）"><el-input v-for="(tag,index) in (vehicleService.tags||[])" :key="index" :value="vehicleService.tags[index]" class="vehicle-tag-input" placeholder="标签内容" @input="value=>$set(vehicleService.tags,index,value)"/><small v-if="!(vehicleService.tags||[]).length" class="field-help">暂无标签</small></el-form-item>
                     <div class="form-actions"><el-button plain size="small" icon="el-icon-plus" @click="addVehicleTag">添加一条标签</el-button><el-button v-if="(vehicleService.tags||[]).length" plain size="small" type="danger" icon="el-icon-delete" @click="removeVehicleTag((vehicleService.tags||[]).length-1)">删除最后一条</el-button></div>
+                  </div>
+                  <div class="settings-structured"><h3>表单文案（简体；留空则由小程序使用本地文案）</h3>
+                    <div v-for="field in [{key:'title',label:'表单标题'},{key:'tip',label:'表单提示'},{key:'dateLabel',label:'日期标签'},{key:'durationLabel',label:'时长标签'},{key:'vehicleLabel',label:'车型标签'},{key:'peopleLabel',label:'人数标签'},{key:'routeLabel',label:'路线标签'},{key:'contactLabel',label:'联系方式标签'},{key:'submitLabel',label:'提交按钮文案'},{key:'routePlaceholder',label:'路线输入提示'},{key:'phonePlaceholder',label:'手机输入提示'},{key:'wechatPlaceholder',label:'微信输入提示'}]" :key="field.key" class="vehicle-form-field">
+                      <el-form-item :label="field.label"><el-input v-model="vehicleService.form[field.key]"/></el-form-item>
+                    </div>
+                  </div>
+                  <div class="settings-structured"><h3>表单开关与日期范围</h3>
+                    <div class="vehicle-option-meta">
+                      <el-form-item label="显示手机"><el-switch v-model="vehicleService.form.contactPhone"/></el-form-item>
+                      <el-form-item label="显示微信"><el-switch v-model="vehicleService.form.contactWechat"/></el-form-item>
+                      <el-form-item label="路线必填"><el-switch v-model="vehicleService.form.routeRequired"/></el-form-item>
+                    </div>
+                    <div class="vehicle-option-meta">
+                      <el-form-item label="开始日期（today 或 YYYY-MM-DD）"><el-input v-model="vehicleService.form.dateStart" placeholder="today"/></el-form-item>
+                      <el-form-item label="结束日期（可留空）"><el-input v-model="vehicleService.form.dateEnd" placeholder="YYYY-MM-DD"/></el-form-item>
+                    </div>
                   </div>
                   <div class="settings-structured"><h3>页面图片（可多张）</h3>
                     <div v-for="(image,index) in (vehicleService.images||[])" :key="image+index" class="image-editor"><div class="image-preview"><img :src="assetUrl(image)" :alt="'图片 '+(index+1)"/></div><div class="image-actions"><el-button type="danger" plain size="small" icon="el-icon-delete" @click="vehicleService.images.splice(index,1)">删除图片</el-button></div></div>
@@ -201,10 +217,10 @@
                     <el-button plain icon="el-icon-plus" @click="addVehicleOption(group.key)">添加{{ group.label }}选项</el-button>
                   </div>
                 </el-form>
-                <div class="form-actions"><el-button type="primary" icon="el-icon-check" :loading="busy" @click="saveVehicleService">保存配置</el-button></div>
+                <div class="form-actions"><el-button icon="el-icon-arrow-left" @click="vehicleView='list'">返回询盘列表</el-button><el-button type="primary" icon="el-icon-check" :loading="busy" @click="saveVehicleService">保存配置</el-button></div>
               </el-card>
-              <el-card shadow="never" class="section-card">
-                <div slot="header" class="card-heading"><div><span class="eyebrow">VEHICLE SERVICE / INQUIRIES</span><h2>用车询盘</h2><p class="admin-muted">小程序与官网提交的用车咨询（leadType=vehicle-consultation）。</p></div><div class="header-actions"><el-button icon="el-icon-refresh" @click="loadAll">重新加载</el-button><span class="admin-muted">共 {{ vehicleInquiries.length }} 条</span></div></div>
+              <el-card shadow="never" class="section-card" v-if="vehicleView !== 'config'">
+                <div slot="header" class="card-heading"><div><span class="eyebrow">VEHICLE SERVICE / INQUIRIES</span><h2>用车询盘</h2><p class="admin-muted">小程序与官网提交的用车咨询（leadType=vehicle-consultation）。</p></div><div class="header-actions"><el-button type="primary" icon="el-icon-setting" @click="vehicleView='config'">配置在地用车</el-button><el-button icon="el-icon-refresh" @click="loadAll">重新加载</el-button><span class="admin-muted">共 {{ vehicleInquiries.length }} 条</span></div></div>
                 <el-table :data="vehicleInquiries" size="small" border stripe style="width:100%">
                   <el-table-column label="提交时间" width="170"><template slot-scope="{row}">{{ dateTime(row.createdAt) }}</template></el-table-column>
                   <el-table-column prop="vehicleDate" label="用车日期" width="120"/>
@@ -216,7 +232,7 @@
                 </el-table>
                 <div v-if="!vehicleInquiries.length" class="admin-muted" style="padding:12px 0">暂无用车询盘。</div>
               </el-card>
-              <el-empty v-if="!vehicleService" description="正在加载在地用车配置"/>
+              <el-empty v-if="vehicleView === 'config' && !vehicleService" description="正在加载在地用车配置"/>
             </section>
             <section v-else class="list-page">
               <el-card shadow="never" class="section-card">
@@ -432,7 +448,7 @@ fields.countries.template='country'
 fields.guides.template='guide'
 export default {
   name:'AdminApp',
-  data(){return{token:sessionStorage.getItem(TOKEN)||'',password:'',error:'',active:MENU_IDS.has(sessionStorage.getItem(ACTIVE_MENU))?sessionStorage.getItem(ACTIVE_MENU):'overview',settingsTab:'site',detailTab:'sections',detailPage:null,vehicleService:null,detailLocales,vehicleOptionGroups,detailSectionKeys,detailVisitorKeys,detailExhibitFields,detailHighlightFields,detailRouteFields,detailAudioFields,detailAudioCategoryLabels,attractionView:'list',attractionDestinationFilter:'',destinationLinkSaving:{},data:JSON.parse(JSON.stringify(emptyData)),stats:{},commerce:{},settings:this.defaultSettings(),loading:false,busy:false,localAiEnabled:false,aiFillDialogVisible:false,aiFilling:false,aiAttractionName:'',aiEntityType:'attraction',aiProgressMessage:'正在准备…',filterText:'',page:1,pageSize:10,pageSizes:[5,10,20,50,100],groupPages:{},filters:{enabled:'',featured:'',countryId:'',status:'',days:'',type:'',currency:'',priceCny:[null,null],city:'',tag:'',period:[],leadType:'',createdAt:[],bookingDate:[],member:'',productType:'',relation:'',visaStatus:'',expiry:[],expiresAt:[]},editor:null,form:{},jsonFields:{},dateRange:[],jsonError:'',confirmVisible:false,confirmText:'',confirmHandler:null,menuGroups:groups,rowStatusOptions:[{label:'发布',value:'published'},{label:'下架',value:'unpublished'}],settingTabs}},
+  data(){return{token:sessionStorage.getItem(TOKEN)||'',password:'',error:'',active:MENU_IDS.has(sessionStorage.getItem(ACTIVE_MENU))?sessionStorage.getItem(ACTIVE_MENU):'overview',settingsTab:'site',detailTab:'sections',detailPage:null,vehicleService:null,vehicleView:'list',detailLocales,vehicleOptionGroups,detailSectionKeys,detailVisitorKeys,detailExhibitFields,detailHighlightFields,detailRouteFields,detailAudioFields,detailAudioCategoryLabels,attractionView:'list',attractionDestinationFilter:'',destinationLinkSaving:{},data:JSON.parse(JSON.stringify(emptyData)),stats:{},commerce:{},settings:this.defaultSettings(),loading:false,busy:false,localAiEnabled:false,aiFillDialogVisible:false,aiFilling:false,aiAttractionName:'',aiEntityType:'attraction',aiProgressMessage:'正在准备…',filterText:'',page:1,pageSize:10,pageSizes:[5,10,20,50,100],groupPages:{},filters:{enabled:'',featured:'',countryId:'',status:'',days:'',type:'',currency:'',priceCny:[null,null],city:'',tag:'',period:[],leadType:'',createdAt:[],bookingDate:[],member:'',productType:'',relation:'',visaStatus:'',expiry:[],expiresAt:[]},editor:null,form:{},jsonFields:{},dateRange:[],jsonError:'',confirmVisible:false,confirmText:'',confirmHandler:null,menuGroups:groups,rowStatusOptions:[{label:'发布',value:'published'},{label:'下架',value:'unpublished'}],settingTabs}},
   computed:{
     activeGroupLabel(){const group=(this.menuGroups||[]).find(item=>item.items.some(entry=>entry[0]===this.active));return group&&group.label!=='共同数据'?group.label:''},
     currentMenu(){const pair=groups.flatMap(g=>g.items).find(item=>item[0]===this.active);const config=fields[this.active]||{};return{id:this.active,label:pair?pair[1]:'总览',icon:pair?pair[2]:'',...config,columns:(config.columns||[]).map(column=>({key:column[0],label:column[1],type:column[2],width:column[3]})),editable:config.editable!==false&&!!config.fields?.length,eyebrow:'CONTENT MANAGEMENT'}},
@@ -550,9 +566,9 @@ export default {
     },
     async login(){if(!this.password){this.error='请输入管理员密码';return}this.busy=true;this.error='';try{const result=await this.request('/auth/login',{method:'POST',body:JSON.stringify({password:this.password})});this.token=result.token;sessionStorage.setItem(TOKEN,result.token);await Promise.all([this.loadAll(),this.checkLocalAiAvailability()])}catch(e){this.error=e.message}finally{this.busy=false}},
     logout(){sessionStorage.removeItem(TOKEN);this.token='';this.localAiEnabled=false;this.data=JSON.parse(JSON.stringify(emptyData))},
-    selectMenu(id){this.active=id;this.editor=null;this.filterText='';this.attractionDestinationFilter='';this.attractionView='list';this.clearFilterValues();this.resetPagination();if(id==='attractionDetailPage')this.loadDetailPage();if(id==='vehicleService')this.loadVehicleService()},
+    selectMenu(id){this.active=id;this.editor=null;this.filterText='';this.attractionDestinationFilter='';this.attractionView='list';this.vehicleView='list';this.clearFilterValues();this.resetPagination();if(id==='attractionDetailPage')this.loadDetailPage();if(id==='vehicleService')this.loadVehicleService()},
     async loadDetailPage(){try{this.detailPage=await this.request('/admin/attraction-detail-page')}catch(e){this.$message.error('景点详情配置加载失败：'+e.message)}},
-    normalizeVehicle(value){const locales=['','Tw','En'];const service=value&&typeof value==='object'&&!Array.isArray(value)?value:{};['title','subtitle','description','note','disclaimer'].forEach(field=>locales.forEach(suffix=>{if(typeof service[field+suffix]!=='string')this.$set(service,field+suffix,'')}));['tags','tagsTw','tagsEn'].forEach(key=>{if(!Array.isArray(service[key]))this.$set(service,key,[])});if(!Array.isArray(service.images))this.$set(service,'images',[]);if(typeof service.sort!=='number')this.$set(service,'sort',1);if(typeof service.enabled!=='boolean')this.$set(service,'enabled',true);if(!service.options||typeof service.options!=='object'||Array.isArray(service.options))this.$set(service,'options',{});vehicleOptionGroups.forEach(group=>{if(!Array.isArray(service.options[group.key]))this.$set(service.options,group.key,[]);service.options[group.key].forEach(item=>{['label','labelTw','labelEn'].forEach(key=>{if(typeof item[key]!=='string')this.$set(item,key,'')});if(typeof item.sort!=='number')this.$set(item,'sort',1);if(typeof item.enabled!=='boolean')this.$set(item,'enabled',true);if(!item.id)this.$set(item,'id',group.key+'-'+Date.now().toString(36))})});return service},
+    normalizeVehicle(value){const locales=['','Tw','En'];const service=value&&typeof value==='object'&&!Array.isArray(value)?value:{};['title','subtitle','description','note','disclaimer'].forEach(field=>locales.forEach(suffix=>{if(typeof service[field+suffix]!=='string')this.$set(service,field+suffix,'')}));['tags','tagsTw','tagsEn'].forEach(key=>{if(!Array.isArray(service[key]))this.$set(service,key,[])});if(!Array.isArray(service.images))this.$set(service,'images',[]);if(typeof service.sort!=='number')this.$set(service,'sort',1);if(typeof service.enabled!=='boolean')this.$set(service,'enabled',true);if(!service.options||typeof service.options!=='object'||Array.isArray(service.options))this.$set(service,'options',{});vehicleOptionGroups.forEach(group=>{if(!Array.isArray(service.options[group.key]))this.$set(service.options,group.key,[]);service.options[group.key].forEach(item=>{['label','labelTw','labelEn'].forEach(key=>{if(typeof item[key]!=='string')this.$set(item,key,'')});if(typeof item.sort!=='number')this.$set(item,'sort',1);if(typeof item.enabled!=='boolean')this.$set(item,'enabled',true);if(!item.id)this.$set(item,'id',group.key+'-'+Date.now().toString(36))})});if(!service.form||typeof service.form!=='object'||Array.isArray(service.form))this.$set(service,'form',{});['title','tip','dateLabel','durationLabel','vehicleLabel','peopleLabel','routeLabel','contactLabel','submitLabel','routePlaceholder','phonePlaceholder','wechatPlaceholder'].forEach(key=>{if(typeof service.form[key]!=='string')this.$set(service.form,key,'')});['contactPhone','contactWechat','routeRequired'].forEach(key=>{if(typeof service.form[key]!=='boolean')this.$set(service.form,key,true)});if(typeof service.form.dateStart!=='string')this.$set(service.form,'dateStart','today');if(typeof service.form.dateEnd!=='string')this.$set(service.form,'dateEnd','');return service},
     async loadVehicleService(){try{this.vehicleService=this.normalizeVehicle(await this.request('/admin/vehicle-service'))}catch(e){this.$message.error('在地用车配置加载失败：'+e.message)}},
     async saveVehicleService(){if(!this.vehicleService)return;try{this.busy=true;this.vehicleService=this.normalizeVehicle(await this.request('/admin/vehicle-service',{method:'PATCH',body:JSON.stringify(this.vehicleService)}));this.$message.success('在地用车配置已保存')}catch(e){this.$message.error(e.message)}finally{this.busy=false}},
     vehicleOption(group){if(!this.vehicleService)return[];if(!this.vehicleService.options||typeof this.vehicleService.options!=='object')this.$set(this.vehicleService,'options',{});if(!Array.isArray(this.vehicleService.options[group]))this.$set(this.vehicleService.options,group,[]);return this.vehicleService.options[group]},

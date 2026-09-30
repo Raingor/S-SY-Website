@@ -73,6 +73,13 @@ const simplified = (overrides = {}) => ({
   disclaimer: '',
   tags: ['欧6车型信息', '中英双语咨询', '按需匹配'],
   images: [],
+  form: {
+    title: '说说你的用车计划', tip: '提交后，顾问将在 24 小时内联系你说明对接方式。',
+    dateLabel: '用车日期', durationLabel: '用车时长', vehicleLabel: '意向车型', peopleLabel: '随行人数',
+    routeLabel: '路线与用车需求', contactLabel: '联系方式', submitLabel: '提交用车咨询',
+    routePlaceholder: '如：机场 → 市区酒店', phonePlaceholder: '手机号', wechatPlaceholder: '微信号',
+    contactPhone: true, contactWechat: true, routeRequired: true, dateStart: 'today', dateEnd: '',
+  },
   options: {
     vehicle: [option('vehicle-bmw-suv-5', '宝马 SUV / 5座', 1), option('vehicle-comfort-sedan', '舒适型轿车', 2), option('vehicle-business', '商务车型', 3)],
     duration: [option('duration-half-day', '半日', 1), option('duration-one-day', '1日', 2), option('duration-multi-day', '多日', 3)],
@@ -98,6 +105,12 @@ try {
   assert.equal(baseline.titleEn, 'Local transport')
   assert.deepEqual(baseline.tags, ['欧6车型信息', '中英双语咨询', '按需匹配'])
   assert.deepEqual(baseline.images, [], 'images default to an empty array')
+  assert.equal(baseline.form.title, '说说你的用车计划')
+  assert.equal(baseline.form.routeRequired, true)
+  assert.equal(baseline.form.contactPhone, true)
+  assert.equal(baseline.form.contactWechat, true)
+  assert.equal(baseline.form.dateStart, 'today')
+  assert.equal(baseline.form.dateEnd, '')
   for (const group of ['vehicle', 'duration', 'people']) {
     const items = baseline.options[group]
     assert.equal(items.length, 3, `${group} seeds three options`)
@@ -124,9 +137,26 @@ try {
   const missingLabel = simplified()
   missingLabel.options.vehicle[1].label = ''
   assertStatus(await admin('/api/admin/vehicle-service', { method: 'PATCH', body: missingLabel }), 422, 'each option needs a Simplified name')
+  const noContact = simplified()
+  noContact.form.contactPhone = false
+  noContact.form.contactWechat = false
+  assertStatus(await admin('/api/admin/vehicle-service', { method: 'PATCH', body: noContact }), 422, 'at least one contact method must stay enabled')
+  const badDate = simplified()
+  badDate.form.dateStart = '2026/10/01'
+  assertStatus(await admin('/api/admin/vehicle-service', { method: 'PATCH', body: badDate }), 422, 'dateStart must be today or YYYY-MM-DD')
+  const reversed = simplified()
+  reversed.form.dateStart = '2026-10-10'
+  reversed.form.dateEnd = '2026-10-01'
+  assertStatus(await admin('/api/admin/vehicle-service', { method: 'PATCH', body: reversed }), 422, 'dateEnd must not precede dateStart')
 
   // 4. Simplified-only save: 繁体 / 英文 are mirrored by the server.
-  const saved = await admin('/api/admin/vehicle-service', { method: 'PATCH', body: simplified({ title: '在地用车资源（更新）', tags: ['欧6车型信息', '新增标签'] }) })
+  const formUpdated = simplified({ title: '在地用车资源（更新）', tags: ['欧6车型信息', '新增标签'] })
+  formUpdated.form.title = '填写用车需求'
+  formUpdated.form.routeRequired = false
+  formUpdated.form.contactWechat = false
+  formUpdated.form.dateStart = '2026-10-01'
+  formUpdated.form.dateEnd = '2026-10-05'
+  const saved = await admin('/api/admin/vehicle-service', { method: 'PATCH', body: formUpdated })
   assertStatus(saved, 200, 'Simplified-only configuration saves')
   assert.equal(saved.data.titleTw, '在地用车资源（更新）', 'Traditional Chinese falls back to Simplified')
   assert.equal(saved.data.titleEn, '在地用车资源（更新）', 'English falls back to Simplified')
@@ -134,11 +164,19 @@ try {
   assert.deepEqual(saved.data.tagsTw, ['欧6车型信息', '新增标签'], 'tag arrays are mirrored to the Simplified length')
   assert.deepEqual(saved.data.tagsEn, saved.data.tagsTw)
   assert.equal(saved.data.options.vehicle[0].labelTw, saved.data.options.vehicle[0].label)
+  assert.equal(saved.data.form.title, '填写用车需求')
+  assert.equal(saved.data.form.titleTw, '填写用车需求', 'form labels mirror Simplified')
+  assert.equal(saved.data.form.routeRequired, false)
+  assert.equal(saved.data.form.contactWechat, false)
+  assert.equal(saved.data.form.dateStart, '2026-10-01')
+  assert.equal(saved.data.form.dateEnd, '2026-10-05')
 
   // 5. Public output reflects the save (sorted, mirrored).
   const after = (await request('/api/content?country=greece')).data.vehicleService
   assert.equal(after.title, '在地用车资源（更新）')
   assert.equal(after.titleEn, '在地用车资源（更新）')
+  assert.equal(after.form.title, '填写用车需求', 'public payload exposes the configured form copy')
+  assert.equal(after.form.routeRequired, false)
   assert.equal(after.tags.length, 2)
   assert.deepEqual(after.options.vehicle.map((item) => item.label), ['宝马 SUV / 5座', '舒适型轿车', '商务车型'])
 

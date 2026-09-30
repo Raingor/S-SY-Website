@@ -83,6 +83,25 @@ const DEFAULT_VEHICLE_SERVICE = {
   noteEn: 'Advice and booking coordination only; vehicles and driver-guide services are contracted and settled directly with local Greek providers.',
   disclaimer: '', disclaimerTw: '', disclaimerEn: '',
   images: [],
+  form: {
+    title: '说说你的用车计划',
+    tip: '提交后，顾问将在 24 小时内联系你说明对接方式。',
+    dateLabel: '用车日期',
+    durationLabel: '用车时长',
+    vehicleLabel: '意向车型',
+    peopleLabel: '随行人数',
+    routeLabel: '路线与用车需求',
+    contactLabel: '联系方式',
+    submitLabel: '提交用车咨询',
+    routePlaceholder: '如：机场 → 市区酒店',
+    phonePlaceholder: '手机号',
+    wechatPlaceholder: '微信号',
+    contactPhone: true,
+    contactWechat: true,
+    routeRequired: true,
+    dateStart: 'today',
+    dateEnd: '',
+  },
   options: {
     vehicle: [
       { id: 'vehicle-bmw-suv-5', label: '宝马 SUV / 5座', labelTw: 'BMW SUV / 5座', labelEn: 'BMW SUV / 5 seats', sort: 1, enabled: true },
@@ -105,6 +124,33 @@ const VEHICLE_TEXT_FIELDS = ['title', 'subtitle', 'description', 'note', 'discla
 function defaultVehicleService() { return JSON.parse(JSON.stringify(DEFAULT_VEHICLE_SERVICE)) }
 const vehicleText = (value) => (typeof value === 'string' ? value.trim().slice(0, 2000) : '')
 const vehicleTags = (value) => (Array.isArray(value) ? value.map((tag) => String(tag == null ? '' : tag).trim().slice(0, 200)).filter(Boolean) : [])
+const VEHICLE_FORM_TEXT_FIELDS = ['title', 'tip', 'dateLabel', 'durationLabel', 'vehicleLabel', 'peopleLabel', 'routeLabel', 'contactLabel', 'submitLabel', 'routePlaceholder', 'phonePlaceholder', 'wechatPlaceholder']
+const VEHICLE_DATE_VALUE = /^\d{4}-\d{2}-\d{2}$/
+function normalizeVehicleForm(input) {
+  const source = input && typeof input === 'object' && !Array.isArray(input) ? input : {}
+  const form = {}
+  for (const field of VEHICLE_FORM_TEXT_FIELDS) {
+    form[field] = vehicleText(source[field])
+    form[`${field}Tw`] = vehicleText(source[`${field}Tw`]) || form[field]
+    form[`${field}En`] = vehicleText(source[`${field}En`]) || form[field]
+  }
+  form.contactPhone = source.contactPhone !== false
+  form.contactWechat = source.contactWechat !== false
+  form.routeRequired = source.routeRequired !== false
+  form.dateStart = vehicleText(source.dateStart) || 'today'
+  form.dateEnd = vehicleText(source.dateEnd)
+  return form
+}
+function validateVehicleForm(form) {
+  if (!form.contactPhone && !form.contactWechat) throw new Error('联系方式至少保留一种（手机 / 微信）')
+  const isDateValue = (value) => value === 'today' || VEHICLE_DATE_VALUE.test(value)
+  if (!isDateValue(form.dateStart)) throw new Error('开始日期需为 today 或 YYYY-MM-DD')
+  if (form.dateEnd && !isDateValue(form.dateEnd)) throw new Error('结束日期需为 today 或 YYYY-MM-DD')
+  if (form.dateEnd && form.dateEnd !== 'today') {
+    const start = form.dateStart === 'today' ? new Date().toISOString().slice(0, 10) : form.dateStart
+    if (form.dateEnd < start) throw new Error('结束日期不能早于开始日期')
+  }
+}
 function normalizeVehicleOptions(input) {
   const groups = {}
   for (const group of VEHICLE_OPTION_GROUPS) {
@@ -126,6 +172,7 @@ function normalizeVehicleService(input) {
     enabled: input.enabled !== false,
     sort: Number(input.sort) > 0 ? Math.floor(Number(input.sort)) : 1,
     images: Array.isArray(input.images) ? input.images.map((image) => String(image || '').replace(/^(?:\.\/|\/)?(?:images\/)+/, '').trim()).filter(Boolean) : [],
+    form: normalizeVehicleForm(input.form),
     options: normalizeVehicleOptions(input.options),
   }
   for (const field of VEHICLE_TEXT_FIELDS) {
@@ -166,6 +213,7 @@ function validateVehicleService(input) {
       sorts.add(item.sort)
     })
   }
+  validateVehicleForm(service.form)
   return service
 }
 function publicVehicleService(data) {

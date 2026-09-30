@@ -126,6 +126,29 @@
 * 图片沿用 `./images/<filename>` 约定；无图片时为 `[]`。
 * 页面内固定 UI 文案（表单标签、按钮等）由客户端 i18n 维护，不在此字段内。
 
+### `vehicleService.form`（表单文案与开关）
+
+小程序用车表单的 UI 文案与开关，整体可选：`form` 缺失或某字段为空时，由客户端使用本地 i18n 原文与默认值，不会出现空白。
+
+```json
+{
+  "form": {
+    "title": "说说你的用车计划", "titleTw": "…", "titleEn": "…",
+    "tip": "…", "dateLabel": "…", "durationLabel": "…", "vehicleLabel": "…", "peopleLabel": "…",
+    "routeLabel": "…", "contactLabel": "…", "submitLabel": "…",
+    "routePlaceholder": "…", "phonePlaceholder": "…", "wechatPlaceholder": "…",
+    "contactPhone": true, "contactWechat": true, "routeRequired": true,
+    "dateStart": "today", "dateEnd": ""
+  }
+}
+```
+
+* 三语字段（`key / keyTw / keyEn`）：`title`、`tip`、`dateLabel`、`durationLabel`、`vehicleLabel`、`peopleLabel`、`routeLabel`、`contactLabel`、`submitLabel`、`routePlaceholder`、`phonePlaceholder`、`wechatPlaceholder`。后台只维护简体，缺失的 Tw/En 回填简体。
+* `contactPhone` / `contactWechat`：是否显示两种联系方式，**至少一个为 `true`**；只显示一种时客户端自动选中它。
+* `routeRequired`：路线与用车需求是否必填。
+* `dateStart`：`today` 或 `YYYY-MM-DD`（`today` 避免日期写死后过期）；`dateEnd`：留空表示无上限，否则为 `YYYY-MM-DD` 且不得早于 `dateStart`。
+* 校验失败返回 **422**，不落库。
+
 ## 管理接口（在地用车）
 
 `GET /api/admin/vehicle-service`、`PATCH /api/admin/vehicle-service`（需 Bearer 登录）。
