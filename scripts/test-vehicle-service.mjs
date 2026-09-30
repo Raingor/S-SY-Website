@@ -61,6 +61,25 @@ async function stop() {
 }
 
 const clone = (value) => JSON.parse(JSON.stringify(value))
+const option = (id, label, sort, enabled = true) => ({ id, label, sort, enabled })
+// The admin only edits Simplified Chinese; 繁体 / 英文 must be derived by the server.
+const simplified = (overrides = {}) => ({
+  enabled: true,
+  sort: 1,
+  title: '在地用车资源',
+  subtitle: '对接咨询',
+  description: '根据出行节奏，咨询希腊本地车型与司导资源，顾问协助你完成预约对接。',
+  note: '仅提供用车信息咨询与预约对接，车辆及司导劳务由客户直接与希腊本土主体签约结算。',
+  disclaimer: '',
+  tags: ['欧6车型信息', '中英双语咨询', '按需匹配'],
+  images: [],
+  options: {
+    vehicle: [option('vehicle-bmw-suv-5', '宝马 SUV / 5座', 1), option('vehicle-comfort-sedan', '舒适型轿车', 2), option('vehicle-business', '商务车型', 3)],
+    duration: [option('duration-half-day', '半日', 1), option('duration-one-day', '1日', 2), option('duration-multi-day', '多日', 3)],
+    people: [option('people-1-2', '1-2人', 1), option('people-3-5', '3-5人', 2), option('people-6-plus', '6人以上', 3)],
+  },
+  ...overrides,
+})
 
 try {
   await mkdir(join(tempRoot, 'seed'), { recursive: true })
@@ -68,7 +87,7 @@ try {
   start()
   await waitForServer()
 
-  // 1. Public baseline: seeded defaults are tri-lingual, sorted and grouped.
+  // 1. Public baseline: seeded defaults are complete and grouped.
   const initial = await request('/api/content?country=greece')
   assertStatus(initial, 200, 'public content baseline')
   const baseline = initial.data.vehicleService
@@ -78,7 +97,6 @@ try {
   assert.equal(baseline.titleTw, '在地用車資源')
   assert.equal(baseline.titleEn, 'Local transport')
   assert.deepEqual(baseline.tags, ['欧6车型信息', '中英双语咨询', '按需匹配'])
-  assert.equal(baseline.tagsTw.length, baseline.tagsEn.length, 'tags are tri-lingual and same length')
   assert.deepEqual(baseline.images, [], 'images default to an empty array')
   for (const group of ['vehicle', 'duration', 'people']) {
     const items = baseline.options[group]
@@ -90,80 +108,77 @@ try {
   assert.equal(baseline.options.vehicle[0].labelEn, 'BMW SUV / 5 seats')
   assert.equal(baseline.options.people[2].labelEn, '6+ people')
 
-  // 2. Admin endpoint is protected and mirrors the stored shape.
+  // 2. Admin endpoint is protected.
   assertStatus(await request('/api/admin/vehicle-service'), 401, 'admin endpoint requires authentication')
   const login = await request('/api/auth/login', { method: 'POST', body: { password: 'test-only-admin-password' } })
   assertStatus(login, 200, 'admin login')
   const admin = (path, options) => request(path, { token: login.data.token, ...options })
-  const stored = (await admin('/api/admin/vehicle-service')).data
-  assert.equal(stored.title, baseline.title)
-  assert.deepEqual(stored.options.duration.map((item) => item.label), ['半日', '1日', '多日'])
 
-  // 3. Validation: tri-lingual parity, non-empty options, unique sort.
-  const broken = clone(stored)
-  broken.titleEn = ''
-  assertStatus(await admin('/api/admin/vehicle-service', { method: 'PATCH', body: broken }), 422, 'tri-lingual title parity is enforced')
-
-  const partialNote = clone(stored)
-  partialNote.noteTw = ''
-  assertStatus(await admin('/api/admin/vehicle-service', { method: 'PATCH', body: partialNote }), 422, 'optional tri-lingual fields must be complete once started')
-
-  const unbalancedTags = clone(stored)
-  unbalancedTags.tagsEn = unbalancedTags.tagsEn.slice(0, 1)
-  assertStatus(await admin('/api/admin/vehicle-service', { method: 'PATCH', body: unbalancedTags }), 422, 'tag arrays must be the same length in all languages')
-
-  const emptyGroup = clone(stored)
-  emptyGroup.options.people = []
-  assertStatus(await admin('/api/admin/vehicle-service', { method: 'PATCH', body: emptyGroup }), 422, 'each option group needs at least one entry')
-
-  const duplicateSort = clone(stored)
+  // 3. Validation: Simplified Chinese is the source of truth.
+  assertStatus(await admin('/api/admin/vehicle-service', { method: 'PATCH', body: simplified({ title: '' }) }), 422, 'Simplified title is required')
+  assertStatus(await admin('/api/admin/vehicle-service', { method: 'PATCH', body: simplified({ description: '' }) }), 422, 'Simplified description is required')
+  assertStatus(await admin('/api/admin/vehicle-service', { method: 'PATCH', body: simplified({ options: { ...simplified().options, people: [] } }) }), 422, 'each option group needs at least one entry')
+  const duplicateSort = simplified()
   duplicateSort.options.duration[1].sort = 1
   assertStatus(await admin('/api/admin/vehicle-service', { method: 'PATCH', body: duplicateSort }), 422, 'sort values must be unique within a group')
+  const missingLabel = simplified()
+  missingLabel.options.vehicle[1].label = ''
+  assertStatus(await admin('/api/admin/vehicle-service', { method: 'PATCH', body: missingLabel }), 422, 'each option needs a Simplified name')
 
-  const missingLabel = clone(stored)
-  missingLabel.options.vehicle[1].labelEn = ''
-  assertStatus(await admin('/api/admin/vehicle-service', { method: 'PATCH', body: missingLabel }), 422, 'each option needs all three languages')
+  // 4. Simplified-only save: 繁体 / 英文 are mirrored by the server.
+  const saved = await admin('/api/admin/vehicle-service', { method: 'PATCH', body: simplified({ title: '在地用车资源（更新）', tags: ['欧6车型信息', '新增标签'] }) })
+  assertStatus(saved, 200, 'Simplified-only configuration saves')
+  assert.equal(saved.data.titleTw, '在地用车资源（更新）', 'Traditional Chinese falls back to Simplified')
+  assert.equal(saved.data.titleEn, '在地用车资源（更新）', 'English falls back to Simplified')
+  assert.equal(saved.data.titleTw, saved.data.title)
+  assert.deepEqual(saved.data.tagsTw, ['欧6车型信息', '新增标签'], 'tag arrays are mirrored to the Simplified length')
+  assert.deepEqual(saved.data.tagsEn, saved.data.tagsTw)
+  assert.equal(saved.data.options.vehicle[0].labelTw, saved.data.options.vehicle[0].label)
 
-  // 4. Successful save: rename, add an option, disable one, reorder another.
-  const updated = clone(stored)
-  updated.title = '在地用车资源（更新）'
-  updated.titleTw = '在地用車資源（更新）'
-  updated.titleEn = 'Local transport (updated)'
-  updated.tags = ['欧6车型信息', '中英双语咨询', '按需匹配', '新增标签']
-  updated.tagsTw = ['歐6車型資訊', '中英雙語諮詢', '按需匹配', '新增標籤']
-  updated.tagsEn = ['Euro 6 vehicles', 'Chinese-English support', 'Matched to your needs', 'New tag']
-  updated.options.vehicle.push({ id: 'vehicle-van-9', label: '9 座商务车', labelTw: '9 座商務車', labelEn: '9-seat van', sort: 4, enabled: true })
-  updated.options.duration[0].enabled = false
-  updated.options.people.reverse().forEach((item, index) => { item.sort = index + 1 })
-  const saved = await admin('/api/admin/vehicle-service', { method: 'PATCH', body: updated })
-  assertStatus(saved, 200, 'valid configuration saves')
-  assert.equal(saved.data.titleEn, 'Local transport (updated)')
-
-  // 5. Public output reflects the save: disabled filtered out, order by sort, new entry present.
+  // 5. Public output reflects the save (sorted, mirrored).
   const after = (await request('/api/content?country=greece')).data.vehicleService
-  assert.equal(after.titleEn, 'Local transport (updated)')
-  assert.equal(after.tags.length, 4)
-  assert.deepEqual(after.options.vehicle.map((item) => item.id), ['vehicle-bmw-suv-5', 'vehicle-comfort-sedan', 'vehicle-business', 'vehicle-van-9'])
-  assert.deepEqual(after.options.duration.map((item) => item.label), ['1日', '多日'], 'disabled options are omitted from the public payload')
-  assert.deepEqual(after.options.people.map((item) => item.label), ['6人以上', '3-5人', '1-2人'], 'public options follow the saved sort order')
+  assert.equal(after.title, '在地用车资源（更新）')
+  assert.equal(after.titleEn, '在地用车资源（更新）')
+  assert.equal(after.tags.length, 2)
+  assert.deepEqual(after.options.vehicle.map((item) => item.label), ['宝马 SUV / 5座', '舒适型轿车', '商务车型'])
 
-  // 6. Top-level disable still returns the object so the client can render its own placeholder.
-  const disabled = await admin('/api/admin/vehicle-service', { method: 'PATCH', body: { ...clone(saved.data), enabled: false } })
-  assertStatus(disabled, 200, 'service can be disabled')
-  const afterDisable = (await request('/api/content?country=greece')).data.vehicleService
-  assert.equal(afterDisable.enabled, false, 'disabled service is still returned with enabled:false')
-  assert.equal(afterDisable.titleEn, 'Local transport (updated)')
+  // 6. Enabled filtering + ordering still apply.
+  const reordered = simplified()
+  reordered.options.vehicle[0].enabled = false
+  reordered.options.people.reverse().forEach((item, index) => { item.sort = index + 1 })
+  assertStatus(await admin('/api/admin/vehicle-service', { method: 'PATCH', body: reordered }), 200, 'disabled option saves')
+  const filtered = (await request('/api/content?country=greece')).data.vehicleService
+  assert.deepEqual(filtered.options.vehicle.map((item) => item.id), ['vehicle-comfort-sedan', 'vehicle-business'], 'disabled options are omitted from the public payload')
+  assert.deepEqual(filtered.options.people.map((item) => item.label), ['6人以上', '3-5人', '1-2人'], 'public options follow the saved sort order')
 
-  // 7. Restart keeps the stored configuration instead of reseeding defaults.
+  // 7. Top-level disable still returns the object for client-side placeholders.
+  assertStatus(await admin('/api/admin/vehicle-service', { method: 'PATCH', body: simplified({ enabled: false }) }), 200, 'service can be disabled')
+  assert.equal((await request('/api/content?country=greece')).data.vehicleService.enabled, false, 'disabled service is still returned with enabled:false')
+
+  // 8. Vehicle inquiries reach the admin list (same leadType the mini program submits).
+  const inquiry = await request('/api/leads', {
+    method: 'POST',
+    body: { leadType: 'vehicle-consultation', contact: 'qa-contact', vehicleDate: '2026-10-01', vehicleNeed: '机场 / 港口接送', travelers: '2 人 + 行李', durationId: 'duration-one-day', vehicleTypeId: 'vehicle-bmw-suv-5', peopleId: 'people-1-2' },
+  })
+  assertStatus(inquiry, 201, 'vehicle inquiry is accepted')
+  const leads = (await admin('/api/admin/leads')).data
+  const stored = leads.find((lead) => lead.id === inquiry.data.id)
+  assert.ok(stored, 'vehicle inquiry appears in the admin leads list')
+  assert.equal(stored.leadType, 'vehicle-consultation')
+  assert.equal(stored.vehicleDate, '2026-10-01')
+  assert.equal(stored.durationId, 'duration-one-day', 'option ids submitted by the client are persisted')
+  assert.equal(leads.filter((lead) => lead.leadType === 'vehicle-consultation').length >= 1, true)
+
+  // 9. Restart keeps the stored configuration instead of reseeding defaults.
   await stop()
   start()
   await waitForServer()
   const afterRestart = (await request('/api/content?country=greece')).data.vehicleService
-  assert.equal(afterRestart.titleEn, 'Local transport (updated)')
   assert.equal(afterRestart.enabled, false)
-  assert.equal(afterRestart.options.vehicle.length, 4)
+  assert.equal(afterRestart.title, '在地用车资源')
+  assert.equal(afterRestart.titleEn, '在地用车资源')
 
-  console.log('PASS vehicle service defaults, tri-lingual public contract, validation, option sorting, enabled filtering, auth and restart persistence')
+  console.log('PASS vehicle service defaults, Simplified-only admin with 繁/英 fallback, validation, sorting, enabled filtering, inquiry list, auth and restart persistence')
 } finally {
   await stop()
   await rm(tempRoot, { recursive: true, force: true })

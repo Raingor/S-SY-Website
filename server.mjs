@@ -134,9 +134,18 @@ function normalizeVehicleService(input) {
     result[`${field}En`] = vehicleText(input[`${field}En`])
   }
   for (const field of ['tags', 'tagsTw', 'tagsEn']) result[field] = vehicleTags(input[field])
-  if (!result.title && !result.titleTw && !result.titleEn) {
-    const fallback = DEFAULT_VEHICLE_SERVICE
-    for (const field of ['title', 'titleTw', 'titleEn']) result[field] = fallback[field]
+  // 后台只维护简体：繁体 / 英文缺失时回退简体，公开接口仍返回三语字段。
+  for (const field of VEHICLE_TEXT_FIELDS) {
+    if (!result[`${field}Tw`]) result[`${field}Tw`] = result[field]
+    if (!result[`${field}En`]) result[`${field}En`] = result[field]
+  }
+  result.tagsTw = result.tags.map((tag, index) => result.tagsTw[index] || tag)
+  result.tagsEn = result.tags.map((tag, index) => result.tagsEn[index] || tag)
+  for (const group of VEHICLE_OPTION_GROUPS) {
+    for (const option of result.options[group]) {
+      if (!option.labelTw) option.labelTw = option.label
+      if (!option.labelEn) option.labelEn = option.label
+    }
   }
   return result
 }
@@ -144,21 +153,15 @@ function validateVehicleService(input) {
   if (!input || typeof input !== 'object' || Array.isArray(input)) throw new Error('在地用车配置格式无效')
   const service = normalizeVehicleService(input)
   for (const [field, label] of [['title', '页面标题'], ['subtitle', '副标题'], ['description', '页面说明']]) {
-    if (![service[field], service[`${field}Tw`], service[`${field}En`]].every(Boolean)) throw new Error(`${label}需要同时填写简体、繁体与英文`)
+    if (!service[field]) throw new Error(`${label}（简体）不能为空`)
   }
-  for (const [field, label] of [['note', '注意事项'], ['disclaimer', '免责说明']]) {
-    const filled = [service[field], service[`${field}Tw`], service[`${field}En`]].filter(Boolean).length
-    if (filled > 0 && filled < 3) throw new Error(`${label}需要三语对等：填写了任一语言就必须补齐另外两种`)
-  }
-  if (new Set([service.tags.length, service.tagsTw.length, service.tagsEn.length]).size > 1) throw new Error('服务标签需要三语等长（简体 / 繁体 / 英文条目数一致）')
-  service.tags.forEach((tag, index) => { if (!service.tagsTw[index] || !service.tagsEn[index]) throw new Error(`服务标签第 ${index + 1} 条需要三语齐备`) })
   for (const group of VEHICLE_OPTION_GROUPS) {
     const label = VEHICLE_OPTION_LABELS[group]
     const items = service.options[group]
     if (!items.length) throw new Error(`${label}选项至少需要 1 项`)
     const sorts = new Set()
     items.forEach((item, index) => {
-      if (!item.label || !item.labelTw || !item.labelEn) throw new Error(`${label}第 ${index + 1} 项需要三语齐备`)
+      if (!item.label) throw new Error(`${label}第 ${index + 1} 项的名称（简体）不能为空`)
       if (sorts.has(item.sort)) throw new Error(`${label}选项排序不能重复（${item.sort}）`)
       sorts.add(item.sort)
     })

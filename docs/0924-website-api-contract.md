@@ -121,7 +121,8 @@
 * `enabled` 为 `false` 时仍返回该对象（客户端自行隐藏或显示「待后台配置」占位）；**不得**返回 `null` 或省略。
 * `options.*` 只返回 `enabled !== false` 的项，并按 `sort` 升序。
 * 选项 `id` 是后台生成的**稳定标识**，语言切换或改名后不变。客户端只做展示与回传（例如 `POST /api/leads` 中的 `vehicleTypeId / durationId / peopleId`），不参与业务判断；这些附加字段 `POST /api/leads` 会原样持久化。
-* `tags / tagsTw / tagsEn` 三语**等长**并按 index 配对。
+* **后台只维护简体**：管理端不编辑繁体 / 英文；保存时缺失的 `xxxTw / xxxEn` 由服务端自动回填简体值，因此公开接口始终返回三语字段（三语内容可能相同）。客户端仍按 `Tw → En → 简体` 顺序取值。
+* `tags / tagsTw / tagsEn` 三语**等长**并按 index 配对（由服务端根据简体条目数对齐）。
 * 图片沿用 `./images/<filename>` 约定；无图片时为 `[]`。
 * 页面内固定 UI 文案（表单标签、按钮等）由客户端 i18n 维护，不在此字段内。
 
@@ -129,8 +130,14 @@
 
 `GET /api/admin/vehicle-service`、`PATCH /api/admin/vehicle-service`（需 Bearer 登录）。
 
-保存校验（不通过返回 **422** 并给出具体原因，不落库）：① `title / subtitle / description` 三语必填；`note / disclaimer` 三语同时为空或同时填写；② `tags` 三语等长且逐条三语齐备；③ `vehicle / duration / people` 每组至少 1 项、每项三语齐备；④ 同一组内 `sort` 唯一且为正整数。
+保存校验（不通过返回 **422** 并给出具体原因，不落库）：① `title / subtitle / description` **简体必填**；② `vehicle / duration / people` 每组至少 1 项、每项 `label`（简体）必填；③ 同一组内 `sort` 唯一且为正整数。
 
 默认值为「在地用车」当前线上文案与 3/3/3 选项（见 `server.mjs` 的 `DEFAULT_VEHICLE_SERVICE`），首次启动会写入默认结构，避免上线即空。
 
-自动化验收：`node scripts/test-vehicle-service.mjs`（覆盖默认值、三语公开契约、校验失败、排序、enabled 过滤、鉴权与重启持久化）。
+自动化验收：`node scripts/test-vehicle-service.mjs`（覆盖默认值、仅简体后台与繁/英回填、校验失败、排序、enabled 过滤、询盘入库、鉴权与重启持久化）。
+
+## 用车询盘（后台列表）
+
+小程序 / 官网提交的用车咨询以 `POST /api/leads` 写入，`leadType` 固定为 `vehicle-consultation`；后台「小程序管理 → 用车询盘」按该类型筛选展示，支持查看与跟进状态（`PATCH /api/admin/leads/:id`，`status` 为 `new / contacted / quoted / closed`）。
+
+常见字段：`vehicleDate`（用车日期）、`vehicleNeed`（用车场景）、`duration`（时长）、`vehicleType`（车型）、`travelers`（随行人数）、`contact`（联系方式）、`requirements`（补充说明）；若客户端使用后台选项，可同时回传稳定 `id`：`vehicleTypeId / durationId / peopleId`。`POST /api/leads` **不做字段白名单**，上述附加字段会原样持久化，后台列表与详情直接可用。
