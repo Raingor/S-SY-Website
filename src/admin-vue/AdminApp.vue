@@ -203,7 +203,20 @@
                 </el-form>
                 <div class="form-actions"><el-button type="primary" icon="el-icon-check" :loading="busy" @click="saveVehicleService">保存配置</el-button></div>
               </el-card>
-              <el-empty v-else description="正在加载在地用车配置"/>
+              <el-card shadow="never" class="section-card">
+                <div slot="header" class="card-heading"><div><span class="eyebrow">VEHICLE SERVICE / INQUIRIES</span><h2>用车询盘</h2><p class="admin-muted">小程序与官网提交的用车咨询（leadType=vehicle-consultation）。</p></div><div class="header-actions"><el-button icon="el-icon-refresh" @click="loadAll">重新加载</el-button><span class="admin-muted">共 {{ vehicleInquiries.length }} 条</span></div></div>
+                <el-table :data="vehicleInquiries" size="small" border stripe style="width:100%">
+                  <el-table-column label="提交时间" width="170"><template slot-scope="{row}">{{ dateTime(row.createdAt) }}</template></el-table-column>
+                  <el-table-column prop="vehicleDate" label="用车日期" width="120"/>
+                  <el-table-column prop="vehicleNeed" label="用车场景" min-width="200"/>
+                  <el-table-column prop="travelers" label="随行人数" width="120"/>
+                  <el-table-column prop="contact" label="联系方式" min-width="150"/>
+                  <el-table-column label="状态" width="140"><template slot-scope="{row}"><el-select :value="row.status||'new'" size="mini" class="status-inline" @change="value=>updateVehicleInquiryStatus(row,value)"><el-option label="待处理" value="new"/><el-option label="已联系" value="contacted"/><el-option label="已报价" value="quoted"/><el-option label="已完成" value="closed"/></el-select></template></el-table-column>
+                  <el-table-column label="操作" width="90" align="right"><template slot-scope="{row}"><el-button size="mini" type="danger" plain @click="deleteVehicleInquiry(row)">删除</el-button></template></el-table-column>
+                </el-table>
+                <div v-if="!vehicleInquiries.length" class="admin-muted" style="padding:12px 0">暂无用车询盘。</div>
+              </el-card>
+              <el-empty v-if="!vehicleService" description="正在加载在地用车配置"/>
             </section>
             <section v-else class="list-page">
               <el-card shadow="never" class="section-card">
@@ -312,7 +325,7 @@ const groups = [
   { label:'路线与目的地', items:[['routes','路线管理','el-icon-document'],['cities','城市与价格','el-icon-location-outline'],['destinationTypes','目的地分类','el-icon-collection-tag'],['destinations','目的地','el-icon-map-location'],['attractions','景点管理','el-icon-school'],['sampleItineraries','甄选路线','el-icon-guide']] },
   { label:'网站管理', items:[['homeBanners','首页 Banner','el-icon-picture'],['settings','站点配置','el-icon-setting'],['attractionDetailPage','景点详情配置','el-icon-document']] },
   { label:'语音与文史', items:[['audioRoutes','路线导览','el-icon-location-information'],['audioTracks','导览音频 / 文史节目','el-icon-headset'],['audioAlbums','希腊文史专辑','el-icon-collection'],['heritageGuideBanners','古迹讲解 Banner','el-icon-picture-outline']] },
-  { label:'小程序管理', items:[['miniProgramBookings','小程序预约','el-icon-mobile-phone'],['miniprogramBanners','小程序 Banner','el-icon-picture-outline'],['miniprogramServiceEntries','首页服务入口','el-icon-menu'],['vehicleService','在地用车','el-icon-truck'],['vehicleLeads','用车询盘','el-icon-chat-dot-round'],['miniprogramUsers','小程序用户','el-icon-user'],['miniprogramOrders','订单管理','el-icon-s-finance'],['miniprogramTrips','小程序行程','el-icon-map-location'],['customTrips','定制行程订单','el-icon-link'],['miniprogramTravelers','出行人资料','el-icon-user-solid'],['miniprogramDocuments','签证资料','el-icon-document'],['miniprogramCoupons','优惠券','el-icon-s-ticket']] },
+  { label:'小程序管理', items:[['miniProgramBookings','小程序预约','el-icon-mobile-phone'],['miniprogramBanners','小程序 Banner','el-icon-picture-outline'],['miniprogramServiceEntries','首页服务入口','el-icon-menu'],['vehicleService','在地用车','el-icon-truck'],['miniprogramUsers','小程序用户','el-icon-user'],['miniprogramOrders','订单管理','el-icon-s-finance'],['miniprogramTrips','小程序行程','el-icon-map-location'],['customTrips','定制行程订单','el-icon-link'],['miniprogramTravelers','出行人资料','el-icon-user-solid'],['miniprogramDocuments','签证资料','el-icon-document'],['miniprogramCoupons','优惠券','el-icon-s-ticket']] },
 ]
 const MENU_IDS = new Set(groups.flatMap(group=>group.items).map(item=>item[0]))
 const emptyData = { audioRoutes:[],audioTracks:[],audioAlbums:[],routes:[],destinations:[],cities:[],attractions:[],sampleItineraries:[],customTrips:[],leads:[],guides:[],countries:[],destinationTypes:[],guideBookings:[],miniProgramBookings:[],miniprogramUsers:[],miniprogramOrders:[],miniprogramTravelers:[],miniprogramDocuments:[],miniprogramCoupons:[],homeBanners:[],miniprogramBanners:[],miniprogramServiceEntries:[],heritageGuideBanners:[],settings:{} }
@@ -351,7 +364,7 @@ const publish = [{label:'发布',value:'published'},{label:'下架',value:'unpub
 const listFilterKeys = {
   audioRoutes:['status','attractionId'], audioTracks:['status','category','attractionId','unlockMode'], audioAlbums:['status'],
   countries:['enabled'], guides:['enabled','countryId','featured'], routes:['status','days'], destinations:['status','type'], cities:['currency','priceCny'], destinationTypes:['enabled'], attractions:['status','city','type'], sampleItineraries:['status','tag'], customTrips:['status','period'],
-  leads:['status','leadType','createdAt'], guideBookings:['status','bookingDate','createdAt'], miniProgramBookings:['status','leadType','createdAt'], miniprogramTrips:['status','leadType','createdAt'], vehicleLeads:['status','vehicleDate','createdAt'], homeBanners:['enabled'], miniprogramBanners:['enabled'], miniprogramServiceEntries:['enabled'], heritageGuideBanners:['enabled'],
+  leads:['status','leadType','createdAt'], guideBookings:['status','bookingDate','createdAt'], miniProgramBookings:['status','leadType','createdAt'], miniprogramTrips:['status','leadType','createdAt'], homeBanners:['enabled'], miniprogramBanners:['enabled'], miniprogramServiceEntries:['enabled'], heritageGuideBanners:['enabled'],
   miniprogramUsers:['member','createdAt'], miniprogramOrders:['status','productType','createdAt'], miniprogramTravelers:['relation'], miniprogramDocuments:['visaStatus','expiry'], miniprogramCoupons:['status','expiresAt']
 }
 const listFilterLabels = {enabled:'发布状态',featured:'首页推荐',countryId:'所属国家',status:'状态',days:'天数',type:'分类 / 类型',currency:'币种',priceCny:'讲解价格',city:'城市',tag:'标签',period:'出行日期',leadType:'记录类型',createdAt:'创建日期',vehicleDate:'用车日期',vehicleNeed:'用车场景',bookingDate:'预约日期',member:'会员类型',productType:'商品类型',relation:'关系',visaStatus:'签证状态',expiry:'证件到期日期',expiresAt:'优惠券有效期'}
@@ -391,7 +404,6 @@ fields.leads={label:'咨询 CRM',endpoint:'leads',columns:[['createdAt','提交�
 fields.guideBookings={label:'导游预约',endpoint:'leads',columns:[['createdAt','提交时间','date'],['bookingDate','预约日期','date'],['contact','联系方式'],['status','状态','status']],fields:[basic('contact','联系方式','text',{required:true}),basic('bookingDate','预约日期','date'),basic('serviceLength','服务时长'),basic('travelers','出行人数'),basic('requirements','服务需求','textarea'),basic('status','跟进状态','select',{options:[{label:'待处理',value:'new'},{label:'已联系',value:'contacted'},{label:'已报价',value:'quoted'},{label:'已完成',value:'closed'}]})]}
 fields.miniProgramBookings={label:'小程序预约',endpoint:'leads',columns:[['createdAt','提交时间','date'],['destination','预约内容'],['contact','联系方式'],['status','状态','status']],fields:fields.guideBookings.fields}
 fields.miniprogramTrips={label:'小程序行程',endpoint:'leads',columns:[['createdAt','提交时间','date'],['destination','主题'],['travelers','人数'],['status','状态','status']],fields:fields.leads.fields}
-fields.vehicleLeads={label:'用车询盘',endpoint:'leads',columns:[['createdAt','提交时间','date'],['vehicleDate','用车日期','date'],['vehicleNeed','用车场景'],['travelers','随行人数'],['contact','联系方式'],['status','状态','status']],fields:[basic('contact','联系方式','text',{required:true}),basic('vehicleDate','用车日期','date'),basic('vehicleNeed','用车场景'),basic('duration','时长'),basic('vehicleType','车型'),basic('travelers','随行人数'),basic('requirements','补充说明','textarea'),basic('status','跟进状态','select',{options:[{label:'待处理',value:'new'},{label:'已联系',value:'contacted'},{label:'已报价',value:'quoted'},{label:'已完成',value:'closed'}]})]}
 fields.miniprogramUsers={label:'小程序用户',endpoint:'miniprogram-users',columns:[['nickname','用户'],['phoneMasked','手机号'],['memberLabel','会员'],['createdAt','创建时间','date']],fields:[basic('nickname','用户昵称','text',{required:true}),basic('phone','手机号（选填）')]}
 fields.miniprogramOrders={label:'订单管理',endpoint:'miniprogram-orders',editable:false,columns:[['orderNo','订单号'],['nickname','用户'],['productName','商品'],['amount','金额'],['status','状态','badge'],['createdAt','创建时间','date']],fields:[]}
 fields.homeBanners.endpoint='home-banners'
@@ -429,7 +441,8 @@ export default {
     aiNamePlaceholder(){return({attractions:'例如：雅典卫城',routes:'例如：雅典古城与爱琴海 8 日游',destinations:'例如：圣托里尼'})[this.aiEntityType]||'请输入名称'},
     aiFillDescription(){return({attractions:'仅将名称发送至 SenseNova DeepSeek V4 Flash。会生成基本资料、亮点、讲解点、参观服务、文史文章和深度内容；图片、关联及发布状态会保留。',routes:'仅将路线名称发送至 SenseNova DeepSeek V4 Flash。会生成路线副标题、天数、主题标签和路线介绍；图片、目的地/行程关联及发布状态会保留。',destinations:'仅将目的地名称发送至 SenseNova DeepSeek V4 Flash。会生成规范中英文名称和目的地分类；图片、城市/景点关联及发布状态会保留。'})[this.aiEntityType]||''},
     statusOptionsForCurrent(){const f=fields[this.active]?.fields?.find(x=>x.key==='status');return f?.options==='publish'?publish:(Array.isArray(f?.options)?f.options:this.rowStatusOptions)},
-    items(){if(this.active==='vehicleLeads')return(this.data.leads||[]).filter(x=>x.leadType==='vehicle-consultation');if(this.active==='miniprogramTrips')return(this.data.leads||[]).filter(x=>this.isMiniBooking(x)&&['customization','business-travel'].includes(x.leadType));if(this.active==='cities')return this.data.cities;if(this.active==='leads')return this.data.leads;if(this.active==='guideBookings')return this.data.guideBookings;if(this.active==='miniProgramBookings')return this.data.miniProgramBookings;if(this.active==='miniprogramUsers')return this.data.miniprogramUsers;if(this.active==='miniprogramOrders')return this.data.miniprogramOrders;return this.data[this.active]||[]},
+    vehicleInquiries(){return(this.data.leads||[]).filter(x=>x.leadType==='vehicle-consultation')},
+    items(){if(this.active==='miniprogramTrips')return(this.data.leads||[]).filter(x=>this.isMiniBooking(x)&&['customization','business-travel'].includes(x.leadType));if(this.active==='cities')return this.data.cities;if(this.active==='leads')return this.data.leads;if(this.active==='guideBookings')return this.data.guideBookings;if(this.active==='miniProgramBookings')return this.data.miniProgramBookings;if(this.active==='miniprogramUsers')return this.data.miniprogramUsers;if(this.active==='miniprogramOrders')return this.data.miniprogramOrders;return this.data[this.active]||[]},
     attractionDestinationOptions(){return[{label:'未关联目的地',value:'__unassigned_destination__'},...(this.data.destinations||[]).filter(destination=>destination?.id).map(destination=>({value:String(destination.id),label:[destination.name||'未命名目的地',destination.cityId?`cityId: ${destination.cityId}`:'',`destinationId: ${destination.id}`].filter(Boolean).join(' · ')}))]},
     associationDestinationOptions(){return(this.data.destinations||[]).filter(destination=>destination?.id).map(destination=>({value:String(destination.id),label:[destination.name||'未命名目的地',destination.cityId?`城市：${destination.cityId}`:''].filter(Boolean).join(' · ')}))},
     visibleAttractionGroups(){
@@ -630,6 +643,8 @@ export default {
       finally{this.$set(this.destinationLinkSaving,attractionId,false)}
     },
     async changeStatus(row,status){try{const endpoint=this.currentMenu.endpoint;const id=encodeURIComponent(row.key||row.id);const path=this.active==='miniprogramTrips'?'/admin/leads/'+id:'/admin/'+endpoint+'/'+id;let patch={status};if(['countries','guides','destinationTypes','homeBanners','miniprogramBanners','miniprogramServiceEntries','heritageGuideBanners'].includes(this.active))patch={enabled:status==='published'};await this.request(path,{method:'PATCH',body:JSON.stringify(patch)});await this.loadAll();this.$message.success('状态已更新')}catch(e){this.$message.error(e.message);this.loadAll()}},
+    async updateVehicleInquiryStatus(row,status){try{await this.request('/admin/leads/'+encodeURIComponent(row.id),{method:'PATCH',body:JSON.stringify({status})});await this.loadAll();this.$message.success('询盘状态已更新')}catch(e){this.$message.error(e.message);this.loadAll()}},
+    async deleteVehicleInquiry(row){if(!await this.confirm('确定删除这条用车询盘吗？此操作不可撤销。'))return;try{await this.request('/admin/leads/'+encodeURIComponent(row.id),{method:'DELETE'});await this.loadAll();this.$message.success('用车询盘已删除')}catch(e){this.$message.error(e.message)}},
     confirm(message){return new Promise(resolve=>{this.confirmText=message;this.confirmHandler=resolve;this.confirmVisible=true})},
     resolveConfirm(value){this.confirmVisible=false;this.confirmHandler?.(value);this.confirmHandler=null},
     async deleteRow(row){if(!await this.confirm('确定删除这条内容吗？此操作不可撤销。'))return;try{await this.request('/admin/'+this.currentMenu.endpoint+'/'+encodeURIComponent(row.key||row.id),{method:'DELETE'});await this.loadAll();this.$message.success('已删除')}catch(e){this.$message.error(e.message)}},
