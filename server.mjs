@@ -264,7 +264,7 @@ function writeRuntimeImage(filename, buffer) {
   mkdirSync(runtimeImageDir, { recursive: true })
   writeFileSync(join(runtimeImageDir, filename), buffer)
 }
-function corsHeaders() { return { ...(allowedOrigin ? { 'Access-Control-Allow-Origin': allowedOrigin, Vary: 'Origin' } : {}), 'Access-Control-Allow-Methods': 'GET,POST,PATCH,DELETE,OPTIONS', 'Access-Control-Allow-Headers': 'Content-Type, Authorization' } }
+function corsHeaders() { return { ...(allowedOrigin ? { 'Access-Control-Allow-Origin': allowedOrigin, Vary: 'Origin' } : {}), 'Access-Control-Allow-Methods': 'GET,POST,PATCH,DELETE,OPTIONS', 'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Mini-Program-Env' } }
 function json(res, status, body) { res.writeHead(status, { ...corsHeaders(), 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' }); res.end(JSON.stringify(body)) }
 function text(res, status, body, contentType) { res.writeHead(status, { 'Content-Type': contentType, 'Cache-Control': 'public, max-age=300' }); res.end(body) }
 function isGuideBooking(lead) { return lead.leadType === 'guide-booking' || Boolean(lead.guideSlug) }
@@ -288,6 +288,19 @@ function miniProgramAccessPayload(data) {
     : { accessEnabled: false, title: '正在升级中', message: '小程序正在升级中，请稍后再试。' }
 }
 function miniProgramMaintenance(res) { return json(res, 503, { code: 'MINIPROGRAM_MAINTENANCE', error: '小程序正在升级中，请稍后再试。', title: '正在升级中', message: '小程序正在升级中，请稍后再试。' }) }
+const MINI_PROGRAM_MAINTENANCE_EXEMPTIONS = new Set([
+  'POST /api/miniprogram/auth/wx-login',
+  'GET /api/miniprogram/auth/me',
+  'POST /api/miniprogram/auth/phone',
+  'GET /api/miniprogram/profile',
+  'PATCH /api/miniprogram/profile',
+  'POST /api/miniprogram/profile/avatar',
+])
+function miniProgramMaintenanceBypassAllowed(req, pathname) {
+  const environment = req.headers['x-mini-program-env']
+  if (environment !== 'develop' && environment !== 'trial') return false
+  return MINI_PROGRAM_MAINTENANCE_EXEMPTIONS.has(`${req.method || 'GET'} ${pathname}`)
+}
 function miniProgramSimulationEnabled() { return process.env.SY_MINIPROGRAM_SIMULATION_ENABLED === 'true' }
 function miniProgramRealPayEnabled() { return process.env.SY_MINIPROGRAM_REAL_PAY_ENABLED === 'true' && realPayRequestReady(wechatPay) }
 function miniProgramCommerceEnabled() { return miniProgramSimulationEnabled() || miniProgramRealPayEnabled() }
@@ -1096,7 +1109,7 @@ const server = http.createServer(async (req, res) => {
     if (url.pathname === '/api/wechat/pay/notify' && method === 'POST') return handleWechatPayNotify(req, res)
     if (url.pathname.startsWith('/api/miniprogram/')) {
       const data = readData()
-      if (!isMiniProgramAccessEnabled(data)) return miniProgramMaintenance(res)
+      if (!isMiniProgramAccessEnabled(data) && !miniProgramMaintenanceBypassAllowed(req, url.pathname)) return miniProgramMaintenance(res)
     }
     const audioRoute = url.pathname.match(/^\/api\/miniprogram\/audio\/([^/]+)\/(preview|access|full)$/)
     if (audioRoute && ['GET', 'HEAD'].includes(method)) {

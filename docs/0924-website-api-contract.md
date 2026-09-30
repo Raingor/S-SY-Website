@@ -81,7 +81,13 @@
 
 `access` 为 `"preview"` 或 `"full"`，免费音轨可匿名得到 `full`。已授权时 `fullUrl` 返回形如 `/api/miniprogram/audio/:id/full?token=<signed-token>` 的 **5 分钟有效签名 URL**，`expiresIn:300`、`reason:null`；微信 `InnerAudioContext.src` 可直接使用完整绝对地址（相对 URL 需先拼接服务端 base），**不需要在播放器设置 Authorization header**。播放/Range 请求会再次核验签名、节目发布状态和当前有效订单；失效后重取 `/access`。不要缓存、转发签名 URL 或当作永久链接。
 * `unlockMode="free"`：任意访客可取完整音频；`"attraction"`：须对应 `attractionId` 的**已支付单景点订单**；`"membership"`：须已支付会员订单；`"locked"`：目前无单集购买商品，只能试听（`reason:"NO_PRODUCT_CONFIGURED"`），不得显示虚假购买入口。会员订单**不默认解锁** `attraction` 类型音频；旧视频会员权益与音频权限不互通。
-* 未登录的非免费音轨 `/access` **200** + `access:"preview"`/`fullUrl:null`/`reason:"MINIPROGRAM_LOGIN_REQUIRED"`；已登录未购买为 `reason:"AUDIO_ENTITLEMENT_REQUIRED"`；`/full` 无效/过期 token 为 **401** `AUDIO_TOKEN_REQUIRED`；签名有效但权益已撤销为 **403** `AUDIO_ENTITLEMENT_REQUIRED`；下架、没有可播放私有音频、缺节目或所属专辑下架为 **404** `AUDIO_NOT_FOUND`。后台发布无音频会 **422** `CONTENT_VALIDATION_FAILED`。维护开关关闭时小程序 API 为 **503**。
+* 未登录的非免费音轨 `/access` **200** + `access:"preview"`/`fullUrl:null`/`reason:"MINIPROGRAM_LOGIN_REQUIRED"`；已登录未购买为 `reason:"AUDIO_ENTITLEMENT_REQUIRED"`；`/full` 无效/过期 token 为 **401** `AUDIO_TOKEN_REQUIRED`；签名有效但权益已撤销为 **403** `AUDIO_ENTITLEMENT_REQUIRED`；下架、没有可播放私有音频、缺节目或所属专辑下架为 **404** `AUDIO_NOT_FOUND`。后台发布无音频会 **422** `CONTENT_VALIDATION_FAILED`。维护开关关闭时小程序 API 默认 **503**，但开发/体验版仅有下述登录账户路径例外。
+
+### 维护模式下的开发 / 体验版登录例外
+
+客户端可在小程序 API 请求附带 `X-Mini-Program-Env: develop|trial|release`（来源 `wx.getAccountInfoSync().miniProgram.envVersion`）。`settings.miniprogramAccess=false` 时，服务端仅对 header 精确为 `develop` 或 `trial` 且 method/path 精确匹配以下组合的请求跳过维护响应：`POST /api/miniprogram/auth/wx-login`、`GET /api/miniprogram/auth/me`、`POST /api/miniprogram/auth/phone`、`GET|PATCH /api/miniprogram/profile`、`POST /api/miniprogram/profile/avatar`。`release`、缺失/未知 header、其他 method/path 仍返回 **503** `MINIPROGRAM_MAINTENANCE`；`OPTIONS` 只执行正常 CORS 预检。
+
+该客户端 header 可被伪造，**仅用于维护门禁的开发/体验联调，不是身份验证或安全边界**；账户及登录后 API 仍须各自通过原有 token/手机号校验。此例外不放行留资、订单、支付、音频、知识库或其他小程序 API。
 
 私有完整音频仅放服务器 `private-audio/`，不可经 `/audio`、`/images`、`dist` 或 `/api/content` 获得。上传时后端用 ffprobe/ffmpeg 校验并生成短试听；需要生产环境提供同样的 ffmpeg/ffprobe 和私有文件的持久化/备份。本地 `public/audio/selected-routes-intro.m4a` 是既有公开素材，**不属于新受保护音轨**。
 

@@ -144,6 +144,41 @@ try {
   assert(result.status === 200, 'maintenance toggle off failed')
   result = await request('/api/miniprogram/knowledge/config')
   assert(result.status === 503 && result.data.code === 'MINIPROGRAM_MAINTENANCE', 'maintenance simulation gate failed')
+
+  // Maintenance-mode auth exceptions are limited to develop/trial clients and exact route/method pairs.
+  const envHeader = (value) => ({ 'X-Mini-Program-Env': value })
+  result = await request('/api/miniprogram/auth/wx-login', { method: 'POST', headers: envHeader('develop'), body: JSON.stringify({}) })
+  assert(result.status === 422 && result.data.code === 'WX_LOGIN_CODE_REQUIRED', 'develop wx-login did not pass maintenance gate without making an upstream login call')
+  result = await request('/api/miniprogram/auth/wx-login', { method: 'POST', headers: envHeader('trial'), body: JSON.stringify({}) })
+  assert(result.status === 422 && result.data.code === 'WX_LOGIN_CODE_REQUIRED', 'trial wx-login did not pass maintenance gate without making an upstream login call')
+  result = await request('/api/miniprogram/auth/wx-login', { method: 'POST', headers: envHeader('release'), body: JSON.stringify({}) })
+  assert(result.status === 503 && result.data.code === 'MINIPROGRAM_MAINTENANCE', 'release wx-login bypassed maintenance gate')
+  result = await request('/api/miniprogram/auth/wx-login', { method: 'POST', body: JSON.stringify({}) })
+  assert(result.status === 503 && result.data.code === 'MINIPROGRAM_MAINTENANCE', 'missing environment header bypassed maintenance gate')
+  for (const [path, method] of [
+    ['/api/miniprogram/auth/me', 'GET'],
+    ['/api/miniprogram/auth/phone', 'POST'],
+    ['/api/miniprogram/profile', 'GET'],
+    ['/api/miniprogram/profile', 'PATCH'],
+    ['/api/miniprogram/profile/avatar', 'POST'],
+  ]) {
+    result = await request(path, { method, headers: envHeader('develop'), ...(method === 'PATCH' ? { body: JSON.stringify({ nickname: 'test' }) } : {}) })
+    assert(result.status === 401 && result.data.code === 'MINIPROGRAM_LOGIN_REQUIRED', `${method} ${path} did not pass maintenance gate to its normal auth check`)
+  }
+  for (const [path, method] of [
+    ['/api/miniprogram/auth/me', 'POST'],
+    ['/api/miniprogram/auth/phone', 'GET'],
+    ['/api/miniprogram/profile', 'POST'],
+    ['/api/miniprogram/profile/avatar', 'GET'],
+  ]) {
+    result = await request(path, { method, headers: envHeader('trial') })
+    assert(result.status === 503 && result.data.code === 'MINIPROGRAM_MAINTENANCE', `${method} ${path} unexpectedly bypassed maintenance gate`)
+  }
+  result = await request('/api/miniprogram/knowledge/config', { headers: envHeader('develop') })
+  assert(result.status === 503 && result.data.code === 'MINIPROGRAM_MAINTENANCE', 'develop env bypassed maintenance gate on a non-exempt route')
+  const preflight = await fetch(`${base}/api/miniprogram/auth/wx-login`, { method: 'OPTIONS', headers: { Origin: 'https://servicewechat.com', 'Access-Control-Request-Method': 'POST', 'Access-Control-Request-Headers': 'content-type,x-mini-program-env' } })
+  assert(preflight.status === 204 && preflight.headers.get('access-control-allow-headers').toLowerCase().includes('x-mini-program-env'), 'maintenance environment header missing from CORS preflight')
+
   result = await request('/api/content')
   assert(result.status === 200, 'website content should remain available during maintenance')
   result = await request('/api/admin/settings', { method: 'PATCH', headers: { Authorization: `Bearer ${adminToken}` }, body: JSON.stringify({ miniprogramAccess: true }) })
