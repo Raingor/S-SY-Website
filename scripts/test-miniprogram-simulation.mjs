@@ -141,20 +141,15 @@ try {
   result = await request('/api/miniprogram/knowledge/config')
   assert(result.status === 200 && result.data.trialSeconds === 90 && result.data.products.attraction.price === 0.01, 'knowledge config persistence failed')
   result = await request('/api/admin/settings', { method: 'PATCH', headers: { Authorization: `Bearer ${adminToken}` }, body: JSON.stringify({ miniprogramAccess: false }) })
-  assert(result.status === 200, 'maintenance toggle off failed')
+  assert(result.status === 200, 'legacy maintenance setting update failed')
+  result = await request('/api/miniprogram/access')
+  assert(result.status === 200 && result.data.accessEnabled === true, 'legacy miniprogramAccess=false must not disable mini program access')
   result = await request('/api/miniprogram/knowledge/config')
-  assert(result.status === 503 && result.data.code === 'MINIPROGRAM_MAINTENANCE', 'maintenance simulation gate failed')
-
-  // Maintenance-mode auth exceptions are limited to develop/trial clients and exact route/method pairs.
-  const envHeader = (value) => ({ 'X-Mini-Program-Env': value })
-  result = await request('/api/miniprogram/auth/wx-login', { method: 'POST', headers: envHeader('develop'), body: JSON.stringify({}) })
-  assert(result.status === 422 && result.data.code === 'WX_LOGIN_CODE_REQUIRED', 'develop wx-login did not pass maintenance gate without making an upstream login call')
-  result = await request('/api/miniprogram/auth/wx-login', { method: 'POST', headers: envHeader('trial'), body: JSON.stringify({}) })
-  assert(result.status === 422 && result.data.code === 'WX_LOGIN_CODE_REQUIRED', 'trial wx-login did not pass maintenance gate without making an upstream login call')
-  result = await request('/api/miniprogram/auth/wx-login', { method: 'POST', headers: envHeader('release'), body: JSON.stringify({}) })
-  assert(result.status === 503 && result.data.code === 'MINIPROGRAM_MAINTENANCE', 'release wx-login bypassed maintenance gate')
-  result = await request('/api/miniprogram/auth/wx-login', { method: 'POST', body: JSON.stringify({}) })
-  assert(result.status === 503 && result.data.code === 'MINIPROGRAM_MAINTENANCE', 'missing environment header bypassed maintenance gate')
+  assert(result.status === 200 && result.data.trialSeconds === 90, 'mini program APIs must remain available when legacy maintenance flag is false')
+  for (const headers of [{}, { 'X-Mini-Program-Env': 'develop' }, { 'X-Mini-Program-Env': 'trial' }, { 'X-Mini-Program-Env': 'release' }, { 'X-Mini-Program-Env': 'unknown' }]) {
+    result = await request('/api/miniprogram/auth/wx-login', { method: 'POST', headers, body: JSON.stringify({}) })
+    assert(result.status === 422 && result.data.code === 'WX_LOGIN_CODE_REQUIRED', 'wx-login without code must reach application validation regardless of environment header (no upstream call is made)')
+  }
   for (const [path, method] of [
     ['/api/miniprogram/auth/me', 'GET'],
     ['/api/miniprogram/auth/phone', 'POST'],
@@ -162,27 +157,15 @@ try {
     ['/api/miniprogram/profile', 'PATCH'],
     ['/api/miniprogram/profile/avatar', 'POST'],
   ]) {
-    result = await request(path, { method, headers: envHeader('develop'), ...(method === 'PATCH' ? { body: JSON.stringify({ nickname: 'test' }) } : {}) })
-    assert(result.status === 401 && result.data.code === 'MINIPROGRAM_LOGIN_REQUIRED', `${method} ${path} did not pass maintenance gate to its normal auth check`)
+    result = await request(path, { method, ...(method === 'PATCH' ? { body: JSON.stringify({ nickname: 'test' }) } : {}) })
+    assert(result.status === 401 && result.data.code === 'MINIPROGRAM_LOGIN_REQUIRED', `${method} ${path} must retain its normal login authentication`)
   }
-  for (const [path, method] of [
-    ['/api/miniprogram/auth/me', 'POST'],
-    ['/api/miniprogram/auth/phone', 'GET'],
-    ['/api/miniprogram/profile', 'POST'],
-    ['/api/miniprogram/profile/avatar', 'GET'],
-  ]) {
-    result = await request(path, { method, headers: envHeader('trial') })
-    assert(result.status === 503 && result.data.code === 'MINIPROGRAM_MAINTENANCE', `${method} ${path} unexpectedly bypassed maintenance gate`)
-  }
-  result = await request('/api/miniprogram/knowledge/config', { headers: envHeader('develop') })
-  assert(result.status === 503 && result.data.code === 'MINIPROGRAM_MAINTENANCE', 'develop env bypassed maintenance gate on a non-exempt route')
-  const preflight = await fetch(`${base}/api/miniprogram/auth/wx-login`, { method: 'OPTIONS', headers: { Origin: 'https://servicewechat.com', 'Access-Control-Request-Method': 'POST', 'Access-Control-Request-Headers': 'content-type,x-mini-program-env' } })
-  assert(preflight.status === 204 && preflight.headers.get('access-control-allow-headers').toLowerCase().includes('x-mini-program-env'), 'maintenance environment header missing from CORS preflight')
-
+  result = await request('/api/miniprogram/knowledge/config', { headers: { 'X-Mini-Program-Env': 'release' } })
+  assert(result.status === 200 && result.data.trialSeconds === 90, 'mini program content APIs must not depend on the client environment header')
+  result = await request('/api/leads', { method: 'POST', body: JSON.stringify({ platform: 'miniprogram', leadType: 'customization' }) })
+  assert(result.status === 401 && result.data.code === 'MINIPROGRAM_LOGIN_REQUIRED', 'mini program leads must retain authentication when the maintenance gate is removed')
   result = await request('/api/content')
-  assert(result.status === 200, 'website content should remain available during maintenance')
-  result = await request('/api/admin/settings', { method: 'PATCH', headers: { Authorization: `Bearer ${adminToken}` }, body: JSON.stringify({ miniprogramAccess: true }) })
-  assert(result.status === 200, 'maintenance toggle on failed')
+  assert(result.status === 200, 'website content should remain available')
   await stop()
 
   start(false)

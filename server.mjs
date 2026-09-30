@@ -280,26 +280,8 @@ function attractionAiEnabled() {
   return process.env.SY_LOCAL_ASSISTANT_ENABLED === 'true' && Boolean(process.env.SY_SENSENOVA_API_KEY)
 }
 function isMiniProgramLead(input) { return ['wechat-miniprogram', 'miniprogram'].includes(input.platform) || ['wechat-miniprogram', 'miniprogram'].includes(input.source) }
-function isMiniProgramAccessEnabled(data) { return data.settings?.miniprogramAccess !== false }
-function miniProgramAccessPayload(data) {
-  const accessEnabled = isMiniProgramAccessEnabled(data)
-  return accessEnabled
-    ? { accessEnabled: true, title: '正常访问', message: '小程序服务正常。' }
-    : { accessEnabled: false, title: '正在升级中', message: '小程序正在升级中，请稍后再试。' }
-}
-function miniProgramMaintenance(res) { return json(res, 503, { code: 'MINIPROGRAM_MAINTENANCE', error: '小程序正在升级中，请稍后再试。', title: '正在升级中', message: '小程序正在升级中，请稍后再试。' }) }
-const MINI_PROGRAM_MAINTENANCE_EXEMPTIONS = new Set([
-  'POST /api/miniprogram/auth/wx-login',
-  'GET /api/miniprogram/auth/me',
-  'POST /api/miniprogram/auth/phone',
-  'GET /api/miniprogram/profile',
-  'PATCH /api/miniprogram/profile',
-  'POST /api/miniprogram/profile/avatar',
-])
-function miniProgramMaintenanceBypassAllowed(req, pathname) {
-  const environment = req.headers['x-mini-program-env']
-  if (environment !== 'develop' && environment !== 'trial') return false
-  return MINI_PROGRAM_MAINTENANCE_EXEMPTIONS.has(`${req.method || 'GET'} ${pathname}`)
+function miniProgramAccessPayload() {
+  return { accessEnabled: true, title: '正常访问', message: '小程序服务正常。' }
 }
 function miniProgramSimulationEnabled() { return process.env.SY_MINIPROGRAM_SIMULATION_ENABLED === 'true' }
 function miniProgramRealPayEnabled() { return process.env.SY_MINIPROGRAM_REAL_PAY_ENABLED === 'true' && realPayRequestReady(wechatPay) }
@@ -1107,10 +1089,6 @@ const server = http.createServer(async (req, res) => {
     if (url.pathname === '/api/content' && method === 'GET') return json(res, 200, publicContent(readData(), url.searchParams.get('country') || 'greece'))
     if (url.pathname === '/api/miniprogram/access' && method === 'GET') return json(res, 200, miniProgramAccessPayload(readData()))
     if (url.pathname === '/api/wechat/pay/notify' && method === 'POST') return handleWechatPayNotify(req, res)
-    if (url.pathname.startsWith('/api/miniprogram/')) {
-      const data = readData()
-      if (!isMiniProgramAccessEnabled(data) && !miniProgramMaintenanceBypassAllowed(req, url.pathname)) return miniProgramMaintenance(res)
-    }
     const audioRoute = url.pathname.match(/^\/api\/miniprogram\/audio\/([^/]+)\/(preview|access|full)$/)
     if (audioRoute && ['GET', 'HEAD'].includes(method)) {
       const data = readData()
@@ -1360,7 +1338,6 @@ const server = http.createServer(async (req, res) => {
       const input = await body(req)
       const data = readData(); let miniProgramUser = null
       if (isMiniProgramLead(input)) {
-        if (!isMiniProgramAccessEnabled(data)) return miniProgramMaintenance(res)
         miniProgramUser = miniProgramUserFromRequest(req, data)
         if (!miniProgramUser) return json(res, 401, { code: 'MINIPROGRAM_LOGIN_REQUIRED', error: '请先微信登录' })
         if (!miniProgramUser.phone) return json(res, 403, { code: 'PHONE_BIND_REQUIRED', error: '提交前请先绑定手机号' })
