@@ -16,6 +16,7 @@
     "test:admin-session-restart": "node scripts/test-admin-session-restart.mjs",
     "test:heritage-guide-banners": "node scripts/test-heritage-guide-banners.mjs",
     "test:miniprogram-service-entries": "node scripts/test-miniprogram-service-entries.mjs",
+    "test:vehicle-service": "node scripts/test-vehicle-service.mjs",
     "mock:wechat": "node scripts/mock-wechat-api.mjs",
     "start": "npm run build && node server.mjs"
   },

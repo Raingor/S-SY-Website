@@ -169,6 +169,42 @@
               </el-card>
               <el-empty v-else description="正在加载景点详情配置"/>
             </section>
+            <section v-else-if="active === 'vehicleService'">
+              <el-card shadow="never" class="section-card" v-if="vehicleService">
+                <div slot="header" class="card-heading"><div><span class="eyebrow">VEHICLE SERVICE / 在地用车</span><h2>在地用车</h2></div><el-button type="primary" icon="el-icon-check" :loading="busy" @click="saveVehicleService">保存配置</el-button></div>
+                <el-alert title="维护小程序「在地用车」的页面级内容与车型 / 时长 / 人数选项；小程序界面固定文案（表单标签等）不在此维护。保存校验：三语对等、选项非空、组内排序唯一。" type="info" :closable="false" show-icon class="banner-note"/>
+                <el-form label-position="top">
+                  <div class="settings-structured"><h3>基础</h3>
+                    <el-form-item label="启用状态"><el-switch v-model="vehicleService.enabled" active-text="启用" inactive-text="停用"/></el-form-item>
+                    <el-form-item label="排序"><el-input-number v-model="vehicleService.sort" :min="1"/></el-form-item>
+                  </div>
+                  <div v-for="field in [{key:'title',label:'页面标题',area:false},{key:'subtitle',label:'副标题',area:false},{key:'description',label:'页面说明',area:true},{key:'note',label:'注意事项',area:true},{key:'disclaimer',label:'免责说明（可选，需三语同时留空或同时填写）',area:true}]" :key="field.key" class="settings-structured">
+                    <h3>{{ field.label }}</h3>
+                    <div class="detail-locale-grid"><el-form-item v-for="locale in vehicleLocales" :key="locale.key" :label="locale.label"><el-input v-if="field.area" v-model="vehicleService[field.key+locale.key]" type="textarea" :rows="2"/><el-input v-else v-model="vehicleService[field.key+locale.key]"/></el-form-item></div>
+                  </div>
+                  <div class="settings-structured"><h3>服务标签（三语等长）</h3>
+                    <div class="detail-locale-grid"><el-form-item v-for="locale in vehicleLocales" :key="locale.key" :label="locale.label"><el-input v-for="(tag,index) in (vehicleService['tags'+locale.key]||[])" :key="index" :value="vehicleService['tags'+locale.key][index]" class="vehicle-tag-input" placeholder="标签内容" @input="value=>$set(vehicleService['tags'+locale.key],index,value)"/><small v-if="!(vehicleService['tags'+locale.key]||[]).length" class="field-help">暂无标签</small></el-form-item></div>
+                    <div class="form-actions"><el-button plain size="small" icon="el-icon-plus" @click="addVehicleTag">添加一组标签</el-button><el-button v-if="(vehicleService.tags||[]).length" plain size="small" type="danger" icon="el-icon-delete" @click="removeVehicleTag((vehicleService.tags||[]).length-1)">删除最后一组</el-button></div>
+                  </div>
+                  <div class="settings-structured"><h3>页面图片（可多张）</h3>
+                    <div v-for="(image,index) in (vehicleService.images||[])" :key="image+index" class="image-editor"><div class="image-preview"><img :src="assetUrl(image)" :alt="'图片 '+(index+1)"/></div><div class="image-actions"><el-button type="danger" plain size="small" icon="el-icon-delete" @click="vehicleService.images.splice(index,1)">删除图片</el-button></div></div>
+                    <el-upload action="#" :show-file-list="false" :http-request="uploadVehicleImage"><el-button icon="el-icon-upload">选择图片上传</el-button></el-upload>
+                    <small class="field-help">支持 PNG / JPG / WebP，单张最大 6MB。当前无图片时可留空。</small>
+                  </div>
+                  <div v-for="group in vehicleOptionGroups" :key="group.key" class="settings-structured">
+                    <h3>{{ group.label }}选项</h3>
+                    <div v-for="(option,index) in vehicleOption(group.key)" :key="index" class="array-entry">
+                      <div class="array-entry-head"><b>{{ group.label }} {{ index+1 }}</b><span><el-button type="text" :disabled="index===0" @click="moveVehicleOption(group.key,index,-1)">上移</el-button><el-button type="text" :disabled="index===vehicleOption(group.key).length-1" @click="moveVehicleOption(group.key,index,1)">下移</el-button><el-button type="text" class="danger-text" @click="removeVehicleOption(group.key,index)">移除</el-button></span></div>
+                      <div class="detail-locale-grid"><el-form-item v-for="locale in vehicleLocales" :key="locale.key" :label="locale.label + '名称'"><el-input v-model="option['label'+locale.key]"/></el-form-item></div>
+                      <div class="vehicle-option-meta"><el-form-item label="排序"><el-input-number v-model="option.sort" :min="1"/></el-form-item><el-form-item label="启用"><el-switch v-model="option.enabled"/></el-form-item><el-form-item label="稳定 ID（仅用于回传，不建议修改）"><el-input v-model="option.id"/></el-form-item></div>
+                    </div>
+                    <el-button plain icon="el-icon-plus" @click="addVehicleOption(group.key)">添加{{ group.label }}选项</el-button>
+                  </div>
+                </el-form>
+                <div class="form-actions"><el-button type="primary" icon="el-icon-check" :loading="busy" @click="saveVehicleService">保存配置</el-button></div>
+              </el-card>
+              <el-empty v-else description="正在加载在地用车配置"/>
+            </section>
             <section v-else class="list-page">
               <el-card shadow="never" class="section-card">
                 <div slot="header" class="card-heading"><div><span class="eyebrow">{{ currentMenu.eyebrow || 'CONTENT MANAGEMENT' }}</span><h2>{{ currentMenu.label }}</h2></div><div class="card-actions"><el-input v-model="filterText" clearable prefix-icon="el-icon-search" placeholder="筛选当前列表" class="list-search"/><el-button icon="el-icon-refresh" @click="loadAll">重新加载</el-button><el-button v-if="currentMenu.addLabel" type="primary" icon="el-icon-plus" @click="startCreate">{{ currentMenu.addLabel }}</el-button></div></div>
@@ -274,7 +310,7 @@ const ACTIVE_MENU = 'sy-greece-admin-menu'
 const groups = [
   { label:'共同数据', items:[['overview','总览','el-icon-s-data'],['countries','国家管理','el-icon-map-location'],['guides','导游管理','el-icon-user'],['leads','咨询 CRM','el-icon-chat-line-round'],['guideBookings','导游预约','el-icon-date']] },
   { label:'路线与目的地', items:[['routes','路线管理','el-icon-document'],['cities','城市与价格','el-icon-location-outline'],['destinationTypes','目的地分类','el-icon-collection-tag'],['destinations','目的地','el-icon-map-location'],['attractions','景点管理','el-icon-school'],['sampleItineraries','甄选路线','el-icon-guide']] },
-  { label:'网站管理', items:[['homeBanners','首页 Banner','el-icon-picture'],['settings','站点配置','el-icon-setting'],['attractionDetailPage','景点详情配置','el-icon-document']] },
+  { label:'网站管理', items:[['homeBanners','首页 Banner','el-icon-picture'],['settings','站点配置','el-icon-setting'],['attractionDetailPage','景点详情配置','el-icon-document'],['vehicleService','在地用车','el-icon-truck']] },
   { label:'语音与文史', items:[['audioRoutes','路线导览','el-icon-location-information'],['audioTracks','导览音频 / 文史节目','el-icon-headset'],['audioAlbums','希腊文史专辑','el-icon-collection'],['heritageGuideBanners','古迹讲解 Banner','el-icon-picture-outline']] },
   { label:'小程序管理', items:[['miniProgramBookings','小程序预约','el-icon-mobile-phone'],['miniprogramBanners','小程序 Banner','el-icon-picture-outline'],['miniprogramServiceEntries','首页服务入口','el-icon-menu'],['miniprogramUsers','小程序用户','el-icon-user'],['miniprogramOrders','订单管理','el-icon-s-finance'],['miniprogramTrips','小程序行程','el-icon-map-location'],['customTrips','定制行程订单','el-icon-link'],['miniprogramTravelers','出行人资料','el-icon-user-solid'],['miniprogramDocuments','签证资料','el-icon-document'],['miniprogramCoupons','优惠券','el-icon-s-ticket']] },
 ]
@@ -282,6 +318,8 @@ const MENU_IDS = new Set(groups.flatMap(group=>group.items).map(item=>item[0]))
 const emptyData = { audioRoutes:[],audioTracks:[],audioAlbums:[],routes:[],destinations:[],cities:[],attractions:[],sampleItineraries:[],customTrips:[],leads:[],guides:[],countries:[],destinationTypes:[],guideBookings:[],miniProgramBookings:[],miniprogramUsers:[],miniprogramOrders:[],miniprogramTravelers:[],miniprogramDocuments:[],miniprogramCoupons:[],homeBanners:[],miniprogramBanners:[],miniprogramServiceEntries:[],heritageGuideBanners:[],settings:{} }
 const routes = { audioRoutes:'/admin/audioRoutes',audioTracks:'/admin/audioTracks',audioAlbums:'/admin/audioAlbums',stats:'/admin/stats',routes:'/admin/routes',destinations:'/admin/destinations',cities:'/admin/cities',attractions:'/admin/attractions',sampleItineraries:'/admin/sampleItineraries',customTrips:'/admin/customTrips',leads:'/admin/leads',guideBookings:'/admin/guide-bookings',miniProgramBookings:'/admin/miniprogram-bookings',settings:'/admin/settings',attractionDetailPage:'/admin/attraction-detail-page',miniprogramUsers:'/admin/miniprogram-users',miniprogramOrders:'/admin/miniprogram-orders',miniprogramTravelers:'/admin/miniprogram-travelers',miniprogramDocuments:'/admin/miniprogram-documents',miniprogramCoupons:'/admin/miniprogram-coupons',countries:'/admin/countries',guides:'/admin/guides',destinationTypes:'/admin/destinationCategories',homeBanners:'/admin/home-banners',miniprogramBanners:'/admin/miniprogram-home-banners',miniprogramServiceEntries:'/admin/miniprogram-service-entries',heritageGuideBanners:'/admin/heritage-guide-banners' }
 const detailLocales = [{key:'zh',label:'简体'},{key:'tw',label:'繁体'},{key:'en',label:'英文'}]
+const vehicleLocales = [{key:'',label:'简体'},{key:'Tw',label:'繁体'},{key:'En',label:'英文'}]
+const vehicleOptionGroups = [{key:'vehicle',label:'车型'},{key:'duration',label:'时长'},{key:'people',label:'人数'}]
 const detailSectionKeys = [{key:'overview',label:'概览'},{key:'visitor',label:'参观指南'},{key:'highlights',label:'必看亮点'},{key:'audioHow',label:'语音导览使用指南'},{key:'route',label:'路线导览'},{key:'online',label:'线上预览'},{key:'expert',label:'名导讲解'}]
 const detailVisitorKeys = [{key:'hours',label:'开放时间'},{key:'tickets',label:'门票与预约'},{key:'transport',label:'交通方式'},{key:'map',label:'地图'},{key:'faq',label:'FAQ'}]
 const detailExhibitFields = [{key:'name',label:'标题',keys:{zh:'name',tw:'nameTw',en:'nameEn'}},{key:'description',label:'描述',keys:{zh:'description',tw:'descriptionTw',en:'descriptionEn'}}]
@@ -382,7 +420,7 @@ fields.countries.template='country'
 fields.guides.template='guide'
 export default {
   name:'AdminApp',
-  data(){return{token:sessionStorage.getItem(TOKEN)||'',password:'',error:'',active:MENU_IDS.has(sessionStorage.getItem(ACTIVE_MENU))?sessionStorage.getItem(ACTIVE_MENU):'overview',settingsTab:'site',detailTab:'sections',detailPage:null,detailLocales,detailSectionKeys,detailVisitorKeys,detailExhibitFields,detailHighlightFields,detailRouteFields,detailAudioFields,detailAudioCategoryLabels,attractionView:'list',attractionDestinationFilter:'',destinationLinkSaving:{},data:JSON.parse(JSON.stringify(emptyData)),stats:{},commerce:{},settings:this.defaultSettings(),loading:false,busy:false,localAiEnabled:false,aiFillDialogVisible:false,aiFilling:false,aiAttractionName:'',aiEntityType:'attraction',aiProgressMessage:'正在准备…',filterText:'',page:1,pageSize:10,pageSizes:[5,10,20,50,100],groupPages:{},filters:{enabled:'',featured:'',countryId:'',status:'',days:'',type:'',currency:'',priceCny:[null,null],city:'',tag:'',period:[],leadType:'',createdAt:[],bookingDate:[],member:'',productType:'',relation:'',visaStatus:'',expiry:[],expiresAt:[]},editor:null,form:{},jsonFields:{},dateRange:[],jsonError:'',confirmVisible:false,confirmText:'',confirmHandler:null,menuGroups:groups,rowStatusOptions:[{label:'发布',value:'published'},{label:'下架',value:'unpublished'}],settingTabs}},
+  data(){return{token:sessionStorage.getItem(TOKEN)||'',password:'',error:'',active:MENU_IDS.has(sessionStorage.getItem(ACTIVE_MENU))?sessionStorage.getItem(ACTIVE_MENU):'overview',settingsTab:'site',detailTab:'sections',detailPage:null,vehicleService:null,detailLocales,vehicleLocales,vehicleOptionGroups,detailSectionKeys,detailVisitorKeys,detailExhibitFields,detailHighlightFields,detailRouteFields,detailAudioFields,detailAudioCategoryLabels,attractionView:'list',attractionDestinationFilter:'',destinationLinkSaving:{},data:JSON.parse(JSON.stringify(emptyData)),stats:{},commerce:{},settings:this.defaultSettings(),loading:false,busy:false,localAiEnabled:false,aiFillDialogVisible:false,aiFilling:false,aiAttractionName:'',aiEntityType:'attraction',aiProgressMessage:'正在准备…',filterText:'',page:1,pageSize:10,pageSizes:[5,10,20,50,100],groupPages:{},filters:{enabled:'',featured:'',countryId:'',status:'',days:'',type:'',currency:'',priceCny:[null,null],city:'',tag:'',period:[],leadType:'',createdAt:[],bookingDate:[],member:'',productType:'',relation:'',visaStatus:'',expiry:[],expiresAt:[]},editor:null,form:{},jsonFields:{},dateRange:[],jsonError:'',confirmVisible:false,confirmText:'',confirmHandler:null,menuGroups:groups,rowStatusOptions:[{label:'发布',value:'published'},{label:'下架',value:'unpublished'}],settingTabs}},
   computed:{
     activeGroupLabel(){const group=(this.menuGroups||[]).find(item=>item.items.some(entry=>entry[0]===this.active));return group&&group.label!=='共同数据'?group.label:''},
     currentMenu(){const pair=groups.flatMap(g=>g.items).find(item=>item[0]===this.active);const config=fields[this.active]||{};return{id:this.active,label:pair?pair[1]:'总览',icon:pair?pair[2]:'',...config,columns:(config.columns||[]).map(column=>({key:column[0],label:column[1],type:column[2],width:column[3]})),editable:config.editable!==false&&!!config.fields?.length,eyebrow:'CONTENT MANAGEMENT'}},
@@ -427,7 +465,7 @@ export default {
     attractionView(){this.resetPagination()},
     active(value){sessionStorage.setItem(ACTIVE_MENU,value)},
   },
-  created(){if(this.token){this.loadAll();this.checkLocalAiAvailability();if(this.active==='attractionDetailPage')this.loadDetailPage()}},
+  created(){if(this.token){this.loadAll();this.checkLocalAiAvailability();if(this.active==='attractionDetailPage')this.loadDetailPage();if(this.active==='vehicleService')this.loadVehicleService()}},
   updated(){this.applyTagCaps()},
   methods:{
     // 多选控件默认只折叠为 1 个标签；此处改为最多显示 5 个，超出部分用内联“+N”标签折叠。
@@ -499,8 +537,18 @@ export default {
     },
     async login(){if(!this.password){this.error='请输入管理员密码';return}this.busy=true;this.error='';try{const result=await this.request('/auth/login',{method:'POST',body:JSON.stringify({password:this.password})});this.token=result.token;sessionStorage.setItem(TOKEN,result.token);await Promise.all([this.loadAll(),this.checkLocalAiAvailability()])}catch(e){this.error=e.message}finally{this.busy=false}},
     logout(){sessionStorage.removeItem(TOKEN);this.token='';this.localAiEnabled=false;this.data=JSON.parse(JSON.stringify(emptyData))},
-    selectMenu(id){this.active=id;this.editor=null;this.filterText='';this.attractionDestinationFilter='';this.attractionView='list';this.clearFilterValues();this.resetPagination();if(id==='attractionDetailPage')this.loadDetailPage()},
+    selectMenu(id){this.active=id;this.editor=null;this.filterText='';this.attractionDestinationFilter='';this.attractionView='list';this.clearFilterValues();this.resetPagination();if(id==='attractionDetailPage')this.loadDetailPage();if(id==='vehicleService')this.loadVehicleService()},
     async loadDetailPage(){try{this.detailPage=await this.request('/admin/attraction-detail-page')}catch(e){this.$message.error('景点详情配置加载失败：'+e.message)}},
+    normalizeVehicle(value){const locales=['','Tw','En'];const service=value&&typeof value==='object'&&!Array.isArray(value)?value:{};['title','subtitle','description','note','disclaimer'].forEach(field=>locales.forEach(suffix=>{if(typeof service[field+suffix]!=='string')this.$set(service,field+suffix,'')}));['tags','tagsTw','tagsEn'].forEach(key=>{if(!Array.isArray(service[key]))this.$set(service,key,[])});if(!Array.isArray(service.images))this.$set(service,'images',[]);if(typeof service.sort!=='number')this.$set(service,'sort',1);if(typeof service.enabled!=='boolean')this.$set(service,'enabled',true);if(!service.options||typeof service.options!=='object'||Array.isArray(service.options))this.$set(service,'options',{});vehicleOptionGroups.forEach(group=>{if(!Array.isArray(service.options[group.key]))this.$set(service.options,group.key,[]);service.options[group.key].forEach(item=>{['label','labelTw','labelEn'].forEach(key=>{if(typeof item[key]!=='string')this.$set(item,key,'')});if(typeof item.sort!=='number')this.$set(item,'sort',1);if(typeof item.enabled!=='boolean')this.$set(item,'enabled',true);if(!item.id)this.$set(item,'id',group.key+'-'+Date.now().toString(36))})});return service},
+    async loadVehicleService(){try{this.vehicleService=this.normalizeVehicle(await this.request('/admin/vehicle-service'))}catch(e){this.$message.error('在地用车配置加载失败：'+e.message)}},
+    async saveVehicleService(){if(!this.vehicleService)return;try{this.busy=true;this.vehicleService=this.normalizeVehicle(await this.request('/admin/vehicle-service',{method:'PATCH',body:JSON.stringify(this.vehicleService)}));this.$message.success('在地用车配置已保存')}catch(e){this.$message.error(e.message)}finally{this.busy=false}},
+    vehicleOption(group){if(!this.vehicleService)return[];if(!this.vehicleService.options||typeof this.vehicleService.options!=='object')this.$set(this.vehicleService,'options',{});if(!Array.isArray(this.vehicleService.options[group]))this.$set(this.vehicleService.options,group,[]);return this.vehicleService.options[group]},
+    addVehicleOption(group){const list=this.vehicleOption(group);list.push({id:group+'-'+Date.now().toString(36),label:'',labelTw:'',labelEn:'',sort:list.length+1,enabled:true})},
+    removeVehicleOption(group,index){this.vehicleOption(group).splice(index,1)},
+    moveVehicleOption(group,index,offset){const list=this.vehicleOption(group);const target=index+offset;if(target<0||target>=list.length)return;const moved=list.splice(index,1)[0];list.splice(target,0,moved);list.forEach((item,itemIndex)=>{item.sort=itemIndex+1})},
+    addVehicleTag(){if(!this.vehicleService)return;['tags','tagsTw','tagsEn'].forEach(key=>{if(!Array.isArray(this.vehicleService[key]))this.$set(this.vehicleService,key,[]);this.vehicleService[key].push('')})},
+    removeVehicleTag(index){if(!this.vehicleService)return;['tags','tagsTw','tagsEn'].forEach(key=>{if(Array.isArray(this.vehicleService[key])&&index<this.vehicleService[key].length)this.vehicleService[key].splice(index,1)})},
+    async uploadVehicleImage(req){try{if(!/^image\/(png|jpeg|webp)$/.test(req.file.type))throw new Error('仅支持 PNG、JPG 或 WebP 图片');if(req.file.size>6*1024*1024)throw new Error('图片大小需在 6MB 以内');const data=await new Promise((resolve,reject)=>{const reader=new FileReader();reader.onload=()=>resolve(reader.result);reader.onerror=reject;reader.readAsDataURL(req.file)});const result=await this.request('/admin/upload-image',{method:'POST',body:JSON.stringify({name:req.file.name,type:req.file.type,data,prefix:'vehicle',updateSettings:false})});if(!Array.isArray(this.vehicleService.images))this.$set(this.vehicleService,'images',[]);this.vehicleService.images.push(result.path);this.$message.success('图片上传成功');req.onSuccess(result)}catch(e){this.$message.error('图片上传失败：'+e.message);req.onError(e)}},
     reloadAll(){sessionStorage.setItem(ACTIVE_MENU,this.active);location.reload()},
     editDestinationGroup(id){const destination=(this.data.destinations||[]).find(item=>String(item.id)===String(id));if(!destination)return;this.active='destinations';this.filterText='';this.clearFilterValues();this.resetPagination();this.openEditor(destination,false)},
     startCreateAttractionForGroup(destinationId){this.active='attractions';this.startCreate();this.$set(this.form,'linkedDestinationIds',destinationId?[String(destinationId)]:[])},

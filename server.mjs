@@ -65,6 +65,116 @@ function normalizeAttractionDetailPage(input) {
   page.demo.audioGuides.forEach((entry, index) => { entry.category = defaults.demo.audioGuides[index].category })
   return page
 }
+const VEHICLE_OPTION_GROUPS = ['vehicle', 'duration', 'people']
+const VEHICLE_OPTION_LABELS = { vehicle: '车型', duration: '时长', people: '人数' }
+const DEFAULT_VEHICLE_SERVICE = {
+  enabled: true,
+  sort: 1,
+  title: '在地用车资源', titleTw: '在地用車資源', titleEn: 'Local transport',
+  subtitle: '对接咨询', subtitleTw: '對接諮詢', subtitleEn: 'Resource coordination',
+  description: '根据出行节奏，咨询希腊本地车型与司导资源，顾问协助你完成预约对接。',
+  descriptionTw: '根據出行節奏，諮詢希臘本地車型與司導資源，顧問協助你完成預約對接。',
+  descriptionEn: 'Discuss local vehicles and driver-guides for your travel rhythm, with a consultant helping you coordinate the booking.',
+  tags: ['欧6车型信息', '中英双语咨询', '按需匹配'],
+  tagsTw: ['歐6車型資訊', '中英雙語諮詢', '按需匹配'],
+  tagsEn: ['Euro 6 vehicles', 'Chinese-English support', 'Matched to your needs'],
+  note: '仅提供用车信息咨询与预约对接，车辆及司导劳务由客户直接与希腊本土主体签约结算。',
+  noteTw: '僅提供用車資訊諮詢與預約對接，車輛及司導勞務由客戶直接與希臘本土主體簽約結算。',
+  noteEn: 'Advice and booking coordination only; vehicles and driver-guide services are contracted and settled directly with local Greek providers.',
+  disclaimer: '', disclaimerTw: '', disclaimerEn: '',
+  images: [],
+  options: {
+    vehicle: [
+      { id: 'vehicle-bmw-suv-5', label: '宝马 SUV / 5座', labelTw: 'BMW SUV / 5座', labelEn: 'BMW SUV / 5 seats', sort: 1, enabled: true },
+      { id: 'vehicle-comfort-sedan', label: '舒适型轿车', labelTw: '舒適型轎車', labelEn: 'Comfort sedan', sort: 2, enabled: true },
+      { id: 'vehicle-business', label: '商务车型', labelTw: '商務車型', labelEn: 'Business vehicle', sort: 3, enabled: true },
+    ],
+    duration: [
+      { id: 'duration-half-day', label: '半日', labelTw: '半日', labelEn: 'Half day', sort: 1, enabled: true },
+      { id: 'duration-one-day', label: '1日', labelTw: '1日', labelEn: '1 day', sort: 2, enabled: true },
+      { id: 'duration-multi-day', label: '多日', labelTw: '多日', labelEn: 'Multiple days', sort: 3, enabled: true },
+    ],
+    people: [
+      { id: 'people-1-2', label: '1-2人', labelTw: '1-2人', labelEn: '1–2 people', sort: 1, enabled: true },
+      { id: 'people-3-5', label: '3-5人', labelTw: '3-5人', labelEn: '3–5 people', sort: 2, enabled: true },
+      { id: 'people-6-plus', label: '6人以上', labelTw: '6人以上', labelEn: '6+ people', sort: 3, enabled: true },
+    ],
+  },
+}
+const VEHICLE_TEXT_FIELDS = ['title', 'subtitle', 'description', 'note', 'disclaimer']
+function defaultVehicleService() { return JSON.parse(JSON.stringify(DEFAULT_VEHICLE_SERVICE)) }
+const vehicleText = (value) => (typeof value === 'string' ? value.trim().slice(0, 2000) : '')
+const vehicleTags = (value) => (Array.isArray(value) ? value.map((tag) => String(tag == null ? '' : tag).trim().slice(0, 200)).filter(Boolean) : [])
+function normalizeVehicleOptions(input) {
+  const groups = {}
+  for (const group of VEHICLE_OPTION_GROUPS) {
+    const source = Array.isArray(input?.[group]) ? input[group] : []
+    groups[group] = source.map((entry, index) => ({
+      id: String(entry?.id || `${group}-${index + 1}`).trim().slice(0, 64) || `${group}-${index + 1}`,
+      label: vehicleText(entry?.label),
+      labelTw: vehicleText(entry?.labelTw),
+      labelEn: vehicleText(entry?.labelEn),
+      sort: Number(entry?.sort) > 0 ? Math.floor(Number(entry.sort)) : index + 1,
+      enabled: entry?.enabled !== false,
+    }))
+  }
+  return groups
+}
+function normalizeVehicleService(input) {
+  if (!input || typeof input !== 'object' || Array.isArray(input)) return defaultVehicleService()
+  const result = {
+    enabled: input.enabled !== false,
+    sort: Number(input.sort) > 0 ? Math.floor(Number(input.sort)) : 1,
+    images: Array.isArray(input.images) ? input.images.map((image) => String(image || '').replace(/^(?:\.\/|\/)?(?:images\/)+/, '').trim()).filter(Boolean) : [],
+    options: normalizeVehicleOptions(input.options),
+  }
+  for (const field of VEHICLE_TEXT_FIELDS) {
+    result[field] = vehicleText(input[field])
+    result[`${field}Tw`] = vehicleText(input[`${field}Tw`])
+    result[`${field}En`] = vehicleText(input[`${field}En`])
+  }
+  for (const field of ['tags', 'tagsTw', 'tagsEn']) result[field] = vehicleTags(input[field])
+  if (!result.title && !result.titleTw && !result.titleEn) {
+    const fallback = DEFAULT_VEHICLE_SERVICE
+    for (const field of ['title', 'titleTw', 'titleEn']) result[field] = fallback[field]
+  }
+  return result
+}
+function validateVehicleService(input) {
+  if (!input || typeof input !== 'object' || Array.isArray(input)) throw new Error('在地用车配置格式无效')
+  const service = normalizeVehicleService(input)
+  for (const [field, label] of [['title', '页面标题'], ['subtitle', '副标题'], ['description', '页面说明']]) {
+    if (![service[field], service[`${field}Tw`], service[`${field}En`]].every(Boolean)) throw new Error(`${label}需要同时填写简体、繁体与英文`)
+  }
+  for (const [field, label] of [['note', '注意事项'], ['disclaimer', '免责说明']]) {
+    const filled = [service[field], service[`${field}Tw`], service[`${field}En`]].filter(Boolean).length
+    if (filled > 0 && filled < 3) throw new Error(`${label}需要三语对等：填写了任一语言就必须补齐另外两种`)
+  }
+  if (new Set([service.tags.length, service.tagsTw.length, service.tagsEn.length]).size > 1) throw new Error('服务标签需要三语等长（简体 / 繁体 / 英文条目数一致）')
+  service.tags.forEach((tag, index) => { if (!service.tagsTw[index] || !service.tagsEn[index]) throw new Error(`服务标签第 ${index + 1} 条需要三语齐备`) })
+  for (const group of VEHICLE_OPTION_GROUPS) {
+    const label = VEHICLE_OPTION_LABELS[group]
+    const items = service.options[group]
+    if (!items.length) throw new Error(`${label}选项至少需要 1 项`)
+    const sorts = new Set()
+    items.forEach((item, index) => {
+      if (!item.label || !item.labelTw || !item.labelEn) throw new Error(`${label}第 ${index + 1} 项需要三语齐备`)
+      if (sorts.has(item.sort)) throw new Error(`${label}选项排序不能重复（${item.sort}）`)
+      sorts.add(item.sort)
+    })
+  }
+  return service
+}
+function publicVehicleService(data) {
+  const service = normalizeVehicleService(data.vehicleService)
+  const options = {}
+  for (const group of VEHICLE_OPTION_GROUPS) options[group] = service.options[group].filter((item) => item.enabled !== false).sort((a, b) => a.sort - b.sort)
+  return {
+    ...service,
+    options,
+    images: service.images.map((image) => (/^(?:https?:)?\/\//i.test(image) || image.startsWith('/') ? image : `./images/${image}`)),
+  }
+}
 const escapeDetailText = (value) => String(value || '').replace(/[&<>"']/g, (char) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[char]))
 const distDir = resolve(root, 'dist')
 const port = Number(process.env.PORT || 4173)
@@ -720,6 +830,7 @@ function publicContent(data, countryId = 'greece') {
     attractionDetails: heritage.attractionDetails,
     heritageGuideBanners: publicHeritageGuideBanners(data, imageUrl),
     miniprogramServiceEntries: publicMiniprogramServiceEntries(data, imageUrl),
+    vehicleService: publicVehicleService(data),
     countries: countries.map((item) => ({ ...item, heroImage: imageUrl(item.heroImage) })),
     guides: guides.map((item) => ({ ...item, avatar: imageUrl(item.avatar), fullImage: imageUrl(item.fullImage) })),
     routes: scoped(data.routes).filter((item) => item.status === 'published').map((item) => ({ ...item, image: `./images/${item.image}` })),
@@ -1259,6 +1370,16 @@ const server = http.createServer(async (req, res) => {
         await saveData(data)
         return json(res, 200, data.attractionDetailPage)
       }
+      if (url.pathname === '/api/admin/vehicle-service' && method === 'GET') return json(res, 200, normalizeVehicleService(data.vehicleService))
+      if (url.pathname === '/api/admin/vehicle-service' && method === 'PATCH') {
+        let input
+        try { input = await body(req) } catch { return json(res, 400, { error: '请求内容无效' }) }
+        if (!input || typeof input !== 'object' || Array.isArray(input)) return json(res, 422, { error: '在地用车配置格式无效' })
+        try { validateVehicleService(input) } catch (error) { return json(res, 422, { error: error.message }) }
+        data.vehicleService = normalizeVehicleService(input)
+        await saveData(data)
+        return json(res, 200, data.vehicleService)
+      }
       if (url.pathname === '/api/admin/settings' && method === 'GET') {
         const { homeBanners: _homeBanners, ...settings } = data.settings || {}
         return json(res, 200, settings)
@@ -1627,6 +1748,7 @@ async function start() {
     data.home.banners = Array.isArray(data.home.banners) ? data.home.banners : []
     data.heritageGuideBanners = Array.isArray(data.heritageGuideBanners) ? data.heritageGuideBanners.map((item, index) => normalizeHeritageGuideBanner(item, index + 1)) : []
     if (!Array.isArray(data.miniprogramServiceEntries)) data.miniprogramServiceEntries = defaultMiniprogramServiceEntries()
+    if (!data.vehicleService || typeof data.vehicleService !== 'object' || Array.isArray(data.vehicleService)) data.vehicleService = defaultVehicleService()
     if (!data.attractionDetailPage || typeof data.attractionDetailPage !== 'object' || Array.isArray(data.attractionDetailPage)) {
       if (!demoContent) throw new Error('seed/content-demo.json is required for the first attraction-detail-page migration')
       data.attractionDetailPage = normalizeAttractionDetailPage(defaultAttractionDetailPage())

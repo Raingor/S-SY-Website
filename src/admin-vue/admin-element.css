@@ -192,3 +192,8 @@
 .el-admin .checkbox-list-body .el-checkbox__label { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-size:13px; }
 .el-admin .checkbox-list-foot { display:flex; align-items:center; justify-content:space-between; margin-top:8px; color:#909399; font-size:12px; }
 @media(max-width:760px){.el-admin .attraction-view-toolbar{align-items:flex-start;flex-direction:column}.el-admin .attraction-destination-select{width:100%}.el-admin .group-page-size{margin-left:0}.el-admin .attraction-destination-heading{align-items:flex-start;flex-direction:column}.el-admin .attraction-destination-actions{justify-content:flex-start;width:100%}}
+
+/* 在地用车（vehicleService）面板 */
+.vehicle-tag-input { margin-bottom: 6px; }
+.vehicle-option-meta { display: flex; flex-wrap: wrap; gap: 16px; align-items: flex-end; }
+.vehicle-option-meta .el-form-item { margin-bottom: 8px; }

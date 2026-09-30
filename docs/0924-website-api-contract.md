@@ -90,3 +90,47 @@
 后台 Bearer 登录后：`GET/POST/PATCH/DELETE /api/admin/audioRoutes|audioAlbums|audioTracks[/:id]`；`POST /api/admin/upload-audio` 接收 `{name,type,data:"data:audio/mpeg;base64,…"}`，限 30MB，生成 `audioFile,previewFile,durationSeconds,previewSeconds`；图片仍用旧 `/api/admin/upload-image`。景点仍由旧 `/api/admin/attractions/:id` 维护。测试用的音频/专辑标题必须冠 `【TEST ONLY】` 并仅写隔离副本，不碰真实站点数据。
 
 本地自动化验收：`node scripts/test-heritage-content.mjs`，临时复制代码/seed 以 `SY_STORAGE=json` 隔离运行，运行结束删除临时内容；浏览器后台表单手测、真实微信开发者工具/真机联调、生产来源核对和部署 **未由自动化测试代替**。
+
+## `GET /api/content?country=greece` → `vehicleService`（在地用车）
+
+小程序「在地用车」页面的页面级内容与选项由后台维护，随 `/api/content` 顶层字段 `vehicleService` 下发。该字段**始终返回对象**（未配置时返回默认值），客户端按 `xxx → xxxTw → xxxEn → 中文` 顺序回退。三语沿用 `xxx / xxxTw / xxxEn` 后缀约定。
+
+```json
+{
+  "vehicleService": {
+    "enabled": true,
+    "sort": 1,
+    "title": "在地用车资源", "titleTw": "在地用車資源", "titleEn": "Local transport",
+    "subtitle": "对接咨询", "subtitleTw": "對接諮詢", "subtitleEn": "Resource coordination",
+    "description": "…", "descriptionTw": "…", "descriptionEn": "…",
+    "tags": ["欧6车型信息"], "tagsTw": ["歐6車型資訊"], "tagsEn": ["Euro 6 vehicles"],
+    "note": "…", "noteTw": "…", "noteEn": "…",
+    "disclaimer": "", "disclaimerTw": "", "disclaimerEn": "",
+    "images": ["./images/vehicle-xxxx.jpg"],
+    "options": {
+      "vehicle":  [{"id":"vehicle-bmw-suv-5","label":"宝马 SUV / 5座","labelTw":"BMW SUV / 5座","labelEn":"BMW SUV / 5 seats","sort":1,"enabled":true}],
+      "duration": [{"id":"duration-half-day","label":"半日","labelTw":"半日","labelEn":"Half day","sort":1,"enabled":true}],
+      "people":   [{"id":"people-1-2","label":"1-2人","labelTw":"1-2人","labelEn":"1–2 people","sort":1,"enabled":true}]
+    }
+  }
+}
+```
+
+约束：
+
+* `enabled` 为 `false` 时仍返回该对象（客户端自行隐藏或显示「待后台配置」占位）；**不得**返回 `null` 或省略。
+* `options.*` 只返回 `enabled !== false` 的项，并按 `sort` 升序。
+* 选项 `id` 是后台生成的**稳定标识**，语言切换或改名后不变。客户端只做展示与回传（例如 `POST /api/leads` 中的 `vehicleTypeId / durationId / peopleId`），不参与业务判断；这些附加字段 `POST /api/leads` 会原样持久化。
+* `tags / tagsTw / tagsEn` 三语**等长**并按 index 配对。
+* 图片沿用 `./images/<filename>` 约定；无图片时为 `[]`。
+* 页面内固定 UI 文案（表单标签、按钮等）由客户端 i18n 维护，不在此字段内。
+
+## 管理接口（在地用车）
+
+`GET /api/admin/vehicle-service`、`PATCH /api/admin/vehicle-service`（需 Bearer 登录）。
+
+保存校验（不通过返回 **422** 并给出具体原因，不落库）：① `title / subtitle / description` 三语必填；`note / disclaimer` 三语同时为空或同时填写；② `tags` 三语等长且逐条三语齐备；③ `vehicle / duration / people` 每组至少 1 项、每项三语齐备；④ 同一组内 `sort` 唯一且为正整数。
+
+默认值为「在地用车」当前线上文案与 3/3/3 选项（见 `server.mjs` 的 `DEFAULT_VEHICLE_SERVICE`），首次启动会写入默认结构，避免上线即空。
+
+自动化验收：`node scripts/test-vehicle-service.mjs`（覆盖默认值、三语公开契约、校验失败、排序、enabled 过滤、鉴权与重启持久化）。
