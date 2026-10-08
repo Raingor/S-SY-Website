@@ -61,17 +61,19 @@ async function main() {
   assert.equal(initial.data.attractionDetailPage.sections.overview.label.tw, '景點概覽')
   assert.equal(initial.data.attractionDetailPage.sections.visitor.notice.zh, '参观信息可能变化，出行前请查看官方公告')
   assert.equal(initial.data.attractionDetailPage.audioHow.steps.length, 3)
-  assert.equal(initial.data.attractions.filter((spot) => spot.visitorInfoSections.find((section) => section.id === 'faq')?.isDemo).length, 72)
-  assert.ok(initial.data.attractions.slice(0, 15).every((spot) => !spot.visitorInfoSections.find((section) => section.id === 'faq')?.isDemo), 'real FAQ remains unmarked and takes priority')
+  assert.equal(initial.data.attractions.filter((spot) => (spot.visitorInfoSections || []).some((section) => section.isDemo)).length, 0, 'no demo visitor sections are fabricated')
+  assert.ok(initial.data.attractions.slice(0, 15).every((spot) => spot.visitorInfoSections.some((section) => section.id === 'faq')), 'real FAQ sections come from real data')
+  for (const spot of initial.data.attractions.slice(0, 15)) assert.ok(spot.summary && spot.highlights.length, 'real attraction content is preserved')
   for (const spot of initial.data.attractions) {
-    assert.ok(spot.summary && spot.highlights.length && spot.visitorInfoSections.length === 5 && spot.routes.length)
-    assert.ok(spot.visitorInfo.faq)
+    assert.ok(Array.isArray(spot.highlights) && Array.isArray(spot.exhibits) && Array.isArray(spot.routes) && Array.isArray(spot.audioGuides))
+    assert.ok(spot.visitorInfoSections.length >= 4)
+    assert.deepEqual(Object.keys(spot.demoFields || {}), [], 'no demo markers are emitted')
     assert.deepEqual(spot.audioGuides, [], 'attractions without uploaded audio must not expose demo placeholders')
   }
-  assert.equal(initial.data.attractions[0].routes[0].isDemo, true)
+  assert.deepEqual(initial.data.attractions[0].routes, [], 'no demo route is fabricated')
   assert.deepEqual(initial.data.attractions[0].audioGuides, [], 'no demo audio placeholders are generated in code')
   assert.equal((await request(`/api/miniprogram/audio/${initial.data.attractions[0].id}-demo-audio-route/access`)).response.status, 404, 'legacy demo audio ids must not resolve')
-  assert.ok(initial.data.attractions[0].summary && !initial.data.attractions[0].demoFields.summary, 'real summaries take priority')
+  assert.ok(initial.data.attractions[0].summary, 'real summaries are preserved')
   assert.equal(typeof initial.data.attractions[0].visitorInfo, 'object')
   for (const key of ['hoursTw', 'hoursEn', 'ticketsTw', 'ticketsEn', 'transportTw', 'transportEn', 'mapTw', 'mapEn', 'noticesTw', 'noticesEn', 'sourceTitleTw', 'sourceTitleEn']) assert.equal(typeof initial.data.attractions[0].visitorInfo[key], 'string', `missing multilingual visitorInfo.${key}`)
   const attractionId = initial.data.attractions[0].id
@@ -102,9 +104,10 @@ async function main() {
   const contentWithPage = (await request('/api/content')).data
   assert.equal(contentWithPage.attractionDetailPage.sections.visitor.subtitle.en, 'Isolated visitor subtitle')
   assert.equal(contentWithPage.attractionDetailPage.sections.visitor.notice.en, 'Isolated official notice')
-  assert.equal(contentWithPage.attractions.at(-1).visitorInfoSections.at(-1).titleEn, 'Isolated FAQ heading')
-  assert.equal(contentWithPage.attractions.at(-1).visitorInfo.faq, page.demo.visitorInfo.faq.zh)
-  assert.notEqual(contentWithPage.attractions[0].visitorInfo.faq, page.demo.visitorInfo.faq.zh, 'real guide.faq must take priority')
+  assert.ok(!contentWithPage.attractions.at(-1).visitorInfoSections.some((section) => section.id === 'faq'), 'empty attraction has no fabricated FAQ section')
+  assert.equal(contentWithPage.attractions.at(-1).visitorInfo.faq, undefined, 'no demo FAQ text is injected')
+  assert.equal(contentWithPage.attractions[0].visitorInfoSections.find((section) => section.id === 'faq').titleEn, 'Isolated FAQ heading')
+  assert.ok(contentWithPage.attractions[0].visitorInfo.faq, 'real guide.faq is preserved')
   const existingAttractionForMap = initial.data.attractions[0]
   const existingAttractionIdForMap = existingAttractionForMap.id
   const legacyMapPath = 'mapImage-legacy123-abcdef.jpg'
@@ -146,16 +149,13 @@ async function main() {
   assert.equal(publishedHighlightData.attractions.find((item) => item.id === existingAttractionIdForMap).highlights[0].image, expectedPublicHighlightPath, 'published attraction highlights must expose normalized image path')
   assert.equal(publishedHighlightData.attractionDetails[existingAttractionIdForMap].highlights[0].image, expectedPublicHighlightPath, 'attractionDetails API must expose the MpApp-consumable highlight image path')
   const demoAttraction = (await request('/api/content')).data.attractions.find((item) => item.id === emptyAttractionId)
-  assert.equal(demoAttraction.demoFields.summary, true)
-  assert.equal(demoAttraction.demoFields.highlights, true)
-  assert.equal(demoAttraction.demoFields.exhibits, true)
-  assert.deepEqual(demoAttraction.demoFields.visitorInfo, ['hours','tickets','transport','map','faq'])
-  assert.ok(demoAttraction.highlights[0].isDemo && demoAttraction.exhibits[0].isDemo)
-  assert.deepEqual(demoAttraction.routes[0].pointIds, [], 'demo route must not invent navigable points')
-  assert.deepEqual(demoAttraction.audioGuides, [], 'demo attraction exposes no demo audio placeholders')
-  assert.ok(demoAttraction.visitorInfoSections.every((section) => section.isDemo && section.bodyHtml.includes('演示') && section.nodes.length && section.nodesTw.length && section.nodesEn.length))
-  assert.equal(demoAttraction.visitorInfo.hoursTw.includes('演示'), true)
-  assert.ok(!JSON.stringify(demoAttraction).includes('-demo-audio-'), 'demo attraction must not contain fabricated audio ids')
+  assert.deepEqual(demoAttraction.demoFields, {}, 'no demo markers are emitted for an empty attraction')
+  assert.deepEqual(demoAttraction.highlights, [], 'no demo highlights are fabricated')
+  assert.deepEqual(demoAttraction.exhibits, [], 'no demo exhibits are fabricated')
+  assert.deepEqual(demoAttraction.routes, [], 'no demo route is fabricated')
+  assert.deepEqual(demoAttraction.audioGuides, [], 'no demo audio is fabricated')
+  assert.ok(!demoAttraction.visitorInfoSections.some((section) => section.isDemo), 'no demo visitor sections are fabricated')
+  assert.ok(!String(demoAttraction.visitorInfo.hoursTw || '').includes('演示'), 'no demo visitor text is injected')
   const oldAttraction = initial.data.attractions[0]
   const richPatch = await adminRequest(`/api/admin/attractions/${encodeURIComponent(attractionId)}`, { method: 'PATCH', body: { guide: { ...oldAttraction.guide, hoursTw: '【TEST ONLY】繁体时段回退', hoursHtmlTw: '', hoursHtml: '<p onclick="evil()"><strong>【TEST ONLY】安全段落</strong><script>alert(1)</script><style>p{display:none}</style><a href="javascript:alert(1)">坏链接</a><a href="java&#x73;cript:alert(2)">编码坏链接</a><a href="https://example.test/info">安全链接</a></p>' }, visitorSections: [{ id: 'test-published', title: '【TEST ONLY】自定义板块', titleTw: '測試區塊', titleEn: 'TEST ONLY section', bodyHtml: '<p>正文<img src="/images/test.webp" onerror="evil()"><img src="javascript:alert(1)" onload="evil()"><img src="https://example.test/pic.webp" onload="evil()"></p>', bodyHtmlTw: '<p>繁體正文</p>', bodyHtmlEn: '<p>English body</p>', status: 'published', sort: 8 }, { id: 'test-unpublished', title: '【TEST ONLY】下架板块', bodyHtml: '<p>不可见</p>', status: 'unpublished', sort: 1 }] } })
   assert.equal(richPatch.response.status, 200)
@@ -319,8 +319,8 @@ async function main() {
   const afterRestart = (await request('/api/content')).data
   assert.equal(afterRestart.attractionDetailPage.audioHow.note.en, 'Isolated audio note')
   assert.equal(afterRestart.attractionDetailPage.sections.visitor.notice.en, 'Isolated official notice')
-  assert.equal(afterRestart.attractions.at(-1).visitorInfo.faq, page.demo.visitorInfo.faq.zh)
-  console.log('PASS: 87 attractions, persisted config without seed, real FAQ priority, demo FAQ and category fallback, flagged non-playable entries, multilingual visitorInfo, rich-text sanitizer/nodes, online exhibit/audio association and CRUD, private audio access controls')
+  assert.equal(afterRestart.attractions.at(-1).visitorInfo.faq, undefined, 'no demo FAQ survives restart')
+  console.log('PASS: 87 attractions, persisted config without seed, real-FAQ-only contract, no demo placeholders, multilingual visitorInfo, rich-text sanitizer/nodes, online exhibit/audio association and CRUD, private audio access controls')
   console.log('Storage: temp JSON copy only; local MariaDB and production unchanged')
 }
 try { await main() } catch (error) { console.error(error); console.error(logs); process.exitCode = 1 } finally { if (child) { child.kill('SIGTERM'); await delay(200); if (child.exitCode === null) child.kill('SIGKILL') } rmSync(tmp, { recursive: true, force: true }) }

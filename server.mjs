@@ -832,42 +832,26 @@ function mergeAttractionHighlights(item, detail) {
   })
 }
 function demoAttractionContent(item, detail, imageUrl, page) {
-  const demo = page.demo
-  const exhibits = detail.exhibits?.length ? detail.exhibits : [{ id: `${item.id}-demo-point`, ...demo.exhibit, image: '', sort: 1, status: 'published', isDemo: true }]
+  const exhibits = detail.exhibits?.length ? detail.exhibits : []
   const savedHighlights = mergeAttractionHighlights(item, detail)
-  const highlights = savedHighlights?.length ? savedHighlights : [{ id: `${item.id}-demo-highlight`, ...demo.highlight, image: '', sort: 1, exhibitId: exhibits[0].id, isDemo: true }]
+  const highlights = savedHighlights?.length ? savedHighlights : (detail.highlights || [])
   const visitorInfo = { ...detail.visitorInfo }
-  const demoVisitorFields = []
   const visitorInfoSections = (detail.visitorInfoSections || []).map((section) => {
     const labels = page.visitorSections[section.id]
-    const labeled = labels ? { ...section, title: labels.zh, titleTw: labels.tw, titleEn: labels.en } : section
-    if (section.bodyHtml || section.bodyHtmlTw || section.bodyHtmlEn || section.map?.image || section.map?.url) return labeled
-    const { zh, tw, en } = demo.visitorInfo[section.id] || {}
-    if (!zh) return labeled
-    const body = sanitizeRichText(`<p>${escapeDetailText(zh)}</p>`), bodyTw = sanitizeRichText(`<p>${escapeDetailText(tw)}</p>`), bodyEn = sanitizeRichText(`<p>${escapeDetailText(en)}</p>`)
-    visitorInfo[section.id] = zh
-    visitorInfo[`${section.id}Tw`] = tw
-    visitorInfo[`${section.id}En`] = en
-    demoVisitorFields.push(section.id)
-    return { ...labeled, bodyHtml: body.html, bodyHtmlTw: bodyTw.html, bodyHtmlEn: bodyEn.html, nodes: body.nodes, nodesTw: bodyTw.nodes, nodesEn: bodyEn.nodes, ...(section.map ? { map: { ...section.map, description: body.html, descriptionTw: bodyTw.html, descriptionEn: bodyEn.html } } : {}), isDemo: true }
+    return labels ? { ...section, title: labels.zh, titleTw: labels.tw, titleEn: labels.en } : section
   })
   const realFaq = String(item.guide?.faq || item.guide?.faqTw || item.guide?.faqEn || detail.visitorInfo?.faq || '').trim()
-  const hasPublishedFaq = (detail.customSections || []).some((section) => /faq|常见问题|常見問題/i.test([section.title, section.titleTw, section.titleEn].join(' ')))
-  if (realFaq || !hasPublishedFaq) {
-    const faq = realFaq
-      ? { zh: String(item.guide?.faq || item.guide?.faqTw || item.guide?.faqEn || detail.visitorInfo?.faq || ''), tw: String(item.guide?.faqTw || item.guide?.faq || item.guide?.faqEn || detail.visitorInfo?.faq || ''), en: String(item.guide?.faqEn || item.guide?.faq || item.guide?.faqTw || detail.visitorInfo?.faq || '') }
-      : demo.visitorInfo.faq
+  if (realFaq) {
+    const faq = { zh: String(item.guide?.faq || item.guide?.faqTw || item.guide?.faqEn || detail.visitorInfo?.faq || ''), tw: String(item.guide?.faqTw || item.guide?.faq || item.guide?.faqEn || detail.visitorInfo?.faq || ''), en: String(item.guide?.faqEn || item.guide?.faq || item.guide?.faqTw || detail.visitorInfo?.faq || '') }
     visitorInfo.faq = faq.zh; visitorInfo.faqTw = faq.tw; visitorInfo.faqEn = faq.en
     const html = sanitizeRichText(`<p>${escapeDetailText(faq.zh)}</p>`), htmlTw = sanitizeRichText(`<p>${escapeDetailText(faq.tw)}</p>`), htmlEn = sanitizeRichText(`<p>${escapeDetailText(faq.en)}</p>`)
     const labels = page.visitorSections.faq
-    visitorInfoSections.push({ id: 'faq', kind: 'faq', title: labels.zh, titleTw: labels.tw, titleEn: labels.en, bodyHtml: html.html, bodyHtmlTw: htmlTw.html, bodyHtmlEn: htmlEn.html, nodes: html.nodes, nodesTw: htmlTw.nodes, nodesEn: htmlEn.nodes, sort: 5, status: 'published', ...(realFaq ? {} : { isDemo: true }) })
-    if (!realFaq) demoVisitorFields.push('faq')
+    visitorInfoSections.push({ id: 'faq', kind: 'faq', title: labels.zh, titleTw: labels.tw, titleEn: labels.en, bodyHtml: html.html, bodyHtmlTw: htmlTw.html, bodyHtmlEn: htmlEn.html, nodes: html.nodes, nodesTw: htmlTw.nodes, nodesEn: htmlEn.nodes, sort: 5, status: 'published' })
   }
-  const routes = detail.routes?.length ? detail.routes : [{ id: `${item.id}-demo-route`, ...demo.route, sort: 1, pointIds: [], playable: false, isDemo: true }]
-  // Only real, published audio is exposed. Attractions without uploaded audio return an empty list instead of fabricating demo placeholders.
+  const routes = detail.routes?.length ? detail.routes : []
+  // Only real, published content is exposed: no demo fallbacks are fabricated for audio, routes, exhibits, highlights, summary or visitor info.
   const audioGuides = detail.audioGuides || []
-  const summaryIsDemo = !String(item.summary || '').trim()
-  return { ...detail, summary: summaryIsDemo ? demo.summary.zh : item.summary, ...(summaryIsDemo ? { summaryTw: demo.summary.tw, summaryEn: demo.summary.en } : {}), visitorInfo, visitorInfoSections, exhibits, highlights, routes, audioGuides, demoFields: { ...(summaryIsDemo ? { summary: true } : {}), ...(!savedHighlights?.length && !detail.highlights?.length ? { highlights: true } : {}), ...(!detail.exhibits?.length ? { exhibits: true } : {}), ...(!detail.routes?.length ? { routes: true } : {}), ...(demoVisitorFields.length ? { visitorInfo: demoVisitorFields } : {}) } }
+  return { ...detail, summary: item.summary || '', visitorInfo, visitorInfoSections, exhibits, highlights, routes, audioGuides, demoFields: {} }
 }
 function publicContent(data, countryId = 'greece', { includeAttractionDetails = true } = {}) {
   const imageUrl = (value) => {
