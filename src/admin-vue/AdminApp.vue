@@ -319,9 +319,6 @@
             </section>
           </template>
           <section v-else class="editor-page">
-            <div class="editor-heading"><el-button plain icon="el-icon-arrow-left" @click="closeEditor">返回列表</el-button><div><span class="eyebrow">EDIT CONTENT / 独立编辑</span><h1>{{ editor.title }}</h1><p>可保存后返回列表，或继续编辑。<el-tag v-if="editorDirty" size="mini" type="warning" class="editor-dirty-tag">有未保存修改</el-tag></p></div></div>
-            <el-alert v-if="currentMenu.miniProgramDisplay" :title="'小程序展示位置：'+currentMenu.miniProgramDisplay" type="info" :closable="false" show-icon class="banner-note module-display-note"/>
-            <el-alert v-if="active==='audioTracks'" title="只需填写简体标题与简介；点击表单底部「自动翻译」生成繁体和英文标题、简介。修改简体内容后需重新翻译，再保存。" type="info" :closable="false" show-icon class="banner-note"/>
             <el-dialog :title="'智能填写'+aiEntityLabel+'资料'" :visible.sync="aiFillDialogVisible" width="520px" :close-on-click-modal="false" :close-on-press-escape="!aiFilling" :show-close="!aiFilling" @closed="aiAttractionName='';aiProgressMessage='正在准备…'">
               <el-form @submit.native.prevent="submitAiFill">
                 <el-form-item :label="aiNameLabel" required><el-input ref="aiAttractionNameInput" v-model.trim="aiAttractionName" maxlength="120" show-word-limit :placeholder="aiNamePlaceholder" :disabled="aiFilling" @keyup.enter.native="submitAiFill"/></el-form-item>
@@ -331,6 +328,9 @@
               <span slot="footer"><el-button :disabled="aiFilling" @click="aiFillDialogVisible=false">取消</el-button><el-button type="primary" :loading="aiFilling" :disabled="!aiAttractionName" @click="submitAiFill">确认并填写</el-button></span>
             </el-dialog>
             <el-card shadow="never" class="editor-card" v-loading="busy" element-loading-text="正在保存并核验，请稍候">
+              <div class="editor-heading"><el-button plain icon="el-icon-arrow-left" @click="closeEditor">返回列表</el-button><div><span class="eyebrow">EDIT CONTENT / 独立编辑</span><h1>{{ editor.title }}</h1><p>可保存后返回列表，或继续编辑。<el-tag v-if="editorDirty" size="mini" type="warning" class="editor-dirty-tag">有未保存修改</el-tag></p></div></div>
+              <el-alert v-if="currentMenu.miniProgramDisplay" :title="'小程序展示位置：'+currentMenu.miniProgramDisplay" type="info" :closable="false" show-icon class="banner-note module-display-note"/>
+              <el-alert v-if="active==='audioTracks'" title="只需填写简体标题与简介；点击表单底部「自动翻译」生成繁体和英文标题、简介。修改简体内容后需重新翻译，再保存。" type="info" :closable="false" show-icon class="banner-note"/>
               <div v-if="editor.template" class="template-guide"><div><span class="eyebrow">FILLING TEMPLATE / 填写引导</span><h3>{{ editor.template.title }}</h3><p>{{ editor.template.tip }}</p></div><div class="template-guide-actions"><el-button v-if="['routes','destinations','attractions'].includes(active)&&localAiEnabled" type="primary" icon="el-icon-magic-stick" @click="openAiFillDialog">智能填写</el-button><el-button type="warning" plain @click="fillTemplate">一键填写拟真示例</el-button></div></div>
               <el-form ref="editForm" :disabled="busy" :model="form" :rules="formRules" :label-position="currentMenu.singleColumn ? 'left' : 'top'" :label-width="currentMenu.singleColumn ? '200px' : undefined" :class="{ 'edit-form-horizontal': currentMenu.singleColumn }" class="edit-form" @submit.native.prevent="saveEditor">
                 <div v-if="recordEditorGroups.length" class="attraction-editor-tabs record-editor-tabs" role="tablist" :aria-label="editor.title+'内容板块'">
