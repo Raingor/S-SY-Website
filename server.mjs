@@ -864,11 +864,10 @@ function demoAttractionContent(item, detail, imageUrl, page) {
     if (!realFaq) demoVisitorFields.push('faq')
   }
   const routes = detail.routes?.length ? detail.routes : [{ id: `${item.id}-demo-route`, ...demo.route, sort: 1, pointIds: [], playable: false, isDemo: true }]
-  const realAudioGuides = detail.audioGuides || []
-  const missingAudioCategories = demo.audioGuides.filter((entry) => !realAudioGuides.some((real) => real.category === entry.category))
-  const audioGuides = [...realAudioGuides, ...missingAudioCategories.map((entry, index) => ({ ...entry, id: `${item.id}-demo-audio-${entry.category}`, cover: imageUrl(item.image) || '', attractionId: item.id, exhibitId: null, routeId: entry.category === 'route' ? routes[0].id : null, durationSeconds: 0, previewSeconds: 0, previewUrl: '', accessUrl: '', fullUrl: null, playable: false, sort: realAudioGuides.length + index + 1, isDemo: true }))]
+  // Only real, published audio is exposed. Attractions without uploaded audio return an empty list instead of fabricating demo placeholders.
+  const audioGuides = detail.audioGuides || []
   const summaryIsDemo = !String(item.summary || '').trim()
-  return { ...detail, summary: summaryIsDemo ? demo.summary.zh : item.summary, ...(summaryIsDemo ? { summaryTw: demo.summary.tw, summaryEn: demo.summary.en } : {}), visitorInfo, visitorInfoSections, exhibits, highlights, routes, audioGuides, demoFields: { ...(summaryIsDemo ? { summary: true } : {}), ...(!savedHighlights?.length && !detail.highlights?.length ? { highlights: true } : {}), ...(!detail.exhibits?.length ? { exhibits: true } : {}), ...(!detail.routes?.length ? { routes: true } : {}), ...(missingAudioCategories.length ? { audioGuides: true, audioGuideCategories: missingAudioCategories.map((entry) => entry.category) } : {}), ...(demoVisitorFields.length ? { visitorInfo: demoVisitorFields } : {}) } }
+  return { ...detail, summary: summaryIsDemo ? demo.summary.zh : item.summary, ...(summaryIsDemo ? { summaryTw: demo.summary.tw, summaryEn: demo.summary.en } : {}), visitorInfo, visitorInfoSections, exhibits, highlights, routes, audioGuides, demoFields: { ...(summaryIsDemo ? { summary: true } : {}), ...(!savedHighlights?.length && !detail.highlights?.length ? { highlights: true } : {}), ...(!detail.exhibits?.length ? { exhibits: true } : {}), ...(!detail.routes?.length ? { routes: true } : {}), ...(demoVisitorFields.length ? { visitorInfo: demoVisitorFields } : {}) } }
 }
 function publicContent(data, countryId = 'greece', { includeAttractionDetails = true } = {}) {
   const imageUrl = (value) => {
