@@ -3,9 +3,15 @@
 .el-admin { --ea-ink:#263238; --ea-muted:#7c8a91; --ea-line:#e5eaed; --ea-canvas:#f3f5f5; --ea-teal:#008f83; color:var(--ea-ink); background:var(--ea-canvas); font-family:"PingFang SC","Microsoft YaHei",sans-serif; }
 .el-admin * { box-sizing:border-box; }
 .el-admin .el-button { border-radius:4px; font-weight:500; }
-.el-admin .el-button--primary { background:#087f79; border-color:#087f79; }
-.el-admin .el-button--primary:hover,
-.el-admin .el-button--primary:focus { background:#066b66; border-color:#066b66; }
+.el-admin .el-button--primary:not(.is-plain):not(.is-disabled) { color:#fff; background:#087f79; border-color:#087f79; }
+.el-admin .el-button--primary:not(.is-plain):not(.is-disabled):hover,
+.el-admin .el-button--primary:not(.is-plain):not(.is-disabled):focus { color:#fff; background:#066b66; border-color:#066b66; }
+.el-admin .el-button--primary.is-plain:not(.is-disabled) { color:#087f79; background:#eff8f6; border-color:#a8d5cf; }
+.el-admin .el-button--primary.is-plain:not(.is-disabled):hover,
+.el-admin .el-button--primary.is-plain:not(.is-disabled):focus { color:#fff; background:#087f79; border-color:#087f79; }
+.el-admin .el-button--primary.is-plain:not(.is-disabled):active { color:#066b66; background:#dcefeb; border-color:#087f79; }
+.el-admin .el-button--primary.is-plain.is-disabled { color:#a7b8b7; background:#f5f7f7; border-color:#e3e9e8; }
+.el-admin .el-button--primary.is-disabled:not(.is-plain) { color:#fff; background:#a8c5c2; border-color:#a8c5c2; }
 .el-admin .el-input__inner,
 .el-admin .el-textarea__inner,
 .el-admin .el-select-dropdown,
@@ -130,6 +136,16 @@
 .el-admin .settings-list-row { display:flex; align-items:center; gap:12px; margin-bottom:8px; }
 .el-admin .settings-list-row .el-input { flex:1; min-width:0; }
 .el-admin .settings-tabs .el-input-number { width:100%; }
+.el-admin .attraction-editor-tabs { display:flex; gap:5px; margin:0 0 12px; padding:6px; overflow-x:auto; border:1px solid #e2ebea; border-radius:8px; background:#f5f9f8; scrollbar-width:thin; }
+.el-admin .attraction-editor-tabs button { display:inline-flex; flex:0 0 auto; align-items:center; gap:7px; min-height:38px; padding:0 13px; border:1px solid transparent; border-radius:6px; background:transparent; color:#64777a; font:inherit; font-size:13px; cursor:pointer; transition:background .16s ease,color .16s ease,border-color .16s ease,box-shadow .16s ease; }
+.el-admin .attraction-editor-tabs button:hover { color:#087f79; background:#edf6f4; }
+.el-admin .attraction-editor-tabs button.is-active { border-color:#d5e7e3; background:#fff; color:#087f79; font-weight:600; box-shadow:0 1px 3px rgba(28,71,69,.06); }
+.el-admin .attraction-editor-tabs button:focus-visible { outline:2px solid #168c88; outline-offset:2px; }
+.el-admin .attraction-editor-tabs button small { display:inline-grid; min-width:18px; height:18px; place-items:center; border-radius:9px; background:#e8f2f0; color:#55716e; font-size:10px; line-height:1; }
+.el-admin .attraction-editor-tabs button.is-active small { background:#087f79; color:#fff; }
+.el-admin .attraction-editor-tab-note { display:flex; align-items:baseline; flex-wrap:wrap; gap:8px; margin:0 0 16px; padding:9px 12px; border-left:2px solid #168c88; background:#f7faf9; color:#718185; font-size:12px; line-height:1.6; }
+.el-admin .attraction-editor-tab-note strong { color:#3c6665; font-size:12px; }
+.el-admin .attraction-editor-tab-note span { min-width:0; }
 .el-admin .form-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); column-gap:22px; }
 .el-admin .form-grid>.el-form-item { min-width:0; }
 .el-admin .form-grid .full-field { grid-column:1/-1; }
