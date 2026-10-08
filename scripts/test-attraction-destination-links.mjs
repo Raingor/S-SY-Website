@@ -96,12 +96,53 @@ try {
   const storedRows = await storedAttractions.json()
   assert.ok(!Object.hasOwn(storedRows.find(row => row.id === createdAttraction.id), 'linkedDestinationIds'), 'UI-only reverse association must not leak into attraction storage')
 
+  const stillPublishedAttraction = fixture.attractions.find((item) => item.id !== attraction.id && item.status === 'published')
+  assert.ok(stillPublishedAttraction, 'status regression test needs a second published attraction')
+  const linkedForPublishTest = await request(`/api/admin/destinations/${encodeURIComponent(destination.id)}`, token, {
+    method: 'PATCH', body: JSON.stringify({ attractionIds: [attraction.id, stillPublishedAttraction.id] }),
+  })
+  assert.equal(linkedForPublishTest.status, 200)
+  const publishedContent = await request('/api/content?country=greece')
+  assert.equal(publishedContent.status, 200)
+  assert.equal(publishedContent.headers.get('cache-control'), 'no-store', 'public content must not be cached after an admin status change')
+  assert.equal(publishedContent.headers.get('etag'), null, 'public content must not expose an ETag that can preserve stale unpublished records')
+  const publishedPayload = await publishedContent.json()
+  assert.ok(publishedPayload.attractions.some((item) => item.id === attraction.id), 'published attraction is initially present in the public list')
+  assert.ok(Object.hasOwn(publishedPayload.attractionDetails, attraction.id), 'published attraction detail exists under the same ID key')
+  assert.ok(publishedPayload.destinations.find((item) => item.id === destination.id)?.attractionIds.includes(attraction.id), 'destination association initially includes the published attraction')
+
+  const unpublish = await request(`/api/admin/attractions/${encodeURIComponent(attraction.id)}`, token, {
+    method: 'PATCH', body: JSON.stringify({ status: 'unpublished' }),
+  })
+  assert.equal(unpublish.status, 200, 'admin can transition a published attraction to unpublished')
+  assert.equal((await unpublish.json()).status, 'unpublished')
+  const storedAfterUnpublish = JSON.parse(readFileSync(fixturePath, 'utf8'))
+  const retainedRecord = storedAfterUnpublish.attractions.find((item) => item.id === attraction.id)
+  assert.equal(retainedRecord.status, 'unpublished', 'unpublished state is persisted')
+  assert.equal(retainedRecord.image, attraction.image, 'unpublishing retains the attraction image reference and record')
+
+  for (const path of ['/api/content', '/api/content?country=greece']) {
+    const response = await request(path)
+    assert.equal(response.status, 200)
+    assert.equal(response.headers.get('cache-control'), 'no-store')
+    const content = await response.json()
+    assert.ok(!content.attractions.some((item) => item.id === attraction.id), `${path} excludes unpublished attraction from the list`)
+    assert.ok(!Object.hasOwn(content.attractionDetails, attraction.id), `${path} excludes unpublished attraction details`)
+    const publicDestination = content.destinations.find((item) => item.id === destination.id)
+    assert.ok(publicDestination, 'destination remains public when it still has another published attraction')
+    assert.ok(!publicDestination.attractionIds.includes(attraction.id), 'destination association omits unpublished attraction')
+    assert.ok(publicDestination.attractionIds.includes(stillPublishedAttraction.id), 'destination keeps its other published attraction')
+    assert.ok(content.attractions.every((item) => item.status === 'published'), 'the public attraction array contains only status=published')
+  }
+  const otherCountry = await (await request('/api/content?country=italy')).json()
+  assert.ok(!otherCountry.attractions.some((item) => item.id === attraction.id), 'country-scoped content does not expose the unpublished attraction')
+
   const partialUpdate = await request(`/api/admin/attractions/${encodeURIComponent(attraction.id)}`, token, {
     method: 'PATCH', body: JSON.stringify({ name: attraction.name }),
   })
   assert.equal(partialUpdate.status, 200)
   assert.equal((await partialUpdate.json()).summaryTw, legacySummaryTw, 'hidden legacy translations survive partial edits')
-  console.log('PASS: attraction/destination relation updates, legacy field synchronization, UI-only reverse relation, and legacy narrative preservation')
+  console.log('PASS: attraction/destination relation updates, legacy field synchronization, UI-only reverse relation, published→unpublished persistence, public API/detail/destination filtering, no-store cache contract, and legacy narrative preservation')
 } finally {
   if (child && child.exitCode === null) {
     await new Promise(resolveExit => {

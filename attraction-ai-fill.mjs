@@ -1,6 +1,6 @@
 const baseUrl = (process.env.SY_SENSENOVA_BASE_URL || 'https://token.sensenova.cn/v1').replace(/\/+$/, '')
 const gatewayUrl = `${baseUrl}/chat/completions`
-const model = process.env.SY_SENSENOVA_MODEL || 'deepseek-v4-flash'
+const model = process.env.SY_SENSENOVA_MODEL || 'sensenova-6.8-flash-lite'
 const textLimit = 1600
 
 const stringValue = (value, limit = textLimit) => typeof value === 'string' ? value.trim().slice(0, limit) : ''
@@ -232,6 +232,49 @@ export async function requestAdminDraft({ type, name, apiKey, fetchImpl = fetch,
   if (type === 'route' && !draft.title) draft.title = attractionName
   if (type === 'destination' && !draft.name) draft.name = attractionName
   return draft
+}
+
+export function sanitizeAudioTrackTranslation(value, source = {}) {
+  const input = value && typeof value === 'object' && !Array.isArray(value) ? value : {}
+  const hasTitle = Boolean(stringValue(source.title, 200))
+  const hasDescription = Boolean(stringValue(source.description, 1600))
+  const result = {
+    titleTw: hasTitle ? stringValue(input.titleTw, 200) : '',
+    titleEn: hasTitle ? stringValue(input.titleEn, 240) : '',
+    descriptionTw: hasDescription ? stringValue(input.descriptionTw, 2000) : '',
+    descriptionEn: hasDescription ? stringValue(input.descriptionEn, 2000) : '',
+  }
+  if (hasTitle && (!result.titleTw || !result.titleEn)) throw new Error('AI 未返回完整的繁体与英文标题，请重试')
+  if (hasDescription && (!result.descriptionTw || !result.descriptionEn)) throw new Error('AI 未返回完整的繁体与英文简介，请重试')
+  return result
+}
+
+export async function requestAudioTrackTranslation({ title, description = '', apiKey, fetchImpl = fetch }) {
+  if (typeof title !== 'string' || !title.trim()) throw new Error('请先填写简体标题')
+  if (title.trim().length > 200) throw new Error('请将简体标题控制在 200 字以内')
+  if (typeof description !== 'string' || description.trim().length > 1600) throw new Error('请将简体简介控制在 1600 字以内')
+  const source = { title: title.trim(), description: description.trim() }
+  if (!apiKey) throw new Error('本地 AI 服务尚未配置，请检查 Website 本地环境变量')
+  const prompt = `你是旅游音频与文史节目内容的专业译者。请将给定简体中文标题与简介分别翻译成自然、准确的繁体中文和英文。忠实保留原意、语气和专有名词，不补充原文没有的事实，不扩写成宣传文案。简介为空时，两个简介译文必须为空字符串。只返回 JSON，不要 Markdown、前言或其他文字。严格使用结构：{"titleTw":"","titleEn":"","descriptionTw":"","descriptionEn":""}。原文 JSON：${JSON.stringify(source)}`
+  let response
+  try {
+    response = await fetchImpl(gatewayUrl, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ model, messages: [{ role: 'user', content: prompt }], temperature: 0.1, max_tokens: 2200, stream: false }),
+      signal: AbortSignal.timeout(60000),
+    })
+  } catch {
+    throw new Error('连接 AI 服务失败，请检查网络后重试')
+  }
+  if (!response.ok) {
+    let providerPayload = null
+    try { providerPayload = await response.json() } catch { /* provider error bodies are optional */ }
+    throw providerFailure(response, providerPayload)
+  }
+  let payload
+  try { payload = await response.json() } catch { throw new Error('AI 返回内容格式无效，请稍后重试') }
+  return sanitizeAudioTrackTranslation(parseModelJson(payload?.choices?.[0]?.message?.content), source)
 }
 
 export function requestAttractionDraft(options) { return requestAdminDraft({ ...options, type: 'attraction' }) }

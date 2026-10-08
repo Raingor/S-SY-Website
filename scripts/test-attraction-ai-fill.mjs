@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict'
-import { requestAdminDraft, requestAttractionDraft, sanitizeAttractionDraft, sanitizeDestinationDraft, sanitizeRouteDraft } from '../attraction-ai-fill.mjs'
+import { requestAdminDraft, requestAttractionDraft, requestAudioTrackTranslation, sanitizeAttractionDraft, sanitizeAudioTrackTranslation, sanitizeDestinationDraft, sanitizeRouteDraft } from '../attraction-ai-fill.mjs'
 
 const modelResult = {
   name: '雅典卫城', en: 'Acropolis of Athens', originalName: 'Ακρόπολη Αθηνών', cityName: '雅典', type: 'landmark',
@@ -35,7 +35,7 @@ const result = await requestAttractionDraft({
 assert.equal(requestOptions.method, 'POST')
 assert.equal(requestOptions.headers.Authorization, 'Bearer test-token-never-log')
 const sent = JSON.parse(requestOptions.body)
-assert.equal(sent.model, 'deepseek-v4-flash')
+assert.equal(sent.model, 'sensenova-6.8-flash-lite')
 assert.equal(sent.stream, true)
 assert.equal(result.name, modelResult.name)
 assert.equal(result.tags, '古典文明 · 考古')
@@ -91,7 +91,7 @@ try {
 } catch (error) { rateLimitError = error }
 assert.match(rateLimitError.message, /SenseNova 请求频率已达限制/)
 assert.deepEqual(rateLimitError.providerDetails, {
-  provider: 'sensenova', model: 'deepseek-v4-flash', status: 429, providerCategory: 'rate_limited',
+  provider: 'sensenova', model: 'sensenova-6.8-flash-lite', status: 429, providerCategory: 'rate_limited',
   providerCode: '429',
   retryAfterSeconds: 37,
 })
@@ -99,4 +99,27 @@ assert.equal(JSON.stringify(rateLimitError.providerDetails).includes('隐私景�
 assert.equal(JSON.stringify(rateLimitError.providerDetails).includes('secret-test-token'), false)
 await assert.rejects(() => requestAttractionDraft({ name: '测试景点', apiKey: 'test-token', fetchImpl: async () => ({ ok: true, status: 200, body: { getReader: () => { let read = false; return { read: async () => read ? { done: true } : (read = true, { done: false, value: encoder.encode('data: {"choices":[{"delta":{"content":"not-json"}}]}\n\n') }) } } } }) }), /格式无效/)
 
-console.log('Attraction AI fill unit tests passed.')
+let translationRequest
+const translatedAudioText = { titleTw: '雅典衛城', titleEn: 'The Acropolis of Athens', descriptionTw: '雅典衛城的簡介。', descriptionEn: 'An introduction to the Acropolis of Athens.', id: 'must-not-pass' }
+const audioTranslation = await requestAudioTrackTranslation({
+  title: '雅典卫城', description: '雅典卫城的简介。', apiKey: 'test-translation-token',
+  fetchImpl: async (url, options) => {
+    assert.equal(url, 'https://token.sensenova.cn/v1/chat/completions')
+    translationRequest = options
+    return { ok: true, status: 200, json: async () => ({ choices: [{ message: { content: JSON.stringify(translatedAudioText) } }] }) }
+  },
+})
+assert.equal(translationRequest.method, 'POST')
+assert.equal(translationRequest.headers.Authorization, 'Bearer test-translation-token')
+const translationBody = JSON.parse(translationRequest.body)
+assert.equal(translationBody.stream, false)
+assert.match(translationBody.messages[0].content, /雅典卫城的简介/)
+assert.deepEqual(audioTranslation, { titleTw: '雅典衛城', titleEn: 'The Acropolis of Athens', descriptionTw: '雅典衛城的簡介。', descriptionEn: 'An introduction to the Acropolis of Athens.' })
+assert.deepEqual(sanitizeAudioTrackTranslation({ titleTw: '雅典衛城', titleEn: 'Acropolis', descriptionTw: 'ignored', descriptionEn: 'ignored' }, { title: '雅典卫城', description: '' }), { titleTw: '雅典衛城', titleEn: 'Acropolis', descriptionTw: '', descriptionEn: '' })
+await assert.rejects(() => requestAudioTrackTranslation({ title: '', apiKey: 'test-token' }), /请先填写简体标题/)
+await assert.rejects(() => requestAudioTrackTranslation({ title: '题'.repeat(201), apiKey: 'test-token' }), /200 字以内/)
+await assert.rejects(() => requestAudioTrackTranslation({ title: '测试', description: '文'.repeat(1601), apiKey: 'test-token' }), /1600 字以内/)
+await assert.rejects(() => requestAudioTrackTranslation({ title: '测试标题', description: '测试简介', apiKey: '', fetchImpl: async () => { throw new Error('must not call') } }), /本地 AI 服务尚未配置/)
+await assert.rejects(() => requestAudioTrackTranslation({ title: '测试标题', apiKey: 'test-token', fetchImpl: async () => ({ ok: true, status: 200, json: async () => ({ choices: [{ message: { content: JSON.stringify({ titleTw: '', titleEn: '' }) } }] }) }) }), /未返回完整的繁体与英文标题/)
+await assert.rejects(() => requestAudioTrackTranslation({ title: '测试标题', apiKey: 'test-token', fetchImpl: async () => ({ ok: false, status: 429, headers: { get: () => '30' }, json: async () => ({ error: { message: 'Rate limit exceeded' } }) }) }), /请求频率已达限制/)
+console.log('Attraction AI fill and audio-track translation unit tests passed.')

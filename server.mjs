@@ -9,7 +9,7 @@ import tls from 'node:tls'
 import { closeStorage, initStorage, readData, saveData, storageStatus } from './storage.mjs'
 import { audioEntitled, publicHeritage, signedAudioToken, streamPrivateAudio, uploadPrivateAudio, validateAttraction, validateHeritageRecord, verifySignedAudioToken, normalizeVisitorSections, sanitizeRichText, visibleTrack } from './heritage-content.mjs'
 import { amountToFen, createMiniProgramPrepay, decryptWechatNotify, queryWechatTransaction, realPayNotifyReady, realPayRequestReady, verifyWechatNotify, wechatPayConfig } from './wechat-pay.mjs'
-import { requestAdminDraft } from './attraction-ai-fill.mjs'
+import { requestAdminDraft, requestAudioTrackTranslation } from './attraction-ai-fill.mjs'
 
 const root = dirname(fileURLToPath(import.meta.url))
 const demoContentPath = resolve(root, 'seed/content-demo.json')
@@ -531,6 +531,17 @@ async function rawBody(req, limit = 1024 * 1024) {
   }
   return Buffer.concat(chunks).toString('utf8')
 }
+async function audioBody(req, limit = 30 * 1024 * 1024) {
+  if (Number(req.headers['content-length']) > limit) throw new Error('payload too large')
+  const chunks = []
+  let size = 0
+  for await (const chunk of req) {
+    size += chunk.length
+    if (size > limit) throw new Error('payload too large')
+    chunks.push(chunk)
+  }
+  return Buffer.concat(chunks)
+}
 async function handleWechatPayNotify(req, res) {
   if (!realPayNotifyReady(wechatPay)) return miniProgramPaymentUnavailable(res)
   const raw = await rawBody(req)
@@ -754,6 +765,24 @@ function normalizePublicDestination(item, cities, attractions) {
     : undefined
   return { ...item, cityId, attractionIds, ...(Object.prototype.hasOwnProperty.call(item, 'attractionId') ? { attractionId: legacyAttractionId } : {}) }
 }
+const miniProgramBannerHashCache = new Map()
+function miniProgramBannerImage(value, imageUrl) {
+  const normalized = imageUrl(value)
+  if (typeof normalized !== 'string' || !normalized || normalized.startsWith('/') || /^(https?:)?\/\//i.test(normalized)) return normalized
+  const filename = normalized.replace(/^(?:\.\/images\/|images\/)/, '')
+  const match = filename.match(/^([a-z0-9][a-z0-9._-]*)\.(png|jpe?g)$/i)
+  if (!match || !existsSync(join(runtimeImageDir, filename))) return normalized
+  const sourcePath = join(runtimeImageDir, filename)
+  const metadata = statSync(sourcePath)
+  const cached = miniProgramBannerHashCache.get(sourcePath)
+  let sourceHash = cached && cached.size === metadata.size && cached.mtimeMs === metadata.mtimeMs ? cached.hash : ''
+  if (!sourceHash) {
+    sourceHash = crypto.createHash('sha256').update(readFileSync(sourcePath)).digest('hex').slice(0, 10)
+    miniProgramBannerHashCache.set(sourcePath, { size: metadata.size, mtimeMs: metadata.mtimeMs, hash: sourceHash })
+  }
+  const optimized = `${match[1]}.mp-${sourceHash}.webp`
+  return existsSync(join(runtimeImageDir, optimized)) ? `./images/${optimized}` : normalized
+}
 function homeBannerPayload(input = {}, current = {}) {
   const title = String(input.title ?? current.title ?? '').trim().slice(0, 120)
   const description = String(input.description ?? current.description ?? '').trim().slice(0, 500)
@@ -765,7 +794,7 @@ function homeBannerPayload(input = {}, current = {}) {
 }
 function publicHomeBanners(data) {
   const imageUrl = (value) => { const image = String(value || ''); if (!image || /^(https?:)?\/\//i.test(image) || image.startsWith('/')) return image; const cleaned = image.replace(/^(?:\.\/|\/)?(?:images\/)+/, ''); return cleaned ? `./images/${cleaned}` : image }
-  return homeSettings(data, imageUrl).banners.map((item) => ({ ...item, description: item.description || '', alt: item.alt || item.title, enabled: true, sort: Number(item.sort || 0) }))
+  return homeSettings(data, (value) => miniProgramBannerImage(value, imageUrl)).banners.map((item) => ({ ...item, description: item.description || '', alt: item.alt || item.title, enabled: true, sort: Number(item.sort || 0) }))
 }
 function publicHome(data) {
   return {
@@ -841,7 +870,7 @@ function demoAttractionContent(item, detail, imageUrl, page) {
   const summaryIsDemo = !String(item.summary || '').trim()
   return { ...detail, summary: summaryIsDemo ? demo.summary.zh : item.summary, ...(summaryIsDemo ? { summaryTw: demo.summary.tw, summaryEn: demo.summary.en } : {}), visitorInfo, visitorInfoSections, exhibits, highlights, routes, audioGuides, demoFields: { ...(summaryIsDemo ? { summary: true } : {}), ...(!savedHighlights?.length && !detail.highlights?.length ? { highlights: true } : {}), ...(!detail.exhibits?.length ? { exhibits: true } : {}), ...(!detail.routes?.length ? { routes: true } : {}), ...(missingAudioCategories.length ? { audioGuides: true, audioGuideCategories: missingAudioCategories.map((entry) => entry.category) } : {}), ...(demoVisitorFields.length ? { visitorInfo: demoVisitorFields } : {}) } }
 }
-function publicContent(data, countryId = 'greece') {
+function publicContent(data, countryId = 'greece', { includeAttractionDetails = true } = {}) {
   const imageUrl = (value) => {
   if (!value) return value
   const str = String(value)
@@ -867,14 +896,14 @@ function publicContent(data, countryId = 'greece') {
   })
   const publicCities = scoped(data.cities).filter((item) => item.status !== 'archived').map((item) => ({ ...item, mosaic: (item.mosaic || []).map((image) => `./images/${image}`) }))
   const publicDestinations = scoped(data.destinations).filter((item) => item.status === 'published').map((item) => ({ ...normalizePublicDestination(item, publicCities, publicAttractions), image: imageUrl(item.image) })).filter((item) => item.cityId && item.attractionIds.length > 0)
-  const home = homeSettings(data, imageUrl)
+  const home = homeSettings(data, (value) => miniProgramBannerImage(value, imageUrl))
   const activeDestinationCategories = (data.destinationCategories || []).filter((item) => item.enabled !== false).sort((a, b) => Number(a.sort || 0) - Number(b.sort || 0))
-  return {
+  const payload = {
     settings: { ...data.settings, homeEyebrow: home.eyebrow, homeTitle: home.title, homeDescription: home.description, homeBanners: home.banners },
     home,
     attractionDetailPage,
     attractionDetails: heritage.attractionDetails,
-    heritageGuideBanners: publicHeritageGuideBanners(data, imageUrl),
+    heritageGuideBanners: publicHeritageGuideBanners(data, (value) => miniProgramBannerImage(value, imageUrl)),
     miniprogramServiceEntries: publicMiniprogramServiceEntries(data, imageUrl),
     vehicleService: publicVehicleService(data),
     countries: countries.map((item) => ({ ...item, heroImage: imageUrl(item.heroImage) })),
@@ -889,6 +918,8 @@ function publicContent(data, countryId = 'greece') {
     // Backward-compatible alias for clients that have not moved to destinationCategories yet.
     destinationTypes: activeDestinationCategories.map((item) => ({ id: item.key, name: item.name, description: item.description || '', status: 'published', sort: item.sort || 0 })),
   }
+  if (!includeAttractionDetails) delete payload.attractionDetails
+  return payload
 }
 function readiness(data) {
   const requiredCollections = ['routes', 'destinations', 'cities', 'attractions', 'sampleItineraries', 'customTrips', 'leads', 'miniprogramUsers']
@@ -1060,6 +1091,11 @@ async function collectionHandler(data, collection, method, pathname, payload) {
     const problem = validateAttraction({ ...previous, ...normalizedPayload }, data)
     if (problem) return { status: 422, body: { code: 'ATTRACTION_VALIDATION_FAILED', error: problem } }
   }
+  if (collection === 'cities' && method === 'POST') {
+    const cityId = String(normalizedPayload.id || '').trim()
+    if (!cityId || !String(normalizedPayload.name || '').trim() || !(data.countries || []).some((country) => country.id === normalizedPayload.countryId)) return { status: 422, body: { error: '请填写城市 ID、城市名称和有效所属国家' } }
+    if (items.some((item) => item.id === cityId)) return { status: 409, body: { error: '城市 ID 已存在，请编辑原城市' } }
+  }
   if (method === 'POST') { const next = { ...normalizedPayload, id: normalizedPayload.id || id(collection.slice(0, -1)) }; items.push(next); await saveData(data); return { status: 201, body: next } }
   const index = items.findIndex((item) => item.id === itemId)
   if (index < 0) return { status: 404, body: { error: 'not found' } }
@@ -1086,7 +1122,7 @@ const server = http.createServer(async (req, res) => {
       const token = createAdminSessionToken(adminSessionSecret, adminTokenTtlMs)
       return json(res, 200, { token, tokenType: 'Bearer', expiresIn: Math.floor(adminTokenTtlMs / 1000), user: { name: 'SY Admin', role: 'editor' } })
     }
-    if (url.pathname === '/api/content' && method === 'GET') return json(res, 200, publicContent(readData(), url.searchParams.get('country') || 'greece'))
+    if (url.pathname === '/api/content' && method === 'GET') return json(res, 200, publicContent(readData(), url.searchParams.get('country') || 'greece', { includeAttractionDetails: url.searchParams.get('includeAttractionDetails')?.toLowerCase() !== 'false' }))
     if (url.pathname === '/api/miniprogram/access' && method === 'GET') return json(res, 200, miniProgramAccessPayload(readData()))
     if (url.pathname === '/api/wechat/pay/notify' && method === 'POST') return handleWechatPayNotify(req, res)
     const audioRoute = url.pathname.match(/^\/api\/miniprogram\/audio\/([^/]+)\/(preview|access|full)$/)
@@ -1356,6 +1392,20 @@ const server = http.createServer(async (req, res) => {
     }
     if (url.pathname.startsWith('/api/admin/')) {
       if (!isAdmin(req)) return json(res, 401, { error: '未授权，请先登录后台' })
+      if (url.pathname === '/api/admin/audio-track-translation' && method === 'POST') {
+        if (!attractionAiEnabled()) return json(res, 404, { error: 'AI 翻译未启用：服务端未配置 SY_LOCAL_ASSISTANT_ENABLED 或 SY_SENSENOVA_API_KEY' })
+        let input
+        try { input = await body(req) } catch { return json(res, 400, { error: '请求内容无效' }) }
+        try {
+          const translated = await requestAudioTrackTranslation({ title: input?.title, description: input?.description, apiKey: process.env.SY_SENSENOVA_API_KEY })
+          return json(res, 200, translated)
+        } catch (error) {
+          const status = /请先填写|请将简体/.test(error.message) ? 422 : 502
+          if (error.providerDetails) console.error('[admin-audio-translation] provider request failed', JSON.stringify({ time: new Date().toISOString(), ...error.providerDetails }))
+          else if (status !== 422) console.error('[admin-audio-translation] request failed', JSON.stringify({ time: new Date().toISOString(), provider: 'sensenova', model: process.env.SY_SENSENOVA_MODEL || 'sensenova-6.8-flash-lite', category: 'connection_or_response_error' }))
+          return json(res, status, { error: error.message })
+        }
+      }
       if (['/api/admin/ai-fill/status', '/api/admin/attractions/ai-fill/status'].includes(url.pathname) && method === 'GET') {
         return attractionAiEnabled() ? json(res, 200, { enabled: true }) : json(res, 404, { enabled: false })
       }
@@ -1387,7 +1437,7 @@ const server = http.createServer(async (req, res) => {
             }))
           } else if (status !== 422) {
             console.error('[admin-ai-fill] request failed', JSON.stringify({
-              time: new Date().toISOString(), type: ['attraction', 'route', 'destination'].includes(input?.type) ? input.type : 'attraction', provider: 'sensenova', model: process.env.SY_SENSENOVA_MODEL || 'deepseek-v4-flash', category: 'connection_or_response_error',
+              time: new Date().toISOString(), type: ['attraction', 'route', 'destination'].includes(input?.type) ? input.type : 'attraction', provider: 'sensenova', model: process.env.SY_SENSENOVA_MODEL || 'sensenova-6.8-flash-lite', category: 'connection_or_response_error',
             }))
           }
           sendAiEvent('error', { status, error: error.message })
@@ -1595,7 +1645,10 @@ const server = http.createServer(async (req, res) => {
         return json(res, method === 'POST' ? 201 : 200, payload)
       }
       if (url.pathname === '/api/admin/upload-audio' && method === 'POST') {
-        const input = await body(req, 42 * 1024 * 1024)
+        const binary = /^audio\/(?:mpeg|mp3|mp4|x-m4a|m4a)$/i.test(String(req.headers['content-type'] || ''))
+        const input = binary
+          ? { name: decodeURIComponent(String(req.headers['x-file-name'] || '')), type: req.headers['content-type'], previewSeconds: req.headers['x-preview-seconds'], buffer: await audioBody(req) }
+          : await body(req, 42 * 1024 * 1024)
         try {
           const result = uploadPrivateAudio(input)
           data.audioUploads = Array.isArray(data.audioUploads) ? data.audioUploads : []

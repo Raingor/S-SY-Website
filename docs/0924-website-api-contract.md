@@ -4,7 +4,9 @@
 
 ## GET `/api/content?country=greece`
 
-原有 `attractions`, `routes`（旅游路线）等字段保留；以下 JSON 仅作字段形状示意，实际缺失值按下文的 Website 演示回退填充：
+原有 `attractions`, `routes`（旅游路线）等字段保留；以下 JSON 仅作字段形状示意，实际缺失值按下文的 Website 演示回退填充。
+
+兼容性与首屏体积：默认仍返回完整旧契约（含顶层 `attractionDetails`）；客户端可选传 `includeAttractionDetails=false`，此时仅省略重复的顶层 `attractionDetails`，`attractions[]` 中的详情、`attractionDetailPage` 和其他字段不变；参数缺失或为 `true` 时仍返回完整字段。当前 MpApp 未消费该顶层重复字段，可在适配后使用此参数。生产 Nginx 已验证对该 JSON 使用 gzip；Website 实现在存在 content-hash WebP sidecar 时将 `home.banners[].image` / `settings.homeBanners[].image` / `heritageGuideBanners[].image` 切换到相应 sidecar URL，缺失时回退原图；字段形状与数据库原图引用不变，原图始终保留。上线前须把 WebP sidecar 与服务端代码一同部署，后台存储原图路径不会被修改。
 
 ```json
 {
@@ -91,7 +93,7 @@
 
 ## 管理接口与测试边界
 
-后台 Bearer 登录后：`GET/POST/PATCH/DELETE /api/admin/audioRoutes|audioAlbums|audioTracks[/:id]`；`POST /api/admin/upload-audio` 接收 `{name,type,data:"data:audio/mpeg;base64,…"}`，限 30MB，生成 `audioFile,previewFile,durationSeconds,previewSeconds`；图片仍用旧 `/api/admin/upload-image`。景点仍由旧 `/api/admin/attractions/:id` 维护。测试用的音频/专辑标题必须冠 `【TEST ONLY】` 并仅写隔离副本，不碰真实站点数据。
+后台 Bearer 登录后：`GET/POST/PATCH/DELETE /api/admin/audioRoutes|audioAlbums|audioTracks[/:id]`；`POST /api/admin/upload-audio` 接收 `{name,type,data:"data:audio/mpeg;base64,…"}`，限 30MB，生成 `audioFile,previewFile,durationSeconds,previewSeconds`；图片仍用旧 `/api/admin/upload-image`。景点仍由旧 `/api/admin/attractions/:id` 维护。管理页操作路径：**景点管理 → 编辑景点 → 讲解点**维护讲解点（exhibits）的新增、编辑、移除；**语音与文史 → 导览音频 / 文史节目**维护音轨。音轨选择 `category=线上游览` 与景点后，可选绑定该景点已发布讲解点；发布音轨必须上传私有音频并成功生成试听。音轨表单只手工填写简体标题/简介，点击「自动翻译」会调用需管理员认证且受显式 AI 配置门禁保护的 `POST /api/admin/audio-track-translation`，返回 `titleTw,titleEn,descriptionTw,descriptionEn` 并写入原有字段；保存时仍沿用 `audioTracks` CRUD，公开 `/api/content` 字段结构不变。修改简体标题或简介会清空已有翻译值，需重新翻译再保存；翻译结果只读预览，不再手工录入。测试用的音频/专辑标题必须冠 `【TEST ONLY】` 并仅写隔离副本，不碰真实站点数据。
 
 本地自动化验收：`node scripts/test-heritage-content.mjs`，临时复制代码/seed 以 `SY_STORAGE=json` 隔离运行，运行结束删除临时内容；浏览器后台表单手测、真实微信开发者工具/真机联调、生产来源核对和部署 **未由自动化测试代替**。
 

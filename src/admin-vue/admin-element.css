@@ -161,8 +161,47 @@
 @media (max-width:760px) { .el-admin .structured-object-editor { grid-template-columns:1fr; } .el-admin .settings-structured-head { align-items:flex-start; flex-direction:column; } .el-admin .settings-structured .array-fields .full-field { grid-column:auto; } }
 @media(max-width:1050px){.el-admin .admin-aside{width:194px!important}.el-admin .admin-main{margin-left:194px}.el-admin .admin-content{padding:20px 18px 34px}.el-admin .admin-header{padding:0 18px}}
 @media(max-width:760px){.el-admin .admin-aside{position:relative;inset:auto;width:100%!important;min-height:auto}.el-admin .admin-layout{display:block}.el-admin .admin-aside .side-menu{max-height:250px}.el-admin .admin-main{margin-left:0}.el-admin .admin-header{position:static;height:auto!important;min-height:72px;padding:12px 14px}.el-admin .header-actions .el-button{padding:8px}.el-admin .admin-content{padding:14px 10px 28px}.el-admin .card-heading{align-items:flex-start;flex-direction:column}.el-admin .card-actions{width:100%;justify-content:flex-start}.el-admin .list-search{width:100%}.el-admin .list-filter-toolbar{align-items:flex-start;flex-direction:column}.el-admin .list-filter-controls{width:100%}.el-admin .list-filter-select,.el-admin .list-filter-date{width:100%}.el-admin .list-filter-number{width:100%}.el-admin .list-filter-number .el-input{flex:1;width:1px}.el-admin .list-filter-summary{width:100%;justify-content:space-between}.el-admin .form-grid,.el-admin .array-fields{grid-template-columns:1fr}.el-admin .form-grid .full-field{grid-column:auto}.el-admin .editor-heading{flex-direction:column;gap:10px}.el-admin .editor-heading h1{font-size:22px}.el-admin .editor-card .el-card__body{padding:15px 12px}.el-admin .template-guide{align-items:flex-start;flex-direction:column}}
+@media(max-width:760px){.el-admin .edit-form.edit-form-horizontal .el-form-item__label{width:34%!important}.el-admin .edit-form.edit-form-horizontal .el-form-item__content{margin-left:34%!important}.el-admin .edit-form.edit-form-horizontal .el-form-item__content>.el-button{max-width:100%;height:auto;white-space:normal;line-height:1.4}}
 .el-admin .admin-table-scroll { width:100%; min-width:0; max-height:calc(100vh - 330px); overflow:auto; scrollbar-gutter:stable; }
 .el-admin .list-pagination { margin-top:14px; overflow-x:auto; }
+.el-admin .bulk-attraction-toolbar { display:flex; align-items:center; flex-wrap:wrap; gap:10px; margin:12px 0; padding:12px 14px; border:1px solid #dce9e7; border-radius:4px; background:#f5faf9; font-size:13px; }
+.el-admin .bulk-attraction-toolbar small { color:#66747a; }
+.el-admin .bulk-attraction-toolbar .el-button+.el-button { margin-left:0; }
+.el-admin .publication-panel { margin-bottom:16px; border-color:#dce9e7; }
+.el-admin .publication-heading { display:flex; align-items:flex-start; flex-wrap:wrap; gap:12px; justify-content:space-between; margin-bottom:12px; }
+.el-admin .publication-heading p,.el-admin .publication-id { display:block; margin:5px 0; color:#66747a; font-size:12px; overflow-wrap:anywhere; }
+.el-admin .publication-heading small { color:#66747a; }
+.el-admin .editor-dirty-tag { margin-left:8px; }
+.el-admin .destination-link-cell { display:flex; align-items:flex-start; flex-direction:column; gap:7px; padding:4px 0; }
+.el-admin .destination-link-cell small { color:#66747a; }
+.el-admin .destination-link-editor { margin-bottom:24px; padding:20px; border:1px solid #bddbd7; border-top:3px solid var(--ea-teal); border-radius:6px; background:#fbfefd; scroll-margin-top:88px; }
+.el-admin .destination-link-editor:focus-visible { outline:2px solid var(--ea-teal); outline-offset:3px; }
+.el-admin .destination-link-heading { display:flex; flex-wrap:wrap; justify-content:space-between; gap:12px; margin-bottom:18px; }
+.el-admin .destination-link-heading h2 { margin:6px 0; font-size:20px; }
+.el-admin .destination-link-heading p { margin:0; color:#66747a; font-size:13px; line-height:1.7; }
+.el-admin .destination-link-steps { display:grid; grid-template-columns:minmax(200px,1fr) minmax(0,2fr); gap:24px; }
+.el-admin .destination-link-steps>.el-form-item { min-width:0; margin-bottom:12px; }
+.el-admin .destination-city-select { width:100%; }
+.el-admin .destination-link-search { display:flex; flex-wrap:wrap; align-items:center; gap:10px; margin-bottom:12px; }
+.el-admin .destination-link-search .el-input { flex:1 1 200px; }
+.el-admin .destination-attraction-options { max-height:270px; overflow:auto; border:1px solid var(--ea-line); border-radius:4px; background:#fff; }
+.el-admin .destination-attraction-options:empty { display:none; }
+.el-admin .destination-attraction-options .el-checkbox { display:flex; align-items:center; margin:0; padding:10px 12px; border-bottom:1px solid #edf2f1; white-space:normal; }
+.el-admin .destination-attraction-options .el-checkbox:last-child { border-bottom:0; }
+.el-admin .destination-attraction-options .el-checkbox__label { min-width:0; line-height:1.5; overflow-wrap:anywhere; }
+.el-admin .destination-attraction-options small { display:block; color:#66747a; font-size:12px; }
+.el-admin .destination-selected { display:flex; flex-wrap:wrap; align-items:center; gap:7px; margin-top:10px; font-size:12px; }
+.el-admin .destination-selected .el-tag { height:auto; max-width:100%; white-space:normal; overflow-wrap:anywhere; }
+.el-admin .destination-link-empty { padding:18px 14px; border:1px dashed #c6d7d4; color:#66747a; line-height:1.7; font-size:13px; }
+.el-admin .destination-link-check { padding:14px 16px; border-radius:4px; background:#edf6f3; font-size:13px; line-height:1.8; }
+.el-admin .destination-link-check ul { padding-left:20px; margin:6px 0; }
+.el-admin .destination-link-check p { margin:6px 0; }
+.el-admin .destination-link-check small { color:#66747a; }
+@media(max-width:760px){.el-admin .destination-link-editor{padding:14px 12px;scroll-margin-top:14px}.el-admin .destination-link-steps{grid-template-columns:1fr;gap:8px}.el-admin .destination-link-heading h2{font-size:18px}}
+.admin-confirm-dialog { max-width:92vw; }
+.admin-confirm-text { max-height:45vh; overflow:auto; white-space:pre-line; overflow-wrap:anywhere; }
+.el-admin .editor-page .form-actions { flex-wrap:wrap; gap:8px; padding-bottom:32px; }
+.el-admin .editor-page .form-actions .el-button+.el-button { margin-left:0; }
 .el-admin .list-pagination .el-pagination { width:max-content; min-width:100%; text-align:right; }
 .el-admin .admin-data-table { width:100%; color:#35444a; font-size:13px; }
 .el-admin .admin-data-table .cell { line-height:1.45; }

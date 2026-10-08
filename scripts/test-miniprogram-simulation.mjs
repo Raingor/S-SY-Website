@@ -1,4 +1,5 @@
-import { cp, mkdir, rm, symlink } from 'node:fs/promises'
+import { cp, mkdir, readFile, rm, symlink, writeFile } from 'node:fs/promises'
+import { createHash } from 'node:crypto'
 import { mkdtemp } from 'node:fs/promises'
 import { join, resolve } from 'node:path'
 import { spawn } from 'node:child_process'
@@ -29,6 +30,24 @@ async function prepare() {
   await cp(join(root, 'attraction-ai-fill.mjs'), join(tempRoot, 'attraction-ai-fill.mjs'))
   await cp(join(root, 'seed/site-data.json'), join(tempRoot, 'seed/site-data.json'))
   await cp(join(root, 'seed/content-demo.json'), join(tempRoot, 'seed/content-demo.json'))
+  const fixturePath = join(tempRoot, 'seed/site-data.json')
+  const fixture = JSON.parse(await readFile(fixturePath, 'utf8'))
+  fixture.homeBanners = [
+    { id: 'optimized-banner-test', title: 'Test optimized banner', description: '', alt: 'test', image: './images/home-test.png', enabled: true, sort: 1 },
+    { id: 'fallback-banner-test', title: 'Test original banner', description: '', alt: 'test', image: './images/home-fallback.jpg', enabled: true, sort: 2 },
+  ]
+  fixture.heritageGuideBanners = [
+    { id: 'optimized-heritage-banner', title: 'Test heritage optimized', image: './images/home-test.png', enabled: true, sort: 1 },
+    { id: 'fallback-heritage-banner', title: 'Test heritage fallback', image: './images/home-fallback.jpg', enabled: true, sort: 2 },
+  ]
+  await writeFile(fixturePath, JSON.stringify(fixture))
+  const imageDir = join(tempRoot, 'public/images')
+  await mkdir(imageDir, { recursive: true })
+  const sourceBytes = Buffer.from('test-source-banner-image')
+  await writeFile(join(imageDir, 'home-test.png'), sourceBytes)
+  await writeFile(join(imageDir, 'home-fallback.jpg'), Buffer.from('fallback-source'))
+  const sourceHash = createHash('sha256').update(sourceBytes).digest('hex').slice(0, 10)
+  await writeFile(join(imageDir, `home-test.mp-${sourceHash}.webp`), Buffer.from('optimized-webp-fixture'))
   await symlink(join(root, 'node_modules'), join(tempRoot, 'node_modules'), 'dir')
 }
 
@@ -89,6 +108,23 @@ try {
   await prepare()
   start(true)
   await waitForServer()
+
+  let bannerHome = await request('/api/miniprogram/home')
+  const expectedOptimizedBanner = `./images/home-test.mp-${createHash('sha256').update(Buffer.from('test-source-banner-image')).digest('hex').slice(0, 10)}.webp`
+  assert(bannerHome.status === 200 && bannerHome.data.home.banners[0].image === expectedOptimizedBanner, 'mini-program home should prefer a versioned optimized banner when present')
+  assert(bannerHome.data.home.banners[1].image === './images/home-fallback.jpg', 'mini-program home should fall back to original banner when no optimized file exists')
+  let bannerContent = await request('/api/content')
+  assert(bannerContent.status === 200 && bannerContent.data.home.banners[0].image === expectedOptimizedBanner, 'content home should expose the same optimized banner path')
+  assert(bannerContent.data.settings.homeBanners[0].image === expectedOptimizedBanner, 'legacy homeBanners alias should match optimized banner path')
+  assert(bannerContent.data.heritageGuideBanners[0].image === expectedOptimizedBanner, 'heritage guide banners should reuse optimized sidecars')
+  assert(bannerContent.data.heritageGuideBanners[1].image === './images/home-fallback.jpg', 'heritage banner should fall back when its optimized sidecar is missing')
+  assert(Object.hasOwn(bannerContent.data, 'attractionDetails'), 'default content contract must retain attractionDetails')
+  const slimContent = await request('/api/content?includeAttractionDetails=false')
+  assert(slimContent.status === 200 && !Object.hasOwn(slimContent.data, 'attractionDetails'), 'includeAttractionDetails=false must omit only the duplicated top-level attractionDetails field')
+  assert(slimContent.data.attractions.length === bannerContent.data.attractions.length && slimContent.data.attractionDetailPage && slimContent.data.home.banners[0].image === expectedOptimizedBanner, 'slim content contract must retain all other client content fields')
+  assert(Buffer.byteLength(JSON.stringify(slimContent.data)) < Buffer.byteLength(JSON.stringify(bannerContent.data)), 'slim content response must be smaller than the backward-compatible default')
+  const explicitFullContent = await request('/api/content?includeAttractionDetails=true')
+  assert(explicitFullContent.status === 200 && Object.hasOwn(explicitFullContent.data, 'attractionDetails'), 'includeAttractionDetails=true must preserve the full content contract')
 
   let result = await request('/api/miniprogram/knowledge/config')
   assert(result.status === 200 && result.data.simulation === true && result.data.trialSeconds === 60 && result.data.products.attraction.price === 0.01 && result.data.products.membership.price === 0.01, 'config contract failed')
@@ -172,7 +208,7 @@ try {
   await waitForServer()
   result = await request('/api/miniprogram/knowledge/config')
   assert(result.status === 404 && result.data.code === 'MINIPROGRAM_SIMULATION_DISABLED', 'simulation disable switch failed')
-  console.log('PASS: phone session, 0.01 products, order query/isolation, fixtures, attraction purchase, membership/failed payment, idempotency, reset, maintenance gate, content isolation, disable switch')
+  console.log('PASS: phone session, 0.01 products, order query/isolation, fixtures, attraction purchase, membership/failed payment, idempotency, reset, banner optimization/fallback, optional slim content contract, authentication boundaries and disable switch')
 } finally {
   await stop()
   await rm(tempRoot, { recursive: true, force: true })
