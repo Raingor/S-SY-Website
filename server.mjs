@@ -312,6 +312,8 @@ function defaultMiniProgramKnowledgeConfig() {
     trialSeconds: 60,
     products: {
       attraction: { enabled: true, productType: 'attraction', name: '景点单篇讲解', price: 9.9, currency: 'CNY' },
+      city: { enabled: true, productType: 'city', name: '城市景点通行', price: 69.9, currency: 'CNY' },
+      album: { enabled: true, productType: 'album', name: '文史专辑', price: 9.9, currency: 'CNY' },
       membership: { enabled: false, productType: 'membership', name: '终身会员', price: 99, currency: 'CNY' },
       annualMembership: { enabled: true, productType: 'annualMembership', name: '年会员', price: 199, currency: 'CNY', durationDays: 365 },
     },
@@ -329,7 +331,7 @@ function miniProgramKnowledgeConfig(data) {
       productType: key,
       name: String(value.name || product.name).trim().slice(0, 120),
       price: Number.isFinite(Number(value.price)) && Number(value.price) >= 0 ? Number(value.price) : product.price,
-      currency: String(value.currency || product.currency).trim().slice(0, 12),
+      currency: 'CNY',
     }]
   }))
   const trialSeconds = Number(configured.trialSeconds)
@@ -350,6 +352,43 @@ function simulationState(data) {
   return data.miniprogramSimulation
 }
 function publishedAttractionIds(data) { return (data.attractions || []).filter((item) => item.status === 'published').map((item) => item.id) }
+function paidCommerceEntitlements(data, paidOrders, member) {
+  const unlockedCities = member
+    ? [...new Set((data.cities || []).filter((city) => city.status === 'published' && city.enabled !== false && (data.attractions || []).some((attraction) => attraction.city === city.id && attraction.status === 'published')).map((city) => city.id))]
+    : [...new Set(paidOrders.filter((order) => order.productType === 'city').map((order) => order.cityId).filter(Boolean))]
+  const unlockedAlbums = [...new Set(paidOrders.filter((order) => order.productType === 'album').map((order) => order.albumId).filter(Boolean))]
+  const cityIds = new Set(unlockedCities)
+  const attractionIds = member
+    ? publishedAttractionIds(data)
+    : [...new Set([
+      ...paidOrders.filter((order) => order.productType === 'attraction').map((order) => order.attractionId),
+      ...(data.attractions || []).filter((item) => cityIds.has(item.city) && item.status === 'published').map((item) => item.id),
+    ].filter(Boolean))]
+  return { unlockedAttractions: attractionIds, unlockedCities, unlockedAlbums }
+}
+function commercePurchaseTarget(data, productType, input = {}) {
+  if (productType === 'attraction') {
+    const attractionId = String(input.attractionId || '').trim()
+    const attraction = (data.attractions || []).find((item) => item.id === attractionId && item.status === 'published')
+    return attraction ? { attractionId, label: attraction.name || attractionId } : { error: 'ATTRACTION_NOT_FOUND', message: '景点不存在或未发布' }
+  }
+  if (productType === 'city') {
+    const cityId = String(input.cityId || '').trim()
+    const city = (data.cities || []).find((item) => item.id === cityId && item.status === 'published' && item.enabled !== false)
+    if (!city) return { error: 'CITY_NOT_FOUND', message: '城市不存在、未发布或已停用' }
+    if (!(data.attractions || []).some((item) => item.city === cityId && item.status === 'published')) return { error: 'CITY_HAS_NO_PUBLISHED_ATTRACTIONS', message: '该城市目前没有已发布景点' }
+    return { cityId, label: city.name || cityId }
+  }
+  if (productType === 'album') {
+    const albumId = String(input.albumId || '').trim()
+    const album = (data.audioAlbums || []).find((item) => item.id === albumId && item.status === 'published')
+    if (!album) return { error: 'ALBUM_NOT_FOUND', message: '专辑不存在或未发布' }
+    if (!(data.audioTracks || []).some((item) => item.albumId === albumId && item.status === 'published')) return { error: 'ALBUM_HAS_NO_PUBLISHED_TRACKS', message: '该专辑目前没有已发布节目' }
+    return { albumId, label: album.title || albumId }
+  }
+  if (productType === 'annualMembership' || productType === 'membership') return { label: '' }
+  return { error: 'PAYMENT_PRODUCT_UNAVAILABLE', message: '支付商品类型不受支持' }
+}
 const membershipYearMs = 365 * 24 * 60 * 60 * 1000
 function membershipOrderExpiry(order) {
   if (order?.productType !== 'annualMembership') return 0
@@ -404,7 +443,7 @@ function simulationEntitlements(data, identity) {
   const paidOrders = orders.filter((order) => order.status === 'paid')
   const membership = membershipSummary(paidOrders, Date.now(), identity.userId ? (data.miniprogramUsers || []).find((user) => user.id === identity.userId)?.membershipOverride : null)
   const member = membership.member
-  const unlocked = new Set(member ? publishedAttractionIds(data) : paidOrders.filter((order) => order.productType === 'attraction').map((order) => order.attractionId).filter(Boolean))
+  const commerce = paidCommerceEntitlements(data, paidOrders, member)
   return {
     simulation: true,
     testUser: identity.key,
@@ -412,8 +451,8 @@ function simulationEntitlements(data, identity) {
     member,
     memberLabel: membership.memberLabel,
     memberExpiresAt: membership.memberExpiresAt,
-    purchases: paidOrders.map((order) => ({ orderId: order.id, productType: order.productType, name: order.name || '', attractionId: order.attractionId || '', status: order.status, purchasedAt: order.paidAt || order.createdAt })),
-    unlockedAttractions: [...unlocked],
+    purchases: paidOrders.map((order) => ({ orderId: order.id, productType: order.productType, name: order.name || '', attractionId: order.attractionId || '', cityId: order.cityId || '', albumId: order.albumId || '', status: order.status, purchasedAt: order.paidAt || order.createdAt })),
+    ...commerce,
     favorites: [],
     history: [],
     orders: orders.map(publicSimulationOrder),
@@ -435,7 +474,7 @@ function realPaymentEntitlements(data, user) {
   const paidOrders = orders.filter((order) => order.status === 'paid')
   const membership = membershipSummary(paidOrders, Date.now(), user.membershipOverride)
   const member = membership.member
-  const unlocked = new Set(member ? publishedAttractionIds(data) : paidOrders.filter((order) => order.productType === 'attraction').map((order) => order.attractionId).filter(Boolean))
+  const commerce = paidCommerceEntitlements(data, paidOrders, member)
   return {
     simulation: false,
     payment: 'wechat-v3',
@@ -443,8 +482,8 @@ function realPaymentEntitlements(data, user) {
     member,
     memberLabel: membership.memberLabel,
     memberExpiresAt: membership.memberExpiresAt,
-    purchases: paidOrders.map((order) => ({ orderId: order.id, productType: order.productType, name: order.name || '', attractionId: order.attractionId || '', status: order.status, purchasedAt: order.paidAt || order.createdAt })),
-    unlockedAttractions: [...unlocked],
+    purchases: paidOrders.map((order) => ({ orderId: order.id, productType: order.productType, name: order.name || '', attractionId: order.attractionId || '', cityId: order.cityId || '', albumId: order.albumId || '', status: order.status, purchasedAt: order.paidAt || order.createdAt })),
+    ...commerce,
     favorites: [],
     history: [],
     orders: orders.map(publicPaymentOrder)
@@ -454,12 +493,13 @@ function miniProgramCommerceUser(req, data) {
   if (miniProgramSimulationEnabled()) return null
   return miniProgramUserFromRequest(req, data)
 }
-function realPaymentProduct(data, productType) {
+function realPaymentProduct(data, productType, target) {
   const product = miniProgramKnowledgeConfig(data).products[productType]
   if (!product || product.enabled === false) return null
   const amountTotal = amountToFen(product.price)
   if (!amountTotal) return null
-  return { ...product, amountTotal, description: String(product.name || '').replace(/[（(]模拟[）)]/g, '').trim().slice(0, 127) || '景点文史知识讲解' }
+  const targetLabel = target?.label ? ` · ${target.label}` : ''
+  return { ...product, amountTotal, description: `${product.name}${targetLabel}`.replace(/[（(]模拟[）)]/g, '').trim().slice(0, 127) || '景点文史知识讲解' }
 }
 function realPaymentOrderResponse(data, user, order, extra = {}) {
   return { simulation: false, payment: 'wechat-v3', order: publicPaymentOrder(order), entitlements: realPaymentEntitlements(data, user), ...extra }
@@ -491,7 +531,14 @@ async function refreshRealPaymentOrder(data, order) {
   }
 }
 function simulationUserRequired(res) { return json(res, 401, { code: 'MINIPROGRAM_SIMULATION_USER_REQUIRED', error: '请先使用手机号创建模拟测试会话' }) }
-function simulationProduct(data, productType) { return miniProgramKnowledgeConfig(data).products[productType] }
+function simulationProduct(data, productType, target) {
+  const product = miniProgramKnowledgeConfig(data).products[productType]
+  if (!product || product.enabled === false) return null
+  const amountTotal = amountToFen(product.price)
+  if (!amountTotal) return null
+  const targetLabel = target?.label ? ` · ${target.label}` : ''
+  return { ...product, amountTotal, description: `${product.name}${targetLabel}`.replace(/[（(]模拟[）)]/g, '').trim().slice(0, 127) }
+}
 function simulationOrderResponse(data, identity, order, extra = {}) { return { simulation: true, order: publicSimulationOrder(order), entitlements: simulationEntitlements(data, identity), ...extra } }
 function miniProgramConfigReady() { return Boolean(process.env.WX_APPID && process.env.WX_APP_SECRET && miniProgramTokenSecret) }
 function encodeTokenPart(value) { return Buffer.from(JSON.stringify(value)).toString('base64url') }
@@ -527,7 +574,20 @@ function adminPaymentOrder(data, order) {
   const user = (data.miniprogramUsers || []).find((item) => item.id === order.userId)
   const { openid, phone, ...safe } = order
   const membership = user ? membershipSummary(paymentOrders(data).filter((item) => item.userId === user.id), Date.now(), user.membershipOverride) : { member: false, memberLabel: '普通用户', memberExpiresAt: '' }
-  return { ...safe, userId: order.userId || null, userNickname: user?.nickname || order.userId || '未知用户', phoneMasked: phone ? maskPhone(phone) : (user?.phone ? maskPhone(user.phone) : null), ...membership }
+  const currency = String(order.currency || 'CNY').toUpperCase()
+  const amount = Number.isFinite(Number(order.amountTotal)) ? Number(order.amountTotal) / 100 : Number(order.price)
+  const productName = order.productName || order.name || order.description || ({ attraction: '景点单篇讲解', membership: '终身会员', annualMembership: '年会员' })[order.productType] || order.productType || '未知商品'
+  return {
+    ...safe,
+    orderNo: order.outTradeNo || order.orderNo || order.id || '',
+    userId: order.userId || null,
+    nickname: user?.nickname || order.userNickname || order.userId || '未知用户',
+    userNickname: user?.nickname || order.userNickname || order.userId || '未知用户',
+    productName,
+    amount: Number.isFinite(amount) ? `${currency === 'CNY' ? '¥' : `${currency} `}${amount.toFixed(2)}` : '',
+    phoneMasked: phone ? maskPhone(phone) : (user?.phone ? maskPhone(user.phone) : null),
+    ...membership
+  }
 }
 function adminPaymentMembers(data) {
   const orders = paymentOrders(data)
@@ -938,7 +998,13 @@ function publicContent(data, countryId = 'greece', { includeAttractionDetails = 
     safeGuide.sourceUrl = detail.visitorInfo?.sourceUrl || ''
     return { ...safe, ...detail, guide: safeGuide, image: imageUrl(item.image), onlineCoverImage: imageUrl(item.onlineCoverImage || item.image), expertCoverImage: imageUrl(item.expertCoverImage || item.image), shareTitle: item.shareTitle || '', shareImage: imageUrl(item.shareImage), exhibits: detail.exhibits || [], highlights: detail.highlights || [], articles: (item.articles || []).map((article) => ({ ...article, cover: imageUrl(article.cover) })) }
   })
-  const publicCities = scoped(data.cities).filter((item) => item.status !== 'archived').map((item) => ({ ...item, mosaic: (item.mosaic || []).map(imageUrl) }))
+  const publicCities = scoped(data.cities).filter((item) => item.status !== 'archived').map((item) => {
+    const configured = Array.isArray(item.mosaic) ? item.mosaic.map(imageUrl).filter(Boolean) : []
+    const attractionImages = publicAttractions.filter((attraction) => attraction.city === item.id).sort((a, b) => Number(a.sort || 0) - Number(b.sort || 0)).map((attraction) => attraction.image).filter(Boolean)
+    const countryImage = countries.find((country) => country.id === (item.countryId || countryId))?.heroImage
+    const mosaic = (configured.length ? configured : attractionImages.length ? attractionImages : countryImage ? [imageUrl(countryImage)] : []).slice(0, 4)
+    return { ...item, mosaic }
+  })
   const publicDestinations = scoped(data.destinations).filter((item) => item.status === 'published').map((item) => ({ ...normalizePublicDestination(item, publicCities, publicAttractions), image: imageUrl(item.image) })).filter((item) => item.cityId && item.attractionIds.length > 0)
   const home = homeSettings(data, (value) => miniProgramBannerImage(value, imageUrl))
   const activeDestinationCategories = (data.destinationCategories || []).filter((item) => item.enabled !== false).sort((a, b) => Number(a.sort || 0) - Number(b.sort || 0))
@@ -1116,6 +1182,14 @@ function normalizeDestinationPayload(payload, method) {
   if (Object.prototype.hasOwnProperty.call(payload, 'cityId')) next.cityId = String(payload.cityId || '').trim()
   return next
 }
+function normalizeCityPayload(payload) {
+  const next = { ...payload }
+  if (Object.prototype.hasOwnProperty.call(payload, 'mosaic')) {
+    if (!Array.isArray(payload.mosaic)) throw new Error('城市封面拼贴图必须是图片列表')
+    next.mosaic = [...new Set(payload.mosaic.map((image) => managedHighlightImage(image)).filter(Boolean))].slice(0, 12)
+  }
+  return next
+}
 async function collectionHandler(data, collection, method, pathname, payload) {
   const items = data[collection]
   const itemId = pathname.split('/').pop()
@@ -1125,8 +1199,10 @@ async function collectionHandler(data, collection, method, pathname, payload) {
       ? normalizeAttractionPayload(data, payload)
       : collection === 'destinations'
         ? normalizeDestinationPayload(payload, method)
-        : payload
-  } catch (error) { return { status: 422, body: { code: 'ATTRACTION_VALIDATION_FAILED', error: error.message || '景点资料无效' } } }
+        : collection === 'cities'
+          ? normalizeCityPayload(payload)
+          : payload
+  } catch (error) { return { status: 422, body: { code: collection === 'cities' ? 'CITY_VALIDATION_FAILED' : 'ATTRACTION_VALIDATION_FAILED', error: error.message || '内容资料无效' } } }
   if (method === 'GET') return { status: 200, body: items }
   if (collection === 'attractions' && (method === 'POST' || method === 'PATCH')) {
     const previous = method === 'PATCH' ? items.find((item) => item.id === itemId) : null
@@ -1241,16 +1317,17 @@ const server = http.createServer(async (req, res) => {
       return json(res, 200, { simulation: false, payment: 'wechat-v3', items: realPaymentOrders(data, user).map(publicPaymentOrder) })
     }
     if (url.pathname === '/api/miniprogram/orders' && method === 'POST') {
-      const data = readData(); const input = await body(req); const productType = String(input.productType || '').trim(); const attractionId = String(input.attractionId || '').trim()
+      const data = readData(); const input = await body(req); const productType = String(input.productType || '').trim()
       if (miniProgramSimulationEnabled()) {
         const identity = simulationUserIdentity(req)
         if (!identity) return simulationUserRequired(res)
         if (!identity.phoneHash) return json(res, 422, { code: 'SIMULATION_PHONE_REQUIRED', error: '创建模拟订单前请先使用手机号创建测试会话' })
-        const product = simulationProduct(data, productType)
+        const target = commercePurchaseTarget(data, productType, input)
+        if (target.error) return json(res, 422, { code: target.error, error: target.message })
+        const product = simulationProduct(data, productType, target)
         if (!product || product.enabled === false) return json(res, 422, { code: 'SIMULATION_PRODUCT_UNAVAILABLE', error: '模拟商品不可用' })
-        if (productType === 'attraction' && !(data.attractions || []).some((item) => item.id === attractionId && item.status === 'published')) return json(res, 422, { code: 'ATTRACTION_NOT_FOUND', error: '景点不存在或未发布' })
         const now = new Date().toISOString()
-        const order = { id: id('sim-order'), testUser: identity.key, userId: identity.userId, verifiedPhone: identity.phone, phoneHash: identity.phoneHash, phone: identity.phone, status: 'pending', productType, attractionId: productType === 'attraction' ? attractionId : '', name: product.name, price: product.price, currency: product.currency, createdAt: now }
+        const order = { id: id('sim-order'), testUser: identity.key, userId: identity.userId, verifiedPhone: identity.phone, phoneHash: identity.phoneHash, phone: identity.phone, status: 'pending', productType, attractionId: target.attractionId || '', cityId: target.cityId || '', albumId: target.albumId || '', name: product.description, description: product.description, price: product.price, amountTotal: product.amountTotal, currency: product.currency, createdAt: now }
         simulationState(data).orders.push(order); await saveData(data)
         return json(res, 201, { simulation: true, order: publicSimulationOrder(order), payment: null })
       }
@@ -1258,11 +1335,12 @@ const server = http.createServer(async (req, res) => {
       const user = miniProgramUserFromRequest(req, data)
       if (!user) return json(res, 401, { code: 'MINIPROGRAM_LOGIN_REQUIRED', error: '请先微信登录' })
       if (!user.phone) return json(res, 403, { code: 'PHONE_BIND_REQUIRED', error: '支付前请先绑定手机号' })
-      const product = realPaymentProduct(data, productType)
+      const target = commercePurchaseTarget(data, productType, input)
+      if (target.error) return json(res, 422, { code: target.error, error: target.message })
+      const product = realPaymentProduct(data, productType, target)
       if (!product) return json(res, 422, { code: 'PAYMENT_PRODUCT_UNAVAILABLE', error: '支付商品不可用或价格未配置' })
-      if (productType === 'attraction' && !(data.attractions || []).some((item) => item.id === attractionId && item.status === 'published')) return json(res, 422, { code: 'ATTRACTION_NOT_FOUND', error: '景点不存在或未发布' })
       const now = new Date().toISOString()
-      const order = { id: id('mp-order'), outTradeNo: `SY${Date.now()}${crypto.randomBytes(5).toString('hex')}`, userId: user.id, openid: user.openid, phone: user.phone, status: 'pending', productType, attractionId: productType === 'attraction' ? attractionId : '', name: product.description, description: product.description, price: product.price, amountTotal: product.amountTotal, currency: product.currency, createdAt: now }
+      const order = { id: id('mp-order'), outTradeNo: `SY${Date.now()}${crypto.randomBytes(5).toString('hex')}`, userId: user.id, openid: user.openid, phone: user.phone, status: 'pending', productType, attractionId: target.attractionId || '', cityId: target.cityId || '', albumId: target.albumId || '', name: product.description, description: product.description, price: product.price, amountTotal: product.amountTotal, currency: product.currency, createdAt: now }
       try {
         const prepay = await createMiniProgramPrepay(wechatPay, { ...order, openid: user.openid })
         order.prepayId = prepay.prepayId
@@ -1528,7 +1606,7 @@ const server = http.createServer(async (req, res) => {
       }
       if (url.pathname === '/api/admin/settings' && method === 'GET') {
         const { homeBanners: _homeBanners, ...settings } = data.settings || {}
-        return json(res, 200, settings)
+        return json(res, 200, { ...settings, miniprogramKnowledge: miniProgramKnowledgeConfig(data) })
       }
       if (url.pathname === '/api/admin/settings' && method === 'PATCH') {
         const { homeBanners: _homeBanners, ...input } = await body(req)

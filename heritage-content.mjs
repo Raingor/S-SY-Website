@@ -5,7 +5,7 @@ import { spawnSync } from 'node:child_process'
 import { fileURLToPath } from 'node:url'
 
 const categories = new Set(['route', 'online', 'expert', 'heritage'])
-const unlockModes = new Set(['free', 'attraction', 'membership', 'locked'])
+const unlockModes = new Set(['free', 'attraction', 'membership', 'album', 'locked'])
 const projectRoot = resolve(fileURLToPath(new URL('.', import.meta.url)))
 const privateDir = resolve(process.env.SY_AUDIO_PRIVATE_DIR || resolve(projectRoot, 'private-audio'))
 for (const publiclyServed of ['public', 'dist']) {
@@ -164,6 +164,7 @@ export function validateHeritageRecord(kind, input, data, current = {}) {
     if (value.unlockMode === 'attraction' && !value.attractionId) return '单景点权限须设置景点'
   }
   if (value.category === 'heritage' && value.unlockMode === 'attraction') return '文史节目不能使用单景点权益'
+  if (value.unlockMode === 'album' && value.category !== 'heritage') return '专辑购买权限只适用于文史节目'
   if (!Number.isInteger(Number(value.previewSeconds)) || Number(value.previewSeconds) < 1 || Number(value.previewSeconds) > 60) return '试听时长须为 1 至 60 秒'
   if (value.status === 'published' && (!existingFile(value.audioFile) || !previewExists(value.previewFile))) return '发布前须上传可播放且已生成试听片段的音频'
   if (value.audioFile && !existingFile(value.audioFile)) return '音频文件不存在或不是私有上传文件'
@@ -217,7 +218,8 @@ export function visibleTrack(data, id) {
 export function audioEntitled(track, entitlements) {
   if (track.unlockMode === 'free') return true
   if (track.unlockMode === 'membership') return entitlements?.member === true
-  if (track.unlockMode === 'attraction') return entitlements?.member === true || Boolean(entitlements?.purchases?.some((order) => order.status === 'paid' && order.productType === 'attraction' && order.attractionId === track.attractionId))
+  if (track.unlockMode === 'attraction') return entitlements?.member === true || Boolean(entitlements?.unlockedAttractions?.includes(track.attractionId) || entitlements?.purchases?.some((order) => order.status === 'paid' && order.productType === 'attraction' && order.attractionId === track.attractionId))
+  if (track.unlockMode === 'album') return Boolean(entitlements?.unlockedAlbums?.includes(track.albumId) || entitlements?.purchases?.some((order) => order.status === 'paid' && order.productType === 'album' && order.albumId === track.albumId))
   return false
 }
 

@@ -5,6 +5,7 @@ import { join, resolve } from 'node:path'
 import { spawn } from 'node:child_process'
 import net from 'node:net'
 import { tmpdir } from 'node:os'
+import { audioEntitled } from '../heritage-content.mjs'
 
 async function availablePort() {
   const server = net.createServer()
@@ -32,6 +33,7 @@ async function prepare() {
   await cp(join(root, 'seed/content-demo.json'), join(tempRoot, 'seed/content-demo.json'))
   const fixturePath = join(tempRoot, 'seed/site-data.json')
   const fixture = JSON.parse(await readFile(fixturePath, 'utf8'))
+  fixture.settings.miniprogramKnowledge = { products: { membership: { enabled: true, price: 0.01 } } }
   fixture.homeBanners = [
     { id: 'optimized-banner-test', title: 'Test optimized banner', description: '', alt: 'test', image: './images/home-test.png', enabled: true, sort: 1 },
     { id: 'fallback-banner-test', title: 'Test original banner', description: '', alt: 'test', image: './images/home-fallback.jpg', enabled: true, sort: 2 },
@@ -41,6 +43,9 @@ async function prepare() {
     { id: 'fallback-heritage-banner', title: 'Test heritage fallback', image: './images/home-fallback.jpg', enabled: true, sort: 2 },
   ]
   fixture.miniprogramUsers = [{ id: 'profile-phone-contract', phone: '+15551234567', nickname: 'Phone Contract Test', avatarUrl: '', travelers: [], documents: [], coupons: [] }]
+  fixture.cities.find((city) => city.id === 'athens').mosaic = []
+  fixture.audioAlbums = [{ id: 'album-contract', title: '测试文史专辑', status: 'published' }]
+  fixture.audioTracks = [{ id: 'album-track-contract', category: 'heritage', title: '测试节目', albumId: 'album-contract', status: 'published', unlockMode: 'album', previewSeconds: 30 }]
   await writeFile(fixturePath, JSON.stringify(fixture))
   const imageDir = join(tempRoot, 'public/images')
   await mkdir(imageDir, { recursive: true })
@@ -133,13 +138,15 @@ try {
   assert(Object.hasOwn(bannerContent.data, 'attractionDetails'), 'default content contract must retain attractionDetails')
   const slimContent = await request('/api/content?includeAttractionDetails=false')
   assert(slimContent.status === 200 && !Object.hasOwn(slimContent.data, 'attractionDetails'), 'includeAttractionDetails=false must omit only the duplicated top-level attractionDetails field')
+  const athensMosaic = slimContent.data.cities.find((city) => city.id === 'athens')?.mosaic || []
+  assert(athensMosaic.length === 4 && athensMosaic.every(Boolean), 'empty city mosaic should fall back to up to four published attraction images')
   assert(slimContent.data.attractions.length === bannerContent.data.attractions.length && slimContent.data.attractionDetailPage && slimContent.data.home.banners[0].image === expectedOptimizedBanner, 'slim content contract must retain all other client content fields')
   assert(Buffer.byteLength(JSON.stringify(slimContent.data)) < Buffer.byteLength(JSON.stringify(bannerContent.data)), 'slim content response must be smaller than the backward-compatible default')
   const explicitFullContent = await request('/api/content?includeAttractionDetails=true')
   assert(explicitFullContent.status === 200 && Object.hasOwn(explicitFullContent.data, 'attractionDetails'), 'includeAttractionDetails=true must preserve the full content contract')
 
   result = await request('/api/miniprogram/knowledge/config')
-  assert(result.status === 200 && result.data.simulation === true && result.data.trialSeconds === 60 && result.data.products.attraction.price === 0.01 && result.data.products.membership.price === 0.01, 'config contract failed')
+  assert(result.status === 200 && result.data.simulation === true && result.data.trialSeconds === 60 && result.data.products.attraction.price === 9.9 && result.data.products.city.price === 69.9 && result.data.products.album.price === 9.9 && result.data.products.annualMembership.price === 199 && result.data.products.membership.price === 0.01, 'config contract failed')
   assert(result.data.products.attraction.productType === 'attraction' && result.data.products.membership.productType === 'membership', 'product config failed')
 
   result = await request('/api/miniprogram/entitlements', { headers: auth('regular') })
@@ -150,20 +157,41 @@ try {
   assert(result.status === 200 && result.data.user.phoneBound === true && !Object.hasOwn(result.data.user, 'phoneFull') && result.data.orders.length === 0, 'phone entitlement should keep its shared user projection masked')
 
   result = await request('/api/miniprogram/orders', { method: 'POST', headers: phoneAuth, body: JSON.stringify({ productType: 'attraction', attractionId: 'acropolis' }) })
-  assert(result.status === 201 && result.data.simulation === true && result.data.order.status === 'pending' && result.data.order.price === 0.01 && result.data.order.phone === '+8613800138000' && result.data.payment === null, 'attraction order creation failed')
+  assert(result.status === 201 && result.data.simulation === true && result.data.order.status === 'pending' && result.data.order.price === 9.9 && result.data.order.amountTotal === 990 && result.data.order.phone === '+8613800138000' && result.data.payment === null, 'attraction order creation failed')
   const attractionOrderId = result.data.order.id
+
+  result = await request('/api/miniprogram/orders', { method: 'POST', headers: phoneAuth, body: JSON.stringify({ productType: 'city', cityId: 'athens', price: 0.01, amountTotal: 1 }) })
+  assert(result.status === 201 && result.data.order.price === 69.9 && result.data.order.amountTotal === 6990 && result.data.order.cityId === 'athens', 'city order must use the configured price and preserve cityId')
+  const cityOrderId = result.data.order.id
+
+  result = await request('/api/miniprogram/orders', { method: 'POST', headers: phoneAuth, body: JSON.stringify({ productType: 'album', albumId: 'album-contract', price: 0.01, amountTotal: 1 }) })
+  assert(result.status === 201 && result.data.order.price === 9.9 && result.data.order.amountTotal === 990 && result.data.order.albumId === 'album-contract', 'album order must use the configured price and preserve albumId')
+  const albumOrderId = result.data.order.id
+
+  result = await request('/api/miniprogram/orders', { method: 'POST', headers: phoneAuth, body: JSON.stringify({ productType: 'city', cityId: 'unknown-city' }) })
+  assert(result.status === 422 && result.data.code === 'CITY_NOT_FOUND', 'city purchase must reject unknown city IDs')
+  result = await request('/api/miniprogram/orders', { method: 'POST', headers: phoneAuth, body: JSON.stringify({ productType: 'album', albumId: 'unknown-album' }) })
+  assert(result.status === 422 && result.data.code === 'ALBUM_NOT_FOUND', 'album purchase must reject unknown album IDs')
 
   result = await request('/api/miniprogram/orders', { method: 'POST', headers: phoneAuth, body: JSON.stringify({ productType: 'membership' }) })
   assert(result.status === 201 && result.data.order.productType === 'membership' && result.data.order.price === 0.01, 'membership order creation failed')
   const membershipOrderId = result.data.order.id
 
   result = await request('/api/miniprogram/orders', { method: 'GET', headers: phoneAuth })
-  assert(result.status === 200 && result.data.items.length === 2 && result.data.items.every((order) => order.phone === '+8613800138000'), 'order query contract failed')
+  assert(result.status === 200 && result.data.items.length === 4 && result.data.items.every((order) => order.phone === '+8613800138000'), 'order query contract failed')
 
   result = await request(`/api/miniprogram/orders/${attractionOrderId}/simulate-paid`, { method: 'POST', headers: phoneAuth })
   assert(result.status === 200 && result.data.order.status === 'paid' && result.data.entitlements.unlockedAttractions.includes('acropolis'), 'paid entitlement failed')
   result = await request(`/api/miniprogram/orders/${attractionOrderId}/simulate-paid`, { method: 'POST', headers: phoneAuth })
   assert(result.status === 200 && result.data.idempotent === true, 'paid idempotency failed')
+
+  result = await request(`/api/miniprogram/orders/${cityOrderId}/simulate-paid`, { method: 'POST', headers: phoneAuth })
+  assert(result.status === 200 && result.data.entitlements.unlockedCities.includes('athens') && result.data.entitlements.unlockedAttractions.includes('acropolis'), 'city purchase must unlock its city and all published city attractions')
+  assert(audioEntitled({ unlockMode: 'attraction', attractionId: 'acropolis' }, result.data.entitlements), 'city purchase should authorize attraction audio')
+
+  result = await request(`/api/miniprogram/orders/${albumOrderId}/simulate-paid`, { method: 'POST', headers: phoneAuth })
+  assert(result.status === 200 && result.data.entitlements.unlockedAlbums.includes('album-contract'), 'album purchase entitlement failed')
+  assert(audioEntitled({ unlockMode: 'album', albumId: 'album-contract' }, result.data.entitlements), 'album purchase should authorize album audio')
 
   result = await request(`/api/miniprogram/orders/${membershipOrderId}/simulate-failed`, { method: 'POST', headers: phoneAuth })
   assert(result.status === 200 && result.data.order.status === 'failed' && result.data.code === 'SIMULATED_PAYMENT_FAILED' && result.data.entitlements.member === false, 'failed payment path failed')
@@ -184,7 +212,7 @@ try {
 
   result = await request('/api/auth/login', { method: 'POST', body: JSON.stringify({ password: 'test-admin-password' }) })
   const adminToken = result.data.token
-  result = await request('/api/admin/settings', { method: 'PATCH', headers: { Authorization: `Bearer ${adminToken}` }, body: JSON.stringify({ miniprogramKnowledge: { trialSeconds: 90, products: { attraction: { enabled: true, name: '测试景点讲解', price: 0.01, currency: 'CNY' }, membership: { enabled: true, name: '测试终身会员', price: 0.01, currency: 'CNY' } } } }) })
+  result = await request('/api/admin/settings', { method: 'PATCH', headers: { Authorization: `Bearer ${adminToken}` }, body: JSON.stringify({ miniprogramKnowledge: { trialSeconds: 90, products: { attraction: { enabled: true, name: '测试景点讲解', price: 0.01, currency: 'CNY' }, city: { enabled: true, name: '测试城市', price: 69.9, currency: 'CNY' }, album: { enabled: true, name: '测试专辑', price: 9.9, currency: 'CNY' }, membership: { enabled: true, name: '测试终身会员', price: 0.01, currency: 'CNY' } } } }) })
   assert(result.status === 200, 'knowledge config settings update failed')
   result = await request('/api/miniprogram/knowledge/config')
   assert(result.status === 200 && result.data.trialSeconds === 90 && result.data.products.attraction.price === 0.01, 'knowledge config persistence failed')
@@ -220,7 +248,7 @@ try {
   await waitForServer()
   result = await request('/api/miniprogram/knowledge/config')
   assert(result.status === 404 && result.data.code === 'MINIPROGRAM_SIMULATION_DISABLED', 'simulation disable switch failed')
-  console.log('PASS: phone session, 0.01 products, order query/isolation, fixtures, attraction purchase, membership/failed payment, idempotency, reset, banner optimization/fallback, optional slim content contract, authentication boundaries and disable switch')
+  console.log('PASS: default product prices, city/album purchase and entitlements, mosaic fallback, order query/isolation, membership, idempotency, content contract and authentication boundaries')
 } finally {
   await stop()
   await rm(tempRoot, { recursive: true, force: true })
