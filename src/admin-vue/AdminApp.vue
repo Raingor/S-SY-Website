@@ -266,6 +266,13 @@
                     <span>{{ tab.label }}</span><b>{{ tab.count }}</b>
                   </button>
                 </div>
+                <div v-if="active==='audioTracks'&&audioTrackCategoryFilter==='online'&&audioDestinationOptions.length" class="audio-destination-toolbar">
+                  <span class="filter-toolbar-label">目的地分类</span>
+                  <el-select v-model="audioDestinationFilter" clearable filterable size="small" class="audio-destination-select" placeholder="全部目的地">
+                    <el-option v-for="option in audioDestinationOptions" :key="option.value" :label="option.label" :value="option.value"/>
+                  </el-select>
+                  <span class="audio-destination-hint">按目的地查看其下关联景点与音频</span>
+                </div>
                 <div v-if="availableFilters.length" class="list-filter-toolbar">
                   <div class="list-filter-controls"><template v-for="filter in availableFilters">
                     <el-date-picker v-if="filter.type==='daterange'" :key="filter.key" v-model="filters[filter.key]" type="daterange" class="list-filter-date" size="small" value-format="yyyy-MM-dd" range-separator="至" :start-placeholder="filter.label+'开始'" :end-placeholder="filter.label+'结束'" clearable/>
@@ -305,6 +312,38 @@
                   </el-card>
                   <el-empty v-if="!visibleAttractionGroups.length" description="没有符合当前筛选条件的目的地景点"/>
                 </div>
+                <div v-else-if="active==='audioTracks'&&audioTrackCategoryFilter==='heritage'" class="audio-hierarchy">
+                  <el-collapse v-if="heritageAlbumGroups.length" v-model="expandedAudioGroups">
+                    <el-collapse-item v-for="group in heritageAlbumGroups" :key="group.key" :name="group.key">
+                      <template slot="title"><div class="audio-group-title"><strong>{{ group.title }}</strong><span>{{ group.items.length }} 个节目</span><el-tag v-if="group.unassigned" size="mini" type="warning" effect="plain">未关联专辑</el-tag></div></template>
+                      <el-table v-if="group.items.length" :data="group.items" :row-key="rowKey" border stripe size="small" class="admin-data-table audio-group-table">
+                        <el-table-column label="节目" min-width="240"><template slot-scope="{row}">{{ localizedText(row.title) }}</template></el-table-column>
+                        <el-table-column label="排序" width="90"><template slot-scope="{row}">{{ row.sort==null?'—':row.sort }}</template></el-table-column>
+                        <el-table-column label="状态" width="145"><template slot-scope="{row}"><el-select :value="rowStatus(row)" size="mini" class="status-inline" @change="value=>changeStatus(row,value)"><el-option v-for="option in statusOptionsForCurrent" :key="option.value" :label="option.label" :value="option.value"/></el-select></template></el-table-column>
+                        <el-table-column label="操作" width="145" align="right"><template slot-scope="{row}"><el-button size="mini" @click="editRow(row)">编辑</el-button><el-button size="mini" type="danger" plain @click="deleteRow(row)">删除</el-button></template></el-table-column>
+                      </el-table>
+                      <el-empty v-else description="该专辑暂无节目" :image-size="54"/>
+                    </el-collapse-item>
+                  </el-collapse>
+                  <el-empty v-else description="暂无符合条件的文史节目"/>
+                </div>
+                <div v-else-if="active==='audioTracks'&&audioTrackCategoryFilter==='online'" class="audio-hierarchy">
+                  <el-collapse v-if="onlineDestinationGroups.length" v-model="expandedAudioGroups">
+                    <el-collapse-item v-for="destination in onlineDestinationGroups" :key="destination.key" :name="destination.key">
+                      <template slot="title"><div class="audio-group-title"><strong>{{ destination.title }}</strong><span>{{ destination.attractions.length }} 个景点 · {{ destination.trackCount }} 个音频</span><el-tag v-if="destination.unassigned" size="mini" type="warning" effect="plain">未关联目的地</el-tag></div></template>
+                      <section v-for="attraction in destination.attractions" :key="attraction.key" class="audio-attraction-group">
+                        <div class="audio-attraction-heading"><strong>{{ attraction.title }}</strong><span>{{ attraction.items.length }} 个音频</span></div>
+                        <el-table :data="attraction.items" :row-key="rowKey" border stripe size="small" class="admin-data-table audio-group-table">
+                          <el-table-column label="音频 / 节目" min-width="240"><template slot-scope="{row}">{{ localizedText(row.title) }}</template></el-table-column>
+                          <el-table-column label="排序" width="90"><template slot-scope="{row}">{{ row.sort==null?'—':row.sort }}</template></el-table-column>
+                          <el-table-column label="状态" width="145"><template slot-scope="{row}"><el-select :value="rowStatus(row)" size="mini" class="status-inline" @change="value=>changeStatus(row,value)"><el-option v-for="option in statusOptionsForCurrent" :key="option.value" :label="option.label" :value="option.value"/></el-select></template></el-table-column>
+                          <el-table-column label="操作" width="145" align="right"><template slot-scope="{row}"><el-button size="mini" @click="editRow(row)">编辑</el-button><el-button size="mini" type="danger" plain @click="deleteRow(row)">删除</el-button></template></el-table-column>
+                        </el-table>
+                      </section>
+                    </el-collapse-item>
+                  </el-collapse>
+                  <el-empty v-else description="暂无符合条件的线上游览音频"/>
+                </div>
                 <div v-else class="admin-table-scroll"><el-table v-if="filteredItems.length" :data="paginatedItems" :row-key="rowKey" border stripe size="small" class="admin-data-table">
                   <el-table-column v-if="active==='attractions'" width="48" align="center"><template slot="header"><el-checkbox :value="allPageAttractionsSelected" :indeterminate="selectedAttractionIds.length>0&&!allPageAttractionsSelected" :disabled="busy||batchBusy||publicationChecking" aria-label="勾选当前页景点" @change="selectAttractionPage"/></template><template slot-scope="{row}"><el-checkbox :value="selectedAttractionIds.includes(row.id)" :disabled="busy||batchBusy||publicationChecking" :aria-label="'勾选景点 '+(row.name||row.id)" @change="checked=>selectAttraction(row.id,checked)"/></template></el-table-column>
                   <el-table-column v-for="column in currentMenu.columns" :key="column.key" :prop="column.key" :label="column.label" :width="column.width" :min-width="column.width ? undefined : column.type==='image' ? 190 : column.type==='status' ? 125 : column.type==='association' ? 250 : 135" :show-overflow-tooltip="column.type!=='image' && column.type!=='status' && column.type!=='tags' && column.type!=='association' && column.type!=='destinationLinks'"><template slot-scope="{row}">
@@ -320,7 +359,7 @@
                   </template></el-table-column>
                   <el-table-column v-if="currentMenu.editable" label="操作" :width="active==='guides'?210:145" align="right"><template slot-scope="{row}"><el-button size="mini" @click="editRow(row)">编辑</el-button><el-button v-if="active==='guides'" size="mini" @click="copyGuide(row)">复制</el-button><el-button v-if="active!=='miniprogramUsers'" size="mini" type="danger" plain @click="deleteRow(row)">删除</el-button></template></el-table-column>
                 </el-table><el-empty v-else description="暂无记录"/></div>
-                <div v-if="filteredItems.length&&!(active==='attractions'&&attractionView==='destination')" class="list-pagination"><el-pagination :current-page="currentPage" :page-size="pageSize" :page-sizes="pageSizes" :total="filteredItems.length" layout="total, sizes, prev, pager, next, jumper" @current-change="page=$event" @size-change="changePageSize"/></div>
+                <div v-if="filteredItems.length&&!(active==='attractions'&&attractionView==='destination')&&!(active==='audioTracks'&&['heritage','online'].includes(audioTrackCategoryFilter))" class="list-pagination"><el-pagination :current-page="currentPage" :page-size="pageSize" :page-sizes="pageSizes" :total="filteredItems.length" layout="total, sizes, prev, pager, next, jumper" @current-change="page=$event" @size-change="changePageSize"/></div>
                 <div v-if="active==='cities'" class="pricing-hint"><i class="el-icon-info"></i>点击城市行上的编辑，使用独立编辑页调整小程序讲解定价。</div>
               </el-card>
             </section>
@@ -582,7 +621,7 @@ const attractionEditorFieldGroups = [
 
 export default {
   name:'AdminApp',
-  data(){return{token:sessionStorage.getItem(TOKEN)||'',password:'',error:'',active:MENU_IDS.has(sessionStorage.getItem(ACTIVE_MENU))?sessionStorage.getItem(ACTIVE_MENU):'overview',guideVisible:false,guideGroups,settingsTab:'site',detailTab:'sections',detailPage:null,vehicleService:null,vehicleView:'list',detailLocales,vehicleOptionGroups,detailSectionKeys,detailVisitorKeys,detailExhibitFields,detailHighlightFields,detailRouteFields,detailAudioFields,detailAudioCategoryLabels,attractionView:'list',attractionEditorTab:'basic',recordEditorTab:'basic',vehicleConfigTab:'page',attractionDestinationFilter:'',audioTrackCategoryFilter:'',destinationLinkSaving:{},data:JSON.parse(JSON.stringify(emptyData)),stats:{},commerce:{},settings:this.defaultSettings(),loading:false,busy:false,localAiEnabled:false,aiFillDialogVisible:false,aiFilling:false,aiTranslating:false,aiAttractionName:'',aiEntityType:'attraction',aiProgressMessage:'正在准备…',filterText:'',page:1,pageSize:10,pageSizes:[5,10,20,50,100],groupPages:{},filters:{enabled:'',featured:'',countryId:'',status:'',days:'',type:'',currency:'',priceCny:[null,null],city:'',tag:'',period:[],leadType:'',createdAt:[],bookingDate:[],member:'',productType:'',relation:'',visaStatus:'',expiry:[],expiresAt:[]},editor:null,editorBaseline:'',destinationAttractionSearch:'',destinationShowAllCities:false,selectedAttractionIds:[],batchBusy:false,publicationResults:[],publicationChecking:false,publicationCheckedAt:'',apiOrigin:window.location.origin,form:{},jsonFields:{},dateRange:[],jsonError:'',confirmVisible:false,confirmText:'',confirmHandler:null,menuGroups:groups,rowStatusOptions:[{label:'发布',value:'published'},{label:'下架',value:'unpublished'}],settingTabs}},
+  data(){return{token:sessionStorage.getItem(TOKEN)||'',password:'',error:'',active:MENU_IDS.has(sessionStorage.getItem(ACTIVE_MENU))?sessionStorage.getItem(ACTIVE_MENU):'overview',guideVisible:false,guideGroups,settingsTab:'site',detailTab:'sections',detailPage:null,vehicleService:null,vehicleView:'list',detailLocales,vehicleOptionGroups,detailSectionKeys,detailVisitorKeys,detailExhibitFields,detailHighlightFields,detailRouteFields,detailAudioFields,detailAudioCategoryLabels,attractionView:'list',attractionEditorTab:'basic',recordEditorTab:'basic',vehicleConfigTab:'page',attractionDestinationFilter:'',audioTrackCategoryFilter:'',audioDestinationFilter:'',expandedAudioGroups:[],destinationLinkSaving:{},data:JSON.parse(JSON.stringify(emptyData)),stats:{},commerce:{},settings:this.defaultSettings(),loading:false,busy:false,localAiEnabled:false,aiFillDialogVisible:false,aiFilling:false,aiTranslating:false,aiAttractionName:'',aiEntityType:'attraction',aiProgressMessage:'正在准备…',filterText:'',page:1,pageSize:10,pageSizes:[5,10,20,50,100],groupPages:{},filters:{enabled:'',featured:'',countryId:'',status:'',days:'',type:'',currency:'',priceCny:[null,null],city:'',tag:'',period:[],leadType:'',createdAt:[],bookingDate:[],member:'',productType:'',relation:'',visaStatus:'',expiry:[],expiresAt:[]},editor:null,editorBaseline:'',destinationAttractionSearch:'',destinationShowAllCities:false,selectedAttractionIds:[],batchBusy:false,publicationResults:[],publicationChecking:false,publicationCheckedAt:'',apiOrigin:window.location.origin,form:{},jsonFields:{},dateRange:[],jsonError:'',confirmVisible:false,confirmText:'',confirmHandler:null,menuGroups:groups,rowStatusOptions:[{label:'发布',value:'published'},{label:'下架',value:'unpublished'}],settingTabs}},
   computed:{
     editorDirty(){return Boolean(this.editor)&&this.editorState()!==this.editorBaseline},
     attractionEditorFieldGroups(){return attractionEditorFieldGroups},
@@ -628,8 +667,41 @@ export default {
     availableFilters(){return(listFilterKeys[this.active]||[]).map(key=>{const type=listDateFilterKeys.includes(key)?'daterange':listNumberFilterKeys.includes(key)?'numberrange':'select';let options=[];if(type==='select'){if(['status','enabled'].includes(key))options=this.active==='miniprogramOrders'?[{label:'待支付',value:'pending'},{label:'已支付',value:'paid'},{label:'失败',value:'failed'},{label:'已关闭 / 过期',value:'expired'}]:this.statusOptionsForCurrent;else if(key==='featured')options=[{label:'首页推荐',value:true},{label:'普通展示',value:false}];else if(key==='member')options=[{label:'终身会员',value:'member'},{label:'普通用户',value:'regular'}];else{const values=[...new Set(this.items.map(row=>this.filterValue(row,key)).filter(value=>value!==''&&value!=null))];options=values.map(value=>({value,label:this.filterOptionLabel(key,value)})).sort((a,b)=>a.label.localeCompare(b.label,'zh-CN'))}}const label=key==='createdAt'&&['leads','guideBookings','miniProgramBookings','miniprogramTrips'].includes(this.active)?'提交日期':listFilterLabels[key]||key;return{key,type,label,options}}).filter(filter=>this.items.length>0&&(filter.type==='daterange'?this.items.some(row=>this.filterValue(row,filter.key)):filter.type==='numberrange'?this.items.some(row=>Number.isFinite(Number(this.filterValue(row,filter.key)))):(['status','enabled','featured','member'].includes(filter.key)||filter.options.length>1)))},
     audioTrackCategoryTabs(){const categories=[{key:'',label:'全部音频'},{key:'route',label:'路线导览'},{key:'online',label:'线上游览'},{key:'expert',label:'名导讲解'},{key:'heritage',label:'文史节目'}];return categories.map(tab=>({...tab,count:tab.key?this.items.filter(row=>row.category===tab.key).length:this.items.length}))},
     audioTrackCategoryCount(){return this.audioTrackCategoryFilter?this.items.filter(row=>row.category===this.audioTrackCategoryFilter).length:this.items.length},
-    hasActiveFilters(){return Boolean(this.filterText.trim())||(this.active==='audioTracks'&&Boolean(this.audioTrackCategoryFilter))||Object.values(this.filters).some(value=>Array.isArray(value)?value.some(item=>item!==''&&item!=null):Boolean(value))},
-    filteredItems(){const q=this.filterText.trim().toLowerCase();return this.items.filter(row=>{if(this.active==='audioTracks'&&this.audioTrackCategoryFilter&&row.category!==this.audioTrackCategoryFilter)return false;if(q&&!JSON.stringify(row).toLowerCase().includes(q))return false;for(const filter of this.availableFilters){const selected=this.filters[filter.key];if(filter.type==='daterange'){if(selected?.length===2&&!this.matchesDateRange(row,filter.key,selected))return false}else if(filter.type==='numberrange'){const raw=this.filterValue(row,filter.key);if(raw==null||raw===''||!Number.isFinite(Number(raw)))return false;const number=Number(raw);if((selected?.[0]!=null&&number<selected[0])||(selected?.[1]!=null&&number>selected[1]))return false}else if(selected!==''&&selected!=null&&String(this.filterValue(row,filter.key))!==String(selected))return false}return true})},
+    heritageAlbumGroups(){
+      if(this.active!=='audioTracks'||this.audioTrackCategoryFilter!=='heritage')return[]
+      const tracks=this.filteredItems,albums=(this.data.audioAlbums||[]).slice().sort((a,b)=>(Number(a.sort)||0)-(Number(b.sort)||0)||String(a.title||a.id).localeCompare(String(b.title||b.id),'zh-CN'))
+      const groups=albums.map(album=>({key:`album:${album.id}`,title:this.localizedText(album.title)||album.id,albumId:String(album.id),items:tracks.filter(track=>String(track.albumId||'')===String(album.id))}))
+      const albumIds=new Set(albums.map(album=>String(album.id))),unassigned=tracks.filter(track=>!albumIds.has(String(track.albumId||'')))
+      if(unassigned.length)groups.push({key:'album:unassigned',title:'未关联专辑',albumId:'',unassigned:true,items:unassigned})
+      return groups
+    },
+    audioDestinationLookup(){
+      const lookup=Object.create(null)
+      ;(this.data.destinations||[]).filter(destination=>destination?.id).forEach(destination=>this.destinationAttractionIds(destination).forEach(attractionId=>{if(!lookup[attractionId])lookup[attractionId]=[];lookup[attractionId].push(String(destination.id))}))
+      return lookup
+    },
+    audioDestinationOptions(){
+      if(this.active!=='audioTracks')return[]
+      const tracks=this.items.filter(track=>track.category==='online'),destinations=(this.data.destinations||[]).filter(destination=>destination?.id)
+      const options=destinations.map(destination=>{const count=tracks.filter(track=>this.audioDestinationIdsForTrack(track).includes(String(destination.id))).length;return{value:String(destination.id),name:destination.name||'未命名目的地',count}}).filter(option=>option.count>0).map(option=>({value:option.value,label:`${option.name} (${option.count})`}))
+      const unassigned=tracks.filter(track=>!this.audioDestinationIdsForTrack(track).length).length
+      if(unassigned)options.push({value:'__unassigned_destination__',label:`未关联目的地 (${unassigned})`})
+      return options
+    },
+    onlineDestinationGroups(){
+      if(this.active!=='audioTracks'||this.audioTrackCategoryFilter!=='online')return[]
+      const tracks=this.filteredItems,destinations=(this.data.destinations||[]).filter(destination=>destination?.id)
+      const groupFor=(destination,items,unassigned=false)=>{
+        const grouped=new Map()
+        items.forEach(track=>{const attractionId=String(track.attractionId||''),attraction=(this.data.attractions||[]).find(item=>String(item.id)===attractionId),key=attractionId||`missing:${track.id}`;if(!grouped.has(key))grouped.set(key,{key,title:attraction?.name|| (attractionId?`景点记录缺失 · ${attractionId}`:'未关联景点'),items:[]});grouped.get(key).items.push(track)})
+        return{key:unassigned?'destination:unassigned':`destination:${destination.id}`,title:unassigned?'未关联目的地':destination.name||'未命名目的地',unassigned,attractions:[...grouped.values()],trackCount:items.length}
+      }
+      const groups=destinations.map(destination=>groupFor(destination,tracks.filter(track=>this.audioDestinationIdsForTrack(track).includes(String(destination.id))))).filter(group=>group.trackCount)
+      const unassigned=tracks.filter(track=>!this.audioDestinationIdsForTrack(track).length);if(unassigned.length)groups.push(groupFor(null,unassigned,true))
+      return groups
+    },
+    hasActiveFilters(){return Boolean(this.filterText.trim())||(this.active==='audioTracks'&&(Boolean(this.audioTrackCategoryFilter)||Boolean(this.audioDestinationFilter)))||Object.values(this.filters).some(value=>Array.isArray(value)?value.some(item=>item!==''&&item!=null):Boolean(value))},
+    filteredItems(){const q=this.filterText.trim().toLowerCase();return this.items.filter(row=>{if(this.active==='audioTracks'&&this.audioTrackCategoryFilter&&row.category!==this.audioTrackCategoryFilter)return false;if(this.active==='audioTracks'&&this.audioTrackCategoryFilter==='online'&&this.audioDestinationFilter){const destinationIds=this.audioDestinationIdsForTrack(row);if(this.audioDestinationFilter==='__unassigned_destination__'?destinationIds.length>0:!destinationIds.includes(String(this.audioDestinationFilter)))return false}if(q&&!this.audioTrackMatchesQuery(row,q))return false;for(const filter of this.availableFilters){const selected=this.filters[filter.key];if(filter.type==='daterange'){if(selected?.length===2&&!this.matchesDateRange(row,filter.key,selected))return false}else if(filter.type==='numberrange'){const raw=this.filterValue(row,filter.key);if(raw==null||raw===''||!Number.isFinite(Number(raw)))return false;const number=Number(raw);if((selected?.[0]!=null&&number<selected[0])||(selected?.[1]!=null&&number>selected[1]))return false}else if(selected!==''&&selected!=null&&String(this.filterValue(row,filter.key))!==String(selected))return false}return true})},
     currentPage(){return Math.min(this.page,Math.max(1,Math.ceil(this.filteredItems.length/this.pageSize)))},
     paginatedItems(){return this.filteredItems.slice((this.currentPage-1)*this.pageSize,this.currentPage*this.pageSize)},
     statCards(){return[{label:'已发布路线',value:this.stats.routes||0},{label:'目的地',value:this.stats.destinations||0},{label:'全部线索',value:this.stats.leads||0},{label:'待处理',value:this.stats.pendingLeads||0},{label:'导游预约',value:this.stats.guideBookings||0},{label:'小程序预约',value:this.stats.miniProgramBookings||0},{label:'已支付订单',value:this.commerce.totals?.paidOrderCount||0},{label:'终身会员',value:this.commerce.totals?.memberCount||0}]},
@@ -640,6 +712,7 @@ export default {
     filterText(){this.resetPagination()},
     filters:{handler(){this.resetPagination()},deep:true},
     attractionDestinationFilter(){this.resetPagination()},
+    audioDestinationFilter(){this.resetPagination()},
     attractionView(){this.resetPagination()},
     active(value){sessionStorage.setItem(ACTIVE_MENU,value);this.selectedAttractionIds=[]},
     paginatedItems(){this.selectedAttractionIds=[]},
@@ -663,6 +736,16 @@ export default {
       if(hasExplicitIds){const ids=Array.isArray(destination.attractionIds)?destination.attractionIds:(destination.attractionId?[destination.attractionId]:[]);return ids.map(id=>String(id??'')).filter(Boolean)}
       const cityId=String(destination.cityId||'').trim()
       return cityId?(this.data.attractions||[]).filter(attraction=>String(attraction.city||'')===cityId).map(attraction=>String(attraction.id||'')).filter(Boolean):[]
+    },
+    audioDestinationIdsForTrack(track){
+      const attractionId=String(track?.attractionId||'')
+      return attractionId?this.audioDestinationLookup[attractionId]||[]:[]
+    },
+    audioTrackMatchesQuery(track,query){
+      if(this.active!=='audioTracks'||!query)return JSON.stringify(track).toLowerCase().includes(query)
+      const album=(this.data.audioAlbums||[]).find(item=>String(item.id)===String(track.albumId||'')),attraction=(this.data.attractions||[]).find(item=>String(item.id)===String(track.attractionId||'')),destinationIds=this.audioDestinationIdsForTrack(track),destinations=(this.data.destinations||[]).filter(item=>destinationIds.includes(String(item.id)))
+      const context=[album?.title,attraction?.name,...destinations.map(item=>item.name)].map(value=>this.localizedText(value)).join(' ')
+      return(JSON.stringify(track)+' '+context).toLowerCase().includes(query)
     },
     destinationLinkState(row={}){
       const country=row.countryId||'greece',cities=(this.data.cities||[]).filter(item=>(item.countryId||'greece')===country&&item.status!=='archived'),attractions=(this.data.attractions||[]).filter(item=>(item.countryId||'greece')===country&&item.status==='published')
@@ -771,9 +854,9 @@ export default {
     editDestinationGroup(id){const destination=(this.data.destinations||[]).find(item=>String(item.id)===String(id));if(!destination)return;this.active='destinations';this.filterText='';this.clearFilterValues();this.resetPagination();this.openEditor(destination,false)},
     startCreateAttractionForGroup(destinationId){this.active='attractions';this.startCreate();this.$set(this.form,'linkedDestinationIds',destinationId?[String(destinationId)]:[])},
     clearFilterValues(){Object.keys(this.filters).forEach(key=>this.$set(this.filters,key,listDateFilterKeys.includes(key)?[]:listNumberFilterKeys.includes(key)?[null,null]:''))},
-    selectAudioTrackCategory(category){this.audioTrackCategoryFilter=category;this.resetPagination()},
+    selectAudioTrackCategory(category){this.audioTrackCategoryFilter=category;this.audioDestinationFilter='';this.expandedAudioGroups=[];this.resetPagination()},
     audioCategoryLabel(value){return({route:'路线导览',online:'线上游览',expert:'名导讲解',heritage:'文史节目'})[value]||value||'未分类'},
-    resetFilters(){this.filterText='';this.attractionDestinationFilter='';this.audioTrackCategoryFilter='';this.clearFilterValues();this.resetPagination()},
+    resetFilters(){this.filterText='';this.attractionDestinationFilter='';this.audioTrackCategoryFilter='';this.audioDestinationFilter='';this.expandedAudioGroups=[];this.clearFilterValues();this.resetPagination()},
     resetPagination(){this.page=1;this.groupPages={};this.selectedAttractionIds=[]},
     changePageSize(size){this.pageSize=size;this.resetPagination()},
     groupPage(group){return Math.min(this.groupPages[group.key]||1,Math.max(1,Math.ceil(group.items.length/this.pageSize)))},
