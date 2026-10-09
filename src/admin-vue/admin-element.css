@@ -19,6 +19,7 @@
 .el-admin .el-card { border-radius:4px; }
 .el-admin .el-input__inner,
 .el-admin .el-textarea__inner { border-color:#d8e0e3; }
+.el-admin .el-date-editor .el-range-separator { width:38px; flex:0 0 38px; padding:0 2px; color:#087f79; font-size:14px; font-weight:700; text-align:center; }
 .el-admin .el-input__inner:focus,
 .el-admin .el-textarea__inner:focus { border-color:#1e9fff; }
 .el-admin .el-form-item__label { color:#38464c; font-size:13px; padding-bottom:6px; line-height:1.45; }
@@ -48,6 +49,9 @@
 .el-admin .side-menu { flex:1; overflow:auto; border-right:0; }
 .el-admin .side-menu .el-menu-item-group__title { padding:19px 16px 7px; color:#717985; font-size:10px; letter-spacing:.08em; }
 .el-admin .side-menu .el-submenu__title { height:42px; line-height:42px; margin:7px 7px 2px; padding-left:12px!important; border-radius:4px; font-size:12px; }
+.el-admin .side-menu > .el-submenu > .el-menu--inline > .side-menu-section > .el-submenu__title { height:38px; line-height:38px; margin:2px 7px; padding-left:30px!important; border-radius:4px; color:#929aa4; font-size:11px; }
+.el-admin .side-menu > .el-submenu > .el-menu--inline > .side-menu-section > .el-submenu__title::before { position:absolute; top:11px; left:24px; width:2px; height:16px; border-radius:2px; background:rgba(0,143,131,.58); content:''; }
+.el-admin .side-menu > .el-submenu > .el-menu--inline > .side-menu-section > .el-submenu__title:hover { color:#e5e8ed; background:#2d3039!important; }
 .el-admin .side-menu .el-submenu__title:hover { background:#2d3039!important; }
 .el-admin .side-menu .el-menu-item { height:41px; line-height:41px; margin:2px 7px; padding-left:12px!important; border-radius:4px; font-size:12px; }
 .el-admin .side-menu .el-submenu .el-menu-item { padding-left:28px!important; }
@@ -146,6 +150,9 @@
 .el-admin .membership-level-heading { display:flex; flex-direction:column; gap:4px; margin:14px 0 2px; padding:11px 14px; border:1px solid #e1ecea; border-left:3px solid #168c88; border-radius:4px; background:#f8fbfa; }
 .el-admin .membership-level-heading strong { color:#34494e; font-size:14px; }
 .el-admin .membership-level-heading span { color:#718086; font-size:12px; line-height:1.6; }
+.el-admin .membership-user-cell { display:flex; align-items:flex-start; flex-direction:column; gap:5px; }
+.el-admin .membership-user-cell small { color:#758187; font-size:11px; }
+.el-admin .membership-edit-form .el-select,.el-admin .membership-edit-form .el-date-editor { width:100%; }
 .el-admin .settings-structured { margin-top:22px; padding-top:20px; border-top:1px solid var(--ea-line); }
 .el-admin .settings-structured-head { display:flex; justify-content:space-between; align-items:center; gap:12px; margin-bottom:14px; }
 .el-admin .settings-structured-head h3 { margin:0 0 4px; font-size:16px; color:#35444a; }

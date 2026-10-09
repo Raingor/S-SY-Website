@@ -14,14 +14,20 @@
     <el-container v-else class="admin-layout">
       <el-aside width="232px" class="admin-aside">
         <div class="brand-lockup"><span class="brand-mark">SY</span><span><b>希腊旅行管家</b><small>CONTENT ADMIN</small></span></div>
-        <el-menu ref="sideMenu" :default-active="active" :default-openeds="activeGroupLabel?[activeGroupLabel]:[]" unique-opened class="side-menu" background-color="#20222a" text-color="#aeb3bd" active-text-color="#fff" @select="selectMenu">
+        <el-menu ref="sideMenu" :default-active="active" :default-openeds="openMenuGroups" unique-opened class="side-menu" background-color="#20222a" text-color="#aeb3bd" active-text-color="#fff" @select="selectMenu">
           <template v-for="group in menuGroups">
             <el-menu-item-group v-if="group.label === '共同数据'" :key="group.label" :title="group.label">
               <el-menu-item v-for="item in group.items" :key="item[0]" :index="item[0]"><i :class="item[2]"></i><span slot="title">{{ item[1] }}</span></el-menu-item>
             </el-menu-item-group>
             <el-submenu v-else :key="group.label" :index="group.label">
               <template slot="title"><span>{{ group.label }}</span></template>
-              <el-menu-item v-for="item in group.items" :key="item[0]" :index="item[0]"><i :class="item[2]"></i><span slot="title">{{ item[1] }}</span></el-menu-item>
+              <template v-if="group.sections">
+                <el-submenu v-for="section in group.sections" :key="section.index" :index="section.index" class="side-menu-section">
+                  <template slot="title"><span>{{ section.label }}</span></template>
+                  <el-menu-item v-for="item in section.items" :key="item[0]" :index="item[0]"><i :class="item[2]"></i><span slot="title">{{ item[1] }}</span></el-menu-item>
+                </el-submenu>
+              </template>
+              <el-menu-item v-else v-for="item in group.items" :key="item[0]" :index="item[0]"><i :class="item[2]"></i><span slot="title">{{ item[1] }}</span></el-menu-item>
             </el-submenu>
           </template>
         </el-menu>
@@ -74,18 +80,6 @@
                         <el-form-item label="景点单篇讲解价格（元）"><el-input-number v-model="settings.miniprogramKnowledge.products.attraction.price" :min="0" :step="0.01" :precision="2"/></el-form-item>
                         <el-form-item label="单景点讲解商品状态"><el-switch v-model="settings.miniprogramKnowledge.products.attraction.enabled" active-text="启用" inactive-text="停用"/></el-form-item>
                         <el-form-item label="单景点讲解币种"><el-input v-model="settings.miniprogramKnowledge.products.attraction.currency"/></el-form-item>
-                      </div>
-                      <div v-else-if="tab.name==='membership'" class="form-grid">
-                        <div class="full-field membership-level-heading"><strong>年会员</strong><span>支付成功后获得一年景点讲解权益；续费会顺延到当前有效期之后。</span></div>
-                        <el-form-item label="年会员商品名称"><el-input v-model="settings.miniprogramKnowledge.products.annualMembership.name"/></el-form-item>
-                        <el-form-item label="年会员价格（元）"><el-input-number v-model="settings.miniprogramKnowledge.products.annualMembership.price" :min="0" :step="0.01" :precision="2"/></el-form-item>
-                        <el-form-item label="年会员商品状态"><el-switch v-model="settings.miniprogramKnowledge.products.annualMembership.enabled" active-text="启用" inactive-text="停用"/></el-form-item>
-                        <el-form-item label="年会员币种"><el-input v-model="settings.miniprogramKnowledge.products.annualMembership.currency"/></el-form-item>
-                        <div class="full-field membership-level-heading"><strong>终身会员</strong><span>旧终身会员订单仍永久有效；停用商品不会收回已购用户权益。</span></div>
-                        <el-form-item label="终身会员商品名称"><el-input v-model="settings.miniprogramKnowledge.products.membership.name"/></el-form-item>
-                        <el-form-item label="终身会员价格（元）"><el-input-number v-model="settings.miniprogramKnowledge.products.membership.price" :min="0" :step="0.01" :precision="2"/></el-form-item>
-                        <el-form-item label="终身会员商品状态"><el-switch v-model="settings.miniprogramKnowledge.products.membership.enabled" active-text="启用" inactive-text="停用"/></el-form-item>
-                        <el-form-item label="终身会员币种"><el-input v-model="settings.miniprogramKnowledge.products.membership.currency"/></el-form-item>
                       </div>
                       <template v-if="tab.name==='site'">
                         <section class="settings-structured">
@@ -141,6 +135,27 @@
                     </el-tab-pane>
                   </el-tabs>
                   <div class="form-actions"><el-button type="primary" icon="el-icon-check" :loading="busy" @click="saveSettings">保存配置</el-button></div>
+                </el-form>
+              </el-card>
+            </section>
+            <section v-else-if="active === 'membershipSettings'">
+              <el-card shadow="never" class="section-card">
+                <div slot="header" class="card-heading"><div><span class="eyebrow">MINI PROGRAM / MEMBERSHIP</span><h2>会员等级设置</h2><p class="admin-muted">管理小程序讲解权益的会员商品名称、价格和启用状态。</p></div></div>
+                <el-alert title="年会员支付成功后获得一年景点讲解权益，续费会顺延到当前有效期之后。旧终身会员订单仍永久有效；停用终身会员商品不会收回已购用户权益。" type="info" :closable="false" show-icon class="banner-note" />
+                <el-form label-position="top" class="settings-form">
+                  <div class="form-grid">
+                    <div class="full-field membership-level-heading"><strong>年会员</strong><span>支付成功后获得一年景点讲解权益；续费会顺延到当前有效期之后。</span></div>
+                    <el-form-item label="年会员商品名称"><el-input v-model="settings.miniprogramKnowledge.products.annualMembership.name"/></el-form-item>
+                    <el-form-item label="年会员价格（元）"><el-input-number v-model="settings.miniprogramKnowledge.products.annualMembership.price" :min="0" :step="0.01" :precision="2"/></el-form-item>
+                    <el-form-item label="年会员商品状态"><el-switch v-model="settings.miniprogramKnowledge.products.annualMembership.enabled" active-text="启用" inactive-text="停用"/></el-form-item>
+                    <el-form-item label="年会员币种"><el-select v-model="settings.miniprogramKnowledge.products.annualMembership.currency"><el-option label="人民币 CNY" value="CNY"/></el-select></el-form-item>
+                    <div class="full-field membership-level-heading"><strong>终身会员</strong><span>旧终身会员订单仍永久有效；停用商品不会收回已购用户权益。</span></div>
+                    <el-form-item label="终身会员商品名称"><el-input v-model="settings.miniprogramKnowledge.products.membership.name"/></el-form-item>
+                    <el-form-item label="终身会员价格（元）"><el-input-number v-model="settings.miniprogramKnowledge.products.membership.price" :min="0" :step="0.01" :precision="2"/></el-form-item>
+                    <el-form-item label="终身会员商品状态"><el-switch v-model="settings.miniprogramKnowledge.products.membership.enabled" active-text="启用" inactive-text="停用"/></el-form-item>
+                    <el-form-item label="终身会员币种"><el-select v-model="settings.miniprogramKnowledge.products.membership.currency"><el-option label="人民币 CNY" value="CNY"/></el-select></el-form-item>
+                  </div>
+                  <div class="form-actions"><el-button type="primary" icon="el-icon-check" :loading="busy" @click="saveSettings('会员等级')">保存会员等级</el-button></div>
                 </el-form>
               </el-card>
             </section>
@@ -356,6 +371,7 @@
                     <div v-if="column.type==='image'" class="table-image-cell"><img v-if="row[column.key]" :src="assetUrl(row[column.key])" :alt="imageCellTitle(row,column)"/><span>{{ imageCellTitle(row,column) }}</span></div>
                     <div v-else-if="column.type==='destinationLinks'" class="destination-link-cell"><strong>{{ row.name || row.id }}</strong><small>已关联 {{ destinationLinkState(row).linkedCount }} 个 · 其中已发布 {{ destinationLinkState(row).publicCount }} 个</small><el-tag size="mini" :type="destinationLinkState(row).ready?'success':'warning'">{{ destinationLinkState(row).label }}</el-tag><el-button class="destination-link-entry" size="mini" type="primary" plain icon="el-icon-connection" @click="editDestinationLinks(row)">关联景点</el-button></div>
                     <span v-else-if="column.type==='date'">{{ dateTime(row[column.key]) }}</span>
+                    <div v-else-if="column.type==='membership'" class="membership-user-cell"><el-tag size="small" :type="row.member?'success':'info'">{{ row.memberLabel || '普通用户' }}</el-tag><small v-if="row.membershipOverrideType && row.membershipOverrideType!=='auto'">后台调整<span v-if="row.membershipOverrideType==='annualMembership' && row.membershipOverrideExpiresAt"> · 至 {{ row.membershipOverrideExpiresAt.slice(0,10) }}</span></small></div>
                     <el-tag v-else-if="column.type==='badge'" size="small" :type="statusTone(row[column.key])">{{ statusLabel(row[column.key]) }}</el-tag>
                     <el-select v-else-if="column.type==='status'" :value="rowStatus(row)" size="mini" class="status-inline" @change="value=>changeStatus(row,value)"><el-option v-for="option in statusOptionsForCurrent" :key="option.value" :label="option.label" :value="option.value"/></el-select>
                     <el-select v-else-if="column.type==='association'" :value="linkedDestinationIdsForAttraction(row.id)" multiple filterable :data-tag-cap="linkedDestinationIdsForAttraction(row.id).length" data-tag-max="5" size="mini" class="attraction-link-select" :disabled="!!destinationLinkSaving[row.id]" placeholder="选择关联目的地" @change="ids=>changeAttractionDestinationLinks(row,ids)"><el-option v-for="option in associationDestinationOptions" :key="option.value" :label="option.label" :value="option.value"/></el-select>
@@ -363,7 +379,7 @@
                     <span v-else-if="column.type==='tags'" class="table-tags"><el-tag v-for="tag in tagValues(row[column.key]).slice(0,3)" :key="tag" size="mini" effect="plain">{{ tag }}</el-tag><span v-if="!tagValues(row[column.key]).length">—</span></span>
                     <span v-else>{{ column.key==='title'||column.key==='subtitle' ? localizedText(row[column.key]) : displayValue(row[column.key]) }}</span>
                   </template></el-table-column>
-                  <el-table-column v-if="currentMenu.editable" label="操作" :width="active==='guides'?210:145" align="right"><template slot-scope="{row}"><el-button size="mini" @click="editRow(row)">编辑</el-button><el-button v-if="active==='guides'" size="mini" @click="copyGuide(row)">复制</el-button><el-button v-if="active!=='miniprogramUsers'" size="mini" type="danger" plain @click="deleteRow(row)">删除</el-button></template></el-table-column>
+                  <el-table-column v-if="currentMenu.editable" label="操作" :width="active==='guides'?210:active==='miniprogramUsers'?210:145" align="right"><template slot-scope="{row}"><el-button size="mini" @click="editRow(row)">编辑</el-button><el-button v-if="active==='miniprogramUsers'" size="mini" type="primary" plain @click="editMembership(row)">调整会员</el-button><el-button v-if="active==='guides'" size="mini" @click="copyGuide(row)">复制</el-button><el-button v-if="active!=='miniprogramUsers'" size="mini" type="danger" plain @click="deleteRow(row)">删除</el-button></template></el-table-column>
                 </el-table><el-empty v-else description="暂无记录"/></div>
                 <div v-if="filteredItems.length&&!(active==='attractions'&&attractionView==='destination')&&!(active==='audioTracks'&&['heritage','online'].includes(audioTrackCategoryFilter))" class="list-pagination"><el-pagination :current-page="currentPage" :page-size="pageSize" :page-sizes="pageSizes" :total="filteredItems.length" layout="total, sizes, prev, pager, next, jumper" @current-change="page=$event" @size-change="changePageSize"/></div>
                 <div v-if="active==='cities'" class="pricing-hint"><i class="el-icon-info"></i>点击城市行上的编辑，使用独立编辑页调整小程序讲解定价。</div>
@@ -450,6 +466,16 @@
         </div>
         <span slot="footer"><el-button @click="guideVisible=false">关闭说明</el-button></span>
       </el-dialog>
+      <el-dialog title="调整用户会员等级" :visible.sync="membershipDialogVisible" width="520px" custom-class="membership-edit-dialog" :close-on-click-modal="false">
+        <p v-if="membershipEditingUser" class="admin-muted">{{ membershipEditingUser.nickname || '小程序用户' }} · {{ membershipEditingUser.phoneMasked || '未绑定手机号' }}</p>
+        <el-alert title="后台等级调整不会创建或修改支付订单。选择「按订单计算」会清除后台调整并恢复根据已支付订单判定的会员权益。" type="info" :closable="false" show-icon class="banner-note" />
+        <el-form label-position="top" class="membership-edit-form">
+          <el-form-item label="会员等级"><el-select v-model="membershipForm.type" @change="handleMembershipTypeChange"><el-option label="按订单计算" value="auto"/><el-option label="普通用户" value="none"/><el-option label="年会员" value="annualMembership"/><el-option label="终身会员" value="membership"/></el-select></el-form-item>
+          <el-form-item v-if="membershipForm.type==='annualMembership'" label="年会员到期日"><el-date-picker v-model="membershipForm.expiresAt" type="date" value-format="yyyy-MM-dd" placeholder="选择到期日期"/></el-form-item>
+          <small v-if="membershipForm.type==='none' && membershipEditingUser && membershipEditingUser.member" class="field-help">保存后会立即按普通用户计算访问权限；历史支付订单仍保留，可选择「按订单计算」恢复。</small>
+        </el-form>
+        <span slot="footer"><el-button @click="membershipDialogVisible=false">取消</el-button><el-button type="primary" :loading="membershipSaving" @click="saveMembershipOverride">保存会员等级</el-button></span>
+      </el-dialog>
       <el-dialog title="请确认" :visible.sync="confirmVisible" width="420px" custom-class="admin-confirm-dialog" :before-close="()=>resolveConfirm(false)"><div class="admin-confirm-text">{{ confirmText }}</div><span slot="footer"><el-button @click="resolveConfirm(false)">取消</el-button><el-button type="danger" @click="resolveConfirm(true)">确认</el-button></span></el-dialog>
       <el-backtop :right="24" :bottom="24"/>
     </el-container>
@@ -465,7 +491,11 @@ const groups = [
   { label:'路线与目的地', items:[['routes','路线管理','el-icon-document'],['cities','城市与价格','el-icon-location-outline'],['destinationTypes','目的地分类','el-icon-collection-tag'],['destinations','目的地','el-icon-map-location'],['attractions','景点管理','el-icon-school'],['sampleItineraries','甄选路线','el-icon-guide']] },
   { label:'网站管理', items:[['homeBanners','首页 Banner','el-icon-picture'],['settings','站点配置','el-icon-setting'],['attractionDetailPage','景点详情配置','el-icon-document']] },
   { label:'语音与文史', items:[['audioRoutes','路线导览','el-icon-location-information'],['audioTracks','导览音频 / 文史节目','el-icon-headset'],['audioAlbums','希腊文史专辑','el-icon-collection'],['heritageGuideBanners','古迹讲解 Banner','el-icon-picture-outline']] },
-  { label:'小程序管理', items:[['miniProgramBookings','小程序预约','el-icon-mobile-phone'],['miniprogramBanners','小程序 Banner','el-icon-picture-outline'],['miniprogramServiceEntries','首页服务入口','el-icon-menu'],['vehicleService','在地用车','el-icon-truck'],['miniprogramUsers','小程序用户','el-icon-user'],['miniprogramOrders','订单管理','el-icon-s-finance'],['miniprogramTrips','小程序行程','el-icon-map-location'],['customTrips','定制行程订单','el-icon-link'],['miniprogramTravelers','出行人资料','el-icon-user-solid'],['miniprogramDocuments','签证资料','el-icon-document'],['miniprogramCoupons','优惠券','el-icon-s-ticket']] },
+  { label:'小程序管理', items:[['membershipSettings','会员等级','el-icon-user'],['miniProgramBookings','小程序预约','el-icon-mobile-phone'],['miniprogramBanners','小程序 Banner','el-icon-picture-outline'],['miniprogramServiceEntries','首页服务入口','el-icon-menu'],['vehicleService','在地用车','el-icon-truck'],['miniprogramUsers','小程序用户','el-icon-user'],['miniprogramOrders','订单管理','el-icon-s-finance'],['miniprogramTrips','小程序行程','el-icon-map-location'],['customTrips','定制行程订单','el-icon-link'],['miniprogramTravelers','出行人资料','el-icon-user-solid'],['miniprogramDocuments','签证资料','el-icon-document'],['miniprogramCoupons','优惠券','el-icon-s-ticket']], sections:[
+    {index:'小程序展示与会员',label:'展示与会员',items:[['membershipSettings','会员等级','el-icon-user'],['miniprogramBanners','小程序 Banner','el-icon-picture-outline'],['miniprogramServiceEntries','首页服务入口','el-icon-menu']]},
+    {index:'小程序用户与订单',label:'用户与订单',items:[['miniProgramBookings','小程序预约','el-icon-mobile-phone'],['miniprogramUsers','小程序用户','el-icon-user'],['miniprogramOrders','订单管理','el-icon-s-finance'],['miniprogramCoupons','优惠券','el-icon-s-ticket']]},
+    {index:'小程序行程与资料',label:'行程与资料',items:[['vehicleService','在地用车','el-icon-truck'],['miniprogramTrips','小程序行程','el-icon-map-location'],['customTrips','定制行程订单','el-icon-link'],['miniprogramTravelers','出行人资料','el-icon-user-solid'],['miniprogramDocuments','签证资料','el-icon-document']]}
+  ] },
 ]
 const MENU_IDS = new Set(groups.flatMap(group=>group.items).map(item=>item[0]))
 const emptyData = { audioRoutes:[],audioTracks:[],audioAlbums:[],routes:[],destinations:[],cities:[],attractions:[],sampleItineraries:[],customTrips:[],leads:[],guides:[],countries:[],destinationTypes:[],guideBookings:[],miniProgramBookings:[],miniprogramUsers:[],miniprogramOrders:[],miniprogramTravelers:[],miniprogramDocuments:[],miniprogramCoupons:[],homeBanners:[],miniprogramBanners:[],miniprogramServiceEntries:[],heritageGuideBanners:[],settings:{} }
@@ -480,7 +510,7 @@ const detailRouteFields = [{key:'title',label:'标题',keys:{zh:'title',tw:'titl
 const detailAudioFields = detailRouteFields
 const guideGroups = [
   {title:'景点讲解与音频',items:[
-    {title:'景点资料与讲解点',menu:'attractions',menuLabel:'景点管理',location:'小程序「城市景点 → 景点详情」的介绍、亮点、讲解点和参观信息。',description:'进入景点列表后编辑对应景点；讲解点在景点编辑表单的「讲解点」区域增删改。'},
+    {title:'景点资料与讲解点',menu:'attractions',menuLabel:'景点管理',location:'小程序「城市景点 → 景点详情」的介绍、亮点、讲解点和参观信息。',description:'进入景点列表后编辑对应景点；主图与「线上预览」「名导讲解」卡片封面分别在对应编辑页签管理，封面留空时使用主图；讲解点在「讲解点」页签增删改。'},
     {title:'名导讲解',menu:'audioTracks',filter:{key:'category',value:'expert'},menuLabel:'导览音频 / 文史节目',location:'景点详情页的「名导讲解」音频列表。',description:'进入后已筛选「名导讲解」类别。音轨要关联景点，发布后才会显示在该景点。'},
     {title:'线上预览',menu:'audioTracks',filter:{key:'category',value:'online'},menuLabel:'导览音频 / 文史节目',location:'景点详情页的「线上预览」音频列表。',description:'进入后已筛选「线上预览」类别；音轨关联景点，讲解点关联为可选。'},
     {title:'路线讲解音频',menu:'audioTracks',filter:{key:'category',value:'route'},menuLabel:'导览音频 / 文史节目',location:'景点详情页的「路线导览」音频。',description:'进入后已筛选「路线导览」类别；还需关联对应路线。'},
@@ -489,6 +519,8 @@ const guideGroups = [
   ]},
   {title:'小程序页面与服务',items:[
     {title:'景点详情页面说明',menu:'attractionDetailPage',menuLabel:'景点详情配置',location:'小程序景点详情页各区块的标题、说明和使用提示。',description:'用于维护页面文案与区块说明，不编辑景点本身的资料或音频。'},
+    {title:'会员等级与价格',menu:'membershipSettings',menuLabel:'会员等级',location:'小程序讲解权益购买弹窗中的会员商品与价格。',description:'设置年会员和终身会员的商品名称、价格、币种及启用状态；不改变已购买用户的权益。'},
+    {title:'用户会员等级',menu:'miniprogramUsers',menuLabel:'小程序用户',location:'小程序用户档案中的会员等级与讲解权益。',description:'在用户列表行内点击「调整会员」；可手动设置普通用户、年会员或终身会员，也可恢复按支付订单计算。'},
     {title:'古迹讲解 Banner',menu:'heritageGuideBanners',menuLabel:'古迹讲解 Banner',location:'小程序「古迹讲解」页面顶部轮播。',description:'只影响古迹讲解页，不影响首页 Banner。'},
     {title:'小程序首页 Banner',menu:'miniprogramBanners',menuLabel:'小程序 Banner',location:'小程序首页顶部轮播。',description:'维护首页图片和文案；与 Website 首页 Banner 分开。'},
     {title:'首页快捷服务入口',menu:'miniprogramServiceEntries',menuLabel:'首页服务入口',location:'小程序首页快捷服务区的图标、标题和副标题。',description:'仅维护固定服务入口的展示内容；入口跳转由小程序端控制。'},
@@ -537,6 +569,8 @@ const imageGuidanceByField = {
   'routes.image':'建议 1600×900 px（16:9 横图）；路线卡片和详情头图均使用 cover，主体放在画面中央，边缘会裁切。',
   'destinations.image':'建议 1200×900 px（4:3 横图）；网站目的地卡片约 1.38:1，窄屏约 1.2:1，四周会轻微裁切。',
   'attractions.image':'建议 1400×700 px（2:1 横图）；小程序城市景点卡片约 2.1:1（图片框 320rpx 高），网站卡片/详情头图也会 cover 裁切，请把主体放中间。',
+  'attractions.onlineCoverImage':'建议 1400×700 px（2:1 横图）；小程序线上预览入口卡片按 cover 裁切，请将主体放在画面中央。',
+  'attractions.expertCoverImage':'建议 1400×700 px（2:1 横图）；小程序名导讲解入口卡片按 cover 裁切，请将主体放在画面中央。',
   'attractions.highlights.image':'建议 1200×800 px（3:2 横图）；小程序横向卡片约 2:1、双列网格约 1.5:1，均会按容器裁切，建议主体居中。',
   'attractions.exhibits.image':'建议 1000×1000 px（1:1 方图）；讲解点缩略图会裁切填充窄图框，重点放在中心。',
   'attractions.articles.cover':'建议 1800×750 px（约 2.4:1 横图）；文章卡片高度固定、宽度随屏幕变化，使用 cover 裁切，标题/主体置中。',
@@ -565,7 +599,7 @@ const fields = {
   guides:{ label:'导游管理',editorGroups:longEditorGroups.guides,endpoint:'guides',addLabel:'新增导游',columns:[['avatar','头像','image'],['name','导游'],['role','职位'],['location','服务地区'],['enabled','状态','status']],fields:[basic('id','导游 ID','text',{required:true}),basic('countryId','所属国家','select',{options:'countries'}),basic('name','姓名','text',{required:true}),basic('nameTw','繁体姓名'),basic('nameEn','英文姓名'),basic('role','职位'),basic('roleTw','繁体职位'),basic('roleEn','英文职位'),basic('intro','个人简介','textarea'),basic('introTw','繁体简介','textarea'),basic('introEn','英文简介','textarea'),basic('location','服务地区'),basic('wechat','微信号'),basic('avatar','导游头像','image',{required:true}),basic('fullImage','形象大图','image'),basic('eyebrow','眉题'),basic('proof','专业资质摘要','textarea'),basic('credentials','专业背书','array',{itemLabel:'背书',addLabel:'添加背书',fields:[basic('title','标题'),basic('desc','说明','textarea')]}),basic('directions','擅长方向','array',{itemLabel:'方向',addLabel:'添加方向',fields:[basic('title','标题'),basic('subtitle','副标题'),basic('desc','说明','textarea'),basic('suitable','适合人群'),basic('duration','建议时长')]}),basic('reviews','客户评价','array',{itemLabel:'评价',addLabel:'添加评价',fields:[basic('quote','评价内容','textarea'),basic('name','客户称呼'),basic('meta','行程类型')]}),basic('featured','首页推荐','switch'),basic('enabled','发布状态','switch'),basic('sort','排序','number')]},
   routes:{label:'路线管理',endpoint:'routes',addLabel:'新增路线',template:'route',miniProgramDisplay:'当前小程序不读取此板块；这里维护 Website 前台的主题路线。小程序首页「甄选路线」请在「甄选路线」板块维护。',columns:[['title','路线名称'],['days','天数'],['tags','主题','tags'],['status','状态','status']],fields:[basic('id','路线 ID','text',{required:true}),basic('title','路线名称','text',{required:true}),basic('kicker','路线副标题'),basic('days','天数','number'),basic('tags','标签（逗号分隔）'),basic('desc','路线介绍','textarea',{required:true}),basic('image','路线主图','image',{required:true}),basic('destinationIds','关联目的地 ID','multiselect',{options:'destinations'}),basic('sampleItineraryIds','关联甄选路线 ID','multiselect',{options:'sampleItineraries'}),basic('status','发布状态','select',{options:'publish'})]},
   destinations:{label:'精选目的地',editorGroups:longEditorGroups.destinations,endpoint:'destinations',addLabel:'新增目的地',template:'destination',columns:[['name','目的地 / 关联景点','destinationLinks',260],['en','英文名'],['type','分类'],['status','状态','status']],fields:[basic('id','目的地 ID','text',{required:true}),basic('name','中文名称','text',{required:true}),basic('en','英文名称'),basic('type','分类'),basic('cityId','关联城市','select',{options:'cities'}),basic('image','目的地图片','image'),basic('status','发布状态','select',{options:'publish'}),basic('attractionIds','关联景点','multiselect',{options:'attractions'})]},
-  attractions:{label:'景点管理',endpoint:'attractions',addLabel:'新增景点',template:'attraction',columns:[['image','景点','image'],['cityName','所属城市'],['type','类型'],['linkedDestinationIds','关联目的地','association',260],['status','状态','status']],fields:[basic('name','景点名称','text',{required:true}),basic('en','英文名称'),basic('originalName','希腊语名称'),basic('city','城市 ID'),basic('cityName','城市名称'),basic('type','类型','select',{options:[{label:'景点',value:'landmark'},{label:'博物馆',value:'museum'}]}),basic('category','分类'),basic('sizeLabel','规模标签'),basic('tags','标签（逗号分隔）'),basic('image','景点图片','image'),basic('summary','景点简介','textarea',{required:true}),basic('linkedDestinationIds','关联目的地','checkboxList',{options:'destinations',help:'勾选该景点所属的目的地，可多选。'}),basic('highlights','景点亮点','array',{itemLabel:'亮点',addLabel:'添加亮点',fields:[basic('name','名称'),basic('desc','说明','textarea'),basic('image','亮点图片（可选）','image')]}),basic('exhibits','讲解点','array',{itemLabel:'讲解点',addLabel:'添加讲解点',fields:[basic('name','名称'),basic('author','年代 / 作者'),basic('duration','讲解时长'),basic('location','展厅位置','object',{fields:[basic('floor','楼层 / 区域'),basic('hall','展厅 / 具体位置')]})]}),basic('guide','参观服务信息','object',{help:'按项目填写参观所需信息；留空的项目不会展示。',fields:[basic('hours','开放时间','textarea',{rows:2}),basic('tickets','门票与预约','textarea',{rows:2}),basic('transport','交通方式','textarea',{rows:2}),basic('worth','游览建议','textarea',{rows:2}),basic('services','场馆服务','textarea',{rows:2}),basic('family','亲子参观','textarea',{rows:2}),basic('map','路线与导航提示','textarea',{rows:2}),basic('shop','商店与餐饮','textarea',{rows:2}),basic('accessibility','无障碍信息','textarea',{rows:2}),basic('exhibitions','展览信息','textarea',{rows:2}),basic('faq','常见问题','textarea',{rows:2}),basic('notices','重要提醒','textarea',{rows:2}),basic('sourceTitle','信息来源名称')]}),basic('articles','文史文章','array',{itemLabel:'文章',addLabel:'添加文章',fields:[basic('title','标题'),basic('date','日期'),basic('summary','摘要','textarea'),basic('cover','文章封面','image')]}),basic('deepDive','深度内容设置','deepDive',{help:'编辑免费预览与付费章节内容。'}),basic('status','发布状态','select',{options:'publish'})]},
+  attractions:{label:'景点管理',endpoint:'attractions',addLabel:'新增景点',template:'attraction',columns:[['image','景点','image'],['cityName','所属城市'],['type','类型'],['linkedDestinationIds','关联目的地','association',260],['status','状态','status']],fields:[basic('name','景点名称','text',{required:true}),basic('en','英文名称'),basic('originalName','希腊语名称'),basic('city','城市 ID'),basic('cityName','城市名称'),basic('type','类型','select',{options:[{label:'景点',value:'landmark'},{label:'博物馆',value:'museum'}]}),basic('category','分类'),basic('sizeLabel','规模标签'),basic('tags','标签（逗号分隔）'),basic('image','景点图片','image'),basic('onlineCoverImage','线上预览卡片封面','image',{help:'选填；只影响「线上预览」卡片。留空时使用景点主图。'}),basic('expertCoverImage','名导讲解卡片封面','image',{help:'选填；只影响「名导讲解」卡片。留空时使用景点主图。'}),basic('summary','景点简介','textarea',{required:true}),basic('linkedDestinationIds','关联目的地','checkboxList',{options:'destinations',help:'勾选该景点所属的目的地，可多选。'}),basic('highlights','景点亮点','array',{itemLabel:'亮点',addLabel:'添加亮点',fields:[basic('name','名称'),basic('desc','说明','textarea'),basic('image','亮点图片（可选）','image')]}),basic('exhibits','讲解点','array',{itemLabel:'讲解点',addLabel:'添加讲解点',fields:[basic('name','名称'),basic('author','年代 / 作者'),basic('duration','讲解时长'),basic('location','展厅位置','object',{fields:[basic('floor','楼层 / 区域'),basic('hall','展厅 / 具体位置')]})]}),basic('guide','参观服务信息','object',{help:'按项目填写参观所需信息；留空的项目不会展示。',fields:[basic('hours','开放时间','textarea',{rows:2}),basic('tickets','门票与预约','textarea',{rows:2}),basic('transport','交通方式','textarea',{rows:2}),basic('worth','游览建议','textarea',{rows:2}),basic('services','场馆服务','textarea',{rows:2}),basic('family','亲子参观','textarea',{rows:2}),basic('map','路线与导航提示','textarea',{rows:2}),basic('shop','商店与餐饮','textarea',{rows:2}),basic('accessibility','无障碍信息','textarea',{rows:2}),basic('exhibitions','展览信息','textarea',{rows:2}),basic('faq','常见问题','textarea',{rows:2}),basic('notices','重要提醒','textarea',{rows:2}),basic('sourceTitle','信息来源名称')]}),basic('articles','文史文章','array',{itemLabel:'文章',addLabel:'添加文章',fields:[basic('title','标题'),basic('date','日期'),basic('summary','摘要','textarea'),basic('cover','文章封面','image')]}),basic('deepDive','深度内容设置','deepDive',{help:'编辑免费预览与付费章节内容。'}),basic('status','发布状态','select',{options:'publish'})]},
   sampleItineraries:{label:'甄选路线',editorGroups:longEditorGroups.sampleItineraries,endpoint:'sampleItineraries',addLabel:'新增甄选路线',template:'itinerary',miniProgramDisplay:'小程序首页「甄选路线」卡片（最多展示前 4 条）；「查看全部甄选路线」进入列表，点击卡片查看行程详情。仅发布状态会显示。',columns:[['title','路线名称'],['days','天数'],['status','状态','status']],fields:[basic('id','甄选路线 ID','text',{required:true}),basic('title','路线名称','text',{required:true}),basic('tag','路线标签'),basic('days','天数','number'),basic('crowd','适合人群'),basic('cover','封面图片','image'),basic('summary','简介','textarea'),basic('itinerary','逐日行程','array',{itemLabel:'第',addLabel:'添加一天',help:'按天维护当天标题、所在城市、当天安排与关联景点；保存时自动按顺序记录第几天，不再需要手写 JSON。',fields:[basic('day','第几天','number',{min:1}),basic('title','当天标题','text',{required:true}),basic('city','所在城市'),basic('desc','当天安排','textarea'),basic('attractionIds','关联景点','multiselect',{options:'attractions'})]}),basic('status','发布状态','select',{options:'publish'})]},
   customTrips:{label:'定制行程订单',editorGroups:longEditorGroups.customTrips,endpoint:'customTrips',addLabel:'新增定制行程',template:'customTrip',miniProgramDisplay:'不进入小程序首页或公开行程列表。每条记录生成专属私密链接，客户通过分享链接在小程序「行程详情」页（token）或网页查看；停用后链接失效。',columns:[['client','客户 / 订单'],['period','出行日期'],['travelers','人数'],['status','状态','status']],fields:[basic('client','客户称呼','text',{required:true}),basic('title','行程标题'),basic('orderNo','订单编号'),basic('period','出行日期范围','daterange',{required:true}),basic('travelers','旅客人数'),basic('language','语种需求'),basic('vehicle','计划车型'),basic('guide','司导说明','textarea'),basic('totalFee','服务费'),basic('days','每日行程','json',{rows:10}),basic('notices','须知','json',{rows:5}),basic('status','状态','select',{options:[{label:'生效中',value:'active'},{label:'已停用',value:'archived'}]})]},
   destinationTypes:{label:'目的地分类',endpoint:'destinationCategories',addLabel:'新增分类',columns:[['name','分类'],['nameEn','英文名'],['sort','排序'],['enabled','状态','status']],fields:[basic('key','分类 Key','text',{required:true}),basic('name','简体名称','text',{required:true}),basic('nameTw','繁体名称'),basic('nameEn','英文名称'),basic('description','分类说明','textarea'),basic('sort','排序','number'),basic('enabled','启用','switch')]},
@@ -591,7 +625,7 @@ fields.leads={label:'咨询 CRM',endpoint:'leads',columns:[['createdAt','提交�
 fields.guideBookings={label:'导游预约',endpoint:'leads',columns:[['createdAt','提交时间','date'],['bookingDate','预约日期','date'],['contact','联系方式'],['status','状态','status']],fields:[basic('contact','联系方式','text',{required:true}),basic('bookingDate','预约日期','date'),basic('serviceLength','服务时长'),basic('travelers','出行人数'),basic('requirements','服务需求','textarea'),basic('status','跟进状态','select',{options:[{label:'待处理',value:'new'},{label:'已联系',value:'contacted'},{label:'已报价',value:'quoted'},{label:'已完成',value:'closed'}]})]}
 fields.miniProgramBookings={label:'小程序预约',endpoint:'leads',columns:[['createdAt','提交时间','date'],['destination','预约内容'],['contact','联系方式'],['status','状态','status']],fields:fields.guideBookings.fields}
 fields.miniprogramTrips={label:'小程序行程',endpoint:'leads',columns:[['createdAt','提交时间','date'],['destination','主题'],['travelers','人数'],['status','状态','status']],fields:fields.leads.fields}
-fields.miniprogramUsers={label:'小程序用户',endpoint:'miniprogram-users',columns:[['nickname','用户'],['phoneMasked','手机号'],['memberLabel','会员'],['createdAt','创建时间','date']],fields:[basic('nickname','用户昵称','text',{required:true}),basic('phone','手机号（选填）')]}
+fields.miniprogramUsers={label:'小程序用户',endpoint:'miniprogram-users',columns:[['nickname','用户'],['phoneMasked','手机号'],['memberLabel','会员等级','membership'],['createdAt','创建时间','date']],fields:[basic('nickname','用户昵称','text',{required:true}),basic('phone','手机号（选填）')]}
 fields.miniprogramOrders={label:'订单管理',endpoint:'miniprogram-orders',editable:false,columns:[['orderNo','订单号'],['nickname','用户'],['productName','商品'],['amount','金额'],['status','状态','badge'],['createdAt','创建时间','date']],fields:[]}
 fields.homeBanners.endpoint='home-banners'
 fields.miniprogramBanners.endpoint='miniprogram-home-banners'
@@ -602,7 +636,6 @@ const settingTabs = [
   {name:'site',label:'站点与 SEO',description:'网站名称、默认 SEO、首页文案及联系信息。',fields:[basic('siteName','站点名称'),basic('siteUrl','站点正式网址'),basic('defaultTitle','默认页面标题'),basic('defaultDescription','默认 SEO 描述','textarea',{full:true}),basic('homeEyebrow','首页眉题'),basic('homeTitle','首页标题'),basic('homeDescription','首页描述','textarea',{full:true}),basic('keywords','关键词'),basic('googleVerification','Google 验证码'),basic('robotsPolicy','Robots 策略','select'),basic('wechat','微信号'),basic('phone','联系电话'),basic('email','联系邮箱'),basic('replyHours','回复承诺')]},
   {name:'share',label:'分享图片',description:'维护网站社交分享卡片使用的 OG 图片。',fields:[basic('ogImage','OG 分享图片','image',{full:true})]},
   {name:'knowledge',label:'景点讲解',description:'统一设置所有景点的试听时长、单篇讲解价格和商品状态。',fields:[]},
-  {name:'membership',label:'会员等级',description:'设置年会员与终身会员等级、售价和启用状态；年会员按一年有效期计算。',fields:[]}
 ]
 const templates = {
   country:{title:'国家资料模板',tip:'示例以希腊为例；请按实际国家名称、主图与排序修改。',values:{id:'greece',name:'希腊',nameTw:'希臘',nameEn:'Greece',sort:1,enabled:true,heroImage:'greece.webp'}},
@@ -618,7 +651,8 @@ fields.countries.template='country'
 fields.guides.template='guide'
 const attractionEditorFieldGroups = [
   {key:'basic',label:'基础资料',eyebrow:'基础资料',description:'名称、城市、类型、标签和发布状态等基础信息。',fields:['name','en','originalName','city','cityName','type','category','sizeLabel','tags','status']},
-  {key:'display',label:'景点展示',eyebrow:'景点展示',description:'小程序景点卡片和详情页使用的图片、简介与亮点。',fields:['image','summary','highlights']},
+  {key:'display',label:'景点展示',eyebrow:'景点展示',description:'维护小程序景点详情使用的主图、简介与亮点。',fields:['image','summary','highlights']},
+  {key:'entryCovers',label:'讲解入口封面',eyebrow:'讲解入口封面',description:'分别维护线上预览与名导讲解卡片图片；各自留空时回退到景点主图。',fields:['onlineCoverImage','expertCoverImage']},
   {key:'exhibits',label:'讲解点',eyebrow:'讲解点与展品',description:'维护景点详情中的展品讲解点及其展厅位置。',fields:['exhibits']},
   {key:'visitor',label:'参观服务',eyebrow:'参观服务信息',description:'开放时间、门票、交通、游览建议、场馆服务与参观提醒。',fields:['guide']},
   {key:'stories',label:'文史内容',eyebrow:'文史与深度内容',description:'维护关联文章、免费预览和付费章节。',fields:['articles','deepDive']},
@@ -627,7 +661,7 @@ const attractionEditorFieldGroups = [
 
 export default {
   name:'AdminApp',
-  data(){return{token:sessionStorage.getItem(TOKEN)||'',password:'',error:'',active:MENU_IDS.has(sessionStorage.getItem(ACTIVE_MENU))?sessionStorage.getItem(ACTIVE_MENU):'overview',guideVisible:false,guideGroups,settingsTab:'site',detailTab:'sections',detailPage:null,vehicleService:null,vehicleView:'list',detailLocales,vehicleOptionGroups,detailSectionKeys,detailVisitorKeys,detailExhibitFields,detailHighlightFields,detailRouteFields,detailAudioFields,detailAudioCategoryLabels,attractionView:'list',attractionEditorTab:'basic',recordEditorTab:'basic',vehicleConfigTab:'page',attractionDestinationFilter:'',audioTrackCategoryFilter:'',audioDestinationFilter:'',expandedAudioGroups:[],destinationLinkSaving:{},data:JSON.parse(JSON.stringify(emptyData)),stats:{},commerce:{},settings:this.defaultSettings(),loading:false,busy:false,localAiEnabled:false,aiFillDialogVisible:false,aiFilling:false,aiTranslating:false,aiAttractionName:'',aiEntityType:'attraction',aiProgressMessage:'正在准备…',filterText:'',page:1,pageSize:10,pageSizes:[5,10,20,50,100],groupPages:{},filters:{enabled:'',featured:'',countryId:'',status:'',days:'',type:'',currency:'',priceCny:[null,null],city:'',tag:'',period:[],leadType:'',createdAt:[],bookingDate:[],member:'',productType:'',relation:'',visaStatus:'',expiry:[],expiresAt:[]},editor:null,editorBaseline:'',destinationAttractionSearch:'',destinationShowAllCities:false,selectedAttractionIds:[],batchBusy:false,publicationResults:[],publicationChecking:false,publicationCheckedAt:'',apiOrigin:window.location.origin,form:{},jsonFields:{},dateRange:[],jsonError:'',confirmVisible:false,confirmText:'',confirmHandler:null,menuGroups:groups,rowStatusOptions:[{label:'发布',value:'published'},{label:'下架',value:'unpublished'}],settingTabs}},
+  data(){return{token:sessionStorage.getItem(TOKEN)||'',password:'',error:'',active:MENU_IDS.has(sessionStorage.getItem(ACTIVE_MENU))?sessionStorage.getItem(ACTIVE_MENU):'overview',guideVisible:false,membershipDialogVisible:false,membershipSaving:false,membershipEditingUser:null,membershipForm:{type:'auto',expiresAt:''},guideGroups,settingsTab:'site',detailTab:'sections',detailPage:null,vehicleService:null,vehicleView:'list',detailLocales,vehicleOptionGroups,detailSectionKeys,detailVisitorKeys,detailExhibitFields,detailHighlightFields,detailRouteFields,detailAudioFields,detailAudioCategoryLabels,attractionView:'list',attractionEditorTab:'basic',recordEditorTab:'basic',vehicleConfigTab:'page',attractionDestinationFilter:'',audioTrackCategoryFilter:'',audioDestinationFilter:'',expandedAudioGroups:[],destinationLinkSaving:{},data:JSON.parse(JSON.stringify(emptyData)),stats:{},commerce:{},settings:this.defaultSettings(),loading:false,busy:false,localAiEnabled:false,aiFillDialogVisible:false,aiFilling:false,aiTranslating:false,aiAttractionName:'',aiEntityType:'attraction',aiProgressMessage:'正在准备…',filterText:'',page:1,pageSize:10,pageSizes:[5,10,20,50,100],groupPages:{},filters:{enabled:'',featured:'',countryId:'',status:'',days:'',type:'',currency:'',priceCny:[null,null],city:'',tag:'',period:[],leadType:'',createdAt:[],bookingDate:[],member:'',productType:'',relation:'',visaStatus:'',expiry:[],expiresAt:[]},editor:null,editorBaseline:'',destinationAttractionSearch:'',destinationShowAllCities:false,selectedAttractionIds:[],batchBusy:false,publicationResults:[],publicationChecking:false,publicationCheckedAt:'',apiOrigin:window.location.origin,form:{},jsonFields:{},dateRange:[],jsonError:'',confirmVisible:false,confirmText:'',confirmHandler:null,menuGroups:groups,rowStatusOptions:[{label:'发布',value:'published'},{label:'下架',value:'unpublished'}],settingTabs}},
   computed:{
     editorDirty(){return Boolean(this.editor)&&this.editorState()!==this.editorBaseline},
     attractionEditorFieldGroups(){return attractionEditorFieldGroups},
@@ -643,6 +677,7 @@ export default {
     },
     allPageAttractionsSelected(){return this.paginatedItems.length>0&&this.paginatedItems.every(row=>this.selectedAttractionIds.includes(row.id))},
     activeGroupLabel(){const group=(this.menuGroups||[]).find(item=>item.items.some(entry=>entry[0]===this.active));return group&&group.label!=='共同数据'?group.label:''},
+    openMenuGroups(){const opened=this.activeGroupLabel?[this.activeGroupLabel]:[];const group=(this.menuGroups||[]).find(item=>item.label===this.activeGroupLabel);const section=group?.sections?.find(item=>item.items.some(entry=>entry[0]===this.active));if(section)opened.push(section.index);return opened},
     currentMenu(){const pair=groups.flatMap(g=>g.items).find(item=>item[0]===this.active);const config=fields[this.active]||{};return{id:this.active,label:pair?pair[1]:'总览',icon:pair?pair[2]:'',...config,columns:(config.columns||[]).map(column=>({key:column[0],label:column[1],type:column[2],width:column[3]})),editable:config.editable!==false&&!!config.fields?.length,eyebrow:'CONTENT MANAGEMENT'}},
     aiEntityLabel(){return({attractions:'景点',routes:'路线',destinations:'目的地'})[this.aiEntityType]||'内容'},
     aiNameLabel(){return({attractions:'景点名称',routes:'路线名称',destinations:'目的地名称'})[this.aiEntityType]||'名称'},
@@ -728,6 +763,9 @@ export default {
   beforeDestroy(){window.removeEventListener('beforeunload',this.handleBeforeUnload)},
   updated(){this.applyTagCaps()},
   methods:{
+    editMembership(row){const suggested=new Date(Date.now()+365*24*60*60*1000).toISOString().slice(0,10);this.membershipEditingUser=row;this.membershipForm={type:row.membershipOverrideType||'auto',expiresAt:(row.membershipOverrideExpiresAt||'').slice(0,10)||suggested};this.membershipDialogVisible=true},
+    handleMembershipTypeChange(type){if(type==='annualMembership'&&!this.membershipForm.expiresAt)this.membershipForm.expiresAt=new Date(Date.now()+365*24*60*60*1000).toISOString().slice(0,10)},
+    async saveMembershipOverride(){if(this.membershipSaving||!this.membershipEditingUser)return;const user=this.membershipEditingUser,type=this.membershipForm.type;if(type==='none'&&user.member&&!await this.confirm('将立即把该用户的访问权限调整为普通用户。已有支付订单会保留，但会员讲解权限会按普通用户计算。确认继续？'))return;if(type==='annualMembership'&&!this.membershipForm.expiresAt){this.$message.warning('请选择年会员到期日期');return}this.membershipSaving=true;try{await this.request('/admin/miniprogram-users/'+encodeURIComponent(user.id)+'/membership',{method:'PATCH',body:JSON.stringify({type,expiresAt:this.membershipForm.expiresAt})});this.membershipDialogVisible=false;this.membershipEditingUser=null;await this.loadAll();this.$message.success('用户会员等级已更新')}catch(error){this.$message.error(error.message)}finally{this.membershipSaving=false}},
     attractionEditorFieldGroup(fieldKey){const group=attractionEditorFieldGroups.find(item=>item.fields.includes(fieldKey));return group?.key||'basic'},
     recordEditorFieldGroup(fieldKey){const group=this.recordEditorGroups.find(item=>item.fields.includes(fieldKey));return group?.key||''},
     focusRecordEditorTab(index){const groups=this.recordEditorGroups;const count=groups.length;if(!count)return;const target=groups[(index+count)%count];this.recordEditorTab=target.key;this.$nextTick(()=>this.$el.querySelector('#record-editor-tab-'+target.key)?.focus())},
@@ -983,7 +1021,7 @@ export default {
     resolveConfirm(value){this.confirmVisible=false;this.confirmHandler?.(value);this.confirmHandler=null},
     async deleteRow(row){if(!await this.confirm('确定删除这条内容吗？此操作不可撤销。'))return;try{await this.request('/admin/'+this.currentMenu.endpoint+'/'+encodeURIComponent(row.key||row.id),{method:'DELETE'});await this.loadAll();this.$message.success('已删除')}catch(e){this.$message.error(e.message)}},
     async copyGuide(row){if(!await this.confirm('将复制此导游的多语言文案、头像、资质、擅长方向与评价为新草稿，确认继续？'))return;const copy=JSON.parse(JSON.stringify(row));copy.id=(row.id||'guide')+'-copy-'+Date.now().toString(36);copy.name=(copy.name||'导游')+'（副本）';copy.enabled=false;copy.featured=false;this.openEditor(copy,true);this.$message.info('已复制为未发布草稿，请修改导游 ID 与姓名后保存')},
-    async saveSettings(){try{this.busy=true;await this.request('/admin/settings',{method:'PATCH',body:JSON.stringify(this.settings)});await this.loadAll();this.$message.success('站点配置已保存')}catch(e){this.$message.error(e.message)}finally{this.busy=false}},
+    async saveSettings(label='站点配置'){try{this.busy=true;await this.request('/admin/settings',{method:'PATCH',body:JSON.stringify(this.settings)});await this.loadAll();this.$message.success(`${label}已保存`)}catch(e){this.$message.error(e.message)}finally{this.busy=false}},
     async saveDetailPage(){try{this.busy=true;this.detailPage=await this.request('/admin/attraction-detail-page',{method:'PATCH',body:JSON.stringify(this.detailPage)});this.$message.success('景点详情配置已保存')}catch(e){this.$message.error(e.message)}finally{this.busy=false}}
   }
 }

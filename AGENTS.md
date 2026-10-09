@@ -26,6 +26,10 @@ For behavior changes, run the closest relevant `npm run test:*` script and `npm 
 
 Recent commits use Conventional Commit prefixes such as `feat(admin):` and `fix(content):`, sometimes followed by a concise Chinese summary. PRs should describe the user-visible change, list validation commands and results, include screenshots for UI changes, and distinguish local commits from production deployment.
 
+## Deployment
+
+Update code through Git commits and the repository's Git deployment workflow. Do not use `rsync`, `scp`, `cp`, or other file-copy methods to synchronize source or build artifacts to production. Keep production uploads and data outside code deployment.
+
 ## Cross-Repository Updates
 
 After every new change, notify `@sy-main-1008` and ask them to update the shared `update-log`. Include the change scope, validation, and whether it was committed, pushed, or deployed.

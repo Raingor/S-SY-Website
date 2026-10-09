@@ -358,8 +358,14 @@ function membershipOrderExpiry(order) {
   const paidAt = Date.parse(order.paidAt || order.createdAt || '')
   return Number.isFinite(paidAt) ? paidAt + membershipYearMs : 0
 }
-function membershipSummary(orders, now = Date.now()) {
+function membershipSummary(orders, now = Date.now(), override = null) {
   const paid = (orders || []).filter((order) => order.status === 'paid')
+  if (override?.type === 'none') return { member: false, membershipCanRenew: true, memberLabel: '普通用户', memberExpiresAt: '' }
+  if (override?.type === 'membership') return { member: true, membershipCanRenew: false, memberLabel: '终身会员', memberExpiresAt: '' }
+  if (override?.type === 'annualMembership') {
+    const expiresAt = Date.parse(override.expiresAt || '')
+    if (Number.isFinite(expiresAt) && expiresAt > now) return { member: true, membershipCanRenew: true, memberLabel: '年会员', memberExpiresAt: new Date(expiresAt).toISOString() }
+  }
   const lifetime = paid.some((order) => order.productType === 'membership')
   const annualUntilMs = paid.reduce((latest, order) => Math.max(latest, membershipOrderExpiry(order)), 0)
   const annualActive = annualUntilMs > now
@@ -396,7 +402,7 @@ function publicSimulationOrder(order) {
 function simulationEntitlements(data, identity) {
   const orders = simulationOrders(data, identity)
   const paidOrders = orders.filter((order) => order.status === 'paid')
-  const membership = membershipSummary(paidOrders)
+  const membership = membershipSummary(paidOrders, Date.now(), identity.userId ? (data.miniprogramUsers || []).find((user) => user.id === identity.userId)?.membershipOverride : null)
   const member = membership.member
   const unlocked = new Set(member ? publishedAttractionIds(data) : paidOrders.filter((order) => order.productType === 'attraction').map((order) => order.attractionId).filter(Boolean))
   return {
@@ -427,7 +433,7 @@ function realPaymentOrders(data, user) {
 function realPaymentEntitlements(data, user) {
   const orders = realPaymentOrders(data, user)
   const paidOrders = orders.filter((order) => order.status === 'paid')
-  const membership = membershipSummary(paidOrders)
+  const membership = membershipSummary(paidOrders, Date.now(), user.membershipOverride)
   const member = membership.member
   const unlocked = new Set(member ? publishedAttractionIds(data) : paidOrders.filter((order) => order.productType === 'attraction').map((order) => order.attractionId).filter(Boolean))
   return {
@@ -516,11 +522,11 @@ function documentPayload(input = {}, current = {}) { const name = String(input.n
 function miniProgramProfile(data, user) { ensureMiniCollections(user); const leads = data.leads.filter((lead) => lead.userId === user.id); const appointments = leads.filter((lead) => ['guide-booking', 'vehicle-consultation'].includes(lead.leadType)).length; const trips = leads.filter((lead) => ['customization', 'business-travel'].includes(lead.leadType)).length; return { user: publicMiniProgramUser(user), stats: { appointments, trips, coupons: user.coupons.length, profiles: user.travelers.length + user.documents.length } } }
 function couponPayload(input = {}, current = {}) { const title = String(input.title ?? current.title ?? '').trim().slice(0, 80); if (!title) return null; return { title, description: String(input.description ?? current.description ?? '').trim().slice(0, 240), code: String(input.code ?? current.code ?? '').trim().slice(0, 64), expiresAt: String(input.expiresAt ?? current.expiresAt ?? '').trim().slice(0, 32), status: String(input.status ?? current.status ?? 'active').trim().slice(0, 24) } }
 function safeCoupon(item) { return { id: item.id, title: item.title, description: item.description || '', code: item.code || '', expiresAt: item.expiresAt || '', status: item.status || 'active', createdAt: item.createdAt, updatedAt: item.updatedAt } }
-function adminMiniUserSummary(data, user) { const profile = miniProgramProfile(data, user); const leads = data.leads.filter((lead) => lead.userId === user.id); const membership = membershipSummary(paymentOrders(data).filter((order) => order.userId === user.id)); return { ...profile.user, ...membership, stats: profile.stats, leadCount: leads.length, createdAt: user.createdAt, updatedAt: user.updatedAt } }
+function adminMiniUserSummary(data, user) { const profile = miniProgramProfile(data, user); const leads = data.leads.filter((lead) => lead.userId === user.id); const membership = membershipSummary(paymentOrders(data).filter((order) => order.userId === user.id), Date.now(), user.membershipOverride); return { ...profile.user, ...membership, membershipOverrideType: user.membershipOverride?.type || 'auto', membershipOverrideExpiresAt: user.membershipOverride?.expiresAt || '', stats: profile.stats, leadCount: leads.length, createdAt: user.createdAt, updatedAt: user.updatedAt } }
 function adminPaymentOrder(data, order) {
   const user = (data.miniprogramUsers || []).find((item) => item.id === order.userId)
   const { openid, phone, ...safe } = order
-  const membership = user ? membershipSummary(paymentOrders(data).filter((item) => item.userId === user.id)) : { member: false, memberLabel: '普通用户', memberExpiresAt: '' }
+  const membership = user ? membershipSummary(paymentOrders(data).filter((item) => item.userId === user.id), Date.now(), user.membershipOverride) : { member: false, memberLabel: '普通用户', memberExpiresAt: '' }
   return { ...safe, userId: order.userId || null, userNickname: user?.nickname || order.userId || '未知用户', phoneMasked: phone ? maskPhone(phone) : (user?.phone ? maskPhone(user.phone) : null), ...membership }
 }
 function adminPaymentMembers(data) {
@@ -540,7 +546,7 @@ function beijingWindowStart(days) {
 function adminCommerceStats(data) {
   const orders = paymentOrders(data)
   const paidOrders = orders.filter((order) => order.status === 'paid')
-  const members = new Set((data.miniprogramUsers || []).filter((user) => membershipSummary(paidOrders.filter((order) => order.userId === user.id)).member).map((user) => user.id))
+  const members = new Set((data.miniprogramUsers || []).filter((user) => membershipSummary(paidOrders.filter((order) => order.userId === user.id), Date.now(), user.membershipOverride).member).map((user) => user.id))
   const amountTotalFen = (items) => items.reduce((total, order) => total + (Number(order.amountTotal) || 0), 0)
   const buildWindow = (days) => {
     const start = beijingWindowStart(days)
@@ -930,7 +936,7 @@ function publicContent(data, countryId = 'greece', { includeAttractionDetails = 
     safeGuide.mapUrl = detail.visitorInfo?.mapUrl || ''
     safeGuide.mapImage = detail.visitorInfo?.mapImage || ''
     safeGuide.sourceUrl = detail.visitorInfo?.sourceUrl || ''
-    return { ...safe, ...detail, guide: safeGuide, image: imageUrl(item.image), shareTitle: item.shareTitle || '', shareImage: imageUrl(item.shareImage), exhibits: detail.exhibits || [], highlights: detail.highlights || [], articles: (item.articles || []).map((article) => ({ ...article, cover: imageUrl(article.cover) })) }
+    return { ...safe, ...detail, guide: safeGuide, image: imageUrl(item.image), onlineCoverImage: imageUrl(item.onlineCoverImage || item.image), expertCoverImage: imageUrl(item.expertCoverImage || item.image), shareTitle: item.shareTitle || '', shareImage: imageUrl(item.shareImage), exhibits: detail.exhibits || [], highlights: detail.highlights || [], articles: (item.articles || []).map((article) => ({ ...article, cover: imageUrl(article.cover) })) }
   })
   const publicCities = scoped(data.cities).filter((item) => item.status !== 'archived').map((item) => ({ ...item, mosaic: (item.mosaic || []).map(imageUrl) }))
   const publicDestinations = scoped(data.destinations).filter((item) => item.status === 'published').map((item) => ({ ...normalizePublicDestination(item, publicCities, publicAttractions), image: imageUrl(item.image) })).filter((item) => item.cityId && item.attractionIds.length > 0)
@@ -1716,6 +1722,22 @@ const server = http.createServer(async (req, res) => {
         return json(res, 201, { path: `images/${filename}`, url: `/images/${filename}` })
       }
       if (url.pathname === '/api/admin/miniprogram-users' && method === 'GET') return json(res, 200, { items: (data.miniprogramUsers || []).map((user) => adminMiniUserSummary(data, user)) })
+      const miniUserMembershipMatch = url.pathname.match(/^\/api\/admin\/miniprogram-users\/([^/]+)\/membership$/)
+      if (miniUserMembershipMatch && method === 'PATCH') {
+        const user = (data.miniprogramUsers || []).find((item) => item.id === miniUserMembershipMatch[1])
+        if (!user) return json(res, 404, { error: 'not found' })
+        const input = await body(req); const type = String(input.type || '')
+        if (!['auto', 'none', 'annualMembership', 'membership'].includes(type)) return json(res, 422, { error: '会员等级无效' })
+        if (type === 'auto') delete user.membershipOverride
+        else if (type === 'annualMembership') {
+          const expiryDate = String(input.expiresAt || '')
+          const expiresAt = /^\d{4}-\d{2}-\d{2}$/.test(expiryDate) ? new Date(`${expiryDate}T23:59:59+08:00`) : null
+          if (!expiresAt || !Number.isFinite(expiresAt.getTime()) || expiresAt.toISOString().slice(0, 10) !== expiryDate || expiresAt.getTime() <= Date.now()) return json(res, 422, { error: '请选择一个未来的年会员到期日期' })
+          user.membershipOverride = { type, expiresAt: expiresAt.toISOString(), updatedAt: new Date().toISOString() }
+        } else user.membershipOverride = { type, updatedAt: new Date().toISOString() }
+        user.updatedAt = new Date().toISOString(); await saveData(data)
+        return json(res, 200, adminMiniUserSummary(data, user))
+      }
       const miniUserMatch = url.pathname.match(/^\/api\/admin\/miniprogram-users\/([^/]+)$/)
       if (miniUserMatch && method === 'GET') {
         const user = (data.miniprogramUsers || []).find((item) => item.id === miniUserMatch[1])

@@ -217,7 +217,7 @@ export function visibleTrack(data, id) {
 export function audioEntitled(track, entitlements) {
   if (track.unlockMode === 'free') return true
   if (track.unlockMode === 'membership') return entitlements?.member === true
-  if (track.unlockMode === 'attraction') return Boolean(entitlements?.purchases?.some((order) => order.status === 'paid' && order.productType === 'attraction' && order.attractionId === track.attractionId))
+  if (track.unlockMode === 'attraction') return entitlements?.member === true || Boolean(entitlements?.purchases?.some((order) => order.status === 'paid' && order.productType === 'attraction' && order.attractionId === track.attractionId))
   return false
 }
 
