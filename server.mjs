@@ -1001,11 +1001,11 @@ function publicContent(data, countryId = 'greece', { includeAttractionDetails = 
     return { ...safe, ...detail, guide: safeGuide, image: imageUrl(item.image), onlineCoverImage: imageUrl(item.onlineCoverImage || item.image), expertCoverImage: imageUrl(item.expertCoverImage || item.image), shareTitle: item.shareTitle || '', shareImage: imageUrl(item.shareImage), exhibits: detail.exhibits || [], highlights: detail.highlights || [], articles: (item.articles || []).map((article) => ({ ...article, cover: imageUrl(article.cover) })) }
   })
   const publicCities = scoped(data.cities).filter((item) => item.status !== 'archived').map((item) => {
-    const configured = Array.isArray(item.mosaic) ? item.mosaic.map(imageUrl).filter(Boolean) : []
+    const legacyCover = Array.isArray(item.mosaic) ? item.mosaic.map(imageUrl).find(Boolean) || '' : ''
     const attractionImages = publicAttractions.filter((attraction) => attraction.city === item.id).sort((a, b) => Number(a.sort || 0) - Number(b.sort || 0)).map((attraction) => attraction.image).filter(Boolean)
     const countryImage = countries.find((country) => country.id === (item.countryId || countryId))?.heroImage
-    const mosaic = (configured.length ? configured : attractionImages.length ? attractionImages : countryImage ? [imageUrl(countryImage)] : []).slice(0, 4)
-    return { ...item, coverImage: imageUrl(item.coverImage) || '', mosaic }
+    const coverImage = imageUrl(item.coverImage) || legacyCover || attractionImages[0] || imageUrl(countryImage) || ''
+    return { ...item, coverImage, mosaic: coverImage ? [coverImage] : [] }
   })
   const publicDestinations = scoped(data.destinations).filter((item) => item.status === 'published').map((item) => ({ ...normalizePublicDestination(item, publicCities, publicAttractions), image: imageUrl(item.image) })).filter((item) => item.cityId && item.attractionIds.length > 0)
   const home = homeSettings(data, (value) => miniProgramBannerImage(value, imageUrl))
