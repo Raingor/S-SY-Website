@@ -281,7 +281,7 @@
               <el-card shadow="never" class="section-card">
                 <div slot="header" class="card-heading"><div><span class="eyebrow">{{ currentMenu.eyebrow || 'CONTENT MANAGEMENT' }}</span><h2>{{ currentMenu.label }}</h2></div><div class="card-actions"><el-input v-model="filterText" clearable prefix-icon="el-icon-search" placeholder="筛选当前列表" class="list-search"/><el-button icon="el-icon-refresh" @click="loadAll">重新加载</el-button><el-button v-if="currentMenu.addLabel" type="primary" icon="el-icon-plus" @click="startCreate">{{ currentMenu.addLabel }}</el-button></div></div>
                 <el-alert v-if="active==='destinations'" title="新增目的地没显示？点击每行名称下的「关联景点」：先选城市，再勾选至少一个已发布景点，最后保存。仅填写名称、图片并发布还不够。" type="info" :closable="false" show-icon class="banner-note"/>
-                <el-alert v-if="active==='cities'" title="这里维护城市主数据，不会根据目的地自动新增城市或价格。缺少城市时请核对城市 ID、名称、国家、发布状态和真实讲解价格；未确认价格可暂存草稿。" type="info" :closable="false" show-icon class="banner-note"/>
+                <el-alert v-if="active==='cities'" title="这里维护城市主数据，不会根据目的地自动新增城市或价格。编辑城市行可设置「城市独立封面图」：路线与目的地 → 城市与价格 → 对应城市「编辑」；留空时小程序使用城市封面拼贴图。缺少城市时请核对城市 ID、名称、国家、发布状态和真实讲解价格；未确认价格可暂存草稿。" type="info" :closable="false" show-icon class="banner-note"/>
                 <el-alert v-if="active==='miniprogramBanners'" title="网站与小程序首页共用同一组 Banner；在任一入口新增、编辑或下架，都会同步影响两端。" type="info" :closable="false" show-icon class="banner-note"/>
                 <el-alert v-if="active==='miniprogramServiceEntries'" title="与首页 Banner 完全独立。服务入口有独立列表、图标与三语文案；仅支持六个固定入口，点击跳转仍由小程序端控制。" type="info" :closable="false" show-icon class="banner-note"/>
                 <el-alert v-if="active==='heritageGuideBanners'" title="仅用于小程序古迹讲解页轮播；与 Website 首页 Banner、小程序首页 Banner 完全独立。发布后由公开内容 API 的 heritageGuideBanners 字段提供。" type="info" :closable="false" show-icon class="banner-note"/>
@@ -531,6 +531,7 @@ const guideGroups = [
     {title:'小程序首页 Banner',menu:'miniprogramBanners',menuLabel:'小程序 Banner',location:'小程序首页顶部轮播。',description:'维护首页图片和文案；与 Website 首页 Banner 分开。'},
     {title:'首页快捷服务入口',menu:'miniprogramServiceEntries',menuLabel:'首页服务入口',location:'小程序首页快捷服务区的图标、标题和副标题。',description:'仅维护固定服务入口的展示内容；入口跳转由小程序端控制。'},
     {title:'城市与讲解价格',menu:'cities',menuLabel:'城市与价格',location:'小程序城市列表、城市信息及讲解价格。',description:'维护城市名称、国家、启用状态、讲解价格和币种。'},
+    {title:'城市独立封面图',menu:'cities',menuLabel:'城市与价格',location:'小程序城市页面的独立主视觉封面。',description:'点击「进入编辑」打开城市列表，找到对应城市并点「编辑」，在表单中修改「城市独立封面图」。留空时使用「城市封面拼贴图」。'},
     {title:'目的地',menu:'destinations',menuLabel:'目的地',location:'小程序目的地内容与目的地下的景点关联。',description:'维护目的地文案、图片、城市和关联景点。'},
     {title:'甄选路线',menu:'sampleItineraries',menuLabel:'甄选路线',location:'小程序首页「甄选路线」和路线详情。',description:'维护路线卡片、天数、封面和逐日行程；仅发布内容会展示。'},
     {title:'在地用车',menu:'vehicleService',menuLabel:'在地用车',location:'小程序「在地用车」介绍、服务标签和车型选项。',description:'维护用车页面文案、图片、服务标签及车型、时长和人数选项。'},
