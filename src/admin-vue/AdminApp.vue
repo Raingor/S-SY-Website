@@ -543,7 +543,7 @@ const imageGuidanceByField = {
 }
 const publish = [{label:'发布',value:'published'},{label:'下架',value:'unpublished'}]
 const listFilterKeys = {
-  audioRoutes:['status','attractionId'], audioTracks:['status','attractionId','unlockMode'], audioAlbums:['status'],
+  audioRoutes:['status','attractionId'], audioTracks:['status'], audioAlbums:['status'],
   countries:['enabled'], guides:['enabled','countryId','featured'], routes:['status','days'], destinations:['status','type'], cities:['currency','priceCny'], destinationTypes:['enabled'], attractions:['status','city','type'], sampleItineraries:['status','tag'], customTrips:['status','period'],
   leads:['status','leadType','createdAt'], guideBookings:['status','bookingDate','createdAt'], miniProgramBookings:['status','leadType','createdAt'], miniprogramTrips:['status','leadType','createdAt'], homeBanners:['enabled'], miniprogramBanners:['enabled'], miniprogramServiceEntries:['enabled'], heritageGuideBanners:['enabled'],
   miniprogramUsers:['member','createdAt'], miniprogramOrders:['status','productType','createdAt'], miniprogramTravelers:['relation'], miniprogramDocuments:['visaStatus','expiry'], miniprogramCoupons:['status','expiresAt']
