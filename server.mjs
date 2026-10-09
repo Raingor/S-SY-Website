@@ -578,7 +578,7 @@ function adminPaymentOrder(data, order) {
   const membership = user ? membershipSummary(paymentOrders(data).filter((item) => item.userId === user.id), Date.now(), user.membershipOverride) : { member: false, memberLabel: '普通用户', memberExpiresAt: '' }
   const currency = String(order.currency || 'CNY').toUpperCase()
   const amount = Number.isFinite(Number(order.amountTotal)) ? Number(order.amountTotal) / 100 : Number(order.price)
-  const productName = order.productName || order.name || order.description || ({ attraction: '景点单篇讲解', membership: '终身会员', annualMembership: '年会员' })[order.productType] || order.productType || '未知商品'
+  const productName = order.productName || order.name || order.description || ({ attraction: '景点单篇讲解', city: '城市景点通行', album: '文史专辑', membership: '终身会员', annualMembership: '年会员' })[order.productType] || order.productType || '未知商品'
   return {
     ...safe,
     orderNo: order.outTradeNo || order.orderNo || order.id || '',

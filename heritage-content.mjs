@@ -94,12 +94,16 @@ export function sanitizeRichText(value) {
   return { html: root.children.map(serialize).join(''), nodes: root.children }
 }
 const legacyHtml = (value) => sanitizeRichText(`<p>${escapeHtml(value || '')}</p>`)
+const visitorPlainHtml = (value) => {
+  const lines = String(value || '').split(/\r\n?|\n|[；;]/).map((line) => line.trim()).filter(Boolean)
+  return lines.length ? `<p>${lines.map(escapeHtml).join('<br/>')}</p>` : ''
+}
 function visitorRichText(guide, kind, legacy) {
   const stem = `${kind}Html`
-  return ['','Tw','En'].map((suffix, index) => {
+  return ['','Tw','En'].map((suffix) => {
     const localized = guide?.[`${stem}${suffix}`]
     const fallback = guide?.[`${kind}${suffix}`] || (suffix ? '' : legacy)
-    return sanitizeRichText(localized || fallback)
+    return sanitizeRichText(localized || visitorPlainHtml(fallback))
   })
 }
 export function normalizeVisitorSections(sections) {
