@@ -1005,7 +1005,7 @@ function publicContent(data, countryId = 'greece', { includeAttractionDetails = 
     const attractionImages = publicAttractions.filter((attraction) => attraction.city === item.id).sort((a, b) => Number(a.sort || 0) - Number(b.sort || 0)).map((attraction) => attraction.image).filter(Boolean)
     const countryImage = countries.find((country) => country.id === (item.countryId || countryId))?.heroImage
     const mosaic = (configured.length ? configured : attractionImages.length ? attractionImages : countryImage ? [imageUrl(countryImage)] : []).slice(0, 4)
-    return { ...item, mosaic }
+    return { ...item, coverImage: imageUrl(item.coverImage) || '', mosaic }
   })
   const publicDestinations = scoped(data.destinations).filter((item) => item.status === 'published').map((item) => ({ ...normalizePublicDestination(item, publicCities, publicAttractions), image: imageUrl(item.image) })).filter((item) => item.cityId && item.attractionIds.length > 0)
   const home = homeSettings(data, (value) => miniProgramBannerImage(value, imageUrl))
@@ -1186,6 +1186,11 @@ function normalizeDestinationPayload(payload, method) {
 }
 function normalizeCityPayload(payload) {
   const next = { ...payload }
+  if (Object.prototype.hasOwnProperty.call(payload, 'coverImage')) {
+    const rawCoverImage = typeof payload.coverImage === 'string' ? payload.coverImage.trim() : String(payload.coverImage?.url || payload.coverImage?.path || '').trim()
+    next.coverImage = managedHighlightImage(payload.coverImage)
+    if (rawCoverImage && !next.coverImage) throw new Error('城市独立封面图格式无效，请使用图片文件或 HTTPS 图片链接')
+  }
   if (Object.prototype.hasOwnProperty.call(payload, 'mosaic')) {
     if (!Array.isArray(payload.mosaic)) throw new Error('城市封面拼贴图必须是图片列表')
     next.mosaic = [...new Set(payload.mosaic.map((image) => managedHighlightImage(image)).filter(Boolean))].slice(0, 12)

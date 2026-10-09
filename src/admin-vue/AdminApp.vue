@@ -569,6 +569,7 @@ const imageGuidanceByField = {
   'settings.ogImage':'建议 1200×630 px（约 1.91:1）；OG 社交分享预览按宽图展示，重要主体与文字放在中央安全区。',
   'audioAlbums.cover':'建议 1200×1200 px（1:1 方图）；专辑封面在小程序专辑列表中按正方形裁切。',
   'audioTracks.cover':'建议 1200×900 px（4:3 横图）；音频列表封面会裁切填满图片卡片，主体尽量居中。',
+  'cities.coverImage':'建议 1400×900 px（约 14:9 横图）；作为城市页主视觉单独封面，主体尽量居中。留空时小程序继续使用城市封面拼贴图。',
   'cities.mosaic':'建议 1400×900 px（约 14:9 横图）；按列表顺序组成城市封面拼贴，主体尽量居中。',
   'countries.heroImage':'建议 1920×1080 px（16:9 横图）；网站知识库头图使用 cover 背景，边缘会随屏幕裁切。',
   'guides.avatar':'建议 800×800 px（1:1 方图）；前台头像裁成圆形，人物脸部留足边距。',
@@ -618,7 +619,7 @@ const fields = {
   miniprogramDocuments:{label:'小程序签证资料',endpoint:'miniprogramDocuments',addLabel:'新增签证资料',columns:[['userNickname','所属用户'],['name','资料名称'],['expiry','有效期'],['visaStatus','签证状态']],fields:[basic('userId','所属用户','select',{required:true,options:'users'}),basic('name','资料名称','text',{required:true}),basic('passportNo','护照号码'),basic('expiry','到期日期','date'),basic('visaStatus','签证状态')]},
   miniprogramCoupons:{label:'小程序优惠券',endpoint:'miniprogramCoupons',addLabel:'新增优惠券',template:'coupons',columns:[['userNickname','所属用户'],['title','优惠券'],['code','优惠码'],['expiresAt','有效期'],['status','状态','status']],fields:[basic('userId','所属用户','select',{required:true,options:'users'}),basic('title','优惠券名称','text',{required:true}),basic('description','使用说明','textarea'),basic('code','优惠码','code',{required:true}),basic('expiresAt','有效期','date'),basic('status','状态','select',{options:[{label:'有效',value:'active'},{label:'已使用',value:'used'},{label:'已过期',value:'expired'}]})]},
 }
-fields.cities={label:'城市管理',endpoint:'cities',addLabel:'新增城市',columns:[['name','城市'],['id','城市 ID'],['mosaic','封面拼贴','tags'],['status','状态','status']],fields:[basic('id','城市 ID','text',{required:true,help:'与目的地的 cityId、景点的 city 完全一致；不要使用中文名替代 ID。'}),basic('name','城市名称','text',{required:true}),basic('nameTw','繁体名称'),basic('nameEn','英文名称'),basic('countryId','所属国家','select',{required:true,options:'countries'}),basic('status','城市状态','select',{options:[{label:'草稿（小程序不展示）',value:'draft'},{label:'发布',value:'published'},{label:'停用',value:'disabled'}]}),basic('enabled','小程序启用','switch'),basic('mosaic','城市封面拼贴图','imageList',{help:'可上传多张并用上下按钮调整显示顺序。留空时，小程序内容 API 会按本城市已发布景点顺序取前 4 张主图；仍无图片时回退国家代表图。'})]}
+fields.cities={label:'城市管理',endpoint:'cities',addLabel:'新增城市',columns:[['name','城市'],['id','城市 ID'],['mosaic','封面拼贴','tags'],['status','状态','status']],fields:[basic('id','城市 ID','text',{required:true,help:'与目的地的 cityId、景点的 city 完全一致；不要使用中文名替代 ID。'}),basic('name','城市名称','text',{required:true}),basic('nameTw','繁体名称'),basic('nameEn','英文名称'),basic('countryId','所属国家','select',{required:true,options:'countries'}),basic('status','城市状态','select',{options:[{label:'草稿（小程序不展示）',value:'draft'},{label:'发布',value:'published'},{label:'停用',value:'disabled'}]}),basic('enabled','小程序启用','switch'),basic('coverImage','城市独立封面图','image',{help:'上传后作为小程序城市页主视觉；可替换或移除。移除后小程序继续使用下方城市封面拼贴图。'}),basic('mosaic','城市封面拼贴图','imageList',{help:'可上传多张并用上下按钮调整显示顺序。仅当城市独立封面图为空时，小程序才显示拼贴；拼贴留空时按本城市已发布景点顺序取前 4 张主图，仍无图片则回退国家代表图。'})]}
 fields.attractions.fields.find(x=>x.key==='exhibits').fields.unshift(basic('id','讲解点 ID'))
 fields.attractions.fields.find(x=>x.key==='exhibits').fields.find(x=>x.key==='location').type='object'
 fields.attractions.fields.find(x=>x.key==='exhibits').fields.find(x=>x.key==='location').label='位置'

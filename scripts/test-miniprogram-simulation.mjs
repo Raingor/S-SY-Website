@@ -43,6 +43,7 @@ async function prepare() {
     { id: 'fallback-heritage-banner', title: 'Test heritage fallback', image: './images/home-fallback.jpg', enabled: true, sort: 2 },
   ]
   fixture.miniprogramUsers = [{ id: 'profile-phone-contract', phone: '+15551234567', nickname: 'Phone Contract Test', avatarUrl: '', travelers: [], documents: [], coupons: [] }]
+  fixture.cities.find((city) => city.id === 'athens').coverImage = './images/city-cover.png'
   fixture.cities.find((city) => city.id === 'athens').mosaic = []
   fixture.audioAlbums = [{ id: 'album-contract', title: '测试文史专辑', status: 'published' }, { id: 'album-draft-contract', title: '未发布专辑', status: 'draft' }]
   fixture.audioTracks = [{ id: 'album-track-contract', category: 'heritage', title: '测试节目', albumId: 'album-contract', status: 'published', unlockMode: 'album', previewSeconds: 30 }]
@@ -51,6 +52,8 @@ async function prepare() {
   await mkdir(imageDir, { recursive: true })
   const sourceBytes = Buffer.from('test-source-banner-image')
   await writeFile(join(imageDir, 'home-test.png'), sourceBytes)
+  await writeFile(join(imageDir, 'city-cover.png'), Buffer.from('city-cover-source'))
+  await writeFile(join(imageDir, 'city-cover.opt.webp'), Buffer.from('optimized-city-cover-fixture'))
   await writeFile(join(imageDir, 'home-fallback.jpg'), Buffer.from('fallback-source'))
   const sourceHash = createHash('sha256').update(sourceBytes).digest('hex').slice(0, 10)
   await writeFile(join(imageDir, `home-test.mp-${sourceHash}.webp`), Buffer.from('optimized-webp-fixture'))
@@ -140,6 +143,10 @@ try {
   assert(slimContent.status === 200 && !Object.hasOwn(slimContent.data, 'attractionDetails'), 'includeAttractionDetails=false must omit only the duplicated top-level attractionDetails field')
   const athensMosaic = slimContent.data.cities.find((city) => city.id === 'athens')?.mosaic || []
   assert(athensMosaic.length === 4 && athensMosaic.every(Boolean), 'empty city mosaic should fall back to up to four published attraction images')
+  const athensCity = slimContent.data.cities.find((city) => city.id === 'athens')
+  assert(athensCity.coverImage === './images/city-cover.opt.webp', 'city coverImage should expose an optimized public image URL')
+  assert(JSON.stringify(athensCity.mosaic) === JSON.stringify(bannerContent.data.cities.find((city) => city.id === 'athens').mosaic), 'city coverImage must not replace or rewrite the mosaic field')
+  assert(slimContent.data.cities.find((city) => city.id !== 'athens')?.coverImage === '', 'cities without a dedicated cover should expose an empty coverImage for client-side mosaic fallback')
   assert(slimContent.data.attractions.length === bannerContent.data.attractions.length && slimContent.data.attractionDetailPage && slimContent.data.home.banners[0].image === expectedOptimizedBanner, 'slim content contract must retain all other client content fields')
   assert(Buffer.byteLength(JSON.stringify(slimContent.data)) < Buffer.byteLength(JSON.stringify(bannerContent.data)), 'slim content response must be smaller than the backward-compatible default')
   const explicitFullContent = await request('/api/content?includeAttractionDetails=true')
