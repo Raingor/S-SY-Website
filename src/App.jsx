@@ -126,7 +126,7 @@ const fallbackSeoSettings = {
   defaultTitle: '只为一生美好回忆｜希腊旅行管家',
   defaultDescription: '希腊旅行管家，为访客提供雅典、圣托里尼及希腊全境的人文资讯、行程策划与语言陪同咨询。',
   keywords: '希腊人文咨询,希腊行程策划,圣托里尼文化,雅典历史,中文司导咨询',
-  ogImage: 'images/santorini.webp',
+  ogImage: 'images/santorini.webp?rev=webp-20261009',
   googleVerification: '',
   robotsPolicy: 'index,follow',
   phone: '+30 210 000 0000',

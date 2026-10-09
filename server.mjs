@@ -766,6 +766,27 @@ function normalizePublicDestination(item, cities, attractions) {
   return { ...item, cityId, attractionIds, ...(Object.prototype.hasOwnProperty.call(item, 'attractionId') ? { attractionId: legacyAttractionId } : {}) }
 }
 const miniProgramBannerHashCache = new Map()
+function optimizedPublicImageUrl(value) {
+  if (typeof value !== 'string' || !value.trim()) return value
+  const source = value.trim()
+  if (/^(?:https?:|data:|blob:|\/\/)/i.test(source)) return value
+  if (source.startsWith('/') && !/^\/images\//i.test(source)) return value
+  const suffixIndex = source.search(/[?#]/)
+  const pathname = suffixIndex < 0 ? source : source.slice(0, suffixIndex)
+  const suffix = suffixIndex < 0 ? '' : source.slice(suffixIndex)
+  const cleaned = pathname.replace(/^(?:\.\/|\/)?(?:public\/)?(?:images\/)+/i, '')
+  if (!/\.(?:png|jpe?g|webp|svg)$/i.test(cleaned)) return value
+  const optimized = cleaned.replace(/\.[^.\/]+$/, '.opt.webp')
+  const filename = existsSync(join(runtimeImageDir, optimized)) ? optimized : cleaned
+  const prefix = source.startsWith('/') ? '/images/' : './images/'
+  return `${prefix}${filename}${suffix}`
+}
+function optimizePublicImageReferences(value) {
+  if (Array.isArray(value)) return value.map(optimizePublicImageReferences)
+  if (value && typeof value === 'object') return Object.fromEntries(Object.entries(value).map(([key, item]) => [key, optimizePublicImageReferences(item)]))
+  if (typeof value === 'string' && /^(?:\.\/|\/)?(?:public\/)?(?:images\/)+.+\.(?:png|jpe?g|webp|svg)(?:[?#].*)?$/i.test(value)) return optimizedPublicImageUrl(value)
+  return value
+}
 function miniProgramBannerImage(value, imageUrl) {
   const normalized = imageUrl(value)
   if (typeof normalized !== 'string' || !normalized || normalized.startsWith('/') || /^(https?:)?\/\//i.test(normalized)) return normalized
@@ -793,7 +814,7 @@ function homeBannerPayload(input = {}, current = {}) {
   return { title, description, alt, image, enabled: input.enabled !== undefined ? input.enabled !== false : current.enabled !== false, sort, ...(current.createdAt ? { createdAt: current.createdAt } : {}) }
 }
 function publicHomeBanners(data) {
-  const imageUrl = (value) => { const image = String(value || ''); if (!image || /^(https?:)?\/\//i.test(image) || image.startsWith('/')) return image; const cleaned = image.replace(/^(?:\.\/|\/)?(?:images\/)+/, ''); return cleaned ? `./images/${cleaned}` : image }
+  const imageUrl = optimizedPublicImageUrl
   return homeSettings(data, (value) => miniProgramBannerImage(value, imageUrl)).banners.map((item) => ({ ...item, description: item.description || '', alt: item.alt || item.title, enabled: true, sort: Number(item.sort || 0) }))
 }
 function publicHome(data) {
@@ -854,14 +875,7 @@ function demoAttractionContent(item, detail, imageUrl, page) {
   return { ...detail, summary: item.summary || '', visitorInfo, visitorInfoSections, exhibits, highlights, routes, audioGuides, demoFields: {} }
 }
 function publicContent(data, countryId = 'greece', { includeAttractionDetails = true } = {}) {
-  const imageUrl = (value) => {
-  if (!value) return value
-  const str = String(value)
-  if (/^(https?:)?\/\//i.test(str) || str.startsWith('/')) return value
-  // Normalise: remove any leading ./images/ or images/ prefix (including doubled images/), then prepend ./images/
-  const cleaned = str.replace(/^(?:\.\/|\/)?(?:images\/)+/, '')
-  return cleaned ? `./images/${cleaned}` : value
-}
+  const imageUrl = optimizedPublicImageUrl
   const countries = (data.countries || []).filter((item) => item.enabled !== false).sort((a, b) => Number(a.sort || 0) - Number(b.sort || 0))
   const guides = (data.guides || []).filter((item) => item.enabled !== false && (item.countryId || 'greece') === countryId).sort((a, b) => Number(a.sort || 0) - Number(b.sort || 0))
   const scoped = (items) => (items || []).filter((item) => (item.countryId || 'greece') === countryId)
@@ -877,7 +891,7 @@ function publicContent(data, countryId = 'greece', { includeAttractionDetails = 
     safeGuide.sourceUrl = detail.visitorInfo?.sourceUrl || ''
     return { ...safe, ...detail, guide: safeGuide, image: imageUrl(item.image), shareTitle: item.shareTitle || '', shareImage: imageUrl(item.shareImage), exhibits: detail.exhibits || [], highlights: detail.highlights || [], articles: (item.articles || []).map((article) => ({ ...article, cover: imageUrl(article.cover) })) }
   })
-  const publicCities = scoped(data.cities).filter((item) => item.status !== 'archived').map((item) => ({ ...item, mosaic: (item.mosaic || []).map((image) => `./images/${image}`) }))
+  const publicCities = scoped(data.cities).filter((item) => item.status !== 'archived').map((item) => ({ ...item, mosaic: (item.mosaic || []).map(imageUrl) }))
   const publicDestinations = scoped(data.destinations).filter((item) => item.status === 'published').map((item) => ({ ...normalizePublicDestination(item, publicCities, publicAttractions), image: imageUrl(item.image) })).filter((item) => item.cityId && item.attractionIds.length > 0)
   const home = homeSettings(data, (value) => miniProgramBannerImage(value, imageUrl))
   const activeDestinationCategories = (data.destinationCategories || []).filter((item) => item.enabled !== false).sort((a, b) => Number(a.sort || 0) - Number(b.sort || 0))
@@ -891,18 +905,18 @@ function publicContent(data, countryId = 'greece', { includeAttractionDetails = 
     vehicleService: publicVehicleService(data),
     countries: countries.map((item) => ({ ...item, heroImage: imageUrl(item.heroImage) })),
     guides: guides.map((item) => ({ ...item, avatar: imageUrl(item.avatar), fullImage: imageUrl(item.fullImage) })),
-    routes: scoped(data.routes).filter((item) => item.status === 'published').map((item) => ({ ...item, image: `./images/${item.image}` })),
+    routes: scoped(data.routes).filter((item) => item.status === 'published').map((item) => ({ ...item, image: imageUrl(item.image) })),
     destinations: publicDestinations,
     attractions: publicAttractions,
     audioAlbums: heritage.audioAlbums,
-    sampleItineraries: scoped(data.sampleItineraries).filter((item) => item.status === 'published').map((item) => ({ ...item, cover: `./images/${item.cover}` })),
+    sampleItineraries: scoped(data.sampleItineraries).filter((item) => item.status === 'published').map((item) => ({ ...item, cover: imageUrl(item.cover) })),
     cities: publicCities,
     destinationCategories: activeDestinationCategories.map((item) => ({ key: item.key, name: item.name, nameTw: item.nameTw || item.name, nameEn: item.nameEn || item.name, sort: item.sort || 0, enabled: true })),
     // Backward-compatible alias for clients that have not moved to destinationCategories yet.
     destinationTypes: activeDestinationCategories.map((item) => ({ id: item.key, name: item.name, description: item.description || '', status: 'published', sort: item.sort || 0 })),
   }
   if (!includeAttractionDetails) delete payload.attractionDetails
-  return payload
+  return optimizePublicImageReferences(payload)
 }
 function readiness(data) {
   const requiredCollections = ['routes', 'destinations', 'cities', 'attractions', 'sampleItineraries', 'customTrips', 'leads', 'miniprogramUsers']
@@ -939,11 +953,12 @@ function llms(data, req) {
 function htmlAttr(value) { return String(value || '').replace(/[&<>"]/g, (char) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[char])) }
 function seoImage(data, req, value) {
   const base = siteBase(data, req)
-  if (!value) return `${base}/images/santorini.webp`
+  if (!value) return `${base}/images/santorini.opt.webp`
   const source = String(value)
   if (/^https?:\/\//i.test(source)) return source
-  const cleaned = source.replace(/^(?:\.\/|\/)?(?:images\/)+/, '').replace(/^\//, '')
-  return `${base}/images/${cleaned}`
+  const normalized = optimizedPublicImageUrl(source)
+  const filename = normalized.replace(/^(?:\.\/|\/)?(?:images\/)+/i, '')
+  return `${base}/images/${filename}`
 }
 function pageSeo(data, pathname, search, req) {
   const config = { siteName: '希腊旅行管家', siteUrl: siteBase(data, req), defaultTitle: '只为一生美好回忆｜希腊旅行管家', defaultDescription: '只为一生美好回忆。希腊旅行管家提供雅典、圣托里尼及希腊全境的人文与行程咨询。', robotsPolicy: 'index,follow', ...data.settings }
@@ -1736,11 +1751,17 @@ const server = http.createServer(async (req, res) => {
     }
 
     const requested = decodeURIComponent(url.pathname === '/' ? '/index.html' : url.pathname)
-    const safePath = normalize(requested).replace(/^\.\.(\/|\\)/, '')
+    const safePath = normalize(requested).replace(/^\.\.(\/|\\)/, '').replace(/^\/images\/(?:images\/)+/i, '/images/')
     const filePath = join(distDir, safePath)
     const publicImagePath = safePath.startsWith('/images/') ? join(root, 'public', safePath.slice(1)) : ''
     const fallback = join(distDir, 'index.html')
-    const target = existsSync(filePath) ? filePath : publicImagePath && existsSync(publicImagePath) ? publicImagePath : fallback
+    let target = existsSync(filePath) ? filePath : publicImagePath && existsSync(publicImagePath) ? publicImagePath : fallback
+    if (safePath.startsWith('/images/') && /\.(?:png|jpe?g|webp|svg)$/i.test(target) && !/\.opt\.webp$/i.test(target)) {
+      const optimizedTargets = [target.replace(/\.[^.\\/]+$/, '.opt.webp')]
+      if (publicImagePath) optimizedTargets.push(publicImagePath.replace(/\.[^.\\/]+$/, '.opt.webp'))
+      const optimizedTarget = optimizedTargets.find((candidate) => existsSync(candidate))
+      if (optimizedTarget) target = optimizedTarget
+    }
     const extension = extname(target)
     const cacheControl = immutableExtensions.has(extension) ? 'public, max-age=31536000, immutable' : extension === '.html' ? 'no-cache' : 'public, max-age=300'
     if (['.m4a', '.mp3'].includes(extension.toLowerCase()) && ['GET', 'HEAD'].includes(method)) {

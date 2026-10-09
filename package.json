@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "vite --open /src-entry.html",
     "build": "vite build && node scripts/finalize-build.mjs",
+    "optimize:images": "node scripts/optimize-public-images-to-webp.mjs",
     "preview": "vite preview",
     "server": "node server.mjs",
     "server:local-ai": "NODE_ENV=development node --env-file=.env --env-file=.env.local server.mjs",
