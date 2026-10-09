@@ -141,12 +141,13 @@ try {
   assert(Object.hasOwn(bannerContent.data, 'attractionDetails'), 'default content contract must retain attractionDetails')
   const slimContent = await request('/api/content?includeAttractionDetails=false')
   assert(slimContent.status === 200 && !Object.hasOwn(slimContent.data, 'attractionDetails'), 'includeAttractionDetails=false must omit only the duplicated top-level attractionDetails field')
-  const athensMosaic = slimContent.data.cities.find((city) => city.id === 'athens')?.mosaic || []
-  assert(athensMosaic.length === 4 && athensMosaic.every(Boolean), 'empty city mosaic should fall back to up to four published attraction images')
   const athensCity = slimContent.data.cities.find((city) => city.id === 'athens')
+  const athensMosaic = athensCity?.mosaic || []
   assert(athensCity.coverImage === './images/city-cover.opt.webp', 'city coverImage should expose an optimized public image URL')
-  assert(JSON.stringify(athensCity.mosaic) === JSON.stringify(bannerContent.data.cities.find((city) => city.id === 'athens').mosaic), 'city coverImage must not replace or rewrite the mosaic field')
-  assert(slimContent.data.cities.find((city) => city.id !== 'athens')?.coverImage === '', 'cities without a dedicated cover should expose an empty coverImage for client-side mosaic fallback')
+  assert(athensMosaic.length === 1 && athensMosaic[0] === athensCity.coverImage, 'city mosaic compatibility field should contain only the effective single cover image')
+  assert(JSON.stringify(athensCity.mosaic) === JSON.stringify(bannerContent.data.cities.find((city) => city.id === 'athens').mosaic), 'city coverImage must not replace or rewrite the mosaic field between content variants')
+  const cityWithoutDedicatedCover = slimContent.data.cities.find((city) => city.id !== 'athens')
+  assert(cityWithoutDedicatedCover && cityWithoutDedicatedCover.mosaic.length <= 1 && (cityWithoutDedicatedCover.mosaic.length === 0 ? cityWithoutDedicatedCover.coverImage === '' : cityWithoutDedicatedCover.coverImage === cityWithoutDedicatedCover.mosaic[0]), 'cities without a dedicated cover should expose at most one compatible fallback cover')
   assert(slimContent.data.attractions.length === bannerContent.data.attractions.length && slimContent.data.attractionDetailPage && slimContent.data.home.banners[0].image === expectedOptimizedBanner, 'slim content contract must retain all other client content fields')
   assert(Buffer.byteLength(JSON.stringify(slimContent.data)) < Buffer.byteLength(JSON.stringify(bannerContent.data)), 'slim content response must be smaller than the backward-compatible default')
   const explicitFullContent = await request('/api/content?includeAttractionDetails=true')
@@ -155,6 +156,7 @@ try {
   result = await request('/api/miniprogram/knowledge/config')
   assert(result.status === 200 && result.data.simulation === true && result.data.trialSeconds === 60 && result.data.products.attraction.price === 9.9 && result.data.products.city.price === 69.9 && result.data.products.album.price === 9.9 && result.data.products.annualMembership.price === 199 && result.data.products.membership.price === 0.01, 'config contract failed')
   assert(result.data.products.attraction.productType === 'attraction' && result.data.products.membership.productType === 'membership', 'product config failed')
+  assert(result.data.products.city.enabled === true && result.data.products.city.productType === 'city' && result.data.products.city.name === '城市景点通行' && result.data.products.city.currency === 'CNY', 'city product config must be present and complete when omitted from stored settings')
 
   result = await request('/api/miniprogram/entitlements', { headers: auth('regular') })
   assert(result.status === 200 && result.data.member === false && result.data.orders.length === 0, 'regular fixture failed')
