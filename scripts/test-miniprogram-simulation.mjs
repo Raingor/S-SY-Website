@@ -1,5 +1,5 @@
 import { cp, mkdir, readFile, rm, symlink, writeFile } from 'node:fs/promises'
-import { createHash } from 'node:crypto'
+import { createHash, createHmac } from 'node:crypto'
 import { mkdtemp } from 'node:fs/promises'
 import { join, resolve } from 'node:path'
 import { spawn } from 'node:child_process'
@@ -40,6 +40,7 @@ async function prepare() {
     { id: 'optimized-heritage-banner', title: 'Test heritage optimized', image: './images/home-test.png', enabled: true, sort: 1 },
     { id: 'fallback-heritage-banner', title: 'Test heritage fallback', image: './images/home-fallback.jpg', enabled: true, sort: 2 },
   ]
+  fixture.miniprogramUsers = [{ id: 'profile-phone-contract', phone: '+15551234567', nickname: 'Phone Contract Test', avatarUrl: '', travelers: [], documents: [], coupons: [] }]
   await writeFile(fixturePath, JSON.stringify(fixture))
   const imageDir = join(tempRoot, 'public/images')
   await mkdir(imageDir, { recursive: true })
@@ -91,9 +92,17 @@ async function request(path, options = {}) {
 
 function assert(condition, message) { if (!condition) throw new Error(message) }
 function auth(user) { return { Authorization: `Bearer sim-${user}` } }
+function miniProgramAuth(userId) {
+  const now = Math.floor(Date.now() / 1000)
+  const payload = Buffer.from(JSON.stringify({ sub: userId, iat: now, exp: now + 3600 })).toString('base64url')
+  const signature = createHmac('sha256', 'test-token-secret').update(payload).digest('base64url')
+  return { Authorization: `Bearer mpv1.${payload}.${signature}` }
+}
 async function createSession(phone) {
   const result = await request('/api/miniprogram/simulation/session', { method: 'POST', body: JSON.stringify({ phone }) })
-  assert(result.status === 200 && result.data.simulation === true && result.data.user.phoneBound === true, 'phone simulation session failed')
+  const rawPhone = String(phone).replace(/[\s()-]/g, '')
+  const expectedPhone = rawPhone.startsWith('+') ? rawPhone : (/^1\d{10}$/.test(rawPhone) ? `+86${rawPhone}` : `+${rawPhone}`)
+  assert(result.status === 200 && result.data.simulation === true && result.data.user.phoneBound === true && result.data.user.phoneFull === expectedPhone, 'phone simulation session must return the full self-entered number')
   return { Authorization: `Bearer ${result.data.accessToken}` }
 }
 
@@ -108,6 +117,9 @@ try {
   await prepare()
   start(true)
   await waitForServer()
+
+  let result = await request('/api/miniprogram/auth/me', { headers: miniProgramAuth('profile-phone-contract') })
+  assert(result.status === 200 && result.data.user.phoneFull === '+15551234567' && result.data.user.phoneMasked === '+15****4567', 'authenticated self profile must return both full and masked phone fields')
 
   let bannerHome = await request('/api/miniprogram/home')
   const expectedOptimizedBanner = `./images/home-test.mp-${createHash('sha256').update(Buffer.from('test-source-banner-image')).digest('hex').slice(0, 10)}.webp`
@@ -126,7 +138,7 @@ try {
   const explicitFullContent = await request('/api/content?includeAttractionDetails=true')
   assert(explicitFullContent.status === 200 && Object.hasOwn(explicitFullContent.data, 'attractionDetails'), 'includeAttractionDetails=true must preserve the full content contract')
 
-  let result = await request('/api/miniprogram/knowledge/config')
+  result = await request('/api/miniprogram/knowledge/config')
   assert(result.status === 200 && result.data.simulation === true && result.data.trialSeconds === 60 && result.data.products.attraction.price === 0.01 && result.data.products.membership.price === 0.01, 'config contract failed')
   assert(result.data.products.attraction.productType === 'attraction' && result.data.products.membership.productType === 'membership', 'product config failed')
 
@@ -135,7 +147,7 @@ try {
 
   const phoneAuth = await createSession('13800138000')
   result = await request('/api/miniprogram/entitlements', { headers: phoneAuth })
-  assert(result.status === 200 && result.data.user.phoneBound === true && result.data.orders.length === 0, 'phone entitlement isolation failed')
+  assert(result.status === 200 && result.data.user.phoneBound === true && !Object.hasOwn(result.data.user, 'phoneFull') && result.data.orders.length === 0, 'phone entitlement should keep its shared user projection masked')
 
   result = await request('/api/miniprogram/orders', { method: 'POST', headers: phoneAuth, body: JSON.stringify({ productType: 'attraction', attractionId: 'acropolis' }) })
   assert(result.status === 201 && result.data.simulation === true && result.data.order.status === 'pending' && result.data.order.price === 0.01 && result.data.order.phone === '+8613800138000' && result.data.payment === null, 'attraction order creation failed')

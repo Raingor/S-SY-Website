@@ -496,6 +496,8 @@ function adminMiniUserPayload(input = {}, current = {}) { const nickname = valid
 function miniProfile(input = {}) { const nickname = validMiniNickname(input.nickname); const avatarUrl = String(input.avatarUrl || '').trim().slice(0, 500); return { nickname, avatarUrl: /^https:\/\//i.test(avatarUrl) ? avatarUrl : '' } }
 function fallbackMiniNickname() { return `用户${crypto.randomInt(1000, 10000)}` }
 function publicMiniProgramUser(user) { return { id: user.id, phoneBound: Boolean(user.phone), phoneMasked: user.phone ? maskPhone(user.phone) : null, nickname: user.nickname || fallbackMiniNickname(), avatarUrl: user.avatarUrl || '' } }
+// Only self-authenticated account endpoints return the full number; shared/public user payloads stay masked.
+function authenticatedMiniProgramUser(user) { return { ...publicMiniProgramUser(user), phoneFull: user.phone || null } }
 function maskPhone(phone) { const value = String(phone || ''); return value.length > 7 ? `${value.slice(0, 3)}****${value.slice(-4)}` : '****' }
 function miniProgramUserFromRequest(req, data) { const auth = req.headers.authorization || ''; if (!auth.startsWith('Bearer ')) return null; const payload = verifyMiniProgramToken(auth.slice(7)); if (!payload) return null; return (data.miniprogramUsers || []).find((user) => user.id === payload.sub) || null }
 function id(prefix = 'item') { return `${prefix}-${Date.now().toString(36)}-${crypto.randomBytes(3).toString('hex')}` }
@@ -1202,7 +1204,7 @@ const server = http.createServer(async (req, res) => {
       const input = await body(req)
       try {
         const phone = normalizeSimulationPhone(input.phone); const phoneHash = simulationPhoneHash(phone)
-        return json(res, 200, { simulation: true, accessToken: createSimulationToken(phone), tokenType: 'Bearer', expiresIn: 24 * 60 * 60, user: { id: `sim-phone-${phoneHash.slice(0, 20)}`, phoneBound: true, phoneMasked: maskPhone(phone) } })
+        return json(res, 200, { simulation: true, accessToken: createSimulationToken(phone), tokenType: 'Bearer', expiresIn: 24 * 60 * 60, user: { id: `sim-phone-${phoneHash.slice(0, 20)}`, phoneBound: true, phoneMasked: maskPhone(phone), phoneFull: phone } })
       } catch (error) { return json(res, 422, { code: 'INVALID_SIMULATION_PHONE', error: error.message }) }
     }
     if (url.pathname === '/api/miniprogram/knowledge/config' && method === 'GET') {
@@ -1330,14 +1332,14 @@ const server = http.createServer(async (req, res) => {
           if (!user.nickname) user.nickname = fallbackMiniNickname()
         }
         user.updatedAt = new Date().toISOString(); await saveData(data)
-        return json(res, 200, { accessToken: createMiniProgramToken(user.id), tokenType: 'Bearer', expiresIn: 30 * 24 * 60 * 60, user: publicMiniProgramUser(user) })
+        return json(res, 200, { accessToken: createMiniProgramToken(user.id), tokenType: 'Bearer', expiresIn: 30 * 24 * 60 * 60, user: authenticatedMiniProgramUser(user) })
       } catch (error) { return json(res, error.message === '小程序登录服务尚未配置' ? 503 : 502, { code: 'WECHAT_LOGIN_FAILED', error: error.message }) }
     }
     if (url.pathname === '/api/miniprogram/auth/me' && method === 'GET') {
       const data = readData(); const user = miniProgramUserFromRequest(req, data)
       if (!user) return json(res, 401, { code: 'MINIPROGRAM_LOGIN_REQUIRED', error: '请先微信登录' })
       if (!user.nickname) { user.nickname = fallbackMiniNickname(); await saveData(data) }
-      return json(res, 200, { user: publicMiniProgramUser(user) })
+      return json(res, 200, { user: authenticatedMiniProgramUser(user) })
     }
     if (url.pathname === '/api/miniprogram/auth/phone' && method === 'POST') {
       const input = await body(req); const data = readData(); const user = miniProgramUserFromRequest(req, data)
@@ -1346,7 +1348,7 @@ const server = http.createServer(async (req, res) => {
       try {
         const result = await exchangePhoneCode(String(input.code)); const phone = normalizedPhone(result.phone_info)
         user.phone = phone; user.phoneBoundAt = new Date().toISOString(); user.updatedAt = new Date().toISOString(); await saveData(data)
-        return json(res, 200, { user: publicMiniProgramUser(user) })
+        return json(res, 200, { user: authenticatedMiniProgramUser(user) })
       } catch (error) { return json(res, error.message === '小程序登录服务尚未配置' ? 503 : 502, { code: 'WECHAT_PHONE_BIND_FAILED', error: error.message }) }
     }
     if (url.pathname === '/api/miniprogram/profile' && method === 'GET') {
