@@ -356,7 +356,9 @@ function paidCommerceEntitlements(data, paidOrders, member) {
   const unlockedCities = member
     ? [...new Set((data.cities || []).filter((city) => city.status === 'published' && city.enabled !== false && (data.attractions || []).some((attraction) => attraction.city === city.id && attraction.status === 'published')).map((city) => city.id))]
     : [...new Set(paidOrders.filter((order) => order.productType === 'city').map((order) => order.cityId).filter(Boolean))]
-  const unlockedAlbums = [...new Set(paidOrders.filter((order) => order.productType === 'album').map((order) => order.albumId).filter(Boolean))]
+  const unlockedAlbums = member
+    ? [...new Set((data.audioAlbums || []).filter((album) => album.status === 'published' && (data.audioTracks || []).some((track) => track.albumId === album.id && track.category === 'heritage' && track.status === 'published')).map((album) => album.id))]
+    : [...new Set(paidOrders.filter((order) => order.productType === 'album').map((order) => order.albumId).filter(Boolean))]
   const cityIds = new Set(unlockedCities)
   const attractionIds = member
     ? publishedAttractionIds(data)

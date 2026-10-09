@@ -219,7 +219,7 @@ export function audioEntitled(track, entitlements) {
   if (track.unlockMode === 'free') return true
   if (track.unlockMode === 'membership') return entitlements?.member === true
   if (track.unlockMode === 'attraction') return entitlements?.member === true || Boolean(entitlements?.unlockedAttractions?.includes(track.attractionId) || entitlements?.purchases?.some((order) => order.status === 'paid' && order.productType === 'attraction' && order.attractionId === track.attractionId))
-  if (track.unlockMode === 'album') return Boolean(entitlements?.unlockedAlbums?.includes(track.albumId) || entitlements?.purchases?.some((order) => order.status === 'paid' && order.productType === 'album' && order.albumId === track.albumId))
+  if (track.unlockMode === 'album') return entitlements?.member === true || Boolean(entitlements?.unlockedAlbums?.includes(track.albumId) || entitlements?.purchases?.some((order) => order.status === 'paid' && order.productType === 'album' && order.albumId === track.albumId))
   return false
 }
 

@@ -44,7 +44,7 @@ async function prepare() {
   ]
   fixture.miniprogramUsers = [{ id: 'profile-phone-contract', phone: '+15551234567', nickname: 'Phone Contract Test', avatarUrl: '', travelers: [], documents: [], coupons: [] }]
   fixture.cities.find((city) => city.id === 'athens').mosaic = []
-  fixture.audioAlbums = [{ id: 'album-contract', title: '测试文史专辑', status: 'published' }]
+  fixture.audioAlbums = [{ id: 'album-contract', title: '测试文史专辑', status: 'published' }, { id: 'album-draft-contract', title: '未发布专辑', status: 'draft' }]
   fixture.audioTracks = [{ id: 'album-track-contract', category: 'heritage', title: '测试节目', albumId: 'album-contract', status: 'published', unlockMode: 'album', previewSeconds: 30 }]
   await writeFile(fixturePath, JSON.stringify(fixture))
   const imageDir = join(tempRoot, 'public/images')
@@ -206,6 +206,17 @@ try {
   assert(result.status === 200 && result.data.member === false && result.data.unlockedAttractions.includes('acropolis'), 'attraction fixture failed')
   result = await request('/api/miniprogram/entitlements', { headers: auth('membership') })
   assert(result.status === 200 && result.data.member === true && result.data.unlockedAttractions.length > 0, 'membership fixture failed')
+
+  const annualMemberAuth = await createSession('13700137000')
+  result = await request('/api/miniprogram/orders', { method: 'POST', headers: annualMemberAuth, body: JSON.stringify({ productType: 'annualMembership' }) })
+  assert(result.status === 201 && result.data.order.price === 199 && result.data.order.amountTotal === 19900, 'annual membership order should use the configured annual price')
+  result = await request(`/api/miniprogram/orders/${result.data.order.id}/simulate-paid`, { method: 'POST', headers: annualMemberAuth })
+  assert(result.status === 200 && result.data.entitlements.member === true, 'paid annual membership should grant member status')
+  const memberContent = await request('/api/content?includeAttractionDetails=false')
+  const expectedMemberCities = memberContent.data.cities.filter((city) => city.status === 'published' && city.enabled !== false && memberContent.data.attractions.some((attraction) => attraction.city === city.id && attraction.status === 'published')).map((city) => city.id).sort()
+  assert(JSON.stringify([...result.data.entitlements.unlockedCities].sort()) === JSON.stringify(expectedMemberCities), 'annual membership should unlock all eligible published cities')
+  assert(result.data.entitlements.unlockedAlbums.includes('album-contract') && !result.data.entitlements.unlockedAlbums.includes('album-draft-contract'), 'annual membership should unlock all published albums only')
+  assert(audioEntitled({ unlockMode: 'album', albumId: 'album-contract' }, result.data.entitlements), 'annual membership should authorize full album audio playback')
 
   result = await request('/api/miniprogram/simulation/reset', { method: 'POST', headers: phoneAuth })
   assert(result.status === 200 && result.data.reset === true && result.data.entitlements.orders.length === 0, 'simulation reset failed')
