@@ -143,6 +143,9 @@
 .el-admin .settings-tabs>.el-tabs__header .el-tabs__item.is-active { color:#087f79; font-weight:600; border-top:2px solid #087f79; }
 .el-admin .settings-tabs>.el-tabs__content { padding:20px 20px 8px; }
 .el-admin .settings-tab-note { margin:0 0 18px; padding:10px 12px; color:#617176; background:#f2f8f7; border-left:3px solid #168c88; font-size:12px; line-height:1.6; }
+.el-admin .membership-level-heading { display:flex; flex-direction:column; gap:4px; margin:14px 0 2px; padding:11px 14px; border:1px solid #e1ecea; border-left:3px solid #168c88; border-radius:4px; background:#f8fbfa; }
+.el-admin .membership-level-heading strong { color:#34494e; font-size:14px; }
+.el-admin .membership-level-heading span { color:#718086; font-size:12px; line-height:1.6; }
 .el-admin .settings-structured { margin-top:22px; padding-top:20px; border-top:1px solid var(--ea-line); }
 .el-admin .settings-structured-head { display:flex; justify-content:space-between; align-items:center; gap:12px; margin-bottom:14px; }
 .el-admin .settings-structured-head h3 { margin:0 0 4px; font-size:16px; color:#35444a; }

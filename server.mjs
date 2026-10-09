@@ -311,8 +311,9 @@ function defaultMiniProgramKnowledgeConfig() {
   return {
     trialSeconds: 60,
     products: {
-      attraction: { enabled: true, productType: 'attraction', name: '单景点永久讲解（模拟）', price: 0.01, currency: 'CNY' },
-      membership: { enabled: true, productType: 'membership', name: '终身会员（模拟）', price: 0.01, currency: 'CNY' },
+      attraction: { enabled: true, productType: 'attraction', name: '景点单篇讲解', price: 9.9, currency: 'CNY' },
+      membership: { enabled: false, productType: 'membership', name: '终身会员', price: 99, currency: 'CNY' },
+      annualMembership: { enabled: true, productType: 'annualMembership', name: '年会员', price: 199, currency: 'CNY', durationDays: 365 },
     },
   }
 }
@@ -324,7 +325,7 @@ function miniProgramKnowledgeConfig(data) {
     return [key, {
       ...product,
       ...value,
-      enabled: value.enabled !== false,
+      enabled: value.enabled === undefined ? product.enabled !== false : value.enabled !== false,
       productType: key,
       name: String(value.name || product.name).trim().slice(0, 120),
       price: Number.isFinite(Number(value.price)) && Number(value.price) >= 0 ? Number(value.price) : product.price,
@@ -349,11 +350,41 @@ function simulationState(data) {
   return data.miniprogramSimulation
 }
 function publishedAttractionIds(data) { return (data.attractions || []).filter((item) => item.status === 'published').map((item) => item.id) }
+const membershipYearMs = 365 * 24 * 60 * 60 * 1000
+function membershipOrderExpiry(order) {
+  if (order?.productType !== 'annualMembership') return 0
+  const explicit = Date.parse(order.membershipExpiresAt || '')
+  if (Number.isFinite(explicit)) return explicit
+  const paidAt = Date.parse(order.paidAt || order.createdAt || '')
+  return Number.isFinite(paidAt) ? paidAt + membershipYearMs : 0
+}
+function membershipSummary(orders, now = Date.now()) {
+  const paid = (orders || []).filter((order) => order.status === 'paid')
+  const lifetime = paid.some((order) => order.productType === 'membership')
+  const annualUntilMs = paid.reduce((latest, order) => Math.max(latest, membershipOrderExpiry(order)), 0)
+  const annualActive = annualUntilMs > now
+  return {
+    member: lifetime || annualActive,
+    membershipCanRenew: !lifetime,
+    memberLabel: lifetime ? '终身会员' : annualActive ? '年会员' : '普通用户',
+    memberExpiresAt: !lifetime && annualActive ? new Date(annualUntilMs).toISOString() : '',
+  }
+}
+function assignAnnualMembershipPeriod(order, priorOrders, paidAt) {
+  if (order?.productType !== 'annualMembership') return
+  const paidAtMs = Date.parse(paidAt || order.paidAt || new Date().toISOString())
+  if (!Number.isFinite(paidAtMs)) return
+  const currentUntil = (priorOrders || []).filter((item) => item !== order && item.status === 'paid' && item.productType === 'annualMembership').reduce((latest, item) => Math.max(latest, membershipOrderExpiry(item)), 0)
+  const startsAt = Math.max(paidAtMs, currentUntil > paidAtMs ? currentUntil : paidAtMs)
+  order.membershipStartsAt = new Date(startsAt).toISOString()
+  order.membershipExpiresAt = new Date(startsAt + membershipYearMs).toISOString()
+}
 function simulationFixtureOrders(data, userKey) {
   const attractionId = publishedAttractionIds(data)[0] || ''
   const config = miniProgramKnowledgeConfig(data)
   if (userKey === 'attraction' && attractionId) return [{ id: `sim-fixture-attraction-${attractionId}`, testUser: userKey, status: 'paid', productType: 'attraction', attractionId, name: config.products.attraction.name, price: config.products.attraction.price, currency: config.products.attraction.currency, createdAt: '2026-01-01T00:00:00.000Z', paidAt: '2026-01-01T00:00:00.000Z' }]
   if (userKey === 'membership') return [{ id: 'sim-fixture-membership', testUser: userKey, status: 'paid', productType: 'membership', attractionId: '', name: config.products.membership.name, price: config.products.membership.price, currency: config.products.membership.currency, createdAt: '2026-01-01T00:00:00.000Z', paidAt: '2026-01-01T00:00:00.000Z' }]
+  if (userKey === 'annual' || userKey === 'annual-membership') return [{ id: 'sim-fixture-annual-membership', testUser: userKey, status: 'paid', productType: 'annualMembership', attractionId: '', name: config.products.annualMembership.name, price: config.products.annualMembership.price, currency: config.products.annualMembership.currency, createdAt: new Date().toISOString(), paidAt: new Date().toISOString(), membershipExpiresAt: new Date(Date.now() + membershipYearMs).toISOString() }]
   return []
 }
 function simulationOrders(data, identity) { return [...(identity.phoneHash ? [] : simulationFixtureOrders(data, identity.key)), ...simulationState(data).orders.filter((order) => identity.phoneHash ? order.phoneHash === identity.phoneHash : order.testUser === identity.key)] }
@@ -365,15 +396,17 @@ function publicSimulationOrder(order) {
 function simulationEntitlements(data, identity) {
   const orders = simulationOrders(data, identity)
   const paidOrders = orders.filter((order) => order.status === 'paid')
-  const member = paidOrders.some((order) => order.productType === 'membership')
+  const membership = membershipSummary(paidOrders)
+  const member = membership.member
   const unlocked = new Set(member ? publishedAttractionIds(data) : paidOrders.filter((order) => order.productType === 'attraction').map((order) => order.attractionId).filter(Boolean))
   return {
     simulation: true,
     testUser: identity.key,
     user: { id: identity.userId || `sim-${identity.key}`, phoneBound: Boolean(identity.phone), phoneMasked: identity.phone ? maskPhone(identity.phone) : null },
     member,
-    memberLabel: member ? '终身会员' : '普通用户',
-    purchases: paidOrders.map((order) => ({ orderId: order.id, productType: order.productType, attractionId: order.attractionId || '', status: order.status, purchasedAt: order.paidAt || order.createdAt })),
+    memberLabel: membership.memberLabel,
+    memberExpiresAt: membership.memberExpiresAt,
+    purchases: paidOrders.map((order) => ({ orderId: order.id, productType: order.productType, name: order.name || '', attractionId: order.attractionId || '', status: order.status, purchasedAt: order.paidAt || order.createdAt })),
     unlockedAttractions: [...unlocked],
     favorites: [],
     history: [],
@@ -394,15 +427,17 @@ function realPaymentOrders(data, user) {
 function realPaymentEntitlements(data, user) {
   const orders = realPaymentOrders(data, user)
   const paidOrders = orders.filter((order) => order.status === 'paid')
-  const member = paidOrders.some((order) => order.productType === 'membership')
+  const membership = membershipSummary(paidOrders)
+  const member = membership.member
   const unlocked = new Set(member ? publishedAttractionIds(data) : paidOrders.filter((order) => order.productType === 'attraction').map((order) => order.attractionId).filter(Boolean))
   return {
     simulation: false,
     payment: 'wechat-v3',
     user: publicMiniProgramUser(user),
     member,
-    memberLabel: member ? '终身会员' : '普通用户',
-    purchases: paidOrders.map((order) => ({ orderId: order.id, productType: order.productType, attractionId: order.attractionId || '', status: order.status, purchasedAt: order.paidAt || order.createdAt })),
+    memberLabel: membership.memberLabel,
+    memberExpiresAt: membership.memberExpiresAt,
+    purchases: paidOrders.map((order) => ({ orderId: order.id, productType: order.productType, name: order.name || '', attractionId: order.attractionId || '', status: order.status, purchasedAt: order.paidAt || order.createdAt })),
     unlockedAttractions: [...unlocked],
     favorites: [],
     history: [],
@@ -433,6 +468,7 @@ async function refreshRealPaymentOrder(data, order) {
       order.status = 'paid'
       order.transactionId = transaction.transaction_id || order.transactionId || ''
       order.paidAt = order.paidAt || transaction.success_time || new Date().toISOString()
+      assignAnnualMembershipPeriod(order, realPaymentOrders(data, { id: order.userId }), order.paidAt)
     } else if (['CLOSED', 'REVOKED'].includes(transaction.trade_state)) {
       order.status = 'closed'
       order.closedAt = order.closedAt || new Date().toISOString()
@@ -478,19 +514,21 @@ function documentPayload(input = {}, current = {}) { const name = String(input.n
 function miniProgramProfile(data, user) { ensureMiniCollections(user); const leads = data.leads.filter((lead) => lead.userId === user.id); const appointments = leads.filter((lead) => ['guide-booking', 'vehicle-consultation'].includes(lead.leadType)).length; const trips = leads.filter((lead) => ['customization', 'business-travel'].includes(lead.leadType)).length; return { user: publicMiniProgramUser(user), stats: { appointments, trips, coupons: user.coupons.length, profiles: user.travelers.length + user.documents.length } } }
 function couponPayload(input = {}, current = {}) { const title = String(input.title ?? current.title ?? '').trim().slice(0, 80); if (!title) return null; return { title, description: String(input.description ?? current.description ?? '').trim().slice(0, 240), code: String(input.code ?? current.code ?? '').trim().slice(0, 64), expiresAt: String(input.expiresAt ?? current.expiresAt ?? '').trim().slice(0, 32), status: String(input.status ?? current.status ?? 'active').trim().slice(0, 24) } }
 function safeCoupon(item) { return { id: item.id, title: item.title, description: item.description || '', code: item.code || '', expiresAt: item.expiresAt || '', status: item.status || 'active', createdAt: item.createdAt, updatedAt: item.updatedAt } }
-function adminMiniUserSummary(data, user) { const profile = miniProgramProfile(data, user); const leads = data.leads.filter((lead) => lead.userId === user.id); const member = paymentOrders(data).some((order) => order.userId === user.id && order.status === 'paid' && order.productType === 'membership'); return { ...profile.user, member, memberLabel: member ? '终身会员' : '普通用户', stats: profile.stats, leadCount: leads.length, createdAt: user.createdAt, updatedAt: user.updatedAt } }
+function adminMiniUserSummary(data, user) { const profile = miniProgramProfile(data, user); const leads = data.leads.filter((lead) => lead.userId === user.id); const membership = membershipSummary(paymentOrders(data).filter((order) => order.userId === user.id)); return { ...profile.user, ...membership, stats: profile.stats, leadCount: leads.length, createdAt: user.createdAt, updatedAt: user.updatedAt } }
 function adminPaymentOrder(data, order) {
   const user = (data.miniprogramUsers || []).find((item) => item.id === order.userId)
   const { openid, phone, ...safe } = order
-  return { ...safe, userId: order.userId || null, userNickname: user?.nickname || order.userId || '未知用户', phoneMasked: phone ? maskPhone(phone) : (user?.phone ? maskPhone(user.phone) : null), member: Boolean(user && paymentOrders(data).some((item) => item.userId === user.id && item.status === 'paid' && item.productType === 'membership')) }
+  const membership = user ? membershipSummary(paymentOrders(data).filter((item) => item.userId === user.id)) : { member: false, memberLabel: '普通用户', memberExpiresAt: '' }
+  return { ...safe, userId: order.userId || null, userNickname: user?.nickname || order.userId || '未知用户', phoneMasked: phone ? maskPhone(phone) : (user?.phone ? maskPhone(user.phone) : null), ...membership }
 }
 function adminPaymentMembers(data) {
   const orders = paymentOrders(data)
   return (data.miniprogramUsers || []).flatMap((user) => {
-    const paidMemberships = orders.filter((order) => order.userId === user.id && order.status === 'paid' && order.productType === 'membership').sort((a, b) => String(a.paidAt || a.createdAt || '').localeCompare(String(b.paidAt || b.createdAt || '')))
-    if (!paidMemberships.length) return []
+    const paidMemberships = orders.filter((order) => order.userId === user.id && order.status === 'paid' && ['membership', 'annualMembership'].includes(order.productType)).sort((a, b) => String(a.paidAt || a.createdAt || '').localeCompare(String(b.paidAt || b.createdAt || '')))
+    const membership = membershipSummary(paidMemberships)
+    if (!membership.member) return []
     const latest = paidMemberships.at(-1)
-    return [{ id: user.id, nickname: user.nickname || user.id, phoneMasked: user.phone ? maskPhone(user.phone) : null, memberLabel: '终身会员', paidAt: latest.paidAt || latest.createdAt || null, orderId: latest.id, outTradeNo: latest.outTradeNo || null, orderCount: orders.filter((order) => order.userId === user.id).length, unlockedAttractions: publishedAttractionIds(data).length, createdAt: user.createdAt || null }]
+    return [{ id: user.id, nickname: user.nickname || user.id, phoneMasked: user.phone ? maskPhone(user.phone) : null, memberLabel: membership.memberLabel, memberExpiresAt: membership.memberExpiresAt, paidAt: latest.paidAt || latest.createdAt || null, orderId: latest.id, outTradeNo: latest.outTradeNo || null, orderCount: orders.filter((order) => order.userId === user.id).length, unlockedAttractions: publishedAttractionIds(data).length, createdAt: user.createdAt || null }]
   }).sort((a, b) => String(b.paidAt || '').localeCompare(String(a.paidAt || '')))
 }
 function beijingWindowStart(days) {
@@ -500,14 +538,14 @@ function beijingWindowStart(days) {
 function adminCommerceStats(data) {
   const orders = paymentOrders(data)
   const paidOrders = orders.filter((order) => order.status === 'paid')
-  const members = new Set(paidOrders.filter((order) => order.productType === 'membership').map((order) => order.userId).filter(Boolean))
+  const members = new Set((data.miniprogramUsers || []).filter((user) => membershipSummary(paidOrders.filter((order) => order.userId === user.id)).member).map((user) => user.id))
   const amountTotalFen = (items) => items.reduce((total, order) => total + (Number(order.amountTotal) || 0), 0)
   const buildWindow = (days) => {
     const start = beijingWindowStart(days)
     const inWindow = (value) => value && new Date(value).getTime() >= start
     const windowOrders = orders.filter((order) => inWindow(order.createdAt))
     const windowPaid = windowOrders.filter((order) => order.status === 'paid')
-    const windowMembers = new Set(windowPaid.filter((order) => order.productType === 'membership' && inWindow(order.paidAt || order.createdAt)).map((order) => order.userId).filter(Boolean))
+    const windowMembers = new Set(windowPaid.filter((order) => ['membership', 'annualMembership'].includes(order.productType) && inWindow(order.paidAt || order.createdAt)).map((order) => order.userId).filter(Boolean))
     return { orderCount: windowOrders.length, paidOrderCount: windowPaid.length, memberCount: windowMembers.size, amountTotalFen: amountTotalFen(windowPaid), amount: amountTotalFen(windowPaid) / 100 }
   }
   return { totals: { orderCount: orders.length, paidOrderCount: paidOrders.length, memberCount: members.size, amountTotalFen: amountTotalFen(paidOrders), amount: amountTotalFen(paidOrders) / 100 }, windows: { today: buildWindow(1), last7Days: buildWindow(7), last30Days: buildWindow(30) } }
@@ -556,7 +594,8 @@ async function handleWechatPayNotify(req, res) {
     if (transaction.trade_state === 'SUCCESS') {
       order.status = 'paid'
       order.transactionId = transaction.transaction_id || order.transactionId || ''
-      order.paidAt = order.paidAt || new Date().toISOString()
+      order.paidAt = order.paidAt || transaction.success_time || new Date().toISOString()
+      assignAnnualMembershipPeriod(order, paymentOrders(data).filter((item) => item.userId === order.userId), order.paidAt)
       order.updatedAt = new Date().toISOString()
       await saveData(data)
     }
@@ -1255,7 +1294,10 @@ const server = http.createServer(async (req, res) => {
       if (order.status === nextStatus) return json(res, 200, simulationOrderResponse(data, identity, order, nextStatus === 'failed' ? { code: 'SIMULATED_PAYMENT_FAILED', message: '模拟支付失败，未授予权益。', idempotent: true } : { idempotent: true }))
       if (order.status !== 'pending') return json(res, 409, { code: 'SIMULATION_ORDER_FINALIZED', error: '模拟订单已完成，不能重复改变状态' })
       order.status = nextStatus; order.updatedAt = new Date().toISOString()
-      if (nextStatus === 'paid') order.paidAt = order.updatedAt
+      if (nextStatus === 'paid') {
+        order.paidAt = order.updatedAt
+        assignAnnualMembershipPeriod(order, simulationOrders(data, identity), order.paidAt)
+      }
       if (nextStatus === 'failed') { order.failedAt = order.updatedAt; order.errorCode = 'SIMULATED_PAYMENT_FAILED'; order.errorMessage = '模拟支付失败，未授予权益。' }
       await saveData(data)
       return json(res, 200, simulationOrderResponse(data, identity, order, nextStatus === 'failed' ? { code: 'SIMULATED_PAYMENT_FAILED', message: '模拟支付失败，未授予权益。' } : {}))
