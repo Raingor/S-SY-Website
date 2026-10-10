@@ -1009,7 +1009,7 @@ function publicContent(data, countryId = 'greece', { includeAttractionDetails = 
   const home = homeSettings(data, (value) => miniProgramBannerImage(value, imageUrl))
   const activeDestinationCategories = (data.destinationCategories || []).filter((item) => item.enabled !== false).sort((a, b) => Number(a.sort || 0) - Number(b.sort || 0))
   const payload = {
-    settings: { ...data.settings, homeEyebrow: home.eyebrow, homeTitle: home.title, homeDescription: home.description, homeBanners: home.banners },
+    settings: { ...data.settings, miniprogramKnowledge: miniProgramKnowledgeConfig(data), homeEyebrow: home.eyebrow, homeTitle: home.title, homeDescription: home.description, homeBanners: home.banners },
     home,
     attractionDetailPage,
     attractionDetails: heritage.attractionDetails,
