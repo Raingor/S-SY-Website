@@ -9,7 +9,7 @@ import tls from 'node:tls'
 import { closeStorage, initStorage, readData, saveData, storageStatus } from './storage.mjs'
 import { audioEntitled, publicHeritage, signedAudioToken, streamPrivateAudio, uploadPrivateAudio, validateAttraction, validateHeritageRecord, verifySignedAudioToken, normalizeVisitorSections, sanitizeRichText, visibleTrack } from './heritage-content.mjs'
 import { amountToFen, createMiniProgramPrepay, decryptWechatNotify, queryWechatTransaction, realPayNotifyReady, realPayRequestReady, verifyWechatNotify, wechatPayConfig } from './wechat-pay.mjs'
-import { requestAdminDraft, requestAudioTrackTranslation } from './attraction-ai-fill.mjs'
+import { requestAdminDraft, requestAudioTrackTranslation, requestDestinationTranslation, requestTextTranslation } from './attraction-ai-fill.mjs'
 
 const root = dirname(fileURLToPath(import.meta.url))
 const demoContentPath = resolve(root, 'seed/content-demo.json')
@@ -1536,6 +1536,34 @@ const server = http.createServer(async (req, res) => {
           const status = /请先填写|请将简体/.test(error.message) ? 422 : 502
           if (error.providerDetails) console.error('[admin-audio-translation] provider request failed', JSON.stringify({ time: new Date().toISOString(), ...error.providerDetails }))
           else if (status !== 422) console.error('[admin-audio-translation] request failed', JSON.stringify({ time: new Date().toISOString(), provider: 'sensenova', model: process.env.SY_SENSENOVA_MODEL || 'sensenova-6.8-flash-lite', category: 'connection_or_response_error' }))
+          return json(res, status, { error: error.message })
+        }
+      }
+      if (url.pathname === '/api/admin/destination-translation' && method === 'POST') {
+        if (!attractionAiEnabled()) return json(res, 404, { error: 'AI 翻译未启用：服务端未配置 SY_LOCAL_ASSISTANT_ENABLED 或 SY_SENSENOVA_API_KEY' })
+        let input
+        try { input = await body(req) } catch { return json(res, 400, { error: '请求内容无效' }) }
+        try {
+          const translated = await requestDestinationTranslation({ name: input?.name, apiKey: process.env.SY_SENSENOVA_API_KEY })
+          return json(res, 200, translated)
+        } catch (error) {
+          const status = /请先填写|请将简体/.test(error.message) ? 422 : 502
+          if (error.providerDetails) console.error('[admin-audio-translation] provider request failed', JSON.stringify({ time: new Date().toISOString(), ...error.providerDetails }))
+          else if (status !== 422) console.error('[admin-audio-translation] request failed', JSON.stringify({ time: new Date().toISOString(), provider: 'sensenova', model: process.env.SY_SENSENOVA_MODEL || 'sensenova-6.8-flash-lite', category: 'connection_or_response_error' }))
+          return json(res, status, { error: error.message })
+        }
+      }
+      if (url.pathname === '/api/admin/text-translation' && method === 'POST') {
+        if (!attractionAiEnabled()) return json(res, 404, { error: 'AI 翻译未启用：服务端未配置 SY_LOCAL_ASSISTANT_ENABLED 或 SY_SENSENOVA_API_KEY' })
+        let input
+        try { input = await body(req) } catch { return json(res, 400, { error: '请求内容无效' }) }
+        try {
+          const translated = await requestTextTranslation({ text: input?.text, apiKey: process.env.SY_SENSENOVA_API_KEY })
+          return json(res, 200, translated)
+        } catch (error) {
+          const status = /请先填写|请将简体/.test(error.message) ? 422 : 502
+          if (error.providerDetails) console.error('[admin-text-translation] provider request failed', JSON.stringify({ time: new Date().toISOString(), ...error.providerDetails }))
+          else if (status !== 422) console.error('[admin-text-translation] request failed', JSON.stringify({ time: new Date().toISOString(), provider: 'sensenova', model: process.env.SY_SENSENOVA_MODEL || 'sensenova-6.8-flash-lite', category: 'connection_or_response_error' }))
           return json(res, status, { error: error.message })
         }
       }

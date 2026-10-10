@@ -11,6 +11,7 @@
     "server": "node server.mjs",
     "server:local-ai": "NODE_ENV=development node --env-file=.env --env-file=.env.local server.mjs",
     "test:attraction-ai-fill": "node scripts/test-attraction-ai-fill.mjs",
+    "test:destination-translation": "node scripts/test-destination-translation.mjs",
     "test:miniprogram-simulation": "node scripts/test-miniprogram-simulation.mjs",
     "test:wechat-pay": "node scripts/test-wechat-pay.mjs",
     "test:admin-session": "node scripts/test-admin-session.mjs",

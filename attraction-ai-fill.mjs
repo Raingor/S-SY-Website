@@ -249,6 +249,83 @@ export function sanitizeAudioTrackTranslation(value, source = {}) {
   return result
 }
 
+export function sanitizeTextTranslation(value, source = {}) {
+  const stringValue = (input, limit) => (typeof input === 'string' ? input.trim().slice(0, limit) : '')
+  const text = stringValue(source.text, 1600)
+  if (!text) throw new Error('请先填写简体内容')
+  const result = {
+    tw: stringValue(value.tw, 2000),
+    en: stringValue(value.en, 2000),
+  }
+  if (!result.tw || !result.en) throw new Error('AI 未返回完整的繁体与英文翻译，请重试')
+  return result
+}
+
+export async function requestTextTranslation({ text, apiKey, fetchImpl = fetch }) {
+  if (typeof text !== 'string' || !text.trim()) throw new Error('请先填写简体内容')
+  if (text.trim().length > 1600) throw new Error('请将简体内容控制在 1600 字以内')
+  const source = { text: text.trim() }
+  if (!apiKey) throw new Error('本地 AI 服务尚未配置，请检查 Website 本地环境变量')
+  const prompt = `你是旅游内容的专业译者。请将给定简体中文文本分别翻译成自然、准确的繁体中文和英文。忠实保留原意、语气和专有名词，不补充原文没有的事实，不扩写成宣传文案。只返回 JSON，不要 Markdown、前言或其他文字。严格使用结构：{"tw":"","en":""}。原文 JSON：${JSON.stringify(source)}`
+  let response
+  try {
+    response = await fetchImpl(gatewayUrl, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ model, messages: [{ role: 'user', content: prompt }], temperature: 0.1, max_tokens: 2200, stream: false }),
+      signal: AbortSignal.timeout(60000),
+    })
+  } catch {
+    throw new Error('连接 AI 服务失败，请检查网络后重试')
+  }
+  if (!response.ok) {
+    let providerPayload = null
+    try { providerPayload = await response.json() } catch { /* provider error bodies are optional */ }
+    throw providerFailure(response, providerPayload)
+  }
+  let payload
+  try { payload = await response.json() } catch { throw new Error('AI 返回内容格式无效，请稍后重试') }
+  return sanitizeTextTranslation(parseModelJson(payload?.choices?.[0]?.message?.content), source)
+}
+
+export function sanitizeDestinationTranslation(input, source = {}) {
+  const stringValue = (value, limit) => (typeof value === 'string' ? value.trim().slice(0, limit) : '')
+  const name = stringValue(source.name, 120)
+  if (!name) throw new Error('请先填写简体名称')
+  const result = {
+    en: stringValue(input.en, 160),
+  }
+  if (!result.en) throw new Error('AI 未返回有效的英文名称，请重试')
+  return result
+}
+
+export async function requestDestinationTranslation({ name, apiKey, fetchImpl = fetch }) {
+  if (typeof name !== 'string' || !name.trim()) throw new Error('请先填写简体名称')
+  if (name.trim().length > 120) throw new Error('请将简体名称控制在 120 字以内')
+  const source = { name: name.trim() }
+  if (!apiKey) throw new Error('本地 AI 服务尚未配置，请检查 Website 本地环境变量')
+  const prompt = `你是旅游内容的专业译者。请将给定简体中文目的地名称翻译成自然、地道且符合旅行行业惯例的英文名称。忠实保留原意和专有名词，不补充原文没有的事实。只返回 JSON，不要 Markdown、前言或其他文字。严格使用结构：{"en":""}。原文 JSON：${JSON.stringify(source)}`
+  let response
+  try {
+    response = await fetchImpl(gatewayUrl, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ model, messages: [{ role: 'user', content: prompt }], temperature: 0.1, max_tokens: 300, stream: false }),
+      signal: AbortSignal.timeout(60000),
+    })
+  } catch {
+    throw new Error('连接 AI 服务失败，请检查网络后重试')
+  }
+  if (!response.ok) {
+    let providerPayload = null
+    try { providerPayload = await response.json() } catch { /* provider error bodies are optional */ }
+    throw providerFailure(response, providerPayload)
+  }
+  let payload
+  try { payload = await response.json() } catch { throw new Error('AI 返回内容格式无效，请稍后重试') }
+  return sanitizeDestinationTranslation(parseModelJson(payload?.choices?.[0]?.message?.content), source)
+}
+
 export async function requestAudioTrackTranslation({ title, description = '', apiKey, fetchImpl = fetch }) {
   if (typeof title !== 'string' || !title.trim()) throw new Error('请先填写简体标题')
   if (title.trim().length > 200) throw new Error('请将简体标题控制在 200 字以内')

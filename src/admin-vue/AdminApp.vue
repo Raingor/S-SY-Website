@@ -405,6 +405,8 @@
               <div class="editor-heading"><el-button plain icon="el-icon-arrow-left" @click="closeEditor">返回列表</el-button><div><span class="eyebrow">EDIT CONTENT / 独立编辑</span><h1>{{ editor.title }}</h1><p>可保存后返回列表，或继续编辑。<el-tag v-if="editorDirty" size="mini" type="warning" class="editor-dirty-tag">有未保存修改</el-tag></p></div></div>
               <el-alert v-if="currentMenu.miniProgramDisplay" :title="'小程序展示位置：'+currentMenu.miniProgramDisplay" type="info" :closable="false" show-icon class="banner-note module-display-note"/>
               <el-alert v-if="active==='audioTracks'" title="只需填写简体标题与简介；点击表单底部「自动翻译」生成繁体和英文标题、简介。修改简体内容后需重新翻译，再保存。" type="info" :closable="false" show-icon class="banner-note"/>
+              <el-alert v-if="active==='destinations'" title="只需填写中文名称；点击表单底部「自动翻译」生成英文名称。修改中文名称后需重新翻译，再保存。" type="info" :closable="false" show-icon class="banner-note"/>
+              <el-alert v-if="translatableFieldGroups[active]" title="只需填写简体内容；点击表单底部「自动翻译」生成繁体和英文内容。修改简体内容后需重新翻译，再保存。" type="info" :closable="false" show-icon class="banner-note"/>
               <div v-if="editor.template" class="template-guide"><div><span class="eyebrow">FILLING TEMPLATE / 填写引导</span><h3>{{ editor.template.title }}</h3><p>{{ editor.template.tip }}</p></div><div class="template-guide-actions"><el-button v-if="['routes','destinations','attractions'].includes(active)&&localAiEnabled" type="primary" icon="el-icon-magic-stick" @click="openAiFillDialog">智能填写</el-button><el-button type="warning" plain @click="fillTemplate">一键填写拟真示例</el-button></div></div>
               <el-form ref="editForm" :disabled="busy" :model="form" :rules="formRules" :label-position="currentMenu.singleColumn ? 'left' : 'top'" :label-width="currentMenu.singleColumn ? '200px' : undefined" :class="{ 'edit-form-horizontal': currentMenu.singleColumn }" class="edit-form" @submit.native.prevent="saveEditor">
                 <div v-if="recordEditorGroups.length" class="attraction-editor-tabs record-editor-tabs" role="tablist" :aria-label="editor.title+'内容板块'">
@@ -453,7 +455,7 @@
                   <el-input v-else v-model="form[field.key]" :placeholder="field.placeholder" :disabled="active==='cities'&&field.key==='id'&&!editor.isNew" @input="handleEditorTextInput(field.key)"/>
                   <small v-if="field.help" class="field-help">{{ field.help }}</small>
                 </el-form-item>
-              </div><el-form-item v-if="active==='attractions'" label="参观地图图片"><div class="image-editor"><div v-if="form.guide?.mapImage" class="image-preview"><img :src="assetUrl(form.guide.mapImage)" alt="参观地图预览"/></div><div class="image-actions"><el-upload action="#" :show-file-list="false" :http-request="uploadGuideMap" accept="image/png,image/jpeg,image/webp"><el-button plain icon="el-icon-picture">{{ form.guide?.mapImage ? '重新上传地图' : '上传参观地图' }}</el-button></el-upload><el-button v-if="form.guide?.mapImage" type="danger" plain size="small" icon="el-icon-delete" @click="removeGuideMap">删除地图图片</el-button></div><el-input v-model="form.guide.mapImage" placeholder="也可粘贴 HTTPS 图片链接"/><small class="image-guidance">{{ imageGuidance('attractions','mapImage',undefined,false) }} 可粘贴 HTTPS 图片地址。</small></div></el-form-item><el-form-item v-if="active==='audioTracks'&&recordEditorTab==='audio'" label="上传私有音频（MP3 / M4A，≤30MB）"><el-upload action="#" :show-file-list="false" :http-request="uploadAudio" accept=".mp3,.m4a,audio/mpeg,audio/mp4"><el-button icon="el-icon-upload" :loading="busy">{{ form.audioFile ? '重新上传并更新试听音频' : '上传音频并生成 '+(form.previewSeconds||60)+' 秒试听' }}</el-button></el-upload><small v-if="form.audioFile">已上传：{{ form.durationSeconds }} 秒；试听：{{ form.previewSeconds }} 秒。修改试听秒数后需重新上传；完整文件只会按所选收听规则授权播放。</small><small v-else>试听秒数可在上方设置（1–60 秒）；无音频的草稿可保存，但不可发布或成为可播放内容。</small></el-form-item><div v-if="active==='audioTracks' && recordEditorTab==='content' && (form.titleTw || form.titleEn || form.descriptionTw || form.descriptionEn)" class="audio-translation-preview"><b>翻译结果（只读预览）</b><p>繁体标题：{{ form.titleTw || '—' }}</p><p>英文标题：{{ form.titleEn || '—' }}</p><p>繁体简介：{{ form.descriptionTw || '—' }}</p><p>英文简介：{{ form.descriptionEn || '—' }}</p></div><el-alert v-if="jsonError" :title="jsonError" type="error" :closable="false" show-icon/><div class="form-actions"><el-button plain :disabled="busy||aiTranslating" @click="closeEditor">取消</el-button><el-button v-if="active==='audioTracks'&&recordEditorTab==='content'" icon="el-icon-magic-stick" :loading="aiTranslating" :disabled="!localAiEnabled || busy" :title="localAiEnabled ? '根据简体标题和简介生成繁体及英文内容' : 'AI 翻译未启用，请检查服务端配置'" @click="translateAudioTrack">自动翻译</el-button><el-button class="save-continue" type="primary" plain :loading="busy" :disabled="publicationChecking||aiFilling||aiTranslating" @click="saveEditor(true)">保存并继续编辑</el-button><el-button class="save-return" type="primary" icon="el-icon-check" :loading="busy" :disabled="publicationChecking||aiFilling||aiTranslating" @click="saveEditor(false)">保存并返回</el-button></div></el-form>
+              </div><el-form-item v-if="active==='attractions'" label="参观地图图片"><div class="image-editor"><div v-if="form.guide?.mapImage" class="image-preview"><img :src="assetUrl(form.guide.mapImage)" alt="参观地图预览"/></div><div class="image-actions"><el-upload action="#" :show-file-list="false" :http-request="uploadGuideMap" accept="image/png,image/jpeg,image/webp"><el-button plain icon="el-icon-picture">{{ form.guide?.mapImage ? '重新上传地图' : '上传参观地图' }}</el-button></el-upload><el-button v-if="form.guide?.mapImage" type="danger" plain size="small" icon="el-icon-delete" @click="removeGuideMap">删除地图图片</el-button></div><el-input v-model="form.guide.mapImage" placeholder="也可粘贴 HTTPS 图片链接"/><small class="image-guidance">{{ imageGuidance('attractions','mapImage',undefined,false) }} 可粘贴 HTTPS 图片地址。</small></div></el-form-item><el-form-item v-if="active==='audioTracks'&&recordEditorTab==='audio'" label="上传私有音频（MP3 / M4A，≤30MB）"><el-upload action="#" :show-file-list="false" :http-request="uploadAudio" accept=".mp3,.m4a,audio/mpeg,audio/mp4"><el-button icon="el-icon-upload" :loading="busy">{{ form.audioFile ? '重新上传并更新试听音频' : '上传音频并生成 '+(form.previewSeconds||60)+' 秒试听' }}</el-button></el-upload><small v-if="form.audioFile">已上传：{{ form.durationSeconds }} 秒；试听：{{ form.previewSeconds }} 秒。修改试听秒数后需重新上传；完整文件只会按所选收听规则授权播放。</small><small v-else>试听秒数可在上方设置（1–60 秒）；无音频的草稿可保存，但不可发布或成为可播放内容。</small></el-form-item><div v-if="active==='audioTracks' && recordEditorTab==='content' && (form.titleTw || form.titleEn || form.descriptionTw || form.descriptionEn)" class="audio-translation-preview"><b>翻译结果（只读预览）</b><p>繁体标题：{{ form.titleTw || '—' }}</p><p>英文标题：{{ form.titleEn || '—' }}</p><p>繁体简介：{{ form.descriptionTw || '—' }}</p><p>英文简介：{{ form.descriptionEn || '—' }}</p></div><el-alert v-if="jsonError" :title="jsonError" type="error" :closable="false" show-icon/><div class="form-actions"><el-button plain :disabled="busy||aiTranslating" @click="closeEditor">取消</el-button><el-button v-if="active==='audioTracks'&&recordEditorTab==='content'" icon="el-icon-magic-stick" :loading="aiTranslating" :disabled="!localAiEnabled || busy" :title="localAiEnabled ? '根据简体标题和简介生成繁体及英文内容' : 'AI 翻译未启用，请检查服务端配置'" @click="translateAudioTrack">自动翻译</el-button><el-button v-if="active==='destinations'" icon="el-icon-magic-stick" :loading="aiTranslating" :disabled="!localAiEnabled || busy" :title="localAiEnabled ? '根据简体名称生成英文名称' : 'AI 翻译未启用，请检查服务端配置'" @click="translateDestination">自动翻译</el-button><el-button v-if="translatableFieldGroups[active]" icon="el-icon-magic-stick" :loading="aiTranslating" :disabled="!localAiEnabled || busy" :title="localAiEnabled ? '根据简体内容生成繁体和英文翻译' : 'AI 翻译未启用，请检查服务端配置'" @click="translateRecordFields">自动翻译</el-button><el-button class="save-continue" type="primary" plain :loading="busy" :disabled="publicationChecking||aiFilling||aiTranslating" @click="saveEditor(true)">保存并继续编辑</el-button><el-button class="save-return" type="primary" icon="el-icon-check" :loading="busy" :disabled="publicationChecking||aiFilling||aiTranslating" @click="saveEditor(false)">保存并返回</el-button></div></el-form>
             </el-card>
           </section>
         </main>
@@ -600,6 +602,18 @@ const listFilterKeys = {
 const listFilterLabels = {enabled:'发布状态',featured:'首页推荐',countryId:'所属国家',status:'状态',unlockMode:'收听规则',days:'天数',type:'分类 / 类型',currency:'币种',priceCny:'讲解价格',city:'城市',tag:'标签',period:'出行日期',leadType:'记录类型',createdAt:'创建日期',vehicleDate:'用车日期',vehicleNeed:'用车场景',bookingDate:'预约日期',member:'会员类型',productType:'商品类型',relation:'关系',visaStatus:'签证状态',expiry:'证件到期日期',expiresAt:'优惠券有效期'}
 const listDateFilterKeys = ['period','createdAt','bookingDate','expiry','expiresAt','vehicleDate']
 const listNumberFilterKeys = ['priceCny']
+const translatableFieldGroups = {
+  audioRoutes: [{ source: 'title', tw: 'titleTw', en: 'titleEn' }],
+  countries: [{ source: 'name', tw: 'nameTw', en: 'nameEn' }],
+  destinationTypes: [{ source: 'name', tw: 'nameTw', en: 'nameEn' }],
+  cities: [{ source: 'name', tw: 'nameTw', en: 'nameEn' }],
+  guides: [
+    { source: 'name', tw: 'nameTw', en: 'nameEn' },
+    { source: 'role', tw: 'roleTw', en: 'roleEn' },
+    { source: 'intro', tw: 'introTw', en: 'introEn' },
+  ],
+}
+
 const fields = {
   audioRoutes:{label:'路线导览',endpoint:'audioRoutes',addLabel:'新增路线',columns:[['title','路线'],['attractionId','所属景点'],['sort','排序'],['status','状态','status']],fields:[basic('title','路线名称','text',{required:true}),basic('titleTw','繁体名称'),basic('titleEn','英文名称'),basic('description','说明','textarea'),basic('attractionId','所属景点','select',{required:true,options:'attractions'}),basic('pointIds','点位顺序','multiselect',{options:'exhibits',help:'选择本景点讲解点，拖动排序暂不支持；顺序以当前选择顺序为准。'}),basic('sort','排序','number'),basic('status','发布状态','select',{options:'publish'})]},
   audioAlbums:{label:'希腊文史专辑',endpoint:'audioAlbums',addLabel:'新增专辑',singleColumn:true,columns:[['cover','封面','image'],['title','名称'],['sort','排序'],['status','状态','status']],fields:[basic('title','简体名称','text',{required:true}),basic('description','简体简介','textarea'),basic('cover','封面','image'),basic('sort','排序','number'),basic('status','发布状态','select',{options:'publish'})]},
@@ -875,6 +889,38 @@ export default {
         }
         this.aiFillDialogVisible=false;this.$message.success('AI 资料已填入，请核实内容后再保存')
       }catch(error){this.$message.error('智能填写失败：'+error.message)}finally{this.aiFilling=false}
+    },
+    async translateRecordFields(){
+      if(this.aiTranslating||this.busy)return
+      const groups=translatableFieldGroups[this.active]
+      if(!groups)return
+      const pending=groups.filter((group)=>String(this.form[group.source]||'').trim())
+      if(!pending.length){this.$message.warning('请先填写简体内容');return}
+      const editor=this.editor,editorActive=this.active
+      this.aiTranslating=true
+      try{
+        for(const group of pending){
+          const text=String(this.form[group.source]||'').trim()
+          const result=await this.request('/admin/text-translation',{method:'POST',body:JSON.stringify({text})})
+          if(this.editor!==editor||this.active!==editorActive||String(this.form[group.source]||'').trim()!==text){this.$message.warning('简体内容已改变，请重新点击自动翻译');return}
+          this.$set(this.form,group.tw,result?.tw||'')
+          this.$set(this.form,group.en,result?.en||'')
+        }
+        this.$message.success('繁体与英文内容已自动翻译，请核对后保存')
+      }catch(error){this.$message.error('自动翻译失败：'+error.message)}finally{this.aiTranslating=false}
+    },
+    async translateDestination(){
+      if(this.aiTranslating||this.busy)return
+      const name=String(this.form.name||'').trim()
+      if(!name){this.$message.warning('请先填写简体名称');return}
+      const editor=this.editor
+      this.aiTranslating=true
+      try{
+        const result=await this.request('/admin/destination-translation',{method:'POST',body:JSON.stringify({name})})
+        if(this.editor!==editor||this.active!=='destinations'||String(this.form.name||'').trim()!==name){this.$message.warning('简体内容已改变，请重新点击自动翻译');return}
+        this.$set(this.form,'en',result?.en||'')
+        this.$message.success('英文名称已自动翻译，请核对后保存')
+      }catch(error){this.$message.error('自动翻译失败：'+error.message)}finally{this.aiTranslating=false}
     },
     async translateAudioTrack(){
       if(this.aiTranslating||this.busy)return
