@@ -4,6 +4,7 @@ dist/
 .pi/
 .env
 .env.local
+.secrets/
 *.log
 .DS_Store
 
