@@ -43,8 +43,14 @@ async function prepare() {
     { id: 'fallback-heritage-banner', title: 'Test heritage fallback', image: './images/home-fallback.jpg', enabled: true, sort: 2 },
   ]
   fixture.miniprogramUsers = [{ id: 'profile-phone-contract', phone: '+15551234567', nickname: 'Phone Contract Test', avatarUrl: '', travelers: [], documents: [], coupons: [] }]
-  fixture.cities.find((city) => city.id === 'athens').coverImage = './images/city-cover.png'
-  fixture.cities.find((city) => city.id === 'athens').mosaic = []
+  const athensFixture = fixture.cities.find((city) => city.id === 'athens')
+  athensFixture.coverImage = './images/city-cover.png'
+  athensFixture.mosaic = ['./images/mosaic-tile-1.jpg', './images/mosaic-tile-2.jpg']
+  const delphiFixture = fixture.cities.find((city) => city.id === 'delphi')
+  delphiFixture.coverImage = ''
+  delphiFixture.mosaic = ['./images/unused-city-mosaic.jpg']
+  fixture.attractions.find((attraction) => attraction.id === 'delphi').image = './images/delphi-attraction-cover.png'
+  fixture.cities.push({ id: 'empty-cover-city', name: '无封面城市', countryId: 'greece', status: 'published', enabled: true, mosaic: ['./images/unrelated-mosaic.jpg'] })
   fixture.audioAlbums = [{ id: 'album-contract', title: '测试文史专辑', status: 'published' }, { id: 'album-draft-contract', title: '未发布专辑', status: 'draft' }]
   fixture.audioTracks = [{ id: 'album-track-contract', category: 'heritage', title: '测试节目', albumId: 'album-contract', status: 'published', unlockMode: 'album', previewSeconds: 30 }]
   await writeFile(fixturePath, JSON.stringify(fixture))
@@ -54,6 +60,8 @@ async function prepare() {
   await writeFile(join(imageDir, 'home-test.png'), sourceBytes)
   await writeFile(join(imageDir, 'city-cover.png'), Buffer.from('city-cover-source'))
   await writeFile(join(imageDir, 'city-cover.opt.webp'), Buffer.from('optimized-city-cover-fixture'))
+  await writeFile(join(imageDir, 'delphi-attraction-cover.png'), Buffer.from('delphi-attraction-cover-source'))
+  await writeFile(join(imageDir, 'delphi-attraction-cover.opt.webp'), Buffer.from('optimized-delphi-attraction-cover-fixture'))
   await writeFile(join(imageDir, 'home-fallback.jpg'), Buffer.from('fallback-source'))
   const sourceHash = createHash('sha256').update(sourceBytes).digest('hex').slice(0, 10)
   await writeFile(join(imageDir, `home-test.mp-${sourceHash}.webp`), Buffer.from('optimized-webp-fixture'))
@@ -143,11 +151,14 @@ try {
   assert(slimContent.status === 200 && !Object.hasOwn(slimContent.data, 'attractionDetails'), 'includeAttractionDetails=false must omit only the duplicated top-level attractionDetails field')
   const athensCity = slimContent.data.cities.find((city) => city.id === 'athens')
   const athensMosaic = athensCity?.mosaic || []
-  assert(athensCity.coverImage === './images/city-cover.opt.webp', 'city coverImage should expose an optimized public image URL')
+  assert(athensCity.coverImage === './images/city-cover.opt.webp', 'dedicated city coverImage must win over the multi-image mosaic')
   assert(athensMosaic.length === 1 && athensMosaic[0] === athensCity.coverImage, 'city mosaic compatibility field should contain only the effective single cover image')
   assert(JSON.stringify(athensCity.mosaic) === JSON.stringify(bannerContent.data.cities.find((city) => city.id === 'athens').mosaic), 'city coverImage must not replace or rewrite the mosaic field between content variants')
-  const cityWithoutDedicatedCover = slimContent.data.cities.find((city) => city.id !== 'athens')
-  assert(cityWithoutDedicatedCover && cityWithoutDedicatedCover.mosaic.length <= 1 && (cityWithoutDedicatedCover.mosaic.length === 0 ? cityWithoutDedicatedCover.coverImage === '' : cityWithoutDedicatedCover.coverImage === cityWithoutDedicatedCover.mosaic[0]), 'cities without a dedicated cover should expose at most one compatible fallback cover')
+  const delphiCity = slimContent.data.cities.find((city) => city.id === 'delphi')
+  assert(delphiCity.coverImage === './images/delphi-attraction-cover.opt.webp', 'city without a dedicated cover must use its first published associated attraction main image, not its mosaic')
+  assert(JSON.stringify(delphiCity.mosaic) === JSON.stringify([delphiCity.coverImage]), 'city mosaic compatibility output must not leak a multi-image collage to the Mini Program')
+  const emptyCoverCity = slimContent.data.cities.find((city) => city.id === 'empty-cover-city')
+  assert(emptyCoverCity.coverImage === '' && emptyCoverCity.mosaic.length === 0, 'without a dedicated cover or associated attraction, do not use a mosaic or unrelated country image')
   assert(slimContent.data.attractions.length === bannerContent.data.attractions.length && slimContent.data.attractionDetailPage && slimContent.data.home.banners[0].image === expectedOptimizedBanner, 'slim content contract must retain all other client content fields')
   assert(Buffer.byteLength(JSON.stringify(slimContent.data)) < Buffer.byteLength(JSON.stringify(bannerContent.data)), 'slim content response must be smaller than the backward-compatible default')
   const explicitFullContent = await request('/api/content?includeAttractionDetails=true')
@@ -232,10 +243,10 @@ try {
 
   result = await request('/api/auth/login', { method: 'POST', body: JSON.stringify({ password: 'test-admin-password' }) })
   const adminToken = result.data.token
-  result = await request('/api/admin/settings', { method: 'PATCH', headers: { Authorization: `Bearer ${adminToken}` }, body: JSON.stringify({ miniprogramKnowledge: { trialSeconds: 90, products: { attraction: { enabled: true, name: '测试景点讲解', price: 0.01, currency: 'CNY' }, city: { enabled: true, name: '测试城市', price: 69.9, currency: 'CNY' }, album: { enabled: true, name: '测试专辑', price: 9.9, currency: 'CNY' }, membership: { enabled: true, name: '测试终身会员', price: 0.01, currency: 'CNY' } } } }) })
+  result = await request('/api/admin/settings', { method: 'PATCH', headers: { Authorization: `Bearer ${adminToken}` }, body: JSON.stringify({ miniprogramKnowledge: { trialSeconds: 90, products: { attraction: { enabled: true, name: '测试景点讲解', price: 0.01, currency: 'CNY' }, city: { enabled: true, name: '测试城市', price: 73.25, currency: 'CNY' }, album: { enabled: true, name: '测试专辑', price: 9.9, currency: 'CNY' }, membership: { enabled: true, name: '测试终身会员', price: 0.01, currency: 'CNY' } } } }) })
   assert(result.status === 200, 'knowledge config settings update failed')
   result = await request('/api/miniprogram/knowledge/config')
-  assert(result.status === 200 && result.data.trialSeconds === 90 && result.data.products.attraction.price === 0.01, 'knowledge config persistence failed')
+  assert(result.status === 200 && result.data.trialSeconds === 90 && result.data.products.attraction.price === 0.01 && result.data.products.city.name === '测试城市' && result.data.products.city.price === 73.25, 'knowledge config endpoint must return the city name and price saved in Website membership settings')
   result = await request('/api/admin/settings', { method: 'PATCH', headers: { Authorization: `Bearer ${adminToken}` }, body: JSON.stringify({ miniprogramAccess: false }) })
   assert(result.status === 200, 'legacy maintenance setting update failed')
   result = await request('/api/miniprogram/access')
@@ -267,8 +278,10 @@ try {
   start(false)
   await waitForServer()
   result = await request('/api/miniprogram/knowledge/config')
-  assert(result.status === 404 && result.data.code === 'MINIPROGRAM_SIMULATION_DISABLED', 'simulation disable switch failed')
-  console.log('PASS: default product prices, city/album purchase and entitlements, mosaic fallback, order query/isolation, membership, idempotency, content contract and authentication boundaries')
+  assert(result.status === 200 && result.data.simulation === false && result.data.payment === null && result.data.products.city.name === '测试城市' && result.data.products.city.price === 73.25, 'read-only product config must still return the admin city price when payment is unavailable')
+  result = await request('/api/miniprogram/orders')
+  assert(result.status === 503 && result.data.code === 'MINIPROGRAM_PAYMENT_NOT_CONFIGURED', 'orders must remain unavailable when payment is not configured')
+  console.log('PASS: default product prices, dedicated city cover priority and associated-attraction fallback, city/album purchase and entitlements, order query/isolation, membership, idempotency, content contract and authentication boundaries')
 } finally {
   await stop()
   await rm(tempRoot, { recursive: true, force: true })

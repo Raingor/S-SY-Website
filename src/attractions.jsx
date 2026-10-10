@@ -59,8 +59,8 @@ export function AttractionsIndex() {
           <div id="cities" className="city-card-grid">
             {enriched.map((city) => (
               <Link to={`/attractions/city/${city.id}`} className="city-entry-card" key={city.id}>
-                <div className="city-entry-mosaic">
-                  {(city.mosaic || []).slice(0, 4).map((image, index) => <img src={assetPath(image)} alt="" loading="lazy" decoding="async" key={index} />)}
+                <div className="city-entry-cover">
+                  {(city.coverImage || city.mosaic?.[0] || city.items[0]?.image) && <img src={assetPath(city.coverImage || city.mosaic?.[0] || city.items[0]?.image)} alt={city.name + '城市封面'} loading="lazy" decoding="async" />}
                   <div className="city-entry-overlay">
                     <Eyebrow dark>{city.nameEn || city.en || city.id}</Eyebrow>
                     <h3>{city.name}</h3>
@@ -97,7 +97,7 @@ export function AttractionsIndex() {
   )
 }
 
-/* ---------------- 城市介绍页（深色 mosaic + 统计 + 双 CTA） ---------------- */
+/* ---------------- 城市介绍页（单图封面 + 统计 + 双 CTA） ---------------- */
 
 export function CityGuidePage({ cityIdOverride = '' }) {
   const { cityId: routeCityId } = useParams()
@@ -115,16 +115,15 @@ export function CityGuidePage({ cityIdOverride = '' }) {
   if (status === 'loading') return <><Header solid /><main className="section"><div className="container content-state" role="status">正在读取城市导览…</div></main><Footer /></>
   if (status === 'error') return <><Header solid /><main className="section"><div className="container content-state error" role="alert">{error}。请稍后重试。</div></main><Footer /></>
   if (!city && !cityAttractions.length) return <><Header solid /><NotFoundMini /><Footer /></>
-  const mosaic = (city?.mosaic || cityAttractions.map((item) => item.image)).slice(0, 4)
-  const mosaicRows = mosaic.length >= 3 ? [mosaic.slice(0, 2), mosaic.slice(2, 4)] : [mosaic]
+  const coverImage = city?.coverImage || city?.mosaic?.[0] || cityAttractions[0]?.image || ''
   return (
     <>
       <div className="city-guide-hero">
         <Header />
         <div className="city-guide-back"><Link to="/attractions"><ArrowLeft size={16} />返回城市选择</Link></div>
-        <div className="city-mosaic" aria-hidden="true">
-          {mosaicRows.map((row, rowIndex) => <div className="city-mosaic-row" key={rowIndex}>{row.map((image, index) => <img src={assetPath(image)} alt="" key={index} />)}</div>)}
-          <div className="city-mosaic-shade" />
+        <div className="city-cover" aria-hidden="true">
+          {coverImage && <img src={assetPath(coverImage)} alt="" className="city-cover-image" />}
+          <div className="city-cover-shade" />
         </div>
         <div className="container city-guide-content">
           <h1>{city?.name || cityAttractions[0]?.cityName}</h1>

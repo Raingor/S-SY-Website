@@ -219,7 +219,7 @@ function SEO() {
     const title = pageTitle.includes('SY') ? pageTitle : `${pageTitle} | ${config.siteName}`
     const baseUrl = String(config.siteUrl || window.location.origin).replace(/\/$/, '')
     const canonical = `${baseUrl}${path === '/' ? '/' : path}`
-    const selectedOgImage = matchedAttraction?.shareImage || matchedAttraction?.image || matchedGuide?.fullImage || matchedGuide?.avatar || matchedCity?.mosaic?.[0] || matchedItinerary?.cover || config.ogImage
+    const selectedOgImage = matchedAttraction?.shareImage || matchedAttraction?.image || matchedGuide?.fullImage || matchedGuide?.avatar || matchedCity?.coverImage || matchedCity?.mosaic?.[0] || matchedItinerary?.cover || config.ogImage
     const ogImage = /^https?:\/\//.test(selectedOgImage || '') ? selectedOgImage : `${baseUrl}/${String(selectedOgImage || '').replace(/^\.?\//, '')}`
     document.title = title
     upsertMeta('name', 'description', description)
@@ -589,7 +589,7 @@ function KnowledgeBaseIndex() {
   const attractions = visibleRecords(content.attractions)
   return <><InnerHero image={visibleRecords(content.countries)[0]?.heroImage} eyebrow="KNOWLEDGE BASE" title="景点文史知识库" subtitle="按 Website 已发布的城市与景点内容浏览参观资料和免费预览。" breadcrumb="景点文史知识库"><div className="hero-actions"><Link className="button button-primary" to="/attractions">进入城市导览</Link><Link className="button button-ghost" to="/itineraries">查看参考行程</Link></div></InnerHero><main className="knowledge-index section"><div className="container">
     {status === 'loading' && <div className="content-state" role="status">正在读取 Website 内容…</div>}{status === 'error' && <div className="content-state error" role="alert">{error}</div>}
-    <SectionTitle eyebrow="SELECT A CITY" title="已发布城市" action={{ to: '/attractions', label: '查看全部城市导览' }} /><div className="knowledge-city-grid">{cities.map((city) => <Link className="knowledge-city-card" to={`/attractions/city/${city.id}`} key={city.id}><div>{(city.mosaic || []).slice(0, 3).map((image, index) => <img key={index} src={assetPath(image)} alt="" loading="lazy" decoding="async" />)}</div><strong>{city.name}</strong><span>{city.subtitle || city.country}</span><small>{city.museumCount ?? ''}{city.audioMinutes ? ` · ${city.audioMinutes} 分钟音频` : ''}</small></Link>)}</div>
+    <SectionTitle eyebrow="SELECT A CITY" title="已发布城市" action={{ to: '/attractions', label: '查看全部城市导览' }} /><div className="knowledge-city-grid">{cities.map((city) => <Link className="knowledge-city-card" to={`/attractions/city/${city.id}`} key={city.id}><div>{(city.coverImage || city.mosaic?.[0]) && <img src={assetPath(city.coverImage || city.mosaic?.[0])} alt={city.name + '城市封面'} loading="lazy" decoding="async" />}</div><strong>{city.name}</strong><span>{city.subtitle || city.country}</span><small>{city.museumCount ?? ''}{city.audioMinutes ? ` · ${city.audioMinutes} 分钟音频` : ''}</small></Link>)}</div>
     {attractions.length > 0 && <section className="knowledge-featured-attractions"><SectionTitle eyebrow="PUBLISHED ATTRACTIONS" title="景点免费预览" /><div className="knowledge-grid">{attractions.slice(0, 4).map((item) => <Link className="knowledge-card" to={`/knowledge-base/${item.id}`} key={item.id}>{item.image && <img src={assetPath(item.image)} alt={item.name} loading="lazy" decoding="async" />}<div><Eyebrow>{item.en || item.cityName || item.city}</Eyebrow><h3>{item.name}</h3><p>{item.deepDive?.preview || item.summary}</p><span className="text-link">查看内容 <ArrowRight size={14} /></span></div></Link>)}</div></section>}
     {status === 'ready' && !cities.length && !attractions.length && <div className="empty-state"><Compass/><h2>暂未发布城市或景点内容</h2><p>内容发布后会在这里显示。</p></div>}
     <div className="knowledge-notice"><LockKeyhole size={18} /><span>Web 只展示后台公开字段和公开媒体地址；城市购买、会员和微信支付尚未形成可验证的 Web 权益链路，不能在此解锁付费内容。</span></div>
@@ -680,10 +680,10 @@ function DestinationDetail() {
   const heading = item.name || item.title || item.id
   const summary = city?.description || city?.summary || item.description || item.desc || ''
   return <>
-    <InnerHero image={item.image || city?.mosaic?.[0]} eyebrow={item.nameEn || item.type || 'DESTINATION'} title={heading} subtitle={summary} breadcrumb={`精选目的地 / ${heading}`} />
+    <InnerHero image={item.image || city?.coverImage || city?.mosaic?.[0]} eyebrow={item.nameEn || item.type || 'DESTINATION'} title={heading} subtitle={summary} breadcrumb={`精选目的地 / ${heading}`} />
     <main className="destination-detail section"><div className="container"><ContentActions contentType="destination" contentId={item.id} title={heading} />
       <article className="destination-intro"><div><Eyebrow>{city?.nameEn || item.nameEn || 'DESTINATION GUIDE'}</Eyebrow><h2>{city?.subtitle || heading}</h2>{summary && <p>{summary}</p>}{city?.country && <p>{city.country}</p>}</div>
-        {(city?.mosaic || []).length > 0 && <div className="destination-mosaic">{city.mosaic.map((image, index) => <img key={`${image}-${index}`} src={assetPath(image)} alt="" loading="lazy" decoding="async" />)}</div>}
+        {(city?.coverImage || city?.mosaic?.[0]) && <div className="destination-city-cover"><img src={assetPath(city.coverImage || city.mosaic?.[0])} alt={city.name + '城市封面'} loading="lazy" decoding="async" /></div>}
       </article>
       {relatedAttractions.length > 0 && <section className="included-routes"><SectionTitle eyebrow="ATTRACTIONS" title={`${heading} · 景点导览`} /><div className="search-attraction-grid">{relatedAttractions.map((attraction) => <SearchAttractionCard key={attraction.id} item={attraction} />)}</div></section>}
       {relatedItineraries.length > 0 && <section className="included-routes"><SectionTitle eyebrow="SAMPLE ITINERARIES" title="关联参考行程" /><div className="itinerary-card-grid">{relatedItineraries.map((trip) => <Link to={`/itineraries/${trip.id}`} className="itinerary-mini-card" key={trip.id}><img src={assetPath(trip.cover)} alt={trip.title} loading="lazy" decoding="async"/><div><h3>{trip.title}</h3><p>{trip.summary}</p></div></Link>)}</div></section>}

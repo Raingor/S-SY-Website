@@ -1001,10 +1001,8 @@ function publicContent(data, countryId = 'greece', { includeAttractionDetails = 
     return { ...safe, ...detail, guide: safeGuide, image: imageUrl(item.image), onlineCoverImage: imageUrl(item.onlineCoverImage || item.image), expertCoverImage: imageUrl(item.expertCoverImage || item.image), shareTitle: item.shareTitle || '', shareImage: imageUrl(item.shareImage), exhibits: detail.exhibits || [], highlights: detail.highlights || [], articles: (item.articles || []).map((article) => ({ ...article, cover: imageUrl(article.cover) })) }
   })
   const publicCities = scoped(data.cities).filter((item) => item.status !== 'archived').map((item) => {
-    const legacyCover = Array.isArray(item.mosaic) ? item.mosaic.map(imageUrl).find(Boolean) || '' : ''
     const attractionImages = publicAttractions.filter((attraction) => attraction.city === item.id).sort((a, b) => Number(a.sort || 0) - Number(b.sort || 0)).map((attraction) => attraction.image).filter(Boolean)
-    const countryImage = countries.find((country) => country.id === (item.countryId || countryId))?.heroImage
-    const coverImage = imageUrl(item.coverImage) || legacyCover || attractionImages[0] || imageUrl(countryImage) || ''
+    const coverImage = imageUrl(item.coverImage) || attractionImages[0] || ''
     return { ...item, coverImage, mosaic: coverImage ? [coverImage] : [] }
   })
   const publicDestinations = scoped(data.destinations).filter((item) => item.status === 'published').map((item) => ({ ...normalizePublicDestination(item, publicCities, publicAttractions), image: imageUrl(item.image) })).filter((item) => item.cityId && item.attractionIds.length > 0)
@@ -1192,8 +1190,12 @@ function normalizeCityPayload(payload) {
     if (rawCoverImage && !next.coverImage) throw new Error('城市独立封面图格式无效，请使用图片文件或 HTTPS 图片链接')
   }
   if (Object.prototype.hasOwnProperty.call(payload, 'mosaic')) {
-    if (!Array.isArray(payload.mosaic)) throw new Error('城市封面拼贴图必须是图片列表')
-    next.mosaic = [...new Set(payload.mosaic.map((image) => managedHighlightImage(image)).filter(Boolean))].slice(0, 12)
+    if (!Array.isArray(payload.mosaic)) throw new Error('旧版城市图片字段格式无效')
+    if (!Object.prototype.hasOwnProperty.call(payload, 'coverImage')) {
+      const legacyCover = payload.mosaic.map((image) => managedHighlightImage(image)).find(Boolean)
+      if (legacyCover) next.coverImage = legacyCover
+    }
+    next.mosaic = []
   }
   return next
 }
@@ -1297,8 +1299,6 @@ const server = http.createServer(async (req, res) => {
       } catch (error) { return json(res, 422, { code: 'INVALID_SIMULATION_PHONE', error: error.message }) }
     }
     if (url.pathname === '/api/miniprogram/knowledge/config' && method === 'GET') {
-      if (!miniProgramCommerceEnabled()) return miniProgramSimulationDisabled(res)
-      if (!miniProgramSimulationEnabled() && !miniProgramRealPayEnabled()) return miniProgramPaymentUnavailable(res)
       return json(res, 200, miniProgramKnowledgeConfig(readData()))
     }
     if (url.pathname === '/api/miniprogram/entitlements' && method === 'GET') {
