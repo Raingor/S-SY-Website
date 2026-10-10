@@ -51,6 +51,10 @@ async function prepare() {
   delphiFixture.mosaic = ['./images/unused-city-mosaic.jpg']
   fixture.attractions.find((attraction) => attraction.id === 'delphi').image = './images/delphi-attraction-cover.png'
   fixture.cities.push({ id: 'empty-cover-city', name: '无封面城市', countryId: 'greece', status: 'published', enabled: true, mosaic: ['./images/unrelated-mosaic.jpg'] })
+  fixture.attractions.find((attraction) => attraction.id === 'acropolis').expertVideoUrl = 'https://example.com/expert.mp4'
+  fixture.attractions.find((attraction) => attraction.id === 'acropolis').expertVideoCover = './images/expert-cover.png'
+  fixture.attractions.find((attraction) => attraction.id === 'acropolis').expertVideoDuration = 300
+  fixture.attractions.find((attraction) => attraction.id === 'acropolis').expertVideoTrialSeconds = 30
   fixture.audioAlbums = [{ id: 'album-contract', title: '测试文史专辑', status: 'published' }, { id: 'album-draft-contract', title: '未发布专辑', status: 'draft' }]
   fixture.audioTracks = [{ id: 'album-track-contract', category: 'heritage', title: '测试节目', albumId: 'album-contract', status: 'published', unlockMode: 'album', previewSeconds: 30 }]
   await writeFile(fixturePath, JSON.stringify(fixture))
@@ -63,6 +67,8 @@ async function prepare() {
   await writeFile(join(imageDir, 'delphi-attraction-cover.png'), Buffer.from('delphi-attraction-cover-source'))
   await writeFile(join(imageDir, 'delphi-attraction-cover.opt.webp'), Buffer.from('optimized-delphi-attraction-cover-fixture'))
   await writeFile(join(imageDir, 'home-fallback.jpg'), Buffer.from('fallback-source'))
+  await writeFile(join(imageDir, 'expert-cover.png'), Buffer.from('expert-cover-source'))
+  await writeFile(join(imageDir, 'expert-cover.opt.webp'), Buffer.from('optimized-expert-cover-fixture'))
   const sourceHash = createHash('sha256').update(sourceBytes).digest('hex').slice(0, 10)
   await writeFile(join(imageDir, `home-test.mp-${sourceHash}.webp`), Buffer.from('optimized-webp-fixture'))
   await symlink(join(root, 'node_modules'), join(tempRoot, 'node_modules'), 'dir')
@@ -163,6 +169,10 @@ try {
   assert(Buffer.byteLength(JSON.stringify(slimContent.data)) < Buffer.byteLength(JSON.stringify(bannerContent.data)), 'slim content response must be smaller than the backward-compatible default')
   const explicitFullContent = await request('/api/content?includeAttractionDetails=true')
   assert(explicitFullContent.status === 200 && Object.hasOwn(explicitFullContent.data, 'attractionDetails'), 'includeAttractionDetails=true must preserve the full content contract')
+  const acropolisPublic = slimContent.data.attractions.find((item) => item.id === 'acropolis')
+  assert(acropolisPublic && acropolisPublic.expertVideoUrl === 'https://example.com/expert.mp4', 'expert video URL should be exposed on the public attraction record')
+  assert(acropolisPublic.expertVideoCover === './images/expert-cover.opt.webp', 'expert video cover should use the optimized public image url')
+  assert(acropolisPublic.expertVideoDuration === 300 && acropolisPublic.expertVideoTrialSeconds === 30, 'expert video duration and trial seconds should pass through from source')
 
   result = await request('/api/miniprogram/knowledge/config')
   assert(result.status === 200 && result.data.simulation === true && result.data.trialSeconds === 60 && result.data.products.attraction.price === 9.9 && result.data.products.city.price === 69.9 && result.data.products.album.price === 9.9 && result.data.products.annualMembership.price === 199 && result.data.products.membership.price === 0.01, 'config contract failed')
