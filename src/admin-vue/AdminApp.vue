@@ -141,7 +141,7 @@
             <section v-else-if="active === 'membershipSettings'">
               <el-card shadow="never" class="section-card">
                 <div slot="header" class="card-heading"><div><span class="eyebrow">MINI PROGRAM / COMMERCE</span><h2>会员等级设置</h2><p class="admin-muted">管理年会员的价格及启用状态。</p></div></div>
-                <el-alert title="微信支付仅使用人民币 CNY。旧终身会员订单仍永久有效，但已停止新售；新增权益按景点单篇、城市、文史专辑或年会员购买。城市景点包与文史专辑商品请在「路线与目的地 → 城市与专辑商品」维护。" type="info" :closable="false" show-icon class="banner-note" />
+                <el-alert title="微信支付仅使用人民币 CNY。旧终身会员订单仍永久有效，但已停止新售；新增权益按景点单篇、城市、文史专辑或年会员购买。城市景点包与文史专辑的价格请在「路线与目的地 → 城市与专辑定价」维护。" type="info" :closable="false" show-icon class="banner-note" />
                 <el-form label-position="top" class="settings-form">
                   <div class="form-grid">
                     <div class="full-field membership-level-heading"><strong>年会员</strong><span>支付成功后获得一年景点讲解权益；续费会顺延到当前有效期之后。</span></div>
@@ -156,7 +156,7 @@
             </section>
             <section v-else-if="active === 'miniProgramCommerce'">
               <el-card shadow="never" class="section-card">
-                <div slot="header" class="card-heading"><div><span class="eyebrow">MINI PROGRAM / COMMERCE</span><h2>城市与专辑商品</h2><p class="admin-muted">管理城市景点包与文史专辑商品的价格及启用状态。</p></div></div>
+                <div slot="header" class="card-heading"><div><span class="eyebrow">MINI PROGRAM / COMMERCE</span><h2>城市与专辑定价</h2><p class="admin-muted">管理城市景点包与文史专辑的价格及启用状态。</p></div></div>
                 <el-alert title="微信支付仅使用人民币 CNY。城市景点包按 cityId 购买，解锁该城市全部已发布景点；文史专辑按 albumId 购买，解锁专辑所有已发布节目。年会员仍在「会员等级」维护。" type="info" :closable="false" show-icon class="banner-note" />
                 <el-form label-position="top" class="settings-form">
                   <div class="form-grid">
@@ -171,7 +171,7 @@
                     <el-form-item label="专辑商品状态"><el-switch v-model="settings.miniprogramKnowledge.products.album.enabled" active-text="启用" inactive-text="停用"/></el-form-item>
                     <el-form-item label="专辑商品币种"><el-select v-model="settings.miniprogramKnowledge.products.album.currency"><el-option label="人民币 CNY" value="CNY"/></el-select></el-form-item>
                   </div>
-                  <div class="form-actions"><el-button type="primary" icon="el-icon-check" :loading="busy" @click="saveSettings('城市与专辑商品')">保存城市与专辑商品</el-button></div>
+                  <div class="form-actions"><el-button type="primary" icon="el-icon-check" :loading="busy" @click="saveSettings('城市与专辑定价')">保存定价</el-button></div>
                 </el-form>
               </el-card>
             </section>
@@ -508,7 +508,7 @@ const TOKEN = 'sy-greece-admin-token'
 const ACTIVE_MENU = 'sy-greece-admin-menu'
 const groups = [
   { label:'共同数据', items:[['overview','总览','el-icon-s-data'],['countries','国家管理','el-icon-map-location'],['guides','导游管理','el-icon-user'],['leads','咨询 CRM','el-icon-chat-line-round'],['guideBookings','导游预约','el-icon-date']] },
-  { label:'路线与目的地', items:[['routes','路线管理','el-icon-document'],['cities','城市与价格','el-icon-location-outline'],['miniProgramCommerce','城市与专辑商品','el-icon-s-goods'],['destinationTypes','目的地分类','el-icon-collection-tag'],['destinations','目的地','el-icon-map-location'],['attractions','景点管理','el-icon-school'],['sampleItineraries','甄选路线','el-icon-guide']] },
+  { label:'路线与目的地', items:[['routes','路线管理','el-icon-document'],['cities','城市与价格','el-icon-location-outline'],['miniProgramCommerce','城市与专辑定价','el-icon-s-goods'],['destinationTypes','目的地分类','el-icon-collection-tag'],['destinations','目的地','el-icon-map-location'],['attractions','景点管理','el-icon-school'],['sampleItineraries','甄选路线','el-icon-guide']] },
   { label:'网站管理', items:[['homeBanners','首页 Banner','el-icon-picture'],['settings','站点配置','el-icon-setting'],['attractionDetailPage','景点详情配置','el-icon-document']] },
   { label:'语音与文史', items:[['audioRoutes','路线导览','el-icon-location-information'],['audioTracks','导览音频 / 文史节目','el-icon-headset'],['audioAlbums','希腊文史专辑','el-icon-collection'],['heritageGuideBanners','古迹讲解 Banner','el-icon-picture-outline']] },
   { label:'小程序管理', items:[['membershipSettings','会员等级','el-icon-user'],['miniProgramBookings','小程序预约','el-icon-mobile-phone'],['miniprogramBanners','小程序 Banner','el-icon-picture-outline'],['miniprogramServiceEntries','首页服务入口','el-icon-menu'],['vehicleService','在地用车','el-icon-truck'],['miniprogramUsers','小程序用户','el-icon-user'],['miniprogramOrders','订单管理','el-icon-s-finance'],['miniprogramTrips','小程序行程','el-icon-map-location'],['customTrips','定制行程订单','el-icon-link'],['miniprogramTravelers','出行人资料','el-icon-user-solid'],['miniprogramDocuments','签证资料','el-icon-document'],['miniprogramCoupons','优惠券','el-icon-s-ticket']], sections:[
@@ -546,7 +546,7 @@ const guideGroups = [
     {title:'首页快捷服务入口',menu:'miniprogramServiceEntries',menuLabel:'首页服务入口',location:'小程序首页快捷服务区的图标、标题和副标题。',description:'仅维护固定服务入口的展示内容；入口跳转由小程序端控制。'},
     {title:'城市与讲解价格',menu:'cities',menuLabel:'城市与价格',location:'小程序城市列表、城市信息及讲解价格。',description:'维护城市名称、国家、启用状态、讲解价格和币种。'},
     {title:'城市独立封面图',menu:'cities',menuLabel:'城市与价格',location:'小程序城市页面的完整主视觉图片。',description:'点击「进入编辑」打开城市列表，找到对应城市并点「编辑」，在表单中上传一张「城市独立封面图」，不需要维护多张拼贴图。留空时按已有封面首图、城市首个已发布景点主图、国家代表图的顺序回退。'},
-    {title:'城市景点包与文史专辑商品',menu:'miniProgramCommerce',menuLabel:'城市与专辑商品',location:'小程序「城市景点包」与「文史专辑」的商品名称、价格、币种及启用状态。',description:'维护城市景点包（cityId 购买，解锁城市全部已发布景点）和文史专辑（albumId 购买，解锁专辑所有已发布节目）的小程序商城商品；年会员仍在「会员等级」维护。'},
+    {title:'城市景点包与文史专辑定价',menu:'miniProgramCommerce',menuLabel:'城市与专辑定价',location:'小程序「城市景点包」与「文史专辑」的商品名称、价格、币种及启用状态。',description:'快速设置城市景点包（cityId 购买，解锁城市全部已发布景点）与文史专辑（albumId 购买，解锁专辑所有已发布节目）的名称、价格、币种和启用状态；年会员仍在「会员等级」维护。'},
     {title:'目的地',menu:'destinations',menuLabel:'目的地',location:'小程序目的地内容与目的地下的景点关联。',description:'维护目的地文案、图片、城市和关联景点。'},
     {title:'甄选路线',menu:'sampleItineraries',menuLabel:'甄选路线',location:'小程序首页「甄选路线」和路线详情。',description:'维护路线卡片、天数、封面和逐日行程；仅发布内容会展示。'},
     {title:'在地用车',menu:'vehicleService',menuLabel:'在地用车',location:'小程序「在地用车」介绍、服务标签和车型选项。',description:'维护用车页面文案、图片、服务标签及车型、时长和人数选项。'},
