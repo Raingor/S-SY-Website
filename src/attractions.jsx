@@ -28,6 +28,52 @@ function highlightImageOf(attraction, highlight, index) {
 function audioMinutes(attraction) {
   return (attraction.exhibits || []).reduce((total, exhibit) => total + (parseInt(exhibit.duration, 10) || 0), 0)
 }
+function expertVideoSource(value) {
+  const url = String(value || '').trim()
+  if (!url) return ''
+  if (/^(?:https?:|data:|\/\/)/i.test(url)) return url
+  return `/${url.replace(/^\.?\//, '')}`
+}
+function ExpertGuideVideo({ attraction }) {
+  const limit = Math.max(0, Number(attraction.expertVideoTrialSeconds) || 0)
+  const [trialEnded, setTrialEnded] = useState(false)
+  const source = expertVideoSource(attraction.expertVideoUrl)
+  if (!source) return null
+  return (
+    <article className="expert-video-card">
+      <div className="expert-video-frame">
+        <video
+          className="expert-video"
+          controls
+          playsInline
+          preload="metadata"
+          poster={assetPath(attraction.expertVideoCover || attraction.image)}
+          onTimeUpdate={(event) => {
+            if (!limit || trialEnded) return
+            if (Number(event.currentTarget.currentTime || 0) >= limit) {
+              event.currentTarget.pause()
+              setTrialEnded(true)
+            }
+          }}
+        >
+          <source src={source} />
+          当前浏览器不支持视频播放。
+        </video>
+        {limit > 0 && <span className="expert-video-badge">{trialEnded ? '试看已结束' : `试看前 ${limit} 秒`}</span>}
+      </div>
+      <div className="expert-video-copy">
+        <Eyebrow>ON-SITE VIDEO GUIDE</Eyebrow>
+        <h3>{attraction.name} · 名导视频讲解</h3>
+        <p>{attraction.summary}</p>
+        <p className="expert-video-meta">
+          {Number(attraction.expertVideoDuration) > 0 && <span><Clock3 size={13} />全长约 {Math.max(1, Math.round(Number(attraction.expertVideoDuration) / 60))} 分钟</span>}
+          {limit > 0 && <span><Info size={13} />试看 {limit} 秒</span>}
+        </p>
+        <p className="expert-video-note"><Volume2 size={14} />完整名导视频讲解在小程序内解锁；网站提供限时试看。</p>
+      </div>
+    </article>
+  )
+}
 
 function NotFoundMini() {
   return <main className="section"><div className="container empty-state"><Compass /><h2>没有找到这个页面</h2><p>内容可能已下线，回到景点导览继续探索。</p><Link className="button button-primary" to="/attractions">返回景点导览</Link></div></main>
@@ -209,6 +255,8 @@ export function AttractionDetail({ idOverride = '' }) {
     ['馆内设施', guideEntries.filter(([key]) => ['map', 'shop', 'accessibility', 'exhibitions'].includes(key))],
     ['常见问题与通知', guideEntries.filter(([key]) => ['faq', 'notices'].includes(key))],
   ]
+  const expertAudios = (attraction.audioGuides || []).filter((track) => track && track.category === 'expert')
+  const hasExpertVideo = Boolean(expertVideoSource(attraction.expertVideoUrl))
   return (
     <>
       <InnerHero image={attraction.image} eyebrow={`${attraction.en || attraction.cityName} · ${attraction.city}`} title={attraction.name} subtitle={attraction.summary} breadcrumb={`景点导览 / ${attraction.name}`}>
@@ -253,6 +301,29 @@ export function AttractionDetail({ idOverride = '' }) {
                   ))}
                 </div>
                 <p className="exhibit-note"><Volume2 size={14} /> 仅当后台配置公开音频地址时可直接试听；付费讲解与会员权益未接入 Website。</p>
+              </section>
+            )}
+
+            {(hasExpertVideo || expertAudios.length > 0) && (
+              <section className="expert-guide-section">
+                <SectionTitle eyebrow="EXPERT GUIDE" title="名导讲解" />
+                {hasExpertVideo && <ExpertGuideVideo attraction={attraction} />}
+                {expertAudios.length > 0 && (
+                  <div className="expert-audio-grid">
+                    {expertAudios.map((track) => (
+                      <article className="expert-audio-card" key={track.id}>
+                        {track.cover && <div className="expert-audio-cover"><img src={assetPath(track.cover)} alt={track.title} loading="lazy" decoding="async" /></div>}
+                        <div className="expert-audio-copy">
+                          <h3>{track.title}</h3>
+                          <p>{track.description}</p>
+                          <span className="expert-audio-meta"><Headphones size={13} />{track.durationSeconds ? `约 ${Math.max(1, Math.round(track.durationSeconds / 60))} 分钟` : '名导音频讲解'}</span>
+                          {track.previewUrl ? <audio className="exhibit-audio" controls preload="none" src={track.previewUrl}>当前浏览器不支持音频播放。</audio> : <div className="audio-placeholder"><Headphones size={18} /><span>完整音频在小程序内解锁</span></div>}
+                        </div>
+                      </article>
+                    ))}
+                  </div>
+                )}
+                <p className="expert-guide-note"><Info size={14} /> 名导讲解音频与视频的完整内容在小程序内解锁；网站提供试听与限时试看。</p>
               </section>
             )}
 

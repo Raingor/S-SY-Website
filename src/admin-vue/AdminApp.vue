@@ -531,7 +531,7 @@ const detailAudioFields = detailRouteFields
 const guideGroups = [
   {title:'景点讲解与音频',items:[
     {title:'景点资料与讲解点',menu:'attractions',menuLabel:'景点管理',location:'小程序「城市景点 → 景点详情」的介绍、亮点、讲解点和参观信息。',description:'进入景点列表后编辑对应景点；主图与「线上预览」「名导讲解」卡片封面分别在对应编辑页签管理，封面留空时使用主图；讲解点在「讲解点」页签增删改。'},
-    {title:'名导讲解',menu:'audioTracks',filter:{key:'category',value:'expert'},menuLabel:'导览音频 / 文史节目',location:'景点详情页的「名导讲解」音频列表。',description:'进入后已筛选「名导讲解」类别。音轨要关联景点，发布后才会显示在该景点。'},
+    {title:'名导讲解',menu:'audioTracks',filter:{key:'category',value:'expert'},menuLabel:'导览音频 / 文史节目',location:'景点详情页的「名导讲解」区块（音频列表 + 实地拍摄讲解视频）。',description:'进入后已筛选「名导讲解」类别；音频音轨要关联景点并在「导览音频 / 文史节目」发布。实地拍摄视频在「景点管理 → 编辑景点 → 名导讲解」页签维护（含视频封面、总长与试看秒数）。'},
     {title:'线上预览',menu:'audioTracks',filter:{key:'category',value:'online'},menuLabel:'导览音频 / 文史节目',location:'景点详情页的「线上预览」音频列表。',description:'进入后已筛选「线上预览」类别；音轨关联景点，讲解点关联为可选。'},
     {title:'路线讲解音频',menu:'audioTracks',filter:{key:'category',value:'route'},menuLabel:'导览音频 / 文史节目',location:'景点详情页的「路线导览」音频。',description:'进入后已筛选「路线导览」类别；还需关联对应路线。'},
     {title:'讲解路线与点位顺序',menu:'audioRoutes',menuLabel:'路线导览',location:'景点详情页的「路线导览」路线卡片与讲解点顺序。',description:'维护路线名称、所属景点、路线说明和讲解点顺序。'},
@@ -687,7 +687,8 @@ fields.guides.template='guide'
 const attractionEditorFieldGroups = [
   {key:'basic',label:'基础资料',eyebrow:'基础资料',description:'名称、城市、类型、标签和发布状态等基础信息。',fields:['name','en','originalName','city','cityName','type','category','sizeLabel','tags','status']},
   {key:'display',label:'景点展示',eyebrow:'景点展示',description:'维护小程序景点详情使用的主图、简介与亮点。',fields:['image','summary','highlights']},
-  {key:'entryCovers',label:'讲解入口封面',eyebrow:'讲解入口封面',description:'分别维护线上预览与名导讲解卡片图片；各自留空时回退到景点主图。',fields:['onlineCoverImage','expertCoverImage']},
+  {key:'entryCovers',label:'线上预览封面',eyebrow:'线上预览入口封面',description:'维护线上预览卡片图片；留空时回退到景点主图。',fields:['onlineCoverImage']},
+  {key:'expertGuide',label:'名导讲解',eyebrow:'名导讲解 / 视频讲解',description:'维护名导讲解卡片封面与实地拍摄讲解视频（封面留空用主图；试看秒数到期暂停，完整视频仅小程序权益可见）。音频讲解在「导览音频 / 文史节目 → 名导讲解」维护。',fields:['expertCoverImage','expertVideoUrl','expertVideoCover','expertVideoDuration','expertVideoTrialSeconds']},
   {key:'exhibits',label:'讲解点',eyebrow:'讲解点与展品',description:'维护景点详情中的展品讲解点及其展厅位置。',fields:['exhibits']},
   {key:'visitor',label:'参观服务',eyebrow:'参观服务信息',description:'开放时间、门票、交通、游览建议、场馆服务与参观提醒。',fields:['guide']},
   {key:'stories',label:'文史内容',eyebrow:'文史与深度内容',description:'维护关联文章、免费预览和付费章节。',fields:['articles','deepDive']},
