@@ -2010,7 +2010,7 @@ async function start() {
       data.attractionDetailPage = normalizeAttractionDetailPage(defaultAttractionDetailPage())
     }
     for (const lead of data.leads || []) lead.countryId = lead.countryId || 'greece'
-    await saveData(data)
+    if (process.env.SY_SKIP_STARTUP_SAVE !== '1') await saveData(data)
     server.listen(port, '127.0.0.1', () => console.log(`Greece Travel Butler server: http://127.0.0.1:${port}/ (console: /manage-9f3k7)`))
   } catch (error) {
     console.error(`Storage initialization failed: ${error.message}`)
