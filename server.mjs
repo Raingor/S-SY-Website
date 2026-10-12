@@ -763,10 +763,10 @@ async function multipartImage(req, limit = 6 * 1024 * 1024) {
   if (!image.length) throw new Error('头像文件为空')
   return { image, mimeType }
 }
-function saveMiniProgramAvatar(data, req, image, mimeType) {
-  const extension = mimeType === 'image/jpeg' ? 'jpg' : mimeType.split('/')[1]
-  const filename = `mp-avatar-${Date.now().toString(36)}-${crypto.randomBytes(3).toString('hex')}.${extension}`
-  writeRuntimeImage(filename, image)
+async function saveMiniProgramAvatar(data, req, image, mimeType) {
+  const converted = await toWebpOrOriginal(image, mimeType)
+  const filename = `mp-avatar-${Date.now().toString(36)}-${crypto.randomBytes(3).toString('hex')}.${converted.extension}`
+  writeRuntimeImage(filename, converted.buffer)
   return `${siteBase(data, req)}/images/${filename}`
 }
 function destinationAttractionIds(item = {}) {
@@ -1465,7 +1465,7 @@ const server = http.createServer(async (req, res) => {
       if (!user) return json(res, 401, { code: 'MINIPROGRAM_LOGIN_REQUIRED', error: '请先微信登录' })
       try {
         const upload = await multipartImage(req)
-        user.avatarUrl = saveMiniProgramAvatar(data, req, upload.image, upload.mimeType)
+        user.avatarUrl = await saveMiniProgramAvatar(data, req, upload.image, upload.mimeType)
         user.updatedAt = new Date().toISOString()
         await saveData(data)
         return json(res, 200, { user: publicMiniProgramUser(user) })
