@@ -190,6 +190,8 @@
 .el-admin .stat-trio { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:0 14px; }
 .el-admin .stat-trio .el-input-number { width:100%; }
 .el-admin .stat-trio-item { display:flex; flex-direction:column; gap:6px; }
+.el-admin .stat-trio-prefix { font-size:12px; font-weight:600; color:#3d5260; }
+.el-admin .stat-trio-prefix b { font-weight:600; }
 .el-admin .stat-trio-help { color:#879399; font-size:11px; line-height:1.6; }
 .el-admin .array-fields { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:0 14px; }
 .el-admin .array-fields .el-form-item { margin-bottom:8px; min-width:0; }
