@@ -1003,7 +1003,8 @@ function publicContent(data, countryId = 'greece', { includeAttractionDetails = 
   const publicCities = scoped(data.cities).filter((item) => item.status !== 'archived').map((item) => {
     const attractionImages = publicAttractions.filter((attraction) => attraction.city === item.id).sort((a, b) => Number(a.sort || 0) - Number(b.sort || 0)).map((attraction) => attraction.image).filter(Boolean)
     const coverImage = imageUrl(item.coverImage) || attractionImages[0] || ''
-    return { ...item, coverImage, mosaic: coverImage ? [coverImage] : [] }
+    const stat = (value) => { const text = String(value ?? '').trim(); if (!text) return undefined; const n = Number(text); return Number.isFinite(n) && n >= 0 ? n : undefined }
+    return { ...item, coverImage, mosaic: coverImage ? [coverImage] : [], museumCount: stat(item.museumCount), guidePointCount: stat(item.guidePointCount), audioMinutes: stat(item.audioMinutes) }
   })
   const publicDestinations = scoped(data.destinations).filter((item) => item.status === 'published').map((item) => ({ ...normalizePublicDestination(item, publicCities, publicAttractions), image: imageUrl(item.image) })).filter((item) => item.cityId && item.attractionIds.length > 0)
   const home = homeSettings(data, (value) => miniProgramBannerImage(value, imageUrl))
