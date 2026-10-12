@@ -264,6 +264,18 @@ function writeRuntimeImage(filename, buffer) {
   mkdirSync(runtimeImageDir, { recursive: true })
   writeFileSync(join(runtimeImageDir, filename), buffer)
 }
+async function toWebpOrOriginal(buffer, contentType) {
+  if (contentType === 'image/webp') return { buffer, extension: 'webp' }
+  try {
+    const sharpModule = await import('sharp')
+    const sharp = sharpModule.default || sharpModule
+    const optimized = await sharp(buffer).rotate().resize({ width: 1920, height: 1920, fit: 'inside', withoutEnlargement: true }).webp({ quality: 82 }).toBuffer()
+    if (!optimized.length || optimized.length >= buffer.length) return { buffer, extension: contentType === 'image/jpeg' ? 'jpg' : 'png' }
+    return { buffer: optimized, extension: 'webp' }
+  } catch {
+    return { buffer, extension: contentType === 'image/jpeg' ? 'jpg' : 'png' }
+  }
+}
 function corsHeaders() { return { ...(allowedOrigin ? { 'Access-Control-Allow-Origin': allowedOrigin, Vary: 'Origin' } : {}), 'Access-Control-Allow-Methods': 'GET,POST,PATCH,DELETE,OPTIONS', 'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Mini-Program-Env' } }
 function json(res, status, body) { res.writeHead(status, { ...corsHeaders(), 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' }); res.end(JSON.stringify(body)) }
 function text(res, status, body, contentType) { res.writeHead(status, { 'Content-Type': contentType, 'Cache-Control': 'public, max-age=300' }); res.end(body) }
@@ -1823,12 +1835,12 @@ const server = http.createServer(async (req, res) => {
         const input = await body(req, 8 * 1024 * 1024)
         const match = String(input.data || '').match(/^data:(image\/(?:png|jpeg|webp));base64,(.+)$/)
         if (!match) return json(res, 422, { error: '仅支持 PNG、JPG 或 WebP 图片' })
-        const buffer = Buffer.from(match[2], 'base64')
-        if (!buffer.length || buffer.length > 6 * 1024 * 1024) return json(res, 413, { error: '图片大小需在 6MB 以内' })
-        const extension = match[1] === 'image/jpeg' ? 'jpg' : match[1].split('/')[1]
+        const rawBuffer = Buffer.from(match[2], 'base64')
+        if (!rawBuffer.length || rawBuffer.length > 6 * 1024 * 1024) return json(res, 413, { error: '图片大小需在 6MB 以内' })
         const prefix = String(input.prefix || 'og').replace(/[^a-z0-9-]/gi, '').slice(0, 20) || 'image'
-        const filename = `${prefix}-${Date.now().toString(36)}-${crypto.randomBytes(3).toString('hex')}.${extension}`
-        writeRuntimeImage(filename, buffer)
+        const converted = await toWebpOrOriginal(rawBuffer, match[1])
+        const filename = `${prefix}-${Date.now().toString(36)}-${crypto.randomBytes(3).toString('hex')}.${converted.extension}`
+        writeRuntimeImage(filename, converted.buffer)
         if (input.updateSettings !== false) {
           data.settings = { ...data.settings, ogImage: `images/${filename}` }
           await saveData(data)
