@@ -264,7 +264,7 @@
                     <div v-for="(option,index) in vehicleOption(group.key)" :key="index" class="array-entry">
                       <div class="array-entry-head"><b>{{ group.label }} {{ index+1 }}</b><span><el-button type="text" :disabled="index===0" @click="moveVehicleOption(group.key,index,-1)">上移</el-button><el-button type="text" :disabled="index===vehicleOption(group.key).length-1" @click="moveVehicleOption(group.key,index,1)">下移</el-button><el-button type="text" class="danger-text" @click="removeVehicleOption(group.key,index)">移除</el-button></span></div>
                       <el-form-item label="名称（简体）"><el-input v-model="option.label"/></el-form-item>
-                      <div class="vehicle-option-meta"><el-form-item label="排序"><el-input-number v-model="option.sort" :min="1"/></el-form-item><el-form-item label="启用"><el-switch v-model="option.enabled"/></el-form-item><el-form-item label="稳定 ID（仅用于回传，不建议修改）"><el-input v-model="option.id"/></el-form-item></div>
+                      <div class="vehicle-option-meta"><el-form-item label="排序"><el-input-number v-model="option.sort" :min="1"/></el-form-item><el-form-item label="启用"><el-switch v-model="option.enabled"/></el-form-item><el-form-item label="稳定 ID（回传枚举值，只读）"><el-input v-model="option.id" readonly class="readonly-id-input"/></el-form-item></div>
                     </div>
                     <el-button plain icon="el-icon-plus" @click="addVehicleOption(group.key)">添加{{ group.label }}选项</el-button>
                   </div>
@@ -325,7 +325,7 @@
                         <div v-for="(option,index) in businessOption(group.key)" :key="index" class="array-entry">
                           <div class="array-entry-head"><b>{{ group.label }} {{ index+1 }}</b><span><el-button type="text" :disabled="index===0" @click="moveBusinessOption(group.key,index,-1)">上移</el-button><el-button type="text" :disabled="index===businessOption(group.key).length-1" @click="moveBusinessOption(group.key,index,1)">下移</el-button><el-button type="text" class="danger-text" @click="removeBusinessOption(group.key,index)">移除</el-button></span></div>
                           <el-form-item label="名称（简体）"><el-input v-model="option.label"/></el-form-item>
-                          <div class="vehicle-option-meta"><el-form-item label="排序"><el-input-number v-model="option.sort" :min="1"/></el-form-item><el-form-item label="启用"><el-switch v-model="option.enabled"/></el-form-item><el-form-item label="稳定 ID（回传枚举值，不建议修改）"><el-input v-model="option.id"/></el-form-item></div>
+                          <div class="vehicle-option-meta"><el-form-item label="排序"><el-input-number v-model="option.sort" :min="1"/></el-form-item><el-form-item label="启用"><el-switch v-model="option.enabled"/></el-form-item><el-form-item label="稳定 ID（回传枚举值，只读）"><el-input v-model="option.id" readonly class="readonly-id-input"/></el-form-item></div>
                         </div>
                         <el-button plain icon="el-icon-plus" @click="addBusinessOption(group.key)">添加{{ group.label }}选项</el-button>
                       </div>

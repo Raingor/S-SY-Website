@@ -282,6 +282,7 @@
 
 /* 在地用车（vehicleService）面板 */
 .vehicle-tag-input { margin-bottom: 6px; }
+.readonly-id-input input { color: #909399; background: #f5f7fa; cursor: not-allowed; }
 .vehicle-option-meta { display: flex; flex-wrap: wrap; gap: 16px; align-items: flex-end; }
 .vehicle-option-meta .el-form-item { margin-bottom: 8px; }
 
