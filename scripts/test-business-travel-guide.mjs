@@ -100,6 +100,10 @@ try {
   const docFetch = await fetch(`${base}${docUpload.url}`)
   assert.equal(docFetch.status, 200, 'uploaded doc should be served')
   assert.equal(docFetch.headers.get('content-type') || '', 'application/pdf', 'doc served as pdf')
+  const missingDoc = await fetch(`${base}/docs/definitely-missing.pdf`)
+  assert.equal(missingDoc.status, 404, 'missing /docs/ file should 404 (no SPA fallback)')
+  const docsList = await (await fetch(`${base}/api/admin/travel-guide-docs`, { headers: auth })).json()
+  assert(Array.isArray(docsList.files) && docsList.files.some((file) => file.url === docUpload.url), 'travel-guide-docs lists uploaded file')
   const settingsPatch = await (await fetch(`${base}/api/admin/settings`, { method: 'PATCH', headers: auth, body: JSON.stringify({ travelGuideDocs: { visa: docUpload.url, packing: '  ', athens: 'https://example.com/ext.pdf' } }) })).json()
   assert.equal(settingsPatch.travelGuideDocs.visa, docUpload.url)
   assert.equal(settingsPatch.travelGuideDocs.packing, undefined, 'empty value dropped')
@@ -117,6 +121,15 @@ try {
   assert(content.vehicleService && content.vehicleService.title, 'vehicleService unchanged')
   assert(Array.isArray(content.miniprogramServiceEntries) && content.miniprogramServiceEntries.length === 6, 'service entries unchanged')
   assert(content.settings.travelGuideDocs && content.settings.travelGuideDocs.visa === docUpload.url, 'settings.travelGuideDocs exposed')
+
+  // ---- travel-guide 保存时 docs 同步到 settings.travelGuideDocs（后台逐卡编辑面）----
+  const guideWithDocs = await (await fetch(`${base}/api/admin/travel-guide`, { method: 'PATCH', headers: auth, body: JSON.stringify({ ...patchedGuide, docs: { visa: '/docs/from-panel.pdf', photo: '' } }) })).json()
+  assert.equal(guideWithDocs.docs.visa, '/docs/from-panel.pdf')
+  const contentAfterPanel = await (await fetch(`${base}/api/content`)).json()
+  assert.equal(contentAfterPanel.settings.travelGuideDocs.visa, '/docs/from-panel.pdf', 'panel save syncs settings.travelGuideDocs')
+  assert.equal(contentAfterPanel.settings.travelGuideDocs.photo, undefined, 'empty value dropped')
+  const guideGet = await (await fetch(`${base}/api/admin/travel-guide`, { headers: auth })).json()
+  assert.equal(guideGet.docs.visa, '/docs/from-panel.pdf', 'admin GET returns docs from settings')
 
   console.log('Business service, travel guide & docs tests passed (admin CRUD, validation, caps, upload-doc, public contract).')
 } finally {

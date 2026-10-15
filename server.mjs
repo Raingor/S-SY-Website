@@ -1,6 +1,6 @@
 import http from 'node:http'
 import { createAdminSessionToken, verifyAdminSessionToken } from './admin-session.mjs'
-import { createReadStream, existsSync, mkdirSync, readFileSync, statSync, writeFileSync } from 'node:fs'
+import { createReadStream, existsSync, mkdirSync, readdirSync, readFileSync, statSync, writeFileSync } from 'node:fs'
 import { dirname, extname, join, normalize, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import crypto from 'node:crypto'
@@ -470,6 +470,7 @@ function normalizeTravelGuide(input) {
   result.titleEn = result.titleEn || result.title
   result.subtitleTw = result.subtitleTw || result.subtitle
   result.subtitleEn = result.subtitleEn || result.subtitle
+  result.docs = normalizeTravelGuideDocs(input.docs)
   return result
 }
 function validateTravelGuide(input) {
@@ -1944,15 +1945,32 @@ const server = http.createServer(async (req, res) => {
         await saveData(data)
         return json(res, 200, data.businessService)
       }
-      if (url.pathname === '/api/admin/travel-guide' && method === 'GET') return json(res, 200, normalizeTravelGuide(data.travelGuide))
+      if (url.pathname === '/api/admin/travel-guide' && method === 'GET') return json(res, 200, { ...normalizeTravelGuide(data.travelGuide), docs: normalizeTravelGuideDocs(data.settings?.travelGuideDocs) })
+      if (url.pathname === '/api/admin/travel-guide-docs' && method === 'GET') {
+        const files = []
+        try {
+          for (const entry of readdirSync(runtimeDocDir)) {
+            const extension = extname(entry).toLowerCase()
+            if (!ALLOWED_DOC_EXTENSIONS.has(extension)) continue
+            const stat = statSync(join(runtimeDocDir, entry))
+            if (!stat.isFile()) continue
+            files.push({ name: entry, url: `/docs/${entry}`, size: stat.size, updatedAt: stat.mtime.toISOString() })
+          }
+        } catch {}
+        files.sort((a, b) => b.updatedAt.localeCompare(a.updatedAt))
+        return json(res, 200, { files })
+      }
       if (url.pathname === '/api/admin/travel-guide' && method === 'PATCH') {
         let input
         try { input = await body(req) } catch { return json(res, 400, { error: '请求内容无效' }) }
         if (!input || typeof input !== 'object' || Array.isArray(input)) return json(res, 422, { error: '出行指南配置格式无效' })
         try { validateTravelGuide(input) } catch (error) { return json(res, 422, { error: error.message }) }
         data.travelGuide = normalizeTravelGuide(input)
+        // docs 为后台逐卡文档链接的唯一编辑面：保存时同步到 settings.travelGuideDocs（公开契约仍从 settings 输出）。
+        const savedDocs = normalizeTravelGuideDocs(data.travelGuide.docs)
+        data.settings = { ...data.settings, travelGuideDocs: savedDocs }
         await saveData(data)
-        return json(res, 200, data.travelGuide)
+        return json(res, 200, { ...data.travelGuide, docs: savedDocs })
       }
       if (url.pathname === '/api/admin/settings' && method === 'GET') {
         const { homeBanners: _homeBanners, ...settings } = data.settings || {}
@@ -2270,7 +2288,12 @@ const server = http.createServer(async (req, res) => {
     const publicImagePath = safePath.startsWith('/images/') ? join(root, 'public', safePath.slice(1)) : ''
     const publicDocPath = safePath.startsWith('/docs/') && ALLOWED_DOC_EXTENSIONS.has(extname(safePath).toLowerCase()) ? join(root, 'public', safePath.slice(1)) : ''
     const fallback = join(distDir, 'index.html')
-    let target = existsSync(filePath) ? filePath : publicImagePath && existsSync(publicImagePath) ? publicImagePath : publicDocPath && existsSync(publicDocPath) ? publicDocPath : fallback
+    let target = existsSync(filePath) ? filePath : publicImagePath && existsSync(publicImagePath) ? publicImagePath : publicDocPath && existsSync(publicDocPath) ? publicDocPath : ''
+    if (!target) {
+      // /docs/ 下缺失的合法文档类型返回真 404，避免 SPA fallback 让客户端下载 HTML。
+      if (publicDocPath) return text(res, 404, 'document not found', 'text/plain; charset=utf-8')
+      target = fallback
+    }
     if (safePath.startsWith('/images/') && /\.(?:png|jpe?g|webp|svg)$/i.test(target) && !/\.opt\.webp$/i.test(target)) {
       const optimizedTargets = [target.replace(/\.[^.\\/]+$/, '.opt.webp')]
       if (publicImagePath) optimizedTargets.push(publicImagePath.replace(/\.[^.\\/]+$/, '.opt.webp'))

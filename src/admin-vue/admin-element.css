@@ -289,5 +289,15 @@
 .header-float-actions { float: right; }
 .header-float-actions .el-button { padding: 0; }
 
+/* 出行指南在线阅读文档面板 */
+.travel-doc-library { margin-bottom: 10px; }
+.travel-doc-item { display: flex; align-items: center; gap: 12px; padding: 2px 0; }
+.travel-doc-name { font-family: monospace; font-size: 12px; word-break: break-all; }
+.travel-doc-map { margin: 8px 0 4px; border-top: 1px dashed #dcdfe6; padding-top: 8px; }
+.travel-doc-map-row { display: flex; justify-content: space-between; gap: 16px; padding: 3px 0; font-size: 13px; }
+.travel-doc-key small { color: #909399; }
+.travel-doc-set { color: #409eff; font-family: monospace; font-size: 12px; word-break: break-all; text-align: right; }
+.travel-doc-unset { color: #c0c4cc; }
+
 /* 在地用车表单文案字段 */
 .vehicle-form-field { display: inline-block; width: 24%; min-width: 180px; padding-right: 12px; vertical-align: top; }
