@@ -661,6 +661,8 @@ const guideGroups = [
     {title:'目的地',menu:'destinations',menuLabel:'目的地',location:'小程序目的地内容与目的地下的景点关联。',description:'维护目的地文案、图片、城市和关联景点。'},
     {title:'甄选路线',menu:'sampleItineraries',menuLabel:'甄选路线',location:'小程序首页「甄选路线」和路线详情。',description:'维护路线卡片、天数、封面和逐日行程；仅发布内容会展示。'},
     {title:'在地用车',menu:'vehicleService',menuLabel:'在地用车',location:'小程序「在地用车」介绍、服务标签和车型选项。',description:'维护用车页面文案、图片、服务标签及车型、时长和人数选项。'},
+    {title:'希腊商旅',menu:'businessService',menuLabel:'希腊商旅',location:'小程序「希腊商旅」页面介绍、服务标签和咨询表单选项。',description:'维护商旅页面文案、图片、标签及往返周期、陪同时长、语言需求和随行人数选项。'},
+    {title:'出行指南内容',menu:'travelGuide',menuLabel:'出行指南内容',location:'小程序「出行指南」页面的分组与攻略卡片，以及卡片在线阅读文档。',description:'维护页面标题、分组导语和卡片内容；可为每张卡片上传 PDF 等文档，配置后小程序卡片出现「在线阅读」入口。'},
     {title:'小程序预约记录',menu:'miniProgramBookings',menuLabel:'小程序预约',location:'小程序提交的预约咨询记录。',description:'查看并更新预约跟进状态；这里维护的是客户提交记录，不是页面展示文案。'}
   ]}
 ]
