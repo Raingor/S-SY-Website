@@ -2114,7 +2114,7 @@ const server = http.createServer(async (req, res) => {
         const collection = heritageAdmin[1]; const itemId = heritageAdmin[2] || ''
         data[collection] = Array.isArray(data[collection]) ? data[collection] : []
         const items = data[collection]
-        if (method === 'GET') return json(res, 200, items)
+        if (method === 'GET') return json(res, 200, collection === 'audioTracks' ? items.map((item) => ({ ...item, isPinned: item.isPinned === true })) : items)
         const index = items.findIndex((item) => item.id === itemId)
         if (method === 'DELETE') {
           if (index < 0) return json(res, 404, { code: 'CONTENT_NOT_FOUND', error: '记录不存在' })
@@ -2134,6 +2134,7 @@ const server = http.createServer(async (req, res) => {
         }
         const error = validateHeritageRecord(collection, payload, data, previous)
         if (error) return json(res, 422, { code: 'CONTENT_VALIDATION_FAILED', error })
+        if (collection === 'audioTracks') payload.isPinned = payload.isPinned === true
         if (method === 'POST') items.push(payload)
         else items[index] = payload
         await saveData(data)
