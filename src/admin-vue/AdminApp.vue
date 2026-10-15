@@ -215,187 +215,6 @@
               </el-card>
               <el-empty v-else description="正在加载景点详情配置"/>
             </section>
-            <section v-else-if="active === 'vehicleService'">
-              <el-card shadow="never" class="section-card" v-if="vehicleView === 'config' && vehicleService">
-                <div slot="header" class="card-heading"><div><span class="eyebrow">VEHICLE SERVICE / CONFIG</span><h2>在地用车配置</h2><p class="admin-muted">配置页面文案与车型 / 时长 / 人数选项；保存后返回询盘列表。</p></div><div class="header-actions"><el-button icon="el-icon-arrow-left" @click="vehicleView='list'">返回询盘列表</el-button><el-button type="primary" icon="el-icon-check" :loading="busy" @click="saveVehicleService">保存配置</el-button></div></div>
-                <el-alert title="只维护简体：繁体 / 英文缺失时服务端自动回退简体，公开接口仍返回三语字段。保存校验：页面标题 / 副标题 / 页面说明（简体）必填，选项非空且组内排序唯一。小程序界面固定文案不在此维护。" type="info" :closable="false" show-icon class="banner-note"/>
-              <el-form label-position="top">
-                  <el-tabs v-model="vehicleConfigTab" class="vehicle-config-tabs">
-                    <el-tab-pane label="页面内容" name="page">
-                  <div class="settings-structured"><h3>基础</h3>
-                    <el-form-item label="启用状态"><el-switch v-model="vehicleService.enabled" active-text="启用" inactive-text="停用"/></el-form-item>
-                    <el-form-item label="排序"><el-input-number v-model="vehicleService.sort" :min="1"/></el-form-item>
-                  </div>
-                  <div v-for="field in [{key:'title',label:'页面标题',area:false},{key:'subtitle',label:'副标题',area:false},{key:'description',label:'页面说明',area:true},{key:'note',label:'注意事项',area:true},{key:'disclaimer',label:'免责说明（可选）',area:true}]" :key="field.key" class="settings-structured">
-                    <h3>{{ field.label }}</h3>
-                    <el-form-item label="简体"><el-input v-if="field.area" v-model="vehicleService[field.key]" type="textarea" :rows="2"/><el-input v-else v-model="vehicleService[field.key]"/></el-form-item>
-                  </div>
-                  <div class="settings-structured"><h3>服务标签</h3>
-                    <el-form-item label="简体（每行一条）"><el-input v-for="(tag,index) in (vehicleService.tags||[])" :key="index" :value="vehicleService.tags[index]" class="vehicle-tag-input" placeholder="标签内容" @input="value=>$set(vehicleService.tags,index,value)"/><small v-if="!(vehicleService.tags||[]).length" class="field-help">暂无标签</small></el-form-item>
-                    <div class="form-actions"><el-button plain size="small" icon="el-icon-plus" @click="addVehicleTag">添加一条标签</el-button><el-button v-if="(vehicleService.tags||[]).length" plain size="small" type="danger" icon="el-icon-delete" @click="removeVehicleTag((vehicleService.tags||[]).length-1)">删除最后一条</el-button></div>
-                  </div>
-                  <div class="settings-structured"><h3>页面图片（可多张）</h3>
-                    <div v-for="(image,index) in (vehicleService.images||[])" :key="image+index" class="image-editor"><div class="image-preview"><img :src="assetUrl(image)" :alt="'图片 '+(index+1)"/></div><div class="image-actions"><el-button type="danger" plain size="small" icon="el-icon-delete" @click="vehicleService.images.splice(index,1)">删除图片</el-button></div></div>
-                    <el-upload action="#" :show-file-list="false" :http-request="uploadVehicleImage"><el-button icon="el-icon-upload">选择图片上传</el-button></el-upload>
-                    <small class="image-guidance">选填 · 建议 1200×900 px（4:3 通用横图）；当前小程序用车预约页尚未展示这组配图，暂不按前台容器裁切。若后续增加展示，请再按实际图片框比例调整。支持 PNG / JPG / WebP，单张最大 6MB。</small>
-                  </div>
-                    </el-tab-pane>
-                    <el-tab-pane label="预约表单" name="form">
-                  <div class="settings-structured"><h3>表单文案（简体；留空则由小程序使用本地文案）</h3>
-                    <div v-for="field in [{key:'title',label:'表单标题'},{key:'tip',label:'表单提示'},{key:'dateLabel',label:'日期标签'},{key:'durationLabel',label:'时长标签'},{key:'vehicleLabel',label:'车型标签'},{key:'peopleLabel',label:'人数标签'},{key:'routeLabel',label:'路线标签'},{key:'contactLabel',label:'联系方式标签'},{key:'submitLabel',label:'提交按钮文案'},{key:'routePlaceholder',label:'路线输入提示'},{key:'phonePlaceholder',label:'手机输入提示'},{key:'wechatPlaceholder',label:'微信输入提示'}]" :key="field.key" class="vehicle-form-field">
-                      <el-form-item :label="field.label"><el-input v-model="vehicleService.form[field.key]"/></el-form-item>
-                    </div>
-                  </div>
-                  <div class="settings-structured"><h3>表单开关与日期范围</h3>
-                    <div class="vehicle-option-meta">
-                      <el-form-item label="显示手机"><el-switch v-model="vehicleService.form.contactPhone"/></el-form-item>
-                      <el-form-item label="显示微信"><el-switch v-model="vehicleService.form.contactWechat"/></el-form-item>
-                      <el-form-item label="路线必填"><el-switch v-model="vehicleService.form.routeRequired"/></el-form-item>
-                    </div>
-                    <div class="vehicle-option-meta">
-                      <el-form-item label="开始日期（today 或 YYYY-MM-DD）"><el-input v-model="vehicleService.form.dateStart" placeholder="today"/></el-form-item>
-                      <el-form-item label="结束日期（可留空）"><el-input v-model="vehicleService.form.dateEnd" placeholder="YYYY-MM-DD"/></el-form-item>
-                    </div>
-                  </div>
-                    </el-tab-pane>
-                    <el-tab-pane label="车型与服务选项" name="options">
-                  <div v-for="group in vehicleOptionGroups" :key="group.key" class="settings-structured">
-                    <h3>{{ group.label }}选项</h3>
-                    <div v-for="(option,index) in vehicleOption(group.key)" :key="index" class="array-entry">
-                      <div class="array-entry-head"><b>{{ group.label }} {{ index+1 }}</b><span><el-button type="text" :disabled="index===0" @click="moveVehicleOption(group.key,index,-1)">上移</el-button><el-button type="text" :disabled="index===vehicleOption(group.key).length-1" @click="moveVehicleOption(group.key,index,1)">下移</el-button><el-button type="text" class="danger-text" @click="removeVehicleOption(group.key,index)">移除</el-button></span></div>
-                      <el-form-item label="名称（简体）"><el-input v-model="option.label"/></el-form-item>
-                      <div class="vehicle-option-meta"><el-form-item label="排序"><el-input-number v-model="option.sort" :min="1"/></el-form-item><el-form-item label="启用"><el-switch v-model="option.enabled"/></el-form-item><el-form-item label="稳定 ID（回传枚举值，只读）"><el-input v-model="option.id" readonly class="readonly-id-input"/></el-form-item></div>
-                    </div>
-                    <el-button plain icon="el-icon-plus" @click="addVehicleOption(group.key)">添加{{ group.label }}选项</el-button>
-                  </div>
-                    </el-tab-pane>
-                  </el-tabs>
-                </el-form>
-                <div class="form-actions"><el-button icon="el-icon-arrow-left" @click="vehicleView='list'">返回询盘列表</el-button><el-button type="primary" icon="el-icon-check" :loading="busy" @click="saveVehicleService">保存配置</el-button></div>
-              </el-card>
-              <el-card shadow="never" class="section-card" v-if="vehicleView !== 'config'">
-                <div slot="header" class="card-heading"><div><span class="eyebrow">VEHICLE SERVICE / INQUIRIES</span><h2>用车询盘</h2><p class="admin-muted">小程序与官网提交的用车咨询（leadType=vehicle-consultation）。</p></div><div class="header-actions"><el-button type="primary" icon="el-icon-setting" @click="vehicleConfigTab='page';vehicleView='config'">配置在地用车</el-button><el-button icon="el-icon-refresh" @click="loadAll">重新加载</el-button><span class="admin-muted">共 {{ vehicleInquiries.length }} 条</span></div></div>
-                <el-table :data="vehicleInquiries" size="small" border stripe style="width:100%">
-                  <el-table-column label="提交时间" width="170"><template slot-scope="{row}">{{ dateTime(row.createdAt) }}</template></el-table-column>
-                  <el-table-column prop="vehicleDate" label="用车日期" width="120"/>
-                  <el-table-column prop="vehicleNeed" label="用车场景" min-width="200"/>
-                  <el-table-column prop="travelers" label="随行人数" width="120"/>
-                  <el-table-column prop="contact" label="联系方式" min-width="150"/>
-                  <el-table-column label="状态" width="140"><template slot-scope="{row}"><el-select :value="row.status||'new'" size="mini" class="status-inline" @change="value=>updateVehicleInquiryStatus(row,value)"><el-option label="待处理" value="new"/><el-option label="已联系" value="contacted"/><el-option label="已报价" value="quoted"/><el-option label="已完成" value="closed"/></el-select></template></el-table-column>
-                  <el-table-column label="操作" width="90" align="right"><template slot-scope="{row}"><el-button size="mini" type="danger" plain @click="deleteVehicleInquiry(row)">删除</el-button></template></el-table-column>
-                </el-table>
-                <div v-if="!vehicleInquiries.length" class="admin-muted" style="padding:12px 0">暂无用车询盘。</div>
-              </el-card>
-              <el-empty v-if="vehicleView === 'config' && !vehicleService" description="正在加载在地用车配置"/>
-            </section>
-            <section v-else-if="active === 'businessService'">
-              <el-card shadow="never" class="section-card" v-if="businessService">
-                <div slot="header" class="card-heading"><div><span class="eyebrow">BUSINESS SERVICE / CONFIG</span><h2>希腊商旅配置</h2><p class="admin-muted">配置小程序「希腊商旅」页头部文案、标签与咨询表单选项；保存后小程序重新进入页面即生效。</p></div><div class="header-actions"><el-button type="primary" icon="el-icon-check" :loading="busy" @click="saveBusinessService">保存配置</el-button></div></div>
-                <el-alert title="只维护简体：繁体 / 英文缺失时服务端自动回退简体，公开接口仍返回三语字段。保存校验：页面标题 / 副标题 / 页面说明（简体）必填，四组选项非空且组内排序唯一。表单文案留空时小程序使用本地默认文案。" type="info" :closable="false" show-icon class="banner-note"/>
-                <el-form label-position="top">
-                  <el-tabs v-model="businessConfigTab">
-                    <el-tab-pane label="页面内容" name="page">
-                      <div class="settings-structured"><h3>基础</h3>
-                        <el-form-item label="启用状态"><el-switch v-model="businessService.enabled" active-text="启用" inactive-text="停用"/></el-form-item>
-                      </div>
-                      <div v-for="field in [{key:'kicker',label:'眉标（英文小字）',area:false},{key:'title',label:'页面标题',area:false},{key:'subtitle',label:'副标题',area:false},{key:'description',label:'页面说明',area:true},{key:'note',label:'注意事项',area:true},{key:'disclaimer',label:'免责说明（可选）',area:true}]" :key="field.key" class="settings-structured">
-                        <h3>{{ field.label }}</h3>
-                        <el-form-item label="简体"><el-input v-if="field.area" v-model="businessService[field.key]" type="textarea" :rows="2"/><el-input v-else v-model="businessService[field.key]"/></el-form-item>
-                      </div>
-                      <div class="settings-structured"><h3>服务标签</h3>
-                        <el-form-item label="简体（每行一条）"><el-input v-for="(tag,index) in (businessService.tags||[])" :key="index" :value="businessService.tags[index]" class="vehicle-tag-input" placeholder="标签内容" @input="value=>$set(businessService.tags,index,value)"/><small v-if="!(businessService.tags||[]).length" class="field-help">暂无标签</small></el-form-item>
-                        <div class="form-actions"><el-button plain size="small" icon="el-icon-plus" @click="addBusinessTag">添加一条标签</el-button><el-button v-if="(businessService.tags||[]).length" plain size="small" type="danger" icon="el-icon-delete" @click="removeBusinessTag((businessService.tags||[]).length-1)">删除最后一条</el-button></div>
-                      </div>
-                      <div class="settings-structured"><h3>页面图片（可多张）</h3>
-                        <div v-for="(image,index) in (businessService.images||[])" :key="image+index" class="image-editor"><div class="image-preview"><img :src="assetUrl(image)" :alt="'图片 '+(index+1)"/></div><div class="image-actions"><el-button type="danger" plain size="small" icon="el-icon-delete" @click="businessService.images.splice(index,1)">删除图片</el-button></div></div>
-                        <el-upload action="#" :show-file-list="false" :http-request="uploadBusinessImage"><el-button icon="el-icon-upload">选择图片上传</el-button></el-upload>
-                        <small class="image-guidance">选填 · 支持 PNG / JPG / WebP，单张最大 6MB。</small>
-                      </div>
-                    </el-tab-pane>
-                    <el-tab-pane label="咨询表单" name="form">
-                      <div class="settings-structured"><h3>表单文案（简体；留空则由小程序使用本地文案）</h3>
-                        <div v-for="field in [{key:'cardTitle',label:'表单标题'},{key:'cardTip',label:'表单提示'},{key:'cycleLabel',label:'往返周期标签'},{key:'durationLabel',label:'陪同时长标签'},{key:'languageLabel',label:'语言需求标签'},{key:'industryLabel',label:'行业与需求标签'},{key:'industryPlaceholder',label:'需求输入提示'},{key:'industryRequired',label:'必填提示'},{key:'peopleLabel',label:'随行人数标签'},{key:'contactLabel',label:'联系方式标签'},{key:'wechatLabel',label:'微信选项文案'},{key:'phoneLabel',label:'手机选项文案'},{key:'phonePlaceholder',label:'手机输入提示'},{key:'wechatPlaceholder',label:'微信输入提示'},{key:'submitLabel',label:'提交按钮文案'}]" :key="field.key" class="vehicle-form-field">
-                          <el-form-item :label="field.label"><el-input v-model="businessService.form[field.key]"/></el-form-item>
-                        </div>
-                      </div>
-                    </el-tab-pane>
-                    <el-tab-pane label="表单选项" name="options">
-                      <div v-for="group in businessOptionGroups" :key="group.key" class="settings-structured">
-                        <h3>{{ group.label }}选项</h3>
-                        <div v-for="(option,index) in businessOption(group.key)" :key="index" class="array-entry">
-                          <div class="array-entry-head"><b>{{ group.label }} {{ index+1 }}</b><span><el-button type="text" :disabled="index===0" @click="moveBusinessOption(group.key,index,-1)">上移</el-button><el-button type="text" :disabled="index===businessOption(group.key).length-1" @click="moveBusinessOption(group.key,index,1)">下移</el-button><el-button type="text" class="danger-text" @click="removeBusinessOption(group.key,index)">移除</el-button></span></div>
-                          <el-form-item label="名称（简体）"><el-input v-model="option.label"/></el-form-item>
-                          <div class="vehicle-option-meta"><el-form-item label="排序"><el-input-number v-model="option.sort" :min="1"/></el-form-item><el-form-item label="启用"><el-switch v-model="option.enabled"/></el-form-item><el-form-item label="稳定 ID（回传枚举值，只读）"><el-input v-model="option.id" readonly class="readonly-id-input"/></el-form-item></div>
-                        </div>
-                        <el-button plain icon="el-icon-plus" @click="addBusinessOption(group.key)">添加{{ group.label }}选项</el-button>
-                      </div>
-                    </el-tab-pane>
-                  </el-tabs>
-                </el-form>
-                <div class="form-actions"><el-button type="primary" icon="el-icon-check" :loading="busy" @click="saveBusinessService">保存配置</el-button></div>
-              </el-card>
-              <el-empty v-else description="正在加载希腊商旅配置"/>
-            </section>
-            <section v-else-if="active === 'travelGuide'">
-              <el-card shadow="never" class="section-card" v-if="travelGuide">
-                <div slot="header" class="card-heading"><div><span class="eyebrow">TRAVEL GUIDE / CONFIG</span><h2>出行指南内容</h2><p class="admin-muted">配置小程序「出行指南」页的分组与攻略卡片；保存后小程序重新进入页面即生效。</p></div><div class="header-actions"><el-button type="primary" icon="el-icon-check" :loading="busy" @click="saveTravelGuide">保存配置</el-button></div></div>
-                <el-alert title="只维护简体：繁体 / 英文缺失时服务端自动回退简体。分组最多 6 个、每组卡片最多 8 张；卡片要点每张最多 12 条。标题（简体）必填，卡片标题（简体）必填。" type="info" :closable="false" show-icon class="banner-note"/>
-                <el-form label-position="top">
-                  <div class="settings-structured"><h3>基础</h3>
-                    <el-form-item label="启用状态"><el-switch v-model="travelGuide.enabled" active-text="启用" inactive-text="停用"/></el-form-item>
-                    <el-form-item label="页面标题（简体）"><el-input v-model="travelGuide.title"/></el-form-item>
-                    <el-form-item label="页面副标题（简体）"><el-input v-model="travelGuide.subtitle"/></el-form-item>
-                    <el-form-item label="眉标（英文小字，可选）"><el-input v-model="travelGuide.kicker"/></el-form-item>
-                  </div>
-                  <div v-for="(section,sIndex) in travelGuide.sections" :key="section.key" class="settings-structured travel-guide-section">
-                    <h3>分组 {{ sIndex+1 }}：{{ section.title || '（未命名）' }}<span class="header-float-actions"><el-button type="text" :disabled="sIndex===0" @click="moveTravelSection(sIndex,-1)">上移</el-button><el-button type="text" :disabled="sIndex===travelGuide.sections.length-1" @click="moveTravelSection(sIndex,1)">下移</el-button><el-button type="text" class="danger-text" @click="removeTravelSection(sIndex)">删除分组</el-button></span></h3>
-                    <div class="vehicle-option-meta">
-                      <el-form-item label="组名（简体）"><el-input v-model="section.title"/></el-form-item>
-                      <el-form-item label="眉标（可选）"><el-input v-model="section.kicker"/></el-form-item>
-                    </div>
-                    <el-form-item label="分组导语（简体）"><el-input v-model="section.intro" type="textarea" :rows="2"/></el-form-item>
-                    <div v-for="(card,cIndex) in section.cards" :key="card.key" class="array-entry">
-                      <div class="array-entry-head"><b>卡片 {{ cIndex+1 }}：{{ card.title || '（未命名）' }}</b><span><el-button type="text" :disabled="cIndex===0" @click="moveTravelCard(sIndex,cIndex,-1)">上移</el-button><el-button type="text" :disabled="cIndex===section.cards.length-1" @click="moveTravelCard(sIndex,cIndex,1)">下移</el-button><el-button type="text" class="danger-text" @click="removeTravelCard(sIndex,cIndex)">删除卡片</el-button></span></div>
-                      <div class="vehicle-option-meta">
-                        <el-form-item label="角标字（如 签/箱，≤4 字）"><el-input v-model="card.mark"/></el-form-item>
-                        <el-form-item label="资料来源（可选）"><el-input v-model="card.source"/></el-form-item>
-                      </div>
-                      <el-form-item label="卡片标题（简体）"><el-input v-model="card.title"/></el-form-item>
-                      <el-form-item label="卡片描述（简体）"><el-input v-model="card.desc" type="textarea" :rows="2"/></el-form-item>
-                      <el-form-item label="要点（简体，每行一条）">
-                        <el-input v-for="(point,pIndex) in (card.points||[])" :key="pIndex" :value="card.points[pIndex]" class="vehicle-tag-input" placeholder="要点内容" @input="value=>$set(card.points,pIndex,value)"/>
-                        <div class="form-actions"><el-button plain size="small" icon="el-icon-plus" @click="addTravelPoint(card)">添加要点</el-button><el-button v-if="(card.points||[]).length" plain size="small" type="danger" icon="el-icon-delete" @click="removeTravelPoint(card,(card.points||[]).length-1)">删除最后一条</el-button></div>
-                      </el-form-item>
-                    </div>
-                    <el-button plain icon="el-icon-plus" @click="addTravelCard(section)">添加卡片</el-button>
-                  </div>
-                  <div class="settings-structured"><el-button plain icon="el-icon-plus" @click="addTravelSection">添加分组</el-button></div>
-                  <div class="settings-structured travel-guide-docs"><h3>在线阅读文档（小程序卡片入口）</h3>
-                    <el-alert title="为攻略卡片配置可下载打开的文档（PDF / Word / Excel / PPT，≤20MB）。保存后小程序对应卡片出现「在线阅读」入口；未配置的卡片不显示入口。链接可手动填写站内 /docs/… 路径或外部 https 链接。" type="info" :closable="false" show-icon class="banner-note"/>
-                    <div v-if="(travelDocFiles||[]).length" class="travel-doc-library"><h4>已上传文档库</h4>
-                      <div v-for="file in travelDocFiles" :key="file.url" class="travel-doc-item"><span class="travel-doc-name">{{ file.name }}</span><el-button type="text" @click="applyTravelDocLibrary(file.url)">应用到选中卡片</el-button></div>
-                    </div>
-                    <small v-else class="field-help">暂无本面板上传的文档；下方逐卡上传后自动列入。</small>
-                    <el-form-item v-if="travelGuideCardList().length" label="选中卡片" style="max-width:420px">
-                      <el-select v-model="travelDocSelectedKey" placeholder="选择要配置的卡片">
-                        <el-option v-for="card in travelGuideCardList()" :key="card.key" :label="(card.mark ? card.mark + ' · ' : '') + (card.title || card.key)" :value="card.key"/>
-                      </el-select>
-                    </el-form-item>
-                    <div v-if="travelDocSelectedKey" class="vehicle-option-meta">
-                      <el-form-item label="文档链接"><el-input v-model="travelGuide.docs[travelDocSelectedKey]" placeholder="如 /docs/visa-guide.pdf 或 https://…" style="min-width:340px"/></el-form-item>
-                      <el-form-item label="上传文档"><el-upload action="#" :show-file-list="false" :http-request="uploadTravelDoc" accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx"><el-button plain icon="el-icon-upload">选择文档</el-button></el-upload></el-form-item>
-                      <el-form-item v-if="travelGuide.docs[travelDocSelectedKey]" label=" "><el-button type="danger" plain size="small" icon="el-icon-delete" @click="clearTravelDoc(travelDocSelectedKey)">清除该卡片文档</el-button></el-form-item>
-                    </div>
-                    <div class="travel-doc-map">
-                      <div v-for="card in travelGuideCardList()" :key="card.key" class="travel-doc-map-row"><span class="travel-doc-key">{{ card.mark ? card.mark + ' ' : '' }}{{ card.title || card.key }}<small>（{{ card.key }}）</small></span><span :class="travelGuide.docs[card.key] ? 'travel-doc-set' : 'travel-doc-unset'">{{ travelGuide.docs[card.key] ? travelGuide.docs[card.key] : '未配置' }}</span></div>
-                    </div>
-                    <small class="image-guidance">卡片 key 与上方分组内卡片一一对应（visa / packing / outfit / food / photo / athens / mythology / destinations 等）；新增卡片后此处自动同步。</small>
-                  </div>
-                </el-form>
-                <div class="form-actions"><el-button type="primary" icon="el-icon-check" :loading="busy" @click="saveTravelGuide">保存配置</el-button></div>
-              </el-card>
-              <el-empty v-else description="正在加载出行指南配置"/>
-            </section>
             <section v-else class="list-page">
               <el-card shadow="never" class="section-card">
                 <div slot="header" class="card-heading"><div><span class="eyebrow">{{ currentMenu.eyebrow || 'CONTENT MANAGEMENT' }}</span><h2>{{ currentMenu.label }}</h2></div><div class="card-actions"><el-input v-model="filterText" clearable prefix-icon="el-icon-search" placeholder="筛选当前列表" class="list-search"/><el-button icon="el-icon-refresh" @click="loadAll">重新加载</el-button><el-button v-if="currentMenu.addLabel" type="primary" icon="el-icon-plus" @click="startCreate">{{ currentMenu.addLabel }}</el-button></div></div>
@@ -575,7 +394,172 @@
                   <el-input v-else v-model="form[field.key]" :placeholder="field.placeholder" :disabled="active==='cities'&&field.key==='id'&&!editor.isNew" @input="handleEditorTextInput(field.key)"/>
                   <small v-if="field.help" class="field-help">{{ field.help }}</small>
                 </el-form-item>
-              </div><el-form-item v-if="active==='attractions'" label="参观地图图片"><div class="image-editor"><div v-if="form.guide?.mapImage" class="image-preview"><img :src="assetUrl(form.guide.mapImage)" alt="参观地图预览"/></div><div class="image-actions"><el-upload action="#" :show-file-list="false" :http-request="uploadGuideMap" accept="image/png,image/jpeg,image/webp"><el-button plain icon="el-icon-picture">{{ form.guide?.mapImage ? '重新上传地图' : '上传参观地图' }}</el-button></el-upload><el-button v-if="form.guide?.mapImage" type="danger" plain size="small" icon="el-icon-delete" @click="removeGuideMap">删除地图图片</el-button></div><el-input v-model="form.guide.mapImage" placeholder="也可粘贴 HTTPS 图片链接"/><small class="image-guidance">{{ imageGuidance('attractions','mapImage',undefined,false) }} 可粘贴 HTTPS 图片地址。</small></div></el-form-item><el-form-item v-if="active==='audioTracks'&&recordEditorTab==='audio'" label="上传私有音频（MP3 / M4A，≤30MB）"><el-upload action="#" :show-file-list="false" :http-request="uploadAudio" accept=".mp3,.m4a,audio/mpeg,audio/mp4"><el-button icon="el-icon-upload" :loading="busy">{{ form.audioFile ? '重新上传并更新试听音频' : '上传音频并生成 '+(form.previewSeconds||60)+' 秒试听' }}</el-button></el-upload><small v-if="form.audioFile">已上传：{{ form.durationSeconds }} 秒；试听：{{ form.previewSeconds }} 秒。修改试听秒数后需重新上传；完整文件只会按所选收听规则授权播放。</small><small v-else>试听秒数可在上方设置（1–60 秒）；无音频的草稿可保存，但不可发布或成为可播放内容。</small></el-form-item><div v-if="active==='audioTracks' && recordEditorTab==='content' && (form.titleTw || form.titleEn || form.descriptionTw || form.descriptionEn)" class="audio-translation-preview"><b>翻译结果（只读预览）</b><p>繁体标题：{{ form.titleTw || '—' }}</p><p>英文标题：{{ form.titleEn || '—' }}</p><p>繁体简介：{{ form.descriptionTw || '—' }}</p><p>英文简介：{{ form.descriptionEn || '—' }}</p></div><el-alert v-if="jsonError" :title="jsonError" type="error" :closable="false" show-icon/><div class="form-actions"><el-button plain :disabled="busy||aiTranslating" @click="closeEditor">取消</el-button><el-button v-if="active==='audioTracks'&&recordEditorTab==='content'" icon="el-icon-magic-stick" :loading="aiTranslating" :disabled="!localAiEnabled || busy" :title="localAiEnabled ? '根据简体标题和简介生成繁体及英文内容' : 'AI 翻译未启用，请检查服务端配置'" @click="translateAudioTrack">自动翻译</el-button><el-button v-if="active==='destinations'" icon="el-icon-magic-stick" :loading="aiTranslating" :disabled="!localAiEnabled || busy" :title="localAiEnabled ? '根据简体名称生成英文名称' : 'AI 翻译未启用，请检查服务端配置'" @click="translateDestination">自动翻译</el-button><el-button v-if="translatableFieldGroups[active]" icon="el-icon-magic-stick" :loading="aiTranslating" :disabled="!localAiEnabled || busy" :title="localAiEnabled ? '根据简体内容生成繁体和英文翻译' : 'AI 翻译未启用，请检查服务端配置'" @click="translateRecordFields">自动翻译</el-button><el-button class="save-continue" type="primary" plain :loading="busy" :disabled="publicationChecking||aiFilling||aiTranslating" @click="saveEditor(true)">保存并继续编辑</el-button><el-button class="save-return" type="primary" icon="el-icon-check" :loading="busy" :disabled="publicationChecking||aiFilling||aiTranslating" @click="saveEditor(false)">保存并返回</el-button></div></el-form>
+              </div><el-form-item v-if="active==='attractions'" label="参观地图图片"><div class="image-editor"><div v-if="form.guide?.mapImage" class="image-preview"><img :src="assetUrl(form.guide.mapImage)" alt="参观地图预览"/></div><div class="image-actions"><el-upload action="#" :show-file-list="false" :http-request="uploadGuideMap" accept="image/png,image/jpeg,image/webp"><el-button plain icon="el-icon-picture">{{ form.guide?.mapImage ? '重新上传地图' : '上传参观地图' }}</el-button></el-upload><el-button v-if="form.guide?.mapImage" type="danger" plain size="small" icon="el-icon-delete" @click="removeGuideMap">删除地图图片</el-button></div><el-input v-model="form.guide.mapImage" placeholder="也可粘贴 HTTPS 图片链接"/><small class="image-guidance">{{ imageGuidance('attractions','mapImage',undefined,false) }} 可粘贴 HTTPS 图片地址。</small></div></el-form-item><el-form-item v-if="active==='audioTracks'&&recordEditorTab==='audio'" label="上传私有音频（MP3 / M4A，≤30MB）"><el-upload action="#" :show-file-list="false" :http-request="uploadAudio" accept=".mp3,.m4a,audio/mpeg,audio/mp4"><el-button icon="el-icon-upload" :loading="busy">{{ form.audioFile ? '重新上传并更新试听音频' : '上传音频并生成 '+(form.previewSeconds||60)+' 秒试听' }}</el-button></el-upload><small v-if="form.audioFile">已上传：{{ form.durationSeconds }} 秒；试听：{{ form.previewSeconds }} 秒。修改试听秒数后需重新上传；完整文件只会按所选收听规则授权播放。</small><small v-else>试听秒数可在上方设置（1–60 秒）；无音频的草稿可保存，但不可发布或成为可播放内容。</small></el-form-item><div v-if="active==='audioTracks' && recordEditorTab==='content' && (form.titleTw || form.titleEn || form.descriptionTw || form.descriptionEn)" class="audio-translation-preview"><b>翻译结果（只读预览）</b><p>繁体标题：{{ form.titleTw || '—' }}</p><p>英文标题：{{ form.titleEn || '—' }}</p><p>繁体简介：{{ form.descriptionTw || '—' }}</p><p>英文简介：{{ form.descriptionEn || '—' }}</p></div>            <template v-if="active==='miniprogramServiceEntries' && embeddedService">
+              <el-alert v-if="embeddedService==='vehicle'" title="以下配置对应用户点击「在地用车」入口打开的页面内容；与入口图标/标题（上方表单）相互独立。" type="info" :closable="false" show-icon class="banner-note"/>
+              <el-alert v-else-if="embeddedService==='business'" title="以下配置对应用户点击「希腊商旅」入口打开的页面内容；与入口图标/标题（上方表单）相互独立。" type="info" :closable="false" show-icon class="banner-note"/>
+              <el-alert v-else title="以下配置对应用户点击「出行指南」入口打开的页面内容；与入口图标/标题（上方表单）相互独立。" type="info" :closable="false" show-icon class="banner-note"/>
+              <div v-if="embeddedService==='vehicle' && vehicleService" class="embedded-service-config">
+                <div slot="header" class="card-heading"><div><span class="eyebrow">VEHICLE SERVICE / CONFIG</span><h2>在地用车内容</h2><p class="admin-muted">配置在地用车页面文案、图片与车型 / 时长 / 人数选项；保存后小程序重新进入页面即生效。</p></div><div class="header-actions"><el-button type="primary" icon="el-icon-check" :loading="busy" @click="saveVehicleService">保存在地用车配置</el-button></div></div>
+                <el-alert title="只维护简体：繁体 / 英文缺失时服务端自动回退简体，公开接口仍返回三语字段。保存校验：页面标题 / 副标题 / 页面说明（简体）必填，选项非空且组内排序唯一。小程序界面固定文案不在此维护。" type="info" :closable="false" show-icon class="banner-note"/>
+              <el-form label-position="top">
+                  <el-tabs v-model="vehicleConfigTab" class="vehicle-config-tabs">
+                    <el-tab-pane label="页面内容" name="page">
+                  <div class="settings-structured"><h3>基础</h3>
+                    <el-form-item label="启用状态"><el-switch v-model="vehicleService.enabled" active-text="启用" inactive-text="停用"/></el-form-item>
+                    <el-form-item label="排序"><el-input-number v-model="vehicleService.sort" :min="1"/></el-form-item>
+                  </div>
+                  <div v-for="field in [{key:'title',label:'页面标题',area:false},{key:'subtitle',label:'副标题',area:false},{key:'description',label:'页面说明',area:true},{key:'note',label:'注意事项',area:true},{key:'disclaimer',label:'免责说明（可选）',area:true}]" :key="field.key" class="settings-structured">
+                    <h3>{{ field.label }}</h3>
+                    <el-form-item label="简体"><el-input v-if="field.area" v-model="vehicleService[field.key]" type="textarea" :rows="2"/><el-input v-else v-model="vehicleService[field.key]"/></el-form-item>
+                  </div>
+                  <div class="settings-structured"><h3>服务标签</h3>
+                    <el-form-item label="简体（每行一条）"><el-input v-for="(tag,index) in (vehicleService.tags||[])" :key="index" :value="vehicleService.tags[index]" class="vehicle-tag-input" placeholder="标签内容" @input="value=>$set(vehicleService.tags,index,value)"/><small v-if="!(vehicleService.tags||[]).length" class="field-help">暂无标签</small></el-form-item>
+                    <div class="form-actions"><el-button plain size="small" icon="el-icon-plus" @click="addVehicleTag">添加一条标签</el-button><el-button v-if="(vehicleService.tags||[]).length" plain size="small" type="danger" icon="el-icon-delete" @click="removeVehicleTag((vehicleService.tags||[]).length-1)">删除最后一条</el-button></div>
+                  </div>
+                  <div class="settings-structured"><h3>页面图片（可多张）</h3>
+                    <div v-for="(image,index) in (vehicleService.images||[])" :key="image+index" class="image-editor"><div class="image-preview"><img :src="assetUrl(image)" :alt="'图片 '+(index+1)"/></div><div class="image-actions"><el-button type="danger" plain size="small" icon="el-icon-delete" @click="vehicleService.images.splice(index,1)">删除图片</el-button></div></div>
+                    <el-upload action="#" :show-file-list="false" :http-request="uploadVehicleImage"><el-button icon="el-icon-upload">选择图片上传</el-button></el-upload>
+                    <small class="image-guidance">选填 · 建议 1200×900 px（4:3 通用横图）；当前小程序用车预约页尚未展示这组配图，暂不按前台容器裁切。若后续增加展示，请再按实际图片框比例调整。支持 PNG / JPG / WebP，单张最大 6MB。</small>
+                  </div>
+                    </el-tab-pane>
+                    <el-tab-pane label="预约表单" name="form">
+                  <div class="settings-structured"><h3>表单文案（简体；留空则由小程序使用本地文案）</h3>
+                    <div v-for="field in [{key:'title',label:'表单标题'},{key:'tip',label:'表单提示'},{key:'dateLabel',label:'日期标签'},{key:'durationLabel',label:'时长标签'},{key:'vehicleLabel',label:'车型标签'},{key:'peopleLabel',label:'人数标签'},{key:'routeLabel',label:'路线标签'},{key:'contactLabel',label:'联系方式标签'},{key:'submitLabel',label:'提交按钮文案'},{key:'routePlaceholder',label:'路线输入提示'},{key:'phonePlaceholder',label:'手机输入提示'},{key:'wechatPlaceholder',label:'微信输入提示'}]" :key="field.key" class="vehicle-form-field">
+                      <el-form-item :label="field.label"><el-input v-model="vehicleService.form[field.key]"/></el-form-item>
+                    </div>
+                  </div>
+                  <div class="settings-structured"><h3>表单开关与日期范围</h3>
+                    <div class="vehicle-option-meta">
+                      <el-form-item label="显示手机"><el-switch v-model="vehicleService.form.contactPhone"/></el-form-item>
+                      <el-form-item label="显示微信"><el-switch v-model="vehicleService.form.contactWechat"/></el-form-item>
+                      <el-form-item label="路线必填"><el-switch v-model="vehicleService.form.routeRequired"/></el-form-item>
+                    </div>
+                    <div class="vehicle-option-meta">
+                      <el-form-item label="开始日期（today 或 YYYY-MM-DD）"><el-input v-model="vehicleService.form.dateStart" placeholder="today"/></el-form-item>
+                      <el-form-item label="结束日期（可留空）"><el-input v-model="vehicleService.form.dateEnd" placeholder="YYYY-MM-DD"/></el-form-item>
+                    </div>
+                  </div>
+                    </el-tab-pane>
+                    <el-tab-pane label="车型与服务选项" name="options">
+                  <div v-for="group in vehicleOptionGroups" :key="group.key" class="settings-structured">
+                    <h3>{{ group.label }}选项</h3>
+                    <div v-for="(option,index) in vehicleOption(group.key)" :key="index" class="array-entry">
+                      <div class="array-entry-head"><b>{{ group.label }} {{ index+1 }}</b><span><el-button type="text" :disabled="index===0" @click="moveVehicleOption(group.key,index,-1)">上移</el-button><el-button type="text" :disabled="index===vehicleOption(group.key).length-1" @click="moveVehicleOption(group.key,index,1)">下移</el-button><el-button type="text" class="danger-text" @click="removeVehicleOption(group.key,index)">移除</el-button></span></div>
+                      <el-form-item label="名称（简体）"><el-input v-model="option.label"/></el-form-item>
+                      <div class="vehicle-option-meta"><el-form-item label="排序"><el-input-number v-model="option.sort" :min="1"/></el-form-item><el-form-item label="启用"><el-switch v-model="option.enabled"/></el-form-item><el-form-item label="稳定 ID（回传枚举值，只读）"><el-input v-model="option.id" readonly class="readonly-id-input"/></el-form-item></div>
+                    </div>
+                    <el-button plain icon="el-icon-plus" @click="addVehicleOption(group.key)">添加{{ group.label }}选项</el-button>
+                  </div>
+                    </el-tab-pane>
+                  </el-tabs>
+                </el-form>
+                
+              </div>
+              <div v-else-if="embeddedService==='business' && businessService" class="embedded-service-config">
+                <div slot="header" class="card-heading"><div><span class="eyebrow">BUSINESS SERVICE / CONFIG</span><h2>希腊商旅配置</h2><p class="admin-muted">配置小程序「希腊商旅」页头部文案、标签与咨询表单选项；保存后小程序重新进入页面即生效。</p></div><div class="header-actions"><el-button type="primary" icon="el-icon-check" :loading="busy" @click="saveBusinessService">保存配置</el-button></div></div>
+                <el-alert title="只维护简体：繁体 / 英文缺失时服务端自动回退简体，公开接口仍返回三语字段。保存校验：页面标题 / 副标题 / 页面说明（简体）必填，四组选项非空且组内排序唯一。表单文案留空时小程序使用本地默认文案。" type="info" :closable="false" show-icon class="banner-note"/>
+                <el-form label-position="top">
+                  <el-tabs v-model="businessConfigTab">
+                    <el-tab-pane label="页面内容" name="page">
+                      <div class="settings-structured"><h3>基础</h3>
+                        <el-form-item label="启用状态"><el-switch v-model="businessService.enabled" active-text="启用" inactive-text="停用"/></el-form-item>
+                      </div>
+                      <div v-for="field in [{key:'kicker',label:'眉标（英文小字）',area:false},{key:'title',label:'页面标题',area:false},{key:'subtitle',label:'副标题',area:false},{key:'description',label:'页面说明',area:true},{key:'note',label:'注意事项',area:true},{key:'disclaimer',label:'免责说明（可选）',area:true}]" :key="field.key" class="settings-structured">
+                        <h3>{{ field.label }}</h3>
+                        <el-form-item label="简体"><el-input v-if="field.area" v-model="businessService[field.key]" type="textarea" :rows="2"/><el-input v-else v-model="businessService[field.key]"/></el-form-item>
+                      </div>
+                      <div class="settings-structured"><h3>服务标签</h3>
+                        <el-form-item label="简体（每行一条）"><el-input v-for="(tag,index) in (businessService.tags||[])" :key="index" :value="businessService.tags[index]" class="vehicle-tag-input" placeholder="标签内容" @input="value=>$set(businessService.tags,index,value)"/><small v-if="!(businessService.tags||[]).length" class="field-help">暂无标签</small></el-form-item>
+                        <div class="form-actions"><el-button plain size="small" icon="el-icon-plus" @click="addBusinessTag">添加一条标签</el-button><el-button v-if="(businessService.tags||[]).length" plain size="small" type="danger" icon="el-icon-delete" @click="removeBusinessTag((businessService.tags||[]).length-1)">删除最后一条</el-button></div>
+                      </div>
+                      <div class="settings-structured"><h3>页面图片（可多张）</h3>
+                        <div v-for="(image,index) in (businessService.images||[])" :key="image+index" class="image-editor"><div class="image-preview"><img :src="assetUrl(image)" :alt="'图片 '+(index+1)"/></div><div class="image-actions"><el-button type="danger" plain size="small" icon="el-icon-delete" @click="businessService.images.splice(index,1)">删除图片</el-button></div></div>
+                        <el-upload action="#" :show-file-list="false" :http-request="uploadBusinessImage"><el-button icon="el-icon-upload">选择图片上传</el-button></el-upload>
+                        <small class="image-guidance">选填 · 支持 PNG / JPG / WebP，单张最大 6MB。</small>
+                      </div>
+                    </el-tab-pane>
+                    <el-tab-pane label="咨询表单" name="form">
+                      <div class="settings-structured"><h3>表单文案（简体；留空则由小程序使用本地文案）</h3>
+                        <div v-for="field in [{key:'cardTitle',label:'表单标题'},{key:'cardTip',label:'表单提示'},{key:'cycleLabel',label:'往返周期标签'},{key:'durationLabel',label:'陪同时长标签'},{key:'languageLabel',label:'语言需求标签'},{key:'industryLabel',label:'行业与需求标签'},{key:'industryPlaceholder',label:'需求输入提示'},{key:'industryRequired',label:'必填提示'},{key:'peopleLabel',label:'随行人数标签'},{key:'contactLabel',label:'联系方式标签'},{key:'wechatLabel',label:'微信选项文案'},{key:'phoneLabel',label:'手机选项文案'},{key:'phonePlaceholder',label:'手机输入提示'},{key:'wechatPlaceholder',label:'微信输入提示'},{key:'submitLabel',label:'提交按钮文案'}]" :key="field.key" class="vehicle-form-field">
+                          <el-form-item :label="field.label"><el-input v-model="businessService.form[field.key]"/></el-form-item>
+                        </div>
+                      </div>
+                    </el-tab-pane>
+                    <el-tab-pane label="表单选项" name="options">
+                      <div v-for="group in businessOptionGroups" :key="group.key" class="settings-structured">
+                        <h3>{{ group.label }}选项</h3>
+                        <div v-for="(option,index) in businessOption(group.key)" :key="index" class="array-entry">
+                          <div class="array-entry-head"><b>{{ group.label }} {{ index+1 }}</b><span><el-button type="text" :disabled="index===0" @click="moveBusinessOption(group.key,index,-1)">上移</el-button><el-button type="text" :disabled="index===businessOption(group.key).length-1" @click="moveBusinessOption(group.key,index,1)">下移</el-button><el-button type="text" class="danger-text" @click="removeBusinessOption(group.key,index)">移除</el-button></span></div>
+                          <el-form-item label="名称（简体）"><el-input v-model="option.label"/></el-form-item>
+                          <div class="vehicle-option-meta"><el-form-item label="排序"><el-input-number v-model="option.sort" :min="1"/></el-form-item><el-form-item label="启用"><el-switch v-model="option.enabled"/></el-form-item><el-form-item label="稳定 ID（回传枚举值，只读）"><el-input v-model="option.id" readonly class="readonly-id-input"/></el-form-item></div>
+                        </div>
+                        <el-button plain icon="el-icon-plus" @click="addBusinessOption(group.key)">添加{{ group.label }}选项</el-button>
+                      </div>
+                    </el-tab-pane>
+                  </el-tabs>
+                </el-form>
+                
+              </div>
+              <div v-else-if="embeddedService==='travel-guide' && travelGuide" class="embedded-service-config">
+                <div slot="header" class="card-heading"><div><span class="eyebrow">TRAVEL GUIDE / CONFIG</span><h2>出行指南内容</h2><p class="admin-muted">配置小程序「出行指南」页的分组与攻略卡片；保存后小程序重新进入页面即生效。</p></div><div class="header-actions"><el-button type="primary" icon="el-icon-check" :loading="busy" @click="saveTravelGuide">保存配置</el-button></div></div>
+                <el-alert title="只维护简体：繁体 / 英文缺失时服务端自动回退简体。分组最多 6 个、每组卡片最多 8 张；卡片要点每张最多 12 条。标题（简体）必填，卡片标题（简体）必填。" type="info" :closable="false" show-icon class="banner-note"/>
+                <el-form label-position="top">
+                  <div class="settings-structured"><h3>基础</h3>
+                    <el-form-item label="启用状态"><el-switch v-model="travelGuide.enabled" active-text="启用" inactive-text="停用"/></el-form-item>
+                    <el-form-item label="页面标题（简体）"><el-input v-model="travelGuide.title"/></el-form-item>
+                    <el-form-item label="页面副标题（简体）"><el-input v-model="travelGuide.subtitle"/></el-form-item>
+                    <el-form-item label="眉标（英文小字，可选）"><el-input v-model="travelGuide.kicker"/></el-form-item>
+                  </div>
+                  <div v-for="(section,sIndex) in travelGuide.sections" :key="section.key" class="settings-structured travel-guide-section">
+                    <h3>分组 {{ sIndex+1 }}：{{ section.title || '（未命名）' }}<span class="header-float-actions"><el-button type="text" :disabled="sIndex===0" @click="moveTravelSection(sIndex,-1)">上移</el-button><el-button type="text" :disabled="sIndex===travelGuide.sections.length-1" @click="moveTravelSection(sIndex,1)">下移</el-button><el-button type="text" class="danger-text" @click="removeTravelSection(sIndex)">删除分组</el-button></span></h3>
+                    <div class="vehicle-option-meta">
+                      <el-form-item label="组名（简体）"><el-input v-model="section.title"/></el-form-item>
+                      <el-form-item label="眉标（可选）"><el-input v-model="section.kicker"/></el-form-item>
+                    </div>
+                    <el-form-item label="分组导语（简体）"><el-input v-model="section.intro" type="textarea" :rows="2"/></el-form-item>
+                    <div v-for="(card,cIndex) in section.cards" :key="card.key" class="array-entry">
+                      <div class="array-entry-head"><b>卡片 {{ cIndex+1 }}：{{ card.title || '（未命名）' }}</b><span><el-button type="text" :disabled="cIndex===0" @click="moveTravelCard(sIndex,cIndex,-1)">上移</el-button><el-button type="text" :disabled="cIndex===section.cards.length-1" @click="moveTravelCard(sIndex,cIndex,1)">下移</el-button><el-button type="text" class="danger-text" @click="removeTravelCard(sIndex,cIndex)">删除卡片</el-button></span></div>
+                      <div class="vehicle-option-meta">
+                        <el-form-item label="角标字（如 签/箱，≤4 字）"><el-input v-model="card.mark"/></el-form-item>
+                        <el-form-item label="资料来源（可选）"><el-input v-model="card.source"/></el-form-item>
+                      </div>
+                      <el-form-item label="卡片标题（简体）"><el-input v-model="card.title"/></el-form-item>
+                      <el-form-item label="卡片描述（简体）"><el-input v-model="card.desc" type="textarea" :rows="2"/></el-form-item>
+                      <el-form-item label="要点（简体，每行一条）">
+                        <el-input v-for="(point,pIndex) in (card.points||[])" :key="pIndex" :value="card.points[pIndex]" class="vehicle-tag-input" placeholder="要点内容" @input="value=>$set(card.points,pIndex,value)"/>
+                        <div class="form-actions"><el-button plain size="small" icon="el-icon-plus" @click="addTravelPoint(card)">添加要点</el-button><el-button v-if="(card.points||[]).length" plain size="small" type="danger" icon="el-icon-delete" @click="removeTravelPoint(card,(card.points||[]).length-1)">删除最后一条</el-button></div>
+                      </el-form-item>
+                    </div>
+                    <el-button plain icon="el-icon-plus" @click="addTravelCard(section)">添加卡片</el-button>
+                  </div>
+                  <div class="settings-structured"><el-button plain icon="el-icon-plus" @click="addTravelSection">添加分组</el-button></div>
+                  <div class="settings-structured travel-guide-docs"><h3>在线阅读文档（小程序卡片入口）</h3>
+                    <el-alert title="为攻略卡片配置可下载打开的文档（PDF / Word / Excel / PPT，≤20MB）。保存后小程序对应卡片出现「在线阅读」入口；未配置的卡片不显示入口。链接可手动填写站内 /docs/… 路径或外部 https 链接。" type="info" :closable="false" show-icon class="banner-note"/>
+                    <div v-if="(travelDocFiles||[]).length" class="travel-doc-library"><h4>已上传文档库</h4>
+                      <div v-for="file in travelDocFiles" :key="file.url" class="travel-doc-item"><span class="travel-doc-name">{{ file.name }}</span><el-button type="text" @click="applyTravelDocLibrary(file.url)">应用到选中卡片</el-button></div>
+                    </div>
+                    <small v-else class="field-help">暂无本面板上传的文档；下方逐卡上传后自动列入。</small>
+                    <el-form-item v-if="travelGuideCardList().length" label="选中卡片" style="max-width:420px">
+                      <el-select v-model="travelDocSelectedKey" placeholder="选择要配置的卡片">
+                        <el-option v-for="card in travelGuideCardList()" :key="card.key" :label="(card.mark ? card.mark + ' · ' : '') + (card.title || card.key)" :value="card.key"/>
+                      </el-select>
+                    </el-form-item>
+                    <div v-if="travelDocSelectedKey" class="vehicle-option-meta">
+                      <el-form-item label="文档链接"><el-input v-model="travelGuide.docs[travelDocSelectedKey]" placeholder="如 /docs/visa-guide.pdf 或 https://…" style="min-width:340px"/></el-form-item>
+                      <el-form-item label="上传文档"><el-upload action="#" :show-file-list="false" :http-request="uploadTravelDoc" accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx"><el-button plain icon="el-icon-upload">选择文档</el-button></el-upload></el-form-item>
+                      <el-form-item v-if="travelGuide.docs[travelDocSelectedKey]" label=" "><el-button type="danger" plain size="small" icon="el-icon-delete" @click="clearTravelDoc(travelDocSelectedKey)">清除该卡片文档</el-button></el-form-item>
+                    </div>
+                    <div class="travel-doc-map">
+                      <div v-for="card in travelGuideCardList()" :key="card.key" class="travel-doc-map-row"><span class="travel-doc-key">{{ card.mark ? card.mark + ' ' : '' }}{{ card.title || card.key }}<small>（{{ card.key }}）</small></span><span :class="travelGuide.docs[card.key] ? 'travel-doc-set' : 'travel-doc-unset'">{{ travelGuide.docs[card.key] ? travelGuide.docs[card.key] : '未配置' }}</span></div>
+                    </div>
+                    <small class="image-guidance">卡片 key 与上方分组内卡片一一对应（visa / packing / outfit / food / photo / athens / mythology / destinations 等）；新增卡片后此处自动同步。</small>
+                  </div>
+                </el-form>
+                
+              </div>
+              <div v-else-if="embeddedService" class="embedded-service-config"><el-empty :description="embeddedLoadingLabel"/></div>
+            </template>
+<el-alert v-if="jsonError" :title="jsonError" type="error" :closable="false" show-icon/><div class="form-actions"><el-button plain :disabled="busy||aiTranslating" @click="closeEditor">取消</el-button><el-button v-if="active==='audioTracks'&&recordEditorTab==='content'" icon="el-icon-magic-stick" :loading="aiTranslating" :disabled="!localAiEnabled || busy" :title="localAiEnabled ? '根据简体标题和简介生成繁体及英文内容' : 'AI 翻译未启用，请检查服务端配置'" @click="translateAudioTrack">自动翻译</el-button><el-button v-if="active==='destinations'" icon="el-icon-magic-stick" :loading="aiTranslating" :disabled="!localAiEnabled || busy" :title="localAiEnabled ? '根据简体名称生成英文名称' : 'AI 翻译未启用，请检查服务端配置'" @click="translateDestination">自动翻译</el-button><el-button v-if="translatableFieldGroups[active]" icon="el-icon-magic-stick" :loading="aiTranslating" :disabled="!localAiEnabled || busy" :title="localAiEnabled ? '根据简体内容生成繁体和英文翻译' : 'AI 翻译未启用，请检查服务端配置'" @click="translateRecordFields">自动翻译</el-button><el-button class="save-continue" type="primary" plain :loading="busy" :disabled="publicationChecking||aiFilling||aiTranslating" @click="saveEditor(true)">保存并继续编辑</el-button><el-button class="save-return" type="primary" icon="el-icon-check" :loading="busy" :disabled="publicationChecking||aiFilling||aiTranslating" @click="saveEditor(false)">保存并返回</el-button></div></el-form>
             </el-card>
           </section>
         </main>
@@ -622,10 +606,10 @@ const groups = [
   { label:'路线与目的地', items:[['routes','路线管理','el-icon-document'],['cities','城市与价格','el-icon-location-outline'],['miniProgramCommerce','城市与专辑定价','el-icon-s-goods'],['destinationTypes','目的地分类','el-icon-collection-tag'],['destinations','目的地','el-icon-map-location'],['attractions','景点管理','el-icon-school'],['sampleItineraries','甄选路线','el-icon-guide']] },
   { label:'网站管理', items:[['homeBanners','首页 Banner','el-icon-picture'],['settings','站点配置','el-icon-setting'],['attractionDetailPage','景点详情配置','el-icon-document']] },
   { label:'语音与文史', items:[['audioRoutes','路线导览','el-icon-location-information'],['audioTracks','导览音频 / 文史节目','el-icon-headset'],['audioAlbums','希腊文史专辑','el-icon-collection'],['heritageGuideBanners','古迹讲解 Banner','el-icon-picture-outline']] },
-  { label:'小程序管理', items:[['membershipSettings','会员等级','el-icon-user'],['miniProgramBookings','小程序预约','el-icon-mobile-phone'],['miniprogramBanners','小程序 Banner','el-icon-picture-outline'],['miniprogramServiceEntries','首页服务入口','el-icon-menu'],['vehicleService','在地用车','el-icon-truck'],['miniprogramUsers','小程序用户','el-icon-user'],['miniprogramOrders','订单管理','el-icon-s-finance'],['miniprogramTrips','小程序行程','el-icon-map-location'],['customTrips','定制行程订单','el-icon-link'],['miniprogramTravelers','出行人资料','el-icon-user-solid'],['miniprogramDocuments','签证资料','el-icon-document'],['miniprogramCoupons','优惠券','el-icon-s-ticket']], sections:[
+  { label:'小程序管理', items:[['membershipSettings','会员等级','el-icon-user'],['miniProgramBookings','小程序预约','el-icon-mobile-phone'],['miniprogramBanners','小程序 Banner','el-icon-picture-outline'],['miniprogramServiceEntries','首页服务入口','el-icon-menu'],['miniprogramUsers','小程序用户','el-icon-user'],['miniprogramOrders','订单管理','el-icon-s-finance'],['miniprogramTrips','小程序行程','el-icon-map-location'],['customTrips','定制行程订单','el-icon-link'],['miniprogramTravelers','出行人资料','el-icon-user-solid'],['miniprogramDocuments','签证资料','el-icon-document'],['miniprogramCoupons','优惠券','el-icon-s-ticket']], sections:[
     {index:'小程序展示与会员',label:'展示与会员',items:[['membershipSettings','会员等级','el-icon-user'],['miniprogramBanners','小程序 Banner','el-icon-picture-outline'],['miniprogramServiceEntries','首页服务入口','el-icon-menu']]},
     {index:'小程序用户与订单',label:'用户与订单',items:[['miniProgramBookings','小程序预约','el-icon-mobile-phone'],['miniprogramUsers','小程序用户','el-icon-user'],['miniprogramOrders','订单管理','el-icon-s-finance'],['miniprogramCoupons','优惠券','el-icon-s-ticket']]},
-    {index:'小程序行程与资料',label:'行程与资料',items:[['vehicleService','在地用车','el-icon-truck'],['businessService','希腊商旅','el-icon-suitcase'],['travelGuide','出行指南内容','el-icon-notebook-2'],['miniprogramTrips','小程序行程','el-icon-map-location'],['customTrips','定制行程订单','el-icon-link'],['miniprogramTravelers','出行人资料','el-icon-user-solid'],['miniprogramDocuments','签证资料','el-icon-document']]}
+    {index:'小程序行程与资料',label:'行程与资料',items:[['miniprogramTrips','小程序行程','el-icon-map-location'],['customTrips','定制行程订单','el-icon-link'],['miniprogramTravelers','出行人资料','el-icon-user-solid'],['miniprogramDocuments','签证资料','el-icon-document']]}
   ] },
 ]
 const MENU_IDS = new Set(groups.flatMap(group=>group.items).map(item=>item[0]))
@@ -660,9 +644,9 @@ const guideGroups = [
     {title:'城市景点包与文史专辑定价',menu:'miniProgramCommerce',menuLabel:'城市与专辑定价',location:'小程序「城市景点包」与「文史专辑」的商品名称、价格、币种及启用状态。',description:'快速设置城市景点包（cityId 购买，解锁城市全部已发布景点）与文史专辑（albumId 购买，解锁专辑所有已发布节目）的名称、价格、币种和启用状态；年会员仍在「会员等级」维护。'},
     {title:'目的地',menu:'destinations',menuLabel:'目的地',location:'小程序目的地内容与目的地下的景点关联。',description:'维护目的地文案、图片、城市和关联景点。'},
     {title:'甄选路线',menu:'sampleItineraries',menuLabel:'甄选路线',location:'小程序首页「甄选路线」和路线详情。',description:'维护路线卡片、天数、封面和逐日行程；仅发布内容会展示。'},
-    {title:'在地用车',menu:'vehicleService',menuLabel:'在地用车',location:'小程序「在地用车」介绍、服务标签和车型选项。',description:'维护用车页面文案、图片、服务标签及车型、时长和人数选项。'},
-    {title:'希腊商旅',menu:'businessService',menuLabel:'希腊商旅',location:'小程序「希腊商旅」页面介绍、服务标签和咨询表单选项。',description:'维护商旅页面文案、图片、标签及往返周期、陪同时长、语言需求和随行人数选项。'},
-    {title:'出行指南内容',menu:'travelGuide',menuLabel:'出行指南内容',location:'小程序「出行指南」页面的分组与攻略卡片，以及卡片在线阅读文档。',description:'维护页面标题、分组导语和卡片内容；可为每张卡片上传 PDF 等文档，配置后小程序卡片出现「在线阅读」入口。'},
+    {title:'在地用车',menu:'miniprogramServiceEntries',filter:{key:'key',value:'vehicle'},menuLabel:'首页服务入口',location:'小程序「在地用车」介绍、服务标签和车型选项。',description:'点击进入后在「在地用车」入口行点「编辑」，在编辑页内维护用车页面文案、图片、服务标签及车型、时长和人数选项。'},
+    {title:'希腊商旅',menu:'miniprogramServiceEntries',filter:{key:'key',value:'business'},menuLabel:'首页服务入口',location:'小程序「希腊商旅」页面介绍、服务标签和咨询表单选项。',description:'点击进入后在「希腊商旅」入口行点「编辑」，在编辑页内维护商旅页面文案、图片、标签及往返周期、陪同时长、语言需求和随行人数选项。'},
+    {title:'出行指南内容',menu:'miniprogramServiceEntries',filter:{key:'key',value:'travel-guide'},menuLabel:'首页服务入口',location:'小程序「出行指南」页面的分组与攻略卡片，以及卡片在线阅读文档。',description:'点击进入后在「出行指南」入口行点「编辑」，在编辑页内维护页面标题、分组导语和卡片内容，并为卡片上传 PDF 等文档。'},
     {title:'小程序预约记录',menu:'miniProgramBookings',menuLabel:'小程序预约',location:'小程序提交的预约咨询记录。',description:'查看并更新预约跟进状态；这里维护的是客户提交记录，不是页面展示文案。'}
   ]}
 ]
@@ -721,7 +705,7 @@ const publish = [{label:'发布',value:'published'},{label:'下架',value:'unpub
 const listFilterKeys = {
   audioRoutes:['status','attractionId'], audioTracks:['status'], audioAlbums:['status'],
   countries:['enabled'], guides:['enabled','countryId','featured'], routes:['status','days'], destinations:['status','type'], cities:['status'], destinationTypes:['enabled'], attractions:['status','city','type'], sampleItineraries:['status','tag'], customTrips:['status','period'],
-  leads:['status','leadType','createdAt'], guideBookings:['status','bookingDate','createdAt'], miniProgramBookings:['status','leadType','createdAt'], miniprogramTrips:['status','leadType','createdAt'], homeBanners:['enabled'], miniprogramBanners:['enabled'], miniprogramServiceEntries:['enabled'], heritageGuideBanners:['enabled'],
+  leads:['status','leadType','createdAt'], guideBookings:['status','bookingDate','createdAt'], miniProgramBookings:['status','leadType','createdAt'], miniprogramTrips:['status','leadType','createdAt'], homeBanners:['enabled'], miniprogramBanners:['enabled'], miniprogramServiceEntries:['enabled','key'], heritageGuideBanners:['enabled'],
   miniprogramUsers:['member','createdAt'], miniprogramOrders:['status','productType','createdAt'], miniprogramTravelers:['relation'], miniprogramDocuments:['visaStatus','expiry'], miniprogramCoupons:['status','expiresAt']
 }
 const listFilterLabels = {enabled:'发布状态',featured:'首页推荐',countryId:'所属国家',status:'状态',unlockMode:'收听规则',days:'天数',type:'分类 / 类型',currency:'币种',priceCny:'讲解价格',city:'城市',tag:'标签',period:'出行日期',leadType:'记录类型',createdAt:'创建日期',vehicleDate:'用车日期',vehicleNeed:'用车场景',bookingDate:'预约日期',member:'会员类型',productType:'商品类型',relation:'关系',visaStatus:'签证状态',expiry:'证件到期日期',expiresAt:'优惠券有效期'}
@@ -810,7 +794,7 @@ const attractionEditorFieldGroups = [
 
 export default {
   name:'AdminApp',
-  data(){return{token:sessionStorage.getItem(TOKEN)||'',password:'',error:'',active:MENU_IDS.has(sessionStorage.getItem(ACTIVE_MENU))?sessionStorage.getItem(ACTIVE_MENU):'overview',guideVisible:false,membershipDialogVisible:false,membershipSaving:false,membershipEditingUser:null,membershipForm:{type:'auto',expiresAt:''},guideGroups,settingsTab:'site',detailTab:'sections',detailPage:null,vehicleService:null,vehicleView:'list',detailLocales,vehicleOptionGroups,detailSectionKeys,detailVisitorKeys,detailExhibitFields,detailHighlightFields,detailRouteFields,detailAudioFields,detailAudioCategoryLabels,translatableFieldGroups,attractionView:'list',attractionEditorTab:'basic',recordEditorTab:'basic',vehicleConfigTab:'page',businessService:null,travelGuide:null,businessConfigTab:'page',travelDocFiles:[],travelDocSelectedKey:'',menuOpenSnapshot:(()=>{const saved=sessionStorage.getItem(ACTIVE_MENU);const group=groups.find(item=>item.items.some(entry=>entry[0]===saved));if(!group||group.label==='共同数据')return [];const opened=[group.label];const section=group.sections?.find(item=>item.items.some(entry=>entry[0]===saved));if(section)opened.push(section.index);return opened})(),businessOptionGroups:[{key:'cycle',label:'往返周期'},{key:'duration',label:'陪同时长'},{key:'language',label:'语言需求'},{key:'people',label:'随行人数'}],attractionDestinationFilter:'',audioTrackCategoryFilter:'',audioDestinationFilter:'',expandedAudioGroups:[],destinationLinkSaving:{},data:JSON.parse(JSON.stringify(emptyData)),stats:{},commerce:{},settings:this.defaultSettings(),loading:false,busy:false,localAiEnabled:false,aiFillDialogVisible:false,aiFilling:false,aiTranslating:false,aiAttractionName:'',aiEntityType:'attraction',aiProgressMessage:'正在准备…',filterText:'',page:1,pageSize:10,pageSizes:[5,10,20,50,100],groupPages:{},filters:{enabled:'',featured:'',countryId:'',status:'',days:'',type:'',currency:'',priceCny:[null,null],city:'',tag:'',period:[],leadType:'',createdAt:[],bookingDate:[],member:'',productType:'',relation:'',visaStatus:'',expiry:[],expiresAt:[]},editor:null,editorBaseline:'',destinationAttractionSearch:'',destinationShowAllCities:false,selectedAttractionIds:[],batchBusy:false,publicationResults:[],publicationChecking:false,publicationCheckedAt:'',apiOrigin:window.location.origin,form:{},jsonFields:{},dateRange:[],jsonError:'',confirmVisible:false,confirmText:'',confirmHandler:null,menuGroups:groups,rowStatusOptions:[{label:'发布',value:'published'},{label:'下架',value:'unpublished'}],settingTabs}},
+  data(){return{token:sessionStorage.getItem(TOKEN)||'',password:'',error:'',active:MENU_IDS.has(sessionStorage.getItem(ACTIVE_MENU))?sessionStorage.getItem(ACTIVE_MENU):'overview',guideVisible:false,membershipDialogVisible:false,membershipSaving:false,membershipEditingUser:null,membershipForm:{type:'auto',expiresAt:''},guideGroups,settingsTab:'site',detailTab:'sections',detailPage:null,vehicleService:null,vehicleView:'list',detailLocales,vehicleOptionGroups,detailSectionKeys,detailVisitorKeys,detailExhibitFields,detailHighlightFields,detailRouteFields,detailAudioFields,detailAudioCategoryLabels,translatableFieldGroups,attractionView:'list',attractionEditorTab:'basic',recordEditorTab:'basic',vehicleConfigTab:'page',businessService:null,travelGuide:null,businessConfigTab:'page',travelDocFiles:[],travelDocSelectedKey:'',embeddedService:'',embeddedLoadingLabel:'',menuOpenSnapshot:(()=>{const saved=sessionStorage.getItem(ACTIVE_MENU);const group=groups.find(item=>item.items.some(entry=>entry[0]===saved));if(!group||group.label==='共同数据')return [];const opened=[group.label];const section=group.sections?.find(item=>item.items.some(entry=>entry[0]===saved));if(section)opened.push(section.index);return opened})(),businessOptionGroups:[{key:'cycle',label:'往返周期'},{key:'duration',label:'陪同时长'},{key:'language',label:'语言需求'},{key:'people',label:'随行人数'}],attractionDestinationFilter:'',audioTrackCategoryFilter:'',audioDestinationFilter:'',expandedAudioGroups:[],destinationLinkSaving:{},data:JSON.parse(JSON.stringify(emptyData)),stats:{},commerce:{},settings:this.defaultSettings(),loading:false,busy:false,localAiEnabled:false,aiFillDialogVisible:false,aiFilling:false,aiTranslating:false,aiAttractionName:'',aiEntityType:'attraction',aiProgressMessage:'正在准备…',filterText:'',page:1,pageSize:10,pageSizes:[5,10,20,50,100],groupPages:{},filters:{enabled:'',featured:'',countryId:'',status:'',days:'',type:'',currency:'',priceCny:[null,null],city:'',tag:'',period:[],leadType:'',createdAt:[],bookingDate:[],member:'',productType:'',relation:'',visaStatus:'',expiry:[],expiresAt:[]},editor:null,editorBaseline:'',destinationAttractionSearch:'',destinationShowAllCities:false,selectedAttractionIds:[],batchBusy:false,publicationResults:[],publicationChecking:false,publicationCheckedAt:'',apiOrigin:window.location.origin,form:{},jsonFields:{},dateRange:[],jsonError:'',confirmVisible:false,confirmText:'',confirmHandler:null,menuGroups:groups,rowStatusOptions:[{label:'发布',value:'published'},{label:'下架',value:'unpublished'}],settingTabs}},
   computed:{
     editorDirty(){return Boolean(this.editor)&&this.editorState()!==this.editorBaseline},
     attractionEditorFieldGroups(){return attractionEditorFieldGroups},
@@ -906,7 +890,7 @@ export default {
     active(value){sessionStorage.setItem(ACTIVE_MENU,value);this.selectedAttractionIds=[]},
     paginatedItems(){this.selectedAttractionIds=[]},
   },
-  created(){if(this.token){this.loadAll();this.checkLocalAiAvailability();if(this.active==='attractionDetailPage')this.loadDetailPage();if(this.active==='vehicleService')this.loadVehicleService();if(this.active==='businessService')this.loadBusinessService();if(this.active==='travelGuide')this.loadTravelGuide()}},
+  created(){if(this.token){this.loadAll();this.checkLocalAiAvailability();if(this.active==='attractionDetailPage')this.loadDetailPage();if(this.active==='miniprogramServiceEntries')this.preloadEmbeddedServices()}},
   mounted(){window.addEventListener('beforeunload',this.handleBeforeUnload)},
   beforeDestroy(){window.removeEventListener('beforeunload',this.handleBeforeUnload)},
   updated(){this.applyTagCaps()},
@@ -1062,7 +1046,9 @@ export default {
     },
     async login(){if(!this.password){this.error='请输入管理员密码';return}this.busy=true;this.error='';try{const result=await this.request('/auth/login',{method:'POST',body:JSON.stringify({password:this.password})});this.token=result.token;sessionStorage.setItem(TOKEN,result.token);await Promise.all([this.loadAll(),this.checkLocalAiAvailability()])}catch(e){this.error=e.message}finally{this.busy=false}},
     async logout(force=false){if(force!==true&&!await this.canLeaveEditor())return;sessionStorage.removeItem(TOKEN);this.token='';this.localAiEnabled=false;this.data=JSON.parse(JSON.stringify(emptyData));if(force!==true)this.resetEditor()},
-    async selectMenu(id){if(!await this.canLeaveEditor()){this.$refs.sideMenu?.updateActiveIndex(this.active);return false}this.active=id;this.resetEditor();this.filterText='';this.attractionDestinationFilter='';this.attractionView='list';this.vehicleView='list';this.clearFilterValues();this.resetPagination();if(id==='attractionDetailPage')this.loadDetailPage();if(id==='vehicleService')this.loadVehicleService();if(id==='businessService')this.loadBusinessService();if(id==='travelGuide')this.loadTravelGuide();this.expandMenuForActive();return true},
+    async selectMenu(id){if(!await this.canLeaveEditor()){this.$refs.sideMenu?.updateActiveIndex(this.active);return false}this.active=id;this.resetEditor();this.filterText='';this.attractionDestinationFilter='';this.attractionView='list';this.vehicleView='list';this.clearFilterValues();this.resetPagination();if(id==='attractionDetailPage')this.loadDetailPage();if(id==='miniprogramServiceEntries')this.preloadEmbeddedServices();this.expandMenuForActive();return true},
+    async preloadEmbeddedServices(){this.embeddedService='';const results=await Promise.allSettled([this.loadVehicleService(),this.loadBusinessService(),this.loadTravelGuide(),this.refreshTravelDocLibrary()]);if(results.some(r=>r.status==='rejected'))this.$message.warning('部分入口内容配置加载失败，可重试「重新加载」')},
+    async ensureEmbeddedService(key){const service=({vehicle:'vehicle',business:'business','travel-guide':'travel-guide'})[String(key||'')]||'';this.embeddedService=service;if(!service)return;const loaded={vehicle:this.vehicleService,business:this.businessService,'travel-guide':this.travelGuide}[service];if(loaded)return;this.embeddedLoadingLabel='正在加载内容配置…';try{if(service==='vehicle')await this.loadVehicleService();else if(service==='business')await this.loadBusinessService();else await this.loadTravelGuide();if(service==='travel-guide')this.refreshTravelDocLibrary()}catch(e){this.$message.error('内容配置加载失败：'+e.message)}finally{this.embeddedLoadingLabel=''}},
     expandMenuForActive(){this.$nextTick(()=>{if(!this.$refs.sideMenu)return;const group=(this.menuGroups||[]).find(item=>item.items.some(entry=>entry[0]===this.active));if(!group||group.label==='共同数据')return;const opened=[group.label];const section=group.sections?.find(item=>item.items.some(entry=>entry[0]===this.active));if(section)opened.push(section.index);const current=this.$refs.sideMenu.openedMenus||[];opened.filter(index=>!current.includes(index)).forEach(index=>this.$refs.sideMenu.open(index))})},
     async openGuideEntry(entry){if(!entry?.menu)return;const opened=await this.selectMenu(entry.menu);if(!opened)return;if(entry.filter)this.$set(this.filters,entry.filter.key,entry.filter.value);this.page=1;this.guideVisible=false},
     async loadDetailPage(){try{this.detailPage=await this.request('/admin/attraction-detail-page')}catch(e){this.$message.error('景点详情配置加载失败：'+e.message)}},
@@ -1140,7 +1126,7 @@ export default {
     updateObjectRichText(parent,key,event){const value=this.safeEditorHtml(event.currentTarget.innerHTML);if(value!==event.currentTarget.innerHTML)event.currentTarget.innerHTML=value;this.$set(this.form[parent],key,value)},
     updateArrayRichText(parent,index,key,event){const value=this.safeEditorHtml(event.currentTarget.innerHTML);if(value!==event.currentTarget.innerHTML)event.currentTarget.innerHTML=value;this.$set(this.form[parent][index],key,value)},
     editRow(row){if(this.active==='cities'){this.openEditor({...row,coverImage:row?.coverImage||'',mosaic:Array.isArray(row?.mosaic)?row.mosaic:[]},false);return}this.openEditor(row,false)},
-    openEditor(row,isNew){const config=this.currentMenu;this.form=JSON.parse(JSON.stringify(row));if(this.active==='destinations'){const state=this.destinationLinkState(row);this.$set(this.form,'cityId',row.cityId||state.cityId||'');this.$set(this.form,'attractionIds',Object.prototype.hasOwnProperty.call(row,'attractionIds')||Object.prototype.hasOwnProperty.call(row,'attractionId')?state.requestedIds:state.attractionIds);this.destinationAttractionSearch='';this.destinationShowAllCities=false}if(this.active==='attractions')this.$set(this.form,'linkedDestinationIds',this.linkedDestinationIdsForAttraction(this.form.id));(config.fields||[]).filter(f=>f.type==='object').forEach(f=>{const value=this.form[f.key];if(!value||typeof value!=='object'||Array.isArray(value))this.$set(this.form,f.key,{});f.fields.forEach(sub=>{if(this.form[f.key][sub.key]==null)this.$set(this.form[f.key],sub.key,'')})});(config.fields||[]).filter(f=>f.type==='deepDive').forEach(f=>{const value=this.form[f.key];if(!value||typeof value!=='object'||Array.isArray(value))this.$set(this.form,f.key,{preview:'',locked:[]});if(this.form[f.key].preview==null)this.$set(this.form[f.key],'preview','');if(!Array.isArray(this.form[f.key].locked))this.$set(this.form[f.key],'locked',[])});if(['routes','attractions'].includes(this.active)&&this.form.tags!=null)this.form.tags=this.tagValues(this.form.tags).join(' · ');(config.fields||[]).filter(f=>f.type==='multiselect'||f.type==='checkboxList').forEach(f=>{if(!Array.isArray(this.form[f.key]))this.$set(this.form,f.key,this.listValue(this.form[f.key]))});(config.fields||[]).filter(f=>f.type==='array').forEach(f=>{if(typeof this.form[f.key]==='string'){try{this.$set(this.form,f.key,JSON.parse(this.form[f.key]||'[]'))}catch(e){this.$set(this.form,f.key,[])}}if(!Array.isArray(this.form[f.key]))this.$set(this.form,f.key,[]);this.form[f.key].forEach(entry=>{f.fields.forEach(sub=>{if(sub.type==='object'){if(!entry[sub.key])this.$set(entry,sub.key,{});sub.fields.forEach(child=>{if(entry[sub.key][child.key]==null)this.$set(entry[sub.key],child.key,'')})}else if(sub.type==='multiselect'||sub.type==='array'){if(!Array.isArray(entry[sub.key]))this.$set(entry,sub.key,this.listValue(entry[sub.key]))}else if(sub.type==='number'){if(entry[sub.key]==null||entry[sub.key]==='')this.$set(entry,sub.key,sub.min==null?0:sub.min)}})})});this.jsonFields={};(config.fields||[]).filter(f=>f.type==='json').forEach(f=>{this.jsonFields[f.key]=JSON.stringify(this.form[f.key]??(['itinerary','days','notices'].includes(f.key)?[]:{}),null,2)});this.dateRange=[];if(this.active==='customTrips'&&this.form.period){const parts=String(this.form.period).split('~').map(x=>x.trim());if(parts.length===2)this.dateRange=parts}this.editor={isNew,rowId:row.id||row.key||'',title:(isNew?'新增':'编辑')+config.label,template:config.template?templates[config.template]:null,fields:config.fields||[],editorGroups:config.editorGroups||[],...(this.active==='destinations'?{implicitLinks:!isNew&&!Object.prototype.hasOwnProperty.call(row,'attractionIds')&&!Object.prototype.hasOwnProperty.call(row,'attractionId'),originalCityId:this.form.cityId,originalAttractionIds:JSON.stringify(this.form.attractionIds)}:{})};this.recordEditorTab=config.editorGroups?.[0]?.key||'basic';this.jsonError='';this.editorBaseline=this.editorState();this.$nextTick(()=>this.$refs.editForm?.clearValidate())},
+    openEditor(row,isNew){const config=this.currentMenu;this.form=JSON.parse(JSON.stringify(row));if(this.active==='miniprogramServiceEntries')this.ensureEmbeddedService(this.form.key);else this.embeddedService='';if(this.active==='destinations'){const state=this.destinationLinkState(row);this.$set(this.form,'cityId',row.cityId||state.cityId||'');this.$set(this.form,'attractionIds',Object.prototype.hasOwnProperty.call(row,'attractionIds')||Object.prototype.hasOwnProperty.call(row,'attractionId')?state.requestedIds:state.attractionIds);this.destinationAttractionSearch='';this.destinationShowAllCities=false}if(this.active==='attractions')this.$set(this.form,'linkedDestinationIds',this.linkedDestinationIdsForAttraction(this.form.id));(config.fields||[]).filter(f=>f.type==='object').forEach(f=>{const value=this.form[f.key];if(!value||typeof value!=='object'||Array.isArray(value))this.$set(this.form,f.key,{});f.fields.forEach(sub=>{if(this.form[f.key][sub.key]==null)this.$set(this.form[f.key],sub.key,'')})});(config.fields||[]).filter(f=>f.type==='deepDive').forEach(f=>{const value=this.form[f.key];if(!value||typeof value!=='object'||Array.isArray(value))this.$set(this.form,f.key,{preview:'',locked:[]});if(this.form[f.key].preview==null)this.$set(this.form[f.key],'preview','');if(!Array.isArray(this.form[f.key].locked))this.$set(this.form[f.key],'locked',[])});if(['routes','attractions'].includes(this.active)&&this.form.tags!=null)this.form.tags=this.tagValues(this.form.tags).join(' · ');(config.fields||[]).filter(f=>f.type==='multiselect'||f.type==='checkboxList').forEach(f=>{if(!Array.isArray(this.form[f.key]))this.$set(this.form,f.key,this.listValue(this.form[f.key]))});(config.fields||[]).filter(f=>f.type==='array').forEach(f=>{if(typeof this.form[f.key]==='string'){try{this.$set(this.form,f.key,JSON.parse(this.form[f.key]||'[]'))}catch(e){this.$set(this.form,f.key,[])}}if(!Array.isArray(this.form[f.key]))this.$set(this.form,f.key,[]);this.form[f.key].forEach(entry=>{f.fields.forEach(sub=>{if(sub.type==='object'){if(!entry[sub.key])this.$set(entry,sub.key,{});sub.fields.forEach(child=>{if(entry[sub.key][child.key]==null)this.$set(entry[sub.key],child.key,'')})}else if(sub.type==='multiselect'||sub.type==='array'){if(!Array.isArray(entry[sub.key]))this.$set(entry,sub.key,this.listValue(entry[sub.key]))}else if(sub.type==='number'){if(entry[sub.key]==null||entry[sub.key]==='')this.$set(entry,sub.key,sub.min==null?0:sub.min)}})})});this.jsonFields={};(config.fields||[]).filter(f=>f.type==='json').forEach(f=>{this.jsonFields[f.key]=JSON.stringify(this.form[f.key]??(['itinerary','days','notices'].includes(f.key)?[]:{}),null,2)});this.dateRange=[];if(this.active==='customTrips'&&this.form.period){const parts=String(this.form.period).split('~').map(x=>x.trim());if(parts.length===2)this.dateRange=parts}this.editor={isNew,rowId:row.id||row.key||'',title:(isNew?'新增':'编辑')+config.label,template:config.template?templates[config.template]:null,fields:config.fields||[],editorGroups:config.editorGroups||[],...(this.active==='destinations'?{implicitLinks:!isNew&&!Object.prototype.hasOwnProperty.call(row,'attractionIds')&&!Object.prototype.hasOwnProperty.call(row,'attractionId'),originalCityId:this.form.cityId,originalAttractionIds:JSON.stringify(this.form.attractionIds)}:{})};this.recordEditorTab=config.editorGroups?.[0]?.key||'basic';this.jsonError='';this.editorBaseline=this.editorState();this.$nextTick(()=>this.$refs.editForm?.clearValidate())},
     fillTemplate(){const values=JSON.parse(JSON.stringify(this.editor.template.values));Object.keys(values).forEach(k=>this.$set(this.form,k,values[k]));if(this.active==='miniprogramCoupons'&&!this.form.userId&&this.data.miniprogramUsers[0])this.$set(this.form,'userId',this.data.miniprogramUsers[0].id);(this.editor.fields||[]).filter(f=>f.type==='json').forEach(f=>{this.$set(this.jsonFields,f.key,JSON.stringify(this.form[f.key]??(['itinerary','days','notices'].includes(f.key)?[]:{}),null,2))});this.$message.success('示例已填入，请按实际资料调整')},
     editorState(){return JSON.stringify([this.form,this.jsonFields,this.dateRange])},
     async canLeaveEditor(){if(this.busy||this.batchBusy||this.aiFilling){this.$message.warning('操作进行中，请稍后再离开');return false}return !this.editorDirty||await this.confirm('有未保存的修改。离开将丢弃这些修改，确认离开？')},
