@@ -580,17 +580,19 @@
           </section>
         </main>
       </el-container>
-      <el-dialog title="后台入口指南" :visible.sync="guideVisible" width="min(960px, calc(100vw - 32px))" top="5vh" custom-class="admin-entry-guide">
+      <el-dialog title="后台入口指南" :visible.sync="guideVisible" width="min(1280px, calc(100vw - 32px))" top="4vh" custom-class="admin-entry-guide">
         <div class="entry-guide-intro"><span class="eyebrow">MINI PROGRAM CONTENT MAP</span><p>按小程序里的展示位置找后台板块。点击「进入编辑」会打开对应列表；音频入口会自动筛选类别。</p></div>
         <div class="entry-guide-groups">
           <section v-for="group in guideGroups" :key="group.title" class="entry-guide-group">
             <h3>{{ group.title }}</h3>
-            <article v-for="entry in group.items" :key="entry.title" class="entry-guide-card">
-              <div class="entry-guide-card-head"><strong>{{ entry.title }}</strong><el-tag size="mini" effect="plain">{{ entry.menuLabel }}</el-tag></div>
-              <p><b>小程序位置</b>{{ entry.location }}</p>
-              <p class="entry-guide-desc">{{ entry.description }}</p>
-              <el-button type="primary" plain size="small" icon="el-icon-right" @click="openGuideEntry(entry)">进入编辑</el-button>
-            </article>
+            <div class="entry-guide-card-row">
+              <article v-for="entry in group.items" :key="entry.title" class="entry-guide-card">
+                <div class="entry-guide-card-head"><strong>{{ entry.title }}</strong><el-tag size="mini" effect="plain">{{ entry.menuLabel }}</el-tag></div>
+                <p><b>小程序位置</b>{{ entry.location }}</p>
+                <p class="entry-guide-desc">{{ entry.description }}</p>
+                <el-button type="primary" plain size="small" icon="el-icon-right" @click="openGuideEntry(entry)">进入编辑</el-button>
+              </article>
+            </div>
           </section>
         </div>
         <span slot="footer"><el-button @click="guideVisible=false">关闭说明</el-button></span>
@@ -1246,16 +1248,18 @@ export default {
 .entry-guide-intro{margin:0 0 18px;padding:13px 16px;border-left:3px solid #178c86;border-radius:0 7px 7px 0;background:#eef7f5;color:#53686b}
 .entry-guide-intro .eyebrow{color:#14827e;font-size:10px;letter-spacing:.13em}
 .entry-guide-intro p{margin:6px 0 0;line-height:1.65}
-.entry-guide-groups{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:18px;align-items:start}
+.entry-guide-groups{display:flex;flex-direction:column;gap:20px}
 .entry-guide-group h3{margin:0 0 10px;color:#30474b;font-size:14px}
-.entry-guide-card{margin-bottom:9px;padding:13px 14px;border:1px solid #e2eaea;border-radius:8px;background:#fff;box-shadow:0 2px 7px rgba(30,64,65,.035)}
+.entry-guide-group .entry-guide-card-row{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:12px;align-items:stretch}
+.entry-guide-card{margin-bottom:0;padding:13px 14px;border:1px solid #e2eaea;border-radius:8px;background:#fff;box-shadow:0 2px 7px rgba(30,64,65,.035);display:flex;flex-direction:column}
+.entry-guide-card .el-button{margin-top:auto;align-self:flex-start}
 .entry-guide-card-head{display:flex;align-items:center;justify-content:space-between;gap:10px}
 .entry-guide-card-head strong{color:#20383a;font-size:14px}
 .entry-guide-card p{margin:9px 0 0;color:#607174;font-size:12px;line-height:1.6}
 .entry-guide-card p b{margin-right:7px;color:#357270;font-weight:600}
 .entry-guide-card .entry-guide-desc{margin-top:4px;color:#78878a}
 .entry-guide-card .el-button{margin-top:10px}
-@media(max-width:700px){.admin-entry-guide .el-dialog__header{padding:18px 18px 14px}.admin-entry-guide .el-dialog__body{padding:14px 14px 18px}.entry-guide-groups{grid-template-columns:1fr;gap:12px}.entry-guide-card{padding:12px}}
+@media(max-width:700px){.admin-entry-guide .el-dialog__header{padding:18px 18px 14px}.admin-entry-guide .el-dialog__body{padding:14px 14px 18px}.entry-guide-group .entry-guide-card-row{grid-template-columns:1fr;gap:10px}.entry-guide-card{padding:12px}}
 .detail-locale-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px}
 .detail-locale-grid .el-form-item{margin-bottom:12px}
 .el-admin .form-grid.form-grid-single{grid-template-columns:minmax(0,1fr)}
