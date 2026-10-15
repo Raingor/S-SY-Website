@@ -120,8 +120,92 @@ const DEFAULT_VEHICLE_SERVICE = {
     ],
   },
 }
+// 出行指南默认内容：取自 MpApp 内置文案，后台保存后覆盖。
+const DEFAULT_TRAVEL_GUIDE = {
+  enabled: true,
+  kicker: 'TRAVEL GUIDE', kickerTw: 'TRAVEL GUIDE', kickerEn: 'TRAVEL GUIDE',
+  title: '出行指南', titleTw: '出行指南', titleEn: 'Travel Guide',
+  subtitle: '实用攻略', subtitleTw: '實用攻略', subtitleEn: 'Practical guides',
+  sections: [
+    {
+      key: 'prepare', kicker: 'PREPARE WELL', title: '出发准备', intro: '把签证、行李与穿搭先安排好，轻装出发。',
+      cards: [
+        { key: 'visa', mark: '签', source: '申根签证申请表', title: '签证与材料清单', desc: '按申请表逐项核对个人信息、行程、住宿与保险资料。', points: ['护照与复印件', '行程、住宿与交通', '保险、照片与签名'] },
+        { key: 'packing', mark: '箱', source: '希腊旅行必备物品清单', title: '行李怎么带', desc: '从证件银行卡到药品、防晒和电子设备，按类别收进行李。', points: ['证件与现金卡类', '防晒、常用药品', '转换插头与充电宝'] },
+        { key: 'outfit', mark: '衣', source: '地中海旅行穿搭全攻略', title: '四季穿搭方案', desc: '用“下装锚定、外套定调”的流动衣橱，应对海岛温差与长时间步行。', points: ['4—9月：亚麻与轻棉', '10月—次年3月：叠穿保暖', '舒适鞋履优先'] },
+      ],
+    },
+    {
+      key: 'experience', kicker: 'LIVE LIKE GREECE', title: '旅途体验', intro: '吃得地道、拍得好看，也更懂当地人的生活节奏。',
+      cards: [
+        { key: 'food', mark: '食', source: '希腊美食与生活方式探索', title: '希腊美食地图', desc: '从希腊沙拉、Moussaka 到海岛海鲜，边吃边认识地中海生活。', points: ['Meze 适合多人分享', '晚餐通常较晚开始', '餐后小费约 5%—10%'] },
+        { key: 'photo', mark: '光', source: '地中海光影诗篇', title: '旅行摄影小课', desc: '用黄金时刻、九宫格和天然画框，拍出蓝白小镇与海岸的层次。', points: ['日出后/日落前一小时', '地平线放在上或下 1/3', '擦镜头、稳住再按快门'] },
+      ],
+    },
+    {
+      key: 'culture', kicker: 'READ THE LAND', title: '文化深读', intro: '先读懂历史与目的地，再走进每一处遗址和岛屿。',
+      cards: [
+        { key: 'athens', mark: '城', source: '雅典历史古迹与博物馆详解', title: '雅典文明巡礼', desc: '从卫城、古市集到国家考古博物馆，把遗址、馆藏与游览动线串起来。', points: ['先上山，后逛卫城博物馆', '防滑鞋与饮用水必备', '门票与开放时间出发前确认'] },
+        { key: 'mythology', mark: '神', source: '希腊神话谱系解析', title: '神话谱系入门', desc: '从原始神、泰坦神到奥林匹斯十二主神，读懂雅典娜、宙斯与海神的故事。', points: ['原始神：宇宙起源', '泰坦神：第二代神族', '奥林匹斯：神界秩序'] },
+        { key: 'destinations', mark: '图', source: 'Lonely Planet Greece', title: '目的地与路线参考', desc: '覆盖雅典、伯罗奔尼撒、北希腊与基克拉泽斯群岛，适合做路线灵感库。', points: ['雅典与周边古迹', '圣托里尼等基克拉泽斯群岛', '按区域组合行程'] },
+      ],
+    },
+  ],
+}
+
 const VEHICLE_TEXT_FIELDS = ['title', 'subtitle', 'description', 'note', 'disclaimer']
 function defaultVehicleService() { return JSON.parse(JSON.stringify(DEFAULT_VEHICLE_SERVICE)) }
+
+// 希腊商旅页（MpApp pages/business）：与在地用车同型的单记录配置；表单文案缺失时由小程序回退本地 i18n。
+const DEFAULT_BUSINESS_SERVICE = {
+  enabled: true,
+  sort: 1,
+  kicker: 'GREECE BUSINESS COMPANION', kickerTw: 'GREECE BUSINESS COMPANION', kickerEn: 'GREECE BUSINESS COMPANION',
+  title: '希腊商旅', titleTw: '希臘商旅', titleEn: 'Greece Business Companion',
+  subtitle: '一站式随行服务', subtitleTw: '一站式隨行服務', subtitleEn: 'One-stop companion service',
+  description: 'Richard 李顾问提供中英双语沟通、商务行程规划与语言陪同咨询，帮助你把拜访、会议与文化体验安排得更从容。',
+  descriptionTw: 'Richard 李顧問提供中英雙語溝通、商務行程規劃與語言陪同咨詢，幫助你把拜訪、會議與文化體驗安排得更從容。',
+  descriptionEn: 'Consultant Richard Li provides bilingual communication, business itinerary planning and language-companion consulting so visits, meetings and cultural experiences go smoothly.',
+  tags: ['涉外商务陪同', '会议口译 / 文件笔译', '企业拜访咨询'],
+  tagsTw: ['涉外商務陪同', '會議口譯 / 文件筆譯', '企業拜訪咨詢'],
+  tagsEn: ['Business companion', 'Interpreting / translation', 'Corporate visit consulting'],
+  note: '仅提供商务陪同咨询、行程策划与语言翻译对接；交通、场地、劳务由客户直接与希腊本土主体签约。',
+  noteTw: '僅提供商務陪同咨詢、行程策劃與語言翻譯對接；交通、場地、勞務由客戶直接與希臘本土主體簽約。',
+  noteEn: 'Consulting, itinerary planning and language coordination only; transport, venues and labor are contracted directly with local Greek providers.',
+  disclaimer: '', disclaimerTw: '', disclaimerEn: '',
+  images: [],
+  form: {
+    cardTitle: '说说你的商务需求', cardTip: '提交后，顾问将在 24 小时内联系你说明对接方式。',
+    cycleLabel: '往返周期', durationLabel: '陪同时长', languageLabel: '语言需求',
+    industryLabel: '行业与需求', industryPlaceholder: '说说你的行业背景与本次来希腊的目标…', industryRequired: '（必填）',
+    peopleLabel: '随行人数', contactLabel: '联系方式', wechatLabel: '微信', phoneLabel: '手机号',
+    phonePlaceholder: '手机号', wechatPlaceholder: '微信号', submitLabel: '提交商旅咨询',
+  },
+  options: {
+    cycle: [
+      { id: 'cycle-1-3d', label: '1-3天', labelTw: '1-3天', labelEn: '1–3 days', sort: 1, enabled: true },
+      { id: 'cycle-4-7d', label: '4-7天', labelTw: '4-7天', labelEn: '4–7 days', sort: 2, enabled: true },
+      { id: 'cycle-1-2w', label: '1-2周', labelTw: '1-2週', labelEn: '1–2 weeks', sort: 3, enabled: true },
+      { id: 'cycle-long', label: '长期往返', labelTw: '長期往返', labelEn: 'Long-term', sort: 4, enabled: true },
+    ],
+    duration: [
+      { id: 'duration-half', label: '半日陪同', labelTw: '半日陪同', labelEn: 'Half day', sort: 1, enabled: true },
+      { id: 'duration-one', label: '1日陪同', labelTw: '1日陪同', labelEn: 'Full day', sort: 2, enabled: true },
+      { id: 'duration-full', label: '全程陪同', labelTw: '全程陪同', labelEn: 'Full service', sort: 3, enabled: true },
+    ],
+    language: [
+      { id: 'lang-bilingual', label: '中英双语陪同', labelTw: '中英雙語陪同', labelEn: 'Chinese-English support', sort: 1, enabled: true },
+      { id: 'lang-conference', label: '会议口译', labelTw: '會議口譯', labelEn: 'Conference interpreting', sort: 2, enabled: true },
+      { id: 'lang-document', label: '文件笔译', labelTw: '文件筆譯', labelEn: 'Document translation', sort: 3, enabled: true },
+      { id: 'lang-combo', label: '综合需求', labelTw: '綜合需求', labelEn: 'Combined needs', sort: 4, enabled: true },
+    ],
+    people: [
+      { id: 'people-1-2', label: '1-2人', labelTw: '1-2人', labelEn: '1–2 people', sort: 1, enabled: true },
+      { id: 'people-3-5', label: '3-5人', labelTw: '3-5人', labelEn: '3–5 people', sort: 2, enabled: true },
+      { id: 'people-6-plus', label: '6人以上', labelTw: '6人以上', labelEn: '6+ people', sort: 3, enabled: true },
+    ],
+  },
+}
 const vehicleText = (value) => (typeof value === 'string' ? value.trim().slice(0, 2000) : '')
 const vehicleTags = (value) => (Array.isArray(value) ? value.map((tag) => String(tag == null ? '' : tag).trim().slice(0, 200)).filter(Boolean) : [])
 const VEHICLE_FORM_TEXT_FIELDS = ['title', 'tip', 'dateLabel', 'durationLabel', 'vehicleLabel', 'peopleLabel', 'routeLabel', 'contactLabel', 'submitLabel', 'routePlaceholder', 'phonePlaceholder', 'wechatPlaceholder']
@@ -226,6 +310,185 @@ function publicVehicleService(data) {
     images: service.images.map((image) => (/^(?:https?:)?\/\//i.test(image) || image.startsWith('/') ? image : `./images/${image}`)),
   }
 }
+
+const BUSINESS_OPTION_GROUPS = ['cycle', 'duration', 'language', 'people']
+const BUSINESS_OPTION_LABELS = { cycle: '往返周期', duration: '陪同时长', language: '语言需求', people: '随行人数' }
+const BUSINESS_TEXT_FIELDS = ['kicker', 'title', 'subtitle', 'description', 'note', 'disclaimer']
+const BUSINESS_FORM_TEXT_FIELDS = ['cardTitle', 'cardTip', 'cycleLabel', 'durationLabel', 'languageLabel', 'industryLabel', 'industryPlaceholder', 'peopleLabel', 'contactLabel', 'submitLabel', 'industryRequired', 'phonePlaceholder', 'wechatPlaceholder', 'wechatLabel', 'phoneLabel']
+function defaultBusinessService() { return JSON.parse(JSON.stringify(DEFAULT_BUSINESS_SERVICE)) }
+function normalizeBusinessOptions(input) {
+  const groups = {}
+  for (const group of BUSINESS_OPTION_GROUPS) {
+    const source = Array.isArray(input?.[group]) ? input[group] : []
+    groups[group] = source.map((entry, index) => ({
+      id: String(entry?.id || `${group}-${index + 1}`).trim().slice(0, 64) || `${group}-${index + 1}`,
+      label: vehicleText(entry?.label),
+      labelTw: vehicleText(entry?.labelTw),
+      labelEn: vehicleText(entry?.labelEn),
+      sort: Number(entry?.sort) > 0 ? Math.floor(Number(entry.sort)) : index + 1,
+      enabled: entry?.enabled !== false,
+    }))
+  }
+  return groups
+}
+function normalizeBusinessForm(input) {
+  const source = input && typeof input === 'object' && !Array.isArray(input) ? input : {}
+  const form = {}
+  for (const field of BUSINESS_FORM_TEXT_FIELDS) {
+    form[field] = vehicleText(source[field])
+    form[`${field}Tw`] = vehicleText(source[`${field}Tw`])
+    form[`${field}En`] = vehicleText(source[`${field}En`])
+  }
+  return form
+}
+function normalizeBusinessService(input) {
+  if (!input || typeof input !== 'object' || Array.isArray(input)) return defaultBusinessService()
+  const result = {
+    enabled: input.enabled !== false,
+    sort: Number(input.sort) > 0 ? Math.floor(Number(input.sort)) : 1,
+    images: Array.isArray(input.images) ? input.images.map((image) => String(image || '').replace(/^(?:\.|\/|\/)?(?:images\/)+/, '').trim()).filter(Boolean) : [],
+    form: normalizeBusinessForm(input.form),
+    options: normalizeBusinessOptions(input.options),
+  }
+  for (const field of BUSINESS_TEXT_FIELDS) {
+    result[field] = vehicleText(input[field])
+    result[`${field}Tw`] = vehicleText(input[`${field}Tw`])
+    result[`${field}En`] = vehicleText(input[`${field}En`])
+  }
+  for (const field of ['tags', 'tagsTw', 'tagsEn']) result[field] = vehicleTags(input[field])
+  // 后台只维护简体：繁体 / 英文缺失时回退简体，公开接口仍返回三语字段。
+  for (const field of BUSINESS_TEXT_FIELDS) {
+    if (!result[`${field}Tw`]) result[`${field}Tw`] = result[field]
+    if (!result[`${field}En`]) result[`${field}En`] = result[field]
+  }
+  for (const field of BUSINESS_FORM_TEXT_FIELDS) {
+    if (!result.form[`${field}Tw`]) result.form[`${field}Tw`] = result.form[field]
+    if (!result.form[`${field}En`]) result.form[`${field}En`] = result.form[field]
+  }
+  result.tagsTw = result.tags.map((tag, index) => result.tagsTw[index] || tag)
+  result.tagsEn = result.tags.map((tag, index) => result.tagsEn[index] || tag)
+  for (const group of BUSINESS_OPTION_GROUPS) {
+    for (const option of result.options[group]) {
+      if (!option.labelTw) option.labelTw = option.label
+      if (!option.labelEn) option.labelEn = option.label
+    }
+  }
+  return result
+}
+function validateBusinessService(input) {
+  if (!input || typeof input !== 'object' || Array.isArray(input)) throw new Error('希腊商旅配置格式无效')
+  const service = normalizeBusinessService(input)
+  for (const [field, label] of [['title', '页面标题'], ['subtitle', '副标题'], ['description', '页面说明']]) {
+    if (!service[field]) throw new Error(`${label}（简体）不能为空`)
+  }
+  for (const group of BUSINESS_OPTION_GROUPS) {
+    const label = BUSINESS_OPTION_LABELS[group]
+    const items = service.options[group]
+    if (!items.length) throw new Error(`${label}选项至少需要 1 项`)
+    const sorts = new Set()
+    items.forEach((item, index) => {
+      if (!item.label) throw new Error(`${label}第 ${index + 1} 项的名称（简体）不能为空`)
+      if (sorts.has(item.sort)) throw new Error(`${label}选项排序不能重复（${item.sort}）`)
+      sorts.add(item.sort)
+    })
+  }
+  return service
+}
+function publicBusinessService(data) {
+  const service = normalizeBusinessService(data.businessService)
+  const options = {}
+  for (const group of BUSINESS_OPTION_GROUPS) options[group] = service.options[group].filter((item) => item.enabled !== false).sort((a, b) => a.sort - b.sort)
+  return {
+    ...service,
+    options,
+    images: service.images.map((image) => (/^(?:https?:)?\/\//i.test(image) || image.startsWith('/') ? image : `./images/${image}`)),
+  }
+}
+
+// 出行指南页（MpApp pages/travel-guide）：分组 + 卡片两级结构；标题/描述/要点均为三语，繁英缺失回退简体。
+const TRAVEL_GUIDE_MAX_SECTIONS = 6
+const TRAVEL_GUIDE_MAX_CARDS_PER_SECTION = 8
+const travelGuideText = (value) => (typeof value === 'string' ? value.trim().slice(0, 2000) : '')
+const travelGuidePointList = (value) => (Array.isArray(value) ? value.map((point) => String(point == null ? '' : point).trim().slice(0, 300)).filter(Boolean).slice(0, 12) : [])
+function normalizeTravelGuideCard(input, index) {
+  const source = input && typeof input === 'object' && !Array.isArray(input) ? input : {}
+  const card = {
+    key: String(source.key || `card-${index + 1}`).trim().slice(0, 64) || `card-${index + 1}`,
+    mark: travelGuideText(source.mark).slice(0, 4),
+    source: travelGuideText(source.source),
+    title: travelGuideText(source.title),
+    desc: travelGuideText(source.desc),
+    points: travelGuidePointList(source.points),
+  }
+  for (const suffix of ['Tw', 'En']) {
+    card[`title${suffix}`] = travelGuideText(source[`title${suffix}`])
+    card[`desc${suffix}`] = travelGuideText(source[`desc${suffix}`])
+    card[`points${suffix}`] = travelGuidePointList(source[`points${suffix}`])
+  }
+  card.titleTw = card.titleTw || card.title
+  card.titleEn = card.titleEn || card.title
+  card.descTw = card.descTw || card.desc
+  card.descEn = card.descEn || card.desc
+  card.pointsTw = card.pointsTw.length ? card.pointsTw : card.points
+  card.pointsEn = card.pointsEn.length ? card.pointsEn : card.points
+  return card
+}
+function normalizeTravelGuideSection(input, index) {
+  const source = input && typeof input === 'object' && !Array.isArray(input) ? input : {}
+  const section = {
+    key: String(source.key || `section-${index + 1}`).trim().slice(0, 64) || `section-${index + 1}`,
+    kicker: travelGuideText(source.kicker).slice(0, 120),
+    title: travelGuideText(source.title),
+    intro: travelGuideText(source.intro),
+    cards: (Array.isArray(source.cards) ? source.cards : []).slice(0, TRAVEL_GUIDE_MAX_CARDS_PER_SECTION).map((card, cardIndex) => normalizeTravelGuideCard(card, cardIndex)),
+  }
+  for (const suffix of ['Tw', 'En']) {
+    section[`title${suffix}`] = travelGuideText(source[`title${suffix}`])
+    section[`intro${suffix}`] = travelGuideText(source[`intro${suffix}`])
+  }
+  section.titleTw = section.titleTw || section.title
+  section.titleEn = section.titleEn || section.title
+  section.introTw = section.introTw || section.intro
+  section.introEn = section.introEn || section.intro
+  return section
+}
+function defaultTravelGuide() { return JSON.parse(JSON.stringify(DEFAULT_TRAVEL_GUIDE)) }
+function normalizeTravelGuide(input) {
+  if (!input || typeof input !== 'object' || Array.isArray(input)) return defaultTravelGuide()
+  const result = {
+    enabled: input.enabled !== false,
+    kicker: travelGuideText(input.kicker).slice(0, 120),
+    title: travelGuideText(input.title),
+    subtitle: travelGuideText(input.subtitle),
+    sections: (Array.isArray(input.sections) ? input.sections : []).slice(0, TRAVEL_GUIDE_MAX_SECTIONS).map((section, index) => normalizeTravelGuideSection(section, index)),
+  }
+  for (const suffix of ['Tw', 'En']) {
+    result[`title${suffix}`] = travelGuideText(input[`title${suffix}`])
+    result[`subtitle${suffix}`] = travelGuideText(input[`subtitle${suffix}`])
+  }
+  result.titleTw = result.titleTw || result.title
+  result.titleEn = result.titleEn || result.title
+  result.subtitleTw = result.subtitleTw || result.subtitle
+  result.subtitleEn = result.subtitleEn || result.subtitle
+  return result
+}
+function validateTravelGuide(input) {
+  if (!input || typeof input !== 'object' || Array.isArray(input)) throw new Error('出行指南配置格式无效')
+  const guide = normalizeTravelGuide(input)
+  if (!guide.title) throw new Error('页面标题（简体）不能为空')
+  if (!guide.sections.length) throw new Error('至少需要 1 个分组')
+  guide.sections.forEach((section, sectionIndex) => {
+    if (!section.title) throw new Error(`第 ${sectionIndex + 1} 个分组的组名（简体）不能为空`)
+    if (!section.cards.length) throw new Error(`分组「${section.title}」至少需要 1 张卡片`)
+    section.cards.forEach((card, cardIndex) => {
+      if (!card.title) throw new Error(`分组「${section.title}」第 ${cardIndex + 1} 张卡片的标题（简体）不能为空`)
+    })
+  })
+  return guide
+}
+function publicTravelGuide(data) {
+  return normalizeTravelGuide(data.travelGuide)
+}
 const escapeDetailText = (value) => String(value || '').replace(/[&<>"']/g, (char) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[char]))
 const distDir = resolve(root, 'dist')
 const port = Number(process.env.PORT || 4173)
@@ -244,9 +507,26 @@ const adminSessionSecret = crypto.createHash('sha256')
   .digest()
 const wechatPay = wechatPayConfig()
 let wechatAccessToken = { value: '', expiresAt: 0 }
-const mime = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8', '.json': 'application/json; charset=utf-8', '.png': 'image/png', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.webp': 'image/webp', '.svg': 'image/svg+xml', '.ico': 'image/x-icon', '.m4a': 'audio/mp4', '.mp3': 'audio/mpeg' }
+const mime = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8', '.json': 'application/json; charset=utf-8', '.png': 'image/png', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.webp': 'image/webp', '.svg': 'image/svg+xml', '.ico': 'image/x-icon', '.m4a': 'audio/mp4', '.mp3': 'audio/mpeg', '.pdf': 'application/pdf', '.doc': 'application/msword', '.docx': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', '.xls': 'application/vnd.ms-excel', '.xlsx': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', '.ppt': 'application/vnd.ms-powerpoint', '.pptx': 'application/vnd.openxmlformats-officedocument.presentationml.presentation' }
 const immutableExtensions = new Set(['.png', '.jpg', '.jpeg', '.webp', '.svg', '.ico', '.woff', '.woff2'])
 const runtimeImageDir = resolve(root, 'public/images')
+const runtimeDocDir = resolve(root, 'public/docs')
+// 出行指南在线阅读文档：MpApp 按 settings.travelGuideDocs[cardKey] 取 URL，wx.downloadFile + openDocument。
+const ALLOWED_DOC_EXTENSIONS = new Set(['.pdf', '.doc', '.docx', '.xls', '.xlsx', '.ppt', '.pptx'])
+const DOC_MIME_BY_EXTENSION = { '.pdf': 'application/pdf', '.doc': 'application/msword', '.docx': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', '.xls': 'application/vnd.ms-excel', '.xlsx': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', '.ppt': 'application/vnd.ms-powerpoint', '.pptx': 'application/vnd.openxmlformats-officedocument.presentationml.presentation' }
+const DOC_MAX_BYTES = 20 * 1024 * 1024
+function normalizeTravelGuideDocs(input) {
+  const source = input && typeof input === 'object' && !Array.isArray(input) ? input : {}
+  const docs = {}
+  for (const [key, value] of Object.entries(source)) {
+    const cleanKey = String(key || '').trim().slice(0, 64)
+    if (!cleanKey || typeof value !== 'string' || !value.trim()) continue
+    const trimmed = value.trim()
+    // 绝对 URL 原样保留；站内路径统一为带前导斜杠的 /docs/…（MpApp 端相对路径会自动补 apiBase）。
+    docs[cleanKey] = /^(https?:)?\/\//i.test(trimmed) ? trimmed : `/${trimmed.replace(/^\.?\/+/, '')}`
+  }
+  return docs
+}
 const DEFAULT_HOME_EYEBROW = 'GREECE TRAVEL BUTLER · TAILOR-MADE JOURNEYS'
 const DEFAULT_HOME_TITLE = '只为一生美好回忆'
 const DEFAULT_HOME_DESCRIPTION = '希腊在地人文与行程咨询服务。雅典在地团队，一对一中文顾问，提供文化、行程与语言陪同咨询。'
@@ -1022,13 +1302,15 @@ function publicContent(data, countryId = 'greece', { includeAttractionDetails = 
   const home = homeSettings(data, (value) => miniProgramBannerImage(value, imageUrl))
   const activeDestinationCategories = (data.destinationCategories || []).filter((item) => item.enabled !== false).sort((a, b) => Number(a.sort || 0) - Number(b.sort || 0))
   const payload = {
-    settings: { ...data.settings, miniprogramKnowledge: miniProgramKnowledgeConfig(data), homeEyebrow: home.eyebrow, homeTitle: home.title, homeDescription: home.description, homeBanners: home.banners },
+    settings: { ...data.settings, travelGuideDocs: normalizeTravelGuideDocs(data.settings?.travelGuideDocs), miniprogramKnowledge: miniProgramKnowledgeConfig(data), homeEyebrow: home.eyebrow, homeTitle: home.title, homeDescription: home.description, homeBanners: home.banners },
     home,
     attractionDetailPage,
     attractionDetails: heritage.attractionDetails,
     heritageGuideBanners: publicHeritageGuideBanners(data, (value) => miniProgramBannerImage(value, imageUrl)),
     miniprogramServiceEntries: publicMiniprogramServiceEntries(data, imageUrl),
     vehicleService: publicVehicleService(data),
+    businessService: publicBusinessService(data),
+    travelGuide: publicTravelGuide(data),
     countries: countries.map((item) => ({ ...item, heroImage: imageUrl(item.heroImage) })),
     guides: guides.map((item) => ({ ...item, avatar: imageUrl(item.avatar), fullImage: imageUrl(item.fullImage) })),
     routes: scoped(data.routes).filter((item) => item.status === 'published').map((item) => ({ ...item, image: imageUrl(item.image) })),
@@ -1652,12 +1934,33 @@ const server = http.createServer(async (req, res) => {
         await saveData(data)
         return json(res, 200, data.vehicleService)
       }
+      if (url.pathname === '/api/admin/business-service' && method === 'GET') return json(res, 200, normalizeBusinessService(data.businessService))
+      if (url.pathname === '/api/admin/business-service' && method === 'PATCH') {
+        let input
+        try { input = await body(req) } catch { return json(res, 400, { error: '请求内容无效' }) }
+        if (!input || typeof input !== 'object' || Array.isArray(input)) return json(res, 422, { error: '希腊商旅配置格式无效' })
+        try { validateBusinessService(input) } catch (error) { return json(res, 422, { error: error.message }) }
+        data.businessService = normalizeBusinessService(input)
+        await saveData(data)
+        return json(res, 200, data.businessService)
+      }
+      if (url.pathname === '/api/admin/travel-guide' && method === 'GET') return json(res, 200, normalizeTravelGuide(data.travelGuide))
+      if (url.pathname === '/api/admin/travel-guide' && method === 'PATCH') {
+        let input
+        try { input = await body(req) } catch { return json(res, 400, { error: '请求内容无效' }) }
+        if (!input || typeof input !== 'object' || Array.isArray(input)) return json(res, 422, { error: '出行指南配置格式无效' })
+        try { validateTravelGuide(input) } catch (error) { return json(res, 422, { error: error.message }) }
+        data.travelGuide = normalizeTravelGuide(input)
+        await saveData(data)
+        return json(res, 200, data.travelGuide)
+      }
       if (url.pathname === '/api/admin/settings' && method === 'GET') {
         const { homeBanners: _homeBanners, ...settings } = data.settings || {}
         return json(res, 200, { ...settings, miniprogramKnowledge: miniProgramKnowledgeConfig(data) })
       }
       if (url.pathname === '/api/admin/settings' && method === 'PATCH') {
         const { homeBanners: _homeBanners, ...input } = await body(req)
+        if (Object.prototype.hasOwnProperty.call(input, 'travelGuideDocs')) input.travelGuideDocs = normalizeTravelGuideDocs(input.travelGuideDocs)
         data.settings = { ...data.settings, ...input }
         await saveData(data)
         const { homeBanners: _savedHomeBanners, ...settings } = data.settings
@@ -1847,6 +2150,25 @@ const server = http.createServer(async (req, res) => {
         }
         return json(res, 201, { path: `images/${filename}`, url: `/images/${filename}` })
       }
+      if (url.pathname === '/api/admin/upload-doc' && method === 'POST') {
+        const input = await body(req, DOC_MAX_BYTES + 1024 * 1024)
+        const match = String(input.data || '').match(/^data:([\w.+-]+\/[\w.+-]+);base64,(.+)$/)
+        if (!match) return json(res, 422, { error: '文档上传格式无效' })
+        const [, mimeType, base64Data] = match
+        const rawBuffer = Buffer.from(base64Data, 'base64')
+        if (!rawBuffer.length || rawBuffer.length > DOC_MAX_BYTES) return json(res, 413, { error: '文档大小需在 20MB 以内' })
+        const originalName = String(input.name || '')
+        const extension = extname(originalName).toLowerCase()
+        if (!ALLOWED_DOC_EXTENSIONS.has(extension)) return json(res, 422, { error: '仅支持 PDF、Word、Excel、PPT 文档' })
+        const expectedMime = DOC_MIME_BY_EXTENSION[extension]
+        // MIME 校验宽松：微信/浏览器可能给 octet-stream，但声明类型与扩展名冲突时拒绝。
+        if (mimeType !== 'application/octet-stream' && mimeType !== expectedMime && !expectedMime.includes(mimeType)) return json(res, 422, { error: `文件类型与扩展名不一致（${mimeType} ≠ ${extension}）` })
+        const prefix = String(input.prefix || 'doc').replace(/[^a-z0-9-]/gi, '').slice(0, 20) || 'doc'
+        const filename = `${prefix}-${Date.now().toString(36)}-${crypto.randomBytes(3).toString('hex')}${extension}`
+        mkdirSync(runtimeDocDir, { recursive: true })
+        writeFileSync(join(runtimeDocDir, filename), rawBuffer)
+        return json(res, 201, { path: `docs/${filename}`, url: `/docs/${filename}` })
+      }
       if (url.pathname === '/api/admin/miniprogram-users' && method === 'GET') return json(res, 200, { items: (data.miniprogramUsers || []).map((user) => adminMiniUserSummary(data, user)) })
       const miniUserMembershipMatch = url.pathname.match(/^\/api\/admin\/miniprogram-users\/([^/]+)\/membership$/)
       if (miniUserMembershipMatch && method === 'PATCH') {
@@ -1946,8 +2268,9 @@ const server = http.createServer(async (req, res) => {
     const safePath = normalize(requested).replace(/^\.\.(\/|\\)/, '').replace(/^\/images\/(?:images\/)+/i, '/images/')
     const filePath = join(distDir, safePath)
     const publicImagePath = safePath.startsWith('/images/') ? join(root, 'public', safePath.slice(1)) : ''
+    const publicDocPath = safePath.startsWith('/docs/') && ALLOWED_DOC_EXTENSIONS.has(extname(safePath).toLowerCase()) ? join(root, 'public', safePath.slice(1)) : ''
     const fallback = join(distDir, 'index.html')
-    let target = existsSync(filePath) ? filePath : publicImagePath && existsSync(publicImagePath) ? publicImagePath : fallback
+    let target = existsSync(filePath) ? filePath : publicImagePath && existsSync(publicImagePath) ? publicImagePath : publicDocPath && existsSync(publicDocPath) ? publicDocPath : fallback
     if (safePath.startsWith('/images/') && /\.(?:png|jpe?g|webp|svg)$/i.test(target) && !/\.opt\.webp$/i.test(target)) {
       const optimizedTargets = [target.replace(/\.[^.\\/]+$/, '.opt.webp')]
       if (publicImagePath) optimizedTargets.push(publicImagePath.replace(/\.[^.\\/]+$/, '.opt.webp'))
@@ -2046,6 +2369,8 @@ async function start() {
     data.heritageGuideBanners = Array.isArray(data.heritageGuideBanners) ? data.heritageGuideBanners.map((item, index) => normalizeHeritageGuideBanner(item, index + 1)) : []
     if (!Array.isArray(data.miniprogramServiceEntries)) data.miniprogramServiceEntries = defaultMiniprogramServiceEntries()
     if (!data.vehicleService || typeof data.vehicleService !== 'object' || Array.isArray(data.vehicleService)) data.vehicleService = defaultVehicleService()
+    if (!data.businessService || typeof data.businessService !== 'object' || Array.isArray(data.businessService)) data.businessService = defaultBusinessService()
+    if (!data.travelGuide || typeof data.travelGuide !== 'object' || Array.isArray(data.travelGuide)) data.travelGuide = defaultTravelGuide()
     if (!data.attractionDetailPage || typeof data.attractionDetailPage !== 'object' || Array.isArray(data.attractionDetailPage)) {
       if (!demoContent) throw new Error('seed/content-demo.json is required for the first attraction-detail-page migration')
       data.attractionDetailPage = normalizeAttractionDetailPage(defaultAttractionDetailPage())
