@@ -63,6 +63,12 @@ function normalizeAttractionDetailPage(input) {
   }
   const page = walk(input, defaults)
   page.demo.audioGuides.forEach((entry, index) => { entry.category = defaults.demo.audioGuides[index].category })
+  // 板块显隐开关（MpApp 契约）：仅 route / online / expert 支持 hidden；true 隐藏，缺省/false/其它值均显示且不写入输出。
+  for (const key of ['route', 'online', 'expert']) {
+    const hidden = input?.sections?.[key]?.hidden
+    if (hidden === true) page.sections[key].hidden = true
+    else delete page.sections[key].hidden
+  }
   return page
 }
 const VEHICLE_OPTION_GROUPS = ['vehicle', 'duration', 'people']

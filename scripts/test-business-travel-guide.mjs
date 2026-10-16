@@ -131,6 +131,26 @@ try {
   const guideGet = await (await fetch(`${base}/api/admin/travel-guide`, { headers: auth })).json()
   assert.equal(guideGet.docs.visa, '/docs/from-panel.pdf', 'admin GET returns docs from settings')
 
+  // ---- 景点详情页板块显隐（route/online/expert hidden）----
+  const detailGet = await (await fetch(`${base}/api/admin/attraction-detail-page`, { headers: auth })).json()
+  const detailPayload = JSON.parse(JSON.stringify(detailGet))
+  detailPayload.sections.route.hidden = true
+  detailPayload.sections.online.hidden = false
+  delete detailPayload.sections.expert.hidden
+  const detailSaved = await (await fetch(`${base}/api/admin/attraction-detail-page`, { method: 'PATCH', headers: auth, body: JSON.stringify(detailPayload) })).json()
+  assert.equal(detailSaved.sections.route.hidden, true, 'hidden true persisted')
+  assert.equal(detailSaved.sections.online.hidden, undefined, 'hidden false omitted')
+  assert.equal(detailSaved.sections.expert.hidden, undefined, 'missing hidden omitted')
+  const contentDetail = await (await fetch(`${base}/api/content`)).json()
+  assert.equal(contentDetail.attractionDetailPage.sections.route.hidden, true, 'public hidden true')
+  assert.equal(contentDetail.attractionDetailPage.sections.online.hidden, undefined, 'public hidden false omitted')
+  assert.equal(contentDetail.attractionDetailPage.sections.expert.hidden, undefined, 'public missing hidden omitted')
+  // 还原默认（全显示）
+  const resetPayload = JSON.parse(JSON.stringify(detailSaved))
+  delete resetPayload.sections.route.hidden
+  const detailReset = await (await fetch(`${base}/api/admin/attraction-detail-page`, { method: 'PATCH', headers: auth, body: JSON.stringify(resetPayload) })).json()
+  assert.equal(detailReset.sections.route.hidden, undefined, 'reset removes hidden')
+
   console.log('Business service, travel guide & docs tests passed (admin CRUD, validation, caps, upload-doc, public contract).')
 } finally {
   server.kill('SIGTERM')
