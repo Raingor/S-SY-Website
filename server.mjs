@@ -1297,7 +1297,7 @@ function publicContent(data, countryId = 'greece', { includeAttractionDetails = 
     safeGuide.mapUrl = detail.visitorInfo?.mapUrl || ''
     safeGuide.mapImage = detail.visitorInfo?.mapImage || ''
     safeGuide.sourceUrl = detail.visitorInfo?.sourceUrl || ''
-    return { ...safe, ...detail, guide: safeGuide, image: imageUrl(item.image), onlineCoverImage: imageUrl(item.onlineCoverImage || item.image), expertCoverImage: imageUrl(item.expertCoverImage || item.image), shareTitle: item.shareTitle || '', shareImage: imageUrl(item.shareImage), expertVideoUrl: String(item.expertVideoUrl || '').trim() || undefined, expertVideoCover: item.expertVideoCover ? imageUrl(item.expertVideoCover) : undefined, expertVideoDuration: Number.isFinite(Number(item.expertVideoDuration)) && Number(item.expertVideoDuration) >= 0 ? Number(item.expertVideoDuration) : 0, expertVideoTrialSeconds: Number.isFinite(Number(item.expertVideoTrialSeconds)) && Number(item.expertVideoTrialSeconds) >= 0 ? Number(item.expertVideoTrialSeconds) : 0, exhibits: detail.exhibits || [], highlights: detail.highlights || [], articles: (item.articles || []).map((article) => ({ ...article, cover: imageUrl(article.cover) })) }
+    return { ...safe, hiddenSections: ['route', 'online', 'expert'].filter((key) => (safe.sectionOverrides?.[key] === true) || attractionDetailPage.sections[key].hidden === true), ...detail, guide: safeGuide, image: imageUrl(item.image), onlineCoverImage: imageUrl(item.onlineCoverImage || item.image), expertCoverImage: imageUrl(item.expertCoverImage || item.image), shareTitle: item.shareTitle || '', shareImage: imageUrl(item.shareImage), expertVideoUrl: String(item.expertVideoUrl || '').trim() || undefined, expertVideoCover: item.expertVideoCover ? imageUrl(item.expertVideoCover) : undefined, expertVideoDuration: Number.isFinite(Number(item.expertVideoDuration)) && Number(item.expertVideoDuration) >= 0 ? Number(item.expertVideoDuration) : 0, expertVideoTrialSeconds: Number.isFinite(Number(item.expertVideoTrialSeconds)) && Number(item.expertVideoTrialSeconds) >= 0 ? Number(item.expertVideoTrialSeconds) : 0, exhibits: detail.exhibits || [], highlights: detail.highlights || [], articles: (item.articles || []).map((article) => ({ ...article, cover: imageUrl(article.cover) })) }
   })
   const publicCities = scoped(data.cities).filter((item) => item.status !== 'archived').map((item) => {
     const attractionImages = publicAttractions.filter((attraction) => attraction.city === item.id).sort((a, b) => Number(a.sort || 0) - Number(b.sort || 0)).map((attraction) => attraction.image).filter(Boolean)
@@ -1457,6 +1457,14 @@ function injectSeoHtml(html, seo) {
 function normalizeAttractionPayload(data, payload) {
   let normalized = payload
   if (Object.prototype.hasOwnProperty.call(payload, 'visitorSections')) normalized = { ...normalized, visitorSections: normalizeVisitorSections(payload.visitorSections) }
+  // 板块显隐分景点覆盖：仅接受 route/online/expert 的布尔值；全空时删除字段。
+  if (Object.prototype.hasOwnProperty.call(payload, 'sectionOverrides')) {
+    const source = payload.sectionOverrides && typeof payload.sectionOverrides === 'object' && !Array.isArray(payload.sectionOverrides) ? payload.sectionOverrides : {}
+    const overrides = {}
+    for (const key of ['route', 'online', 'expert']) if (source[key] === true) overrides[key] = true
+    if (Object.keys(overrides).length) normalized = { ...normalized, sectionOverrides: overrides }
+    else normalized = { ...normalized, sectionOverrides: null }
+  }
   if (Object.prototype.hasOwnProperty.call(payload, 'guide') && payload.guide && typeof payload.guide === 'object') {
     const guide = { ...payload.guide }
     if (/^[a-z0-9][a-z0-9._-]*\.(?:png|jpe?g|webp)$/i.test(String(guide.mapImage || ''))) guide.mapImage = `images/${guide.mapImage}`
@@ -2243,6 +2251,34 @@ const server = http.createServer(async (req, res) => {
         const input = await body(req); const payload = collection === 'travelers' ? travelerPayload(input, found.item) : collection === 'documents' ? documentPayload(input, found.item) : couponPayload(input, found.item)
         if (!payload) return json(res, 422, { error: '缺少必填字段' })
         Object.assign(found.item, payload, { updatedAt: new Date().toISOString() }); await saveData(data); return json(res, 200, { ...(collection === 'travelers' ? safeTraveler(found.item, true) : collection === 'documents' ? safeDocument(found.item, true) : serializer(found.item)), userId: found.user.id, userNickname: found.user.nickname || found.user.id })
+      }
+      if (url.pathname === '/api/admin/attractions/scan-section-overrides' && method === 'POST') {
+        // 一键扫描：按各景点路线/音频/名导数据有无，自动为无数据板块写 sectionOverrides；有数据的清除对应覆盖。
+        const scan = (items, predicate) => new Set(items.filter(predicate).map((item) => String(item.attractionId || item.id || '')))
+        const tracks = data.audioTracks || []
+        const routeTrackAttractions = scan(tracks.filter((t) => t.category === 'route'), (t) => [t.attractionId, ...(t.attractionIds || [])].filter(Boolean))
+        const onlineTrackAttractions = scan(tracks.filter((t) => t.category === 'online'), (t) => [t.attractionId, ...(t.attractionIds || [])].filter(Boolean))
+        const expertTrackAttractions = scan(tracks.filter((t) => t.category === 'expert'), (t) => [t.attractionId, ...(t.attractionIds || [])].filter(Boolean))
+        const routeAttractionIds = new Set((data.audioRoutes || []).flatMap((r) => [r.attractionId, ...(r.attractionIds || [])].filter(Boolean)))
+        const applied = []
+        for (const attraction of data.attractions || []) {
+          const id = String(attraction.id || '')
+          if (!id) continue
+          const hasRoute = routeAttractionIds.has(id) || routeTrackAttractions.has(id) || (Array.isArray(attraction.routes) && attraction.routes.length > 0)
+          const hasOnline = onlineTrackAttractions.has(id)
+          const hasExpert = expertTrackAttractions.has(id) || Boolean(String(attraction.expertVideoUrl || '').trim()) || Boolean(attraction.expertCoverImage)
+          const overrides = {}
+          if (!hasRoute) overrides.route = true
+          if (!hasOnline) overrides.online = true
+          if (!hasExpert) overrides.expert = true
+          const before = attraction.sectionOverrides && typeof attraction.sectionOverrides === 'object' ? attraction.sectionOverrides : {}
+          const changed = ['route', 'online', 'expert'].some((key) => Boolean(before[key]) !== Boolean(overrides[key]))
+          if (!changed) continue
+          attraction.sectionOverrides = Object.keys(overrides).length ? overrides : null
+          applied.push({ id, name: attraction.name || id, hiddenSections: Object.keys(overrides), previous: ['route', 'online', 'expert'].filter((key) => before[key] === true) })
+        }
+        await saveData(data)
+        return json(res, 200, { scanned: (data.attractions || []).length, applied })
       }
       const match = url.pathname.match(/^\/api\/admin\/(cities|routes|destinations|attractions|sampleItineraries|customTrips|leads|destinationTypes|destinationCategories)(?:\/([^/]+))?$/)
       if (match) {

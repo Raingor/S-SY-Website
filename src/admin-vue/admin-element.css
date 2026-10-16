@@ -292,6 +292,7 @@
 
 /* 出行指南在线阅读文档面板 */
 .section-hidden-tag { float: right; color: #e6a23c; font-size: 12px; font-weight: 500; }
+.section-override-row { display: flex; flex-wrap: wrap; gap: 18px; }
 .travel-doc-library { margin-bottom: 10px; }
 .travel-doc-item { display: flex; align-items: center; gap: 12px; padding: 2px 0; }
 .travel-doc-name { font-family: monospace; font-size: 12px; word-break: break-all; }

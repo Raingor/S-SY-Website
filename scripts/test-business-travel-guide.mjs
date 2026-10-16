@@ -151,6 +151,28 @@ try {
   const detailReset = await (await fetch(`${base}/api/admin/attraction-detail-page`, { method: 'PATCH', headers: auth, body: JSON.stringify(resetPayload) })).json()
   assert.equal(detailReset.sections.route.hidden, undefined, 'reset removes hidden')
 
+  // ---- 分景点板块覆盖（sectionOverrides + scan + hiddenSections 合并输出）----
+  const scan = await (await fetch(`${base}/api/admin/attractions/scan-section-overrides`, { method: 'POST', headers: auth })).json()
+  assert(Array.isArray(scan.applied), 'scan returns applied list')
+  const attsContent = (await (await fetch(`${base}/api/content`)).json()).attractions
+  const withHidden = attsContent.filter((a) => Array.isArray(a.hiddenSections) && a.hiddenSections.length)
+  assert(withHidden.length > 0, 'scan should hide empty sections for at least one attraction')
+  for (const attraction of withHidden) {
+    for (const key of attraction.hiddenSections) assert(['route', 'online', 'expert'].includes(key), 'hiddenSections keys valid')
+    // 全局 hidden=true 的 key 不重复输出语义（仍并列即可）
+  }
+  // 手动 PATCH 单景点 override -> hiddenSections 反映（fixture 无 online 数据时对任意景点验证 override 语义）
+  const target = attsContent.find((a) => !(a.hiddenSections || []).includes('route')) || attsContent[0]
+  const ovPatch = await (await fetch(`${base}/api/admin/attractions/${encodeURIComponent(target.id)}`, { method: 'PATCH', headers: auth, body: JSON.stringify({ sectionOverrides: { online: true } }) })).json()
+  assert.equal(ovPatch.sectionOverrides.online, true, 'override persisted')
+  const afterPatch = (await (await fetch(`${base}/api/content`)).json()).attractions.find((a) => a.id === target.id)
+  assert((afterPatch.hiddenSections || []).includes('online'), 'hiddenSections includes online after override')
+  // 非法 key / 非布尔值被忽略
+  const badOv = await (await fetch(`${base}/api/admin/attractions/${encodeURIComponent(target.id)}`, { method: 'PATCH', headers: auth, body: JSON.stringify({ sectionOverrides: { visitor: true, online: 'yes' } }) })).json()
+  assert(!badOv.sectionOverrides || (!badOv.sectionOverrides.visitor && !badOv.sectionOverrides.online), 'invalid override keys dropped')
+  // 还原该景点 overrides（恢复 scan 后状态：全隐藏）
+  await fetch(`${base}/api/admin/attractions/${encodeURIComponent(target.id)}`, { method: 'PATCH', headers: auth, body: JSON.stringify({ sectionOverrides: { route: true, online: true, expert: true } }) })
+
   console.log('Business service, travel guide & docs tests passed (admin CRUD, validation, caps, upload-doc, public contract).')
 } finally {
   server.kill('SIGTERM')
