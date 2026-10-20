@@ -585,7 +585,7 @@
         </div>
         <span slot="footer"><el-button @click="guideVisible=false">关闭说明</el-button></span>
       </el-dialog>
-      <el-dialog title="操作指南 · 新增与关联链路" :visible.sync="workflowGuideVisible" width="min(960px, calc(100vw - 32px))" top="4vh" custom-class="admin-workflow-guide">
+      <el-dialog title="操作指南 · 新增与关联链路" :visible.sync="workflowGuideVisible" width="min(1180px, calc(100vw - 32px))" top="4vh" custom-class="admin-workflow-guide">
         <div class="entry-guide-intro"><span class="eyebrow">STEP BY STEP WORKFLOWS</span><p>每个板块从零到在小程序展示的完整操作顺序。先建上游数据，再建下游关联，顺序错了会导致内容不出现在小程序。</p></div>
         <el-collapse v-model="workflowOpenSections" class="workflow-guide-collapse">
           <el-collapse-item v-for="flow in workflowGuide" :key="flow.title" :name="flow.title">

@@ -292,7 +292,9 @@
 
 /* 操作指南（workflowGuide）弹窗 */
 .workflow-guide-collapse { background: transparent; }
-.workflow-guide-flow-title { display: flex; flex-direction: column; gap: 2px; }
+.workflow-guide-collapse .el-collapse-item__header { display: flex; align-items: center; }
+.workflow-guide-collapse .el-collapse-item__header > .workflow-guide-flow-title { flex: 1; min-width: 0; }
+.workflow-guide-flow-title { display: flex; align-items: baseline; flex-wrap: wrap; gap: 4px 14px; }
 .workflow-guide-flow-title b { color: #21363a; font-size: 14px; }
 .workflow-guide-flow-title small { color: #6b8084; font-size: 12px; }
 .workflow-guide-steps { list-style: none; margin: 0; padding: 0 0 4px; }
