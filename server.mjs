@@ -1171,7 +1171,13 @@ function normalizePublicDestination(item, cities, attractions) {
   const legacyAttractionId = Object.prototype.hasOwnProperty.call(item, 'attractionId')
     ? (validAttractionIds.includes(String(item.attractionId || '').trim()) ? String(item.attractionId).trim() : '')
     : undefined
-  return { ...item, cityId, attractionIds, ...(Object.prototype.hasOwnProperty.call(item, 'attractionId') ? { attractionId: legacyAttractionId } : {}) }
+  const result = { ...item, cityId, attractionIds, ...(Object.prototype.hasOwnProperty.call(item, 'attractionId') ? { attractionId: legacyAttractionId } : {}) }
+  // MpApp 首页瓷贴契约：sort（小在前；未配置省略）、featured（仅 true 下发）
+  if (Number.isFinite(Number(item.sort)) && Number(item.sort) > 0) result.sort = Math.floor(Number(item.sort))
+  else delete result.sort
+  if (item.featured === true) result.featured = true
+  else delete result.featured
+  return result
 }
 const miniProgramBannerHashCache = new Map()
 function optimizedPublicImageUrl(value) {

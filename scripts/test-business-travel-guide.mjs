@@ -179,6 +179,28 @@ try {
   const createdAt = await (await fetch(`${base}/api/content`)).json()
   // 公开接口不输出 createdAt 也没关系——此断言只保证 admin 字段存在
   console.log('created test attraction createdAt:', created.createdAt)
+  // ---- 目的地 sort/featured 契约（MpApp 首页瓷贴）----
+  const destsAdmin = await (await fetch(`${base}/api/admin/destinations`, { headers: auth })).json()
+  const destItems = destsAdmin.items || destsAdmin
+  const destTarget = destItems.find((d) => d.id)
+  await fetch(`${base}/api/admin/destinations/${encodeURIComponent(destTarget.id)}`, { method: 'PATCH', headers: auth, body: JSON.stringify({ sort: 10, featured: true }) })
+  const destPatched = await (await fetch(`${base}/api/admin/destinations/${encodeURIComponent(destTarget.id)}`, { headers: auth })).json()
+  const destItemsAfter = destPatched.items || destPatched
+  const after = (Array.isArray(destItemsAfter) ? destItemsAfter : []).find((d) => d.id === destTarget.id)
+  assert.equal(after.sort, 10, 'sort persisted')
+  assert.equal(after.featured, true, 'featured persisted')
+  const pubDest = (await (await fetch(`${base}/api/content`)).json()).destinations.find((d) => d.id === destTarget.id)
+  if (pubDest) {
+    assert.equal(pubDest.sort, 10, 'public sort output')
+    assert.equal(pubDest.featured, true, 'public featured output')
+    // 清除：sort 置 0 / featured false → 公开输出不含这两个 key
+    await fetch(`${base}/api/admin/destinations/${encodeURIComponent(destTarget.id)}`, { method: 'PATCH', headers: auth, body: JSON.stringify({ sort: null, featured: false }) })
+    const pubDest2 = (await (await fetch(`${base}/api/content`)).json()).destinations.find((d) => d.id === destTarget.id)
+    if (pubDest2) {
+      assert(!('sort' in pubDest2), 'sort omitted when unset')
+      assert(!('featured' in pubDest2), 'featured omitted when false')
+    }
+  }
   console.log('Business service, travel guide & docs tests passed (admin CRUD, validation, caps, upload-doc, public contract).')
 } finally {
   server.kill('SIGTERM')
