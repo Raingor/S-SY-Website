@@ -290,6 +290,22 @@
 .header-float-actions { float: right; }
 .header-float-actions .el-button { padding: 0; }
 
+/* 操作指南（workflowGuide）弹窗 */
+.workflow-guide-collapse { background: transparent; }
+.workflow-guide-flow-title { display: flex; flex-direction: column; gap: 2px; }
+.workflow-guide-flow-title b { color: #21363a; font-size: 14px; }
+.workflow-guide-flow-title small { color: #6b8084; font-size: 12px; }
+.workflow-guide-steps { list-style: none; margin: 0; padding: 0 0 4px; }
+.workflow-guide-step { display: flex; gap: 12px; padding: 9px 0; border-bottom: 1px dashed #e4ecea; }
+.workflow-guide-step:last-child { border-bottom: none; }
+.workflow-step-no { flex: none; width: 24px; height: 24px; border-radius: 50%; background: #178c86; color: #fff; font-size: 12px; font-weight: 600; display: flex; align-items: center; justify-content: center; margin-top: 2px; }
+.workflow-step-body { display: flex; flex-direction: column; gap: 3px; }
+.workflow-step-body strong { color: #23393c; font-size: 13px; }
+.workflow-step-where { color: #14827e; font-size: 12px; }
+.workflow-step-where i { margin-right: 4px; }
+.workflow-step-body p { margin: 0; color: #68797c; font-size: 12px; line-height: 1.6; }
+.workflow-guide-notice { margin-top: 10px; }
+
 /* 出行指南在线阅读文档面板 */
 .section-hidden-tag { float: right; color: #e6a23c; font-size: 12px; font-weight: 500; }
 .section-override-row { display: flex; flex-wrap: wrap; gap: 18px; }

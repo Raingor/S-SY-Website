@@ -36,7 +36,7 @@
       <el-container class="admin-main">
         <el-header class="admin-header" height="72px">
           <div><span class="eyebrow">GREECE TRAVEL BUTLER / ADMIN</span><h1>{{ currentMenu.label }}</h1></div>
-          <div class="header-actions"><el-button icon="el-icon-notebook-2" @click="guideVisible=true">后台入口指南</el-button><el-button icon="el-icon-refresh" @click="reloadAll">重新加载</el-button><el-button icon="el-icon-view" @click="openWebsite">查看前台</el-button></div>
+          <div class="header-actions"><el-button icon="el-icon-notebook-2" @click="guideVisible=true">后台入口指南</el-button><el-button type="primary" plain icon="el-icon-guide" @click="workflowGuideVisible=true">操作指南</el-button><el-button icon="el-icon-refresh" @click="reloadAll">重新加载</el-button><el-button icon="el-icon-view" @click="openWebsite">查看前台</el-button></div>
         </el-header>
         <main class="admin-content" v-loading="batchBusy" element-loading-text="正在处理勾选景点，请勿重复操作">
           <el-card v-if="active==='attractions'&&publicationResults.length" shadow="never" class="publication-panel" aria-live="polite">
@@ -585,6 +585,26 @@
         </div>
         <span slot="footer"><el-button @click="guideVisible=false">关闭说明</el-button></span>
       </el-dialog>
+      <el-dialog title="操作指南 · 新增与关联链路" :visible.sync="workflowGuideVisible" width="min(960px, calc(100vw - 32px))" top="4vh" custom-class="admin-workflow-guide">
+        <div class="entry-guide-intro"><span class="eyebrow">STEP BY STEP WORKFLOWS</span><p>每个板块从零到在小程序展示的完整操作顺序。先建上游数据，再建下游关联，顺序错了会导致内容不出现在小程序。</p></div>
+        <el-collapse v-model="workflowOpenSections" class="workflow-guide-collapse">
+          <el-collapse-item v-for="flow in workflowGuide" :key="flow.title" :name="flow.title">
+            <template slot="title"><span class="workflow-guide-flow-title"><b>{{ flow.title }}</b><small>{{ flow.goal }}</small></span></template>
+            <ol class="workflow-guide-steps">
+              <li v-for="(step,index) in flow.steps" :key="index" class="workflow-guide-step">
+                <span class="workflow-step-no">{{ index+1 }}</span>
+                <div class="workflow-step-body">
+                  <strong>{{ step.action }}</strong>
+                  <small v-if="step.where" class="workflow-step-where"><i class="el-icon-location-outline"></i>{{ step.where }}</small>
+                  <p v-if="step.detail">{{ step.detail }}</p>
+                </div>
+              </li>
+            </ol>
+            <el-alert v-if="flow.notice" :title="flow.notice" type="warning" :closable="false" show-icon class="workflow-guide-notice"/>
+          </el-collapse-item>
+        </el-collapse>
+        <span slot="footer"><el-button @click="workflowGuideVisible=false">关闭指南</el-button></span>
+      </el-dialog>
       <el-dialog title="调整用户会员等级" :visible.sync="membershipDialogVisible" width="520px" custom-class="membership-edit-dialog" :close-on-click-modal="false">
         <p v-if="membershipEditingUser" class="admin-muted">{{ membershipEditingUser.nickname || '小程序用户' }} · {{ membershipEditingUser.phoneMasked || '未绑定手机号' }}</p>
         <el-alert title="后台等级调整不会创建或修改支付订单。选择「按订单计算」会清除后台调整并恢复根据已支付订单判定的会员权益。" type="info" :closable="false" show-icon class="banner-note" />
@@ -627,6 +647,57 @@ const detailExhibitFields = [{key:'name',label:'标题',keys:{zh:'name',tw:'name
 const detailHighlightFields = [{key:'name',label:'标题',keys:{zh:'name',tw:'nameTw',en:'nameEn'}},{key:'desc',label:'描述',keys:{zh:'desc',tw:'descTw',en:'descEn'}}]
 const detailRouteFields = [{key:'title',label:'标题',keys:{zh:'title',tw:'titleTw',en:'titleEn'}},{key:'description',label:'描述',keys:{zh:'description',tw:'descriptionTw',en:'descriptionEn'}}]
 const detailAudioFields = detailRouteFields
+// 操作指南：每个内容链路从上游到下游的编号步骤；新增板块链路时同步维护这里。
+const workflowGuide = [
+  { title: '城市与景点（基础资料）', goal: '所有讲解内容的地基，先建这个', steps: [
+    { action: '确认国家与分类已就绪', where: '路线与目的地 → 国家管理 / 目的地分类', detail: '目的地分类只需 3 个固定 key：culture 文明溯源、mountain 山海遗堡、island 爱琴海境；一般无需新增。' },
+    { action: '新增城市', where: '路线与目的地 → 城市与价格 → 新增', detail: '填写城市 ID（英文小写，如 aegina）、名称、所属国家；保存后城市即可被景点和目的地引用。' },
+    { action: '设置城市讲解价格（可选）', where: '城市列表 → 编辑 → 讲解价格', detail: '城市价格是「城市通行」商品；不填则该城市不单独售卖。' },
+    { action: '上传城市独立封面图', where: '城市列表 → 编辑 → 城市独立封面图', detail: '一张 1400×900 横图；留空时自动回退到本城市第一个已发布景点主图。' },
+    { action: '新增景点并填写资料', where: '路线与目的地 → 景点管理 → 新增景点', detail: '所属城市必选；名称、图片、摘要、亮点、参观信息按需填写；简体必填，繁体/英文可用「自动翻译」生成。' },
+    { action: '发布景点', where: '景点列表 → 状态下拉 → 发布', detail: '只有「发布」状态的景点才会出现在小程序与公开接口；未发布的景点不可被目的地关联。' },
+  ], notice: '城市与景点是一切的上游：目的地、讲解路线、音频全部引用这里的数据。' },
+  { title: '目的地（首页精选目的地）', goal: '让景点出现在小程序首页「精选目的地」', steps: [
+    { action: '确认上游：城市已有已发布景点', where: '路线与目的地 → 景点管理', detail: '目的地必须关联至少 1 个已发布景点，否则保存后也不会展示。' },
+    { action: '新增目的地', where: '路线与目的地 → 目的地 → 新增目的地', detail: '填写名称、图片、分类。分类必须从下拉选择已启用的 key（culture / mountain / island），不要手填中文名。' },
+    { action: '关联城市与景点', where: '目的地列表 → 行内「关联景点」', detail: '第 1 步选城市，第 2 步勾选该城市下要展示的已发布景点，第 3 步保存。' },
+    { action: '发布目的地', where: '目的地列表 → 状态下拉 → 发布', detail: '发布 + 关联≥1 个已发布景点，目的地才会出现在首页对应分类下。' },
+  ], notice: '分类填错（如填了「海岛」）时该目的地不归属任何分类；可编辑改分类，或删除重建（ID 含空格/中文也能正常删除）。' },
+  { title: '讲解路线与路线导览音频', goal: '景点详情页的「路线导览」板块', steps: [
+    { action: '确认上游：景点已发布', where: '路线与目的地 → 景点管理', detail: '路线必须挂在已发布景点下。' },
+    { action: '新增讲解路线', where: '语音与文史 → 路线导览 → 新增', detail: '填写路线名称、所属景点、路线说明。' },
+    { action: '编排讲解点顺序', where: '路线导览 → 编辑 → 讲解点', detail: '从该景点的讲解点中按游览顺序添加；顺序就是小程序里播放的顺序。' },
+    { action: '录制并上传路线音频', where: '语音与文史 → 导览音频 / 文史节目（筛选：路线导览）→ 新增', detail: '上传 MP3/M4A，类别选「路线导览」，关联对应路线，保存并发布。' },
+  ], notice: '「路线导览」板块的显示 = 有讲解路线且有已发布的路线音频；景点编辑页可勾选隐藏该板块。' },
+  { title: '线上预览音频', goal: '景点详情页的「线上预览」板块', steps: [
+    { action: '新增音频并选择「线上预览」类别', where: '语音与文史 → 导览音频 / 文史节目（筛选：线上预览）→ 新增', detail: '上传 MP3/M4A；类别必须选「线上预览」。' },
+    { action: '关联景点', where: '音频编辑页 → 关联景点', detail: '一条音频挂一个景点；多个景点需分别创建。' },
+    { action: '设置试听秒数并发布', where: '音频编辑页 → 试听秒数 / 状态', detail: '试听默认 60 秒（1–60 可调）；发布后小程序「线上预览」列表立即出现。' },
+  ], notice: '线上预览免费可听，完整讲解需购买权益；试听是转化入口，建议保留。' },
+  { title: '名导讲解（音频 + 视频）', goal: '景点详情页的「名导讲解」板块', steps: [
+    { action: '新增音频并选择「名导讲解」类别', where: '语音与文史 → 导览音频 / 文史节目（筛选：名导讲解）→ 新增', detail: '上传 MP3/M4A，类别选「名导讲解」，关联景点。' },
+    { action: '（可选）配置名导讲解视频', where: '路线与目的地 → 景点管理 → 编辑景点 → 名导讲解页签', detail: '上传视频封面、填写视频地址、总时长与试看秒数；视频是板块的强化内容。' },
+    { action: '发布音频', where: '音频列表 → 状态 → 发布', detail: '发布后板块出现；无任何名导内容的景点建议在景点编辑页勾选隐藏该板块。' },
+  ], notice: '名导讲解需购买权益后完整收听；试看秒数只对未购用户生效。' },
+  { title: '文史知识库专辑', goal: '小程序「文史知识库」的免费预览内容', steps: [
+    { action: '新增专辑', where: '语音与文史 → 希腊文史专辑 → 新增', detail: '填写专辑名称、简介、封面。' },
+    { action: '新增节目音频并挂到专辑', where: '语音与文史 → 导览音频 / 文史节目 → 新增', detail: '类别按内容选择；在音频编辑页把专辑字段设为对应专辑。' },
+    { action: '发布专辑与节目', where: '专辑列表 / 音频列表 → 状态 → 发布', detail: '专辑与其下至少一条已发布节目同时就绪，知识库入口才会展示内容。' },
+  ], notice: '文史专辑走「城市与专辑定价」售卖，不依赖城市/景点。' },
+  { title: '小程序售卖与权益', goal: '让用户能购买并解锁内容', steps: [
+    { action: '设置城市景点包与文史专辑价格', where: '路线与目的地 → 城市与专辑定价', detail: '城市景点包（cityId）解锁城市全部已发布景点；文史专辑（albumId）解锁专辑全部已发布节目。' },
+    { action: '设置会员等级与价格', where: '小程序管理 → 会员等级', detail: '年会员/终身会员的商品名、价格、币种与启用状态；不影响已购用户权益。' },
+    { action: '检查小程序 Banner 与服务入口', where: '小程序管理 → 小程序 Banner / 首页服务入口', detail: '首页轮播图与 6 个服务入口的图标、标题、副标题在这里维护。' },
+    { action: '验证购买链路', where: '小程序体验版 → 景点详情 → 购买', detail: '用体验版真实下单一笔小额，确认支付回调与权益解锁正常。' },
+  ], notice: '调价与开关不影响已购买用户的既有权益。' },
+  { title: '每日运营与客服', goal: '处理咨询、预约与用户档案', steps: [
+    { action: '处理咨询与用车询盘', where: '共同数据 → 咨询 CRM', detail: '所有 leadType（用车/商旅/定制/预约）统一在这里跟进状态：待处理 → 已联系 → 已报价 → 已完成。' },
+    { action: '管理导游预约', where: '共同数据 → 导游预约', detail: '按预约日期查看与确认。' },
+    { action: '查改用户会员等级', where: '小程序管理 → 小程序用户 → 调整会员', detail: '可手动设为普通/年会员/终身会员，或恢复按支付订单计算。' },
+    { action: '查看订单与出行人资料', where: '小程序管理 → 订单管理 / 出行人资料 / 签证资料', detail: '订单状态以支付回调为准；出行人与签证资料随订单归档。' },
+  ], notice: '咨询 CRM 是所有表单提交的统一入口，别在小程序端单独找。' },
+]
+
 const guideGroups = [
   {title:'景点讲解与音频',items:[
     {title:'景点资料与讲解点',menu:'attractions',menuLabel:'景点管理',location:'小程序「城市景点 → 景点详情」的介绍、亮点、讲解点和参观信息。',description:'进入景点列表后编辑对应景点；主图与「线上预览」「名导讲解」卡片封面分别在对应编辑页签管理，封面留空时使用主图；讲解点在「讲解点」页签增删改。'},
@@ -798,7 +869,7 @@ const attractionEditorFieldGroups = [
 
 export default {
   name:'AdminApp',
-  data(){return{token:sessionStorage.getItem(TOKEN)||'',password:'',error:'',active:MENU_IDS.has(sessionStorage.getItem(ACTIVE_MENU))?sessionStorage.getItem(ACTIVE_MENU):'overview',guideVisible:false,membershipDialogVisible:false,membershipSaving:false,membershipEditingUser:null,membershipForm:{type:'auto',expiresAt:''},guideGroups,settingsTab:'site',detailTab:'sections',detailPage:null,vehicleService:null,vehicleView:'list',detailLocales,vehicleOptionGroups,detailSectionKeys,detailVisitorKeys,detailExhibitFields,detailHighlightFields,detailRouteFields,detailAudioFields,detailAudioCategoryLabels,translatableFieldGroups,attractionView:'list',attractionEditorTab:'basic',recordEditorTab:'basic',vehicleConfigTab:'page',businessService:null,travelGuide:null,businessConfigTab:'page',travelDocFiles:[],travelDocSelectedKey:'',sectionScanBusy:false,embeddedService:'',embeddedLoadingLabel:'',menuOpenSnapshot:(()=>{const saved=sessionStorage.getItem(ACTIVE_MENU);const group=groups.find(item=>item.items.some(entry=>entry[0]===saved));if(!group||group.label==='共同数据')return [];const opened=[group.label];const section=group.sections?.find(item=>item.items.some(entry=>entry[0]===saved));if(section)opened.push(section.index);return opened})(),businessOptionGroups:[{key:'cycle',label:'往返周期'},{key:'duration',label:'陪同时长'},{key:'language',label:'语言需求'},{key:'people',label:'随行人数'}],attractionDestinationFilter:'',audioTrackCategoryFilter:'',audioDestinationFilter:'',expandedAudioGroups:[],destinationLinkSaving:{},data:JSON.parse(JSON.stringify(emptyData)),stats:{},commerce:{},settings:this.defaultSettings(),loading:false,busy:false,localAiEnabled:false,aiFillDialogVisible:false,aiFilling:false,aiTranslating:false,aiAttractionName:'',aiEntityType:'attraction',aiProgressMessage:'正在准备…',filterText:'',page:1,pageSize:10,pageSizes:[5,10,20,50,100],groupPages:{},filters:{enabled:'',featured:'',countryId:'',status:'',days:'',type:'',currency:'',priceCny:[null,null],city:'',tag:'',period:[],leadType:'',createdAt:[],bookingDate:[],member:'',productType:'',relation:'',visaStatus:'',expiry:[],expiresAt:[]},editor:null,editorBaseline:'',destinationAttractionSearch:'',destinationShowAllCities:false,selectedAttractionIds:[],batchBusy:false,publicationResults:[],publicationChecking:false,publicationCheckedAt:'',apiOrigin:window.location.origin,form:{},jsonFields:{},dateRange:[],jsonError:'',confirmVisible:false,confirmText:'',confirmHandler:null,menuGroups:groups,rowStatusOptions:[{label:'发布',value:'published'},{label:'下架',value:'unpublished'}],settingTabs}},
+  data(){return{token:sessionStorage.getItem(TOKEN)||'',password:'',error:'',active:MENU_IDS.has(sessionStorage.getItem(ACTIVE_MENU))?sessionStorage.getItem(ACTIVE_MENU):'overview',guideVisible:false,workflowGuideVisible:false,workflowOpenSections:[workflowGuide[0].title],workflowGuide,membershipDialogVisible:false,membershipSaving:false,membershipEditingUser:null,membershipForm:{type:'auto',expiresAt:''},guideGroups,settingsTab:'site',detailTab:'sections',detailPage:null,vehicleService:null,vehicleView:'list',detailLocales,vehicleOptionGroups,detailSectionKeys,detailVisitorKeys,detailExhibitFields,detailHighlightFields,detailRouteFields,detailAudioFields,detailAudioCategoryLabels,translatableFieldGroups,attractionView:'list',attractionEditorTab:'basic',recordEditorTab:'basic',vehicleConfigTab:'page',businessService:null,travelGuide:null,businessConfigTab:'page',travelDocFiles:[],travelDocSelectedKey:'',sectionScanBusy:false,embeddedService:'',embeddedLoadingLabel:'',menuOpenSnapshot:(()=>{const saved=sessionStorage.getItem(ACTIVE_MENU);const group=groups.find(item=>item.items.some(entry=>entry[0]===saved));if(!group||group.label==='共同数据')return [];const opened=[group.label];const section=group.sections?.find(item=>item.items.some(entry=>entry[0]===saved));if(section)opened.push(section.index);return opened})(),businessOptionGroups:[{key:'cycle',label:'往返周期'},{key:'duration',label:'陪同时长'},{key:'language',label:'语言需求'},{key:'people',label:'随行人数'}],attractionDestinationFilter:'',audioTrackCategoryFilter:'',audioDestinationFilter:'',expandedAudioGroups:[],destinationLinkSaving:{},data:JSON.parse(JSON.stringify(emptyData)),stats:{},commerce:{},settings:this.defaultSettings(),loading:false,busy:false,localAiEnabled:false,aiFillDialogVisible:false,aiFilling:false,aiTranslating:false,aiAttractionName:'',aiEntityType:'attraction',aiProgressMessage:'正在准备…',filterText:'',page:1,pageSize:10,pageSizes:[5,10,20,50,100],groupPages:{},filters:{enabled:'',featured:'',countryId:'',status:'',days:'',type:'',currency:'',priceCny:[null,null],city:'',tag:'',period:[],leadType:'',createdAt:[],bookingDate:[],member:'',productType:'',relation:'',visaStatus:'',expiry:[],expiresAt:[]},editor:null,editorBaseline:'',destinationAttractionSearch:'',destinationShowAllCities:false,selectedAttractionIds:[],batchBusy:false,publicationResults:[],publicationChecking:false,publicationCheckedAt:'',apiOrigin:window.location.origin,form:{},jsonFields:{},dateRange:[],jsonError:'',confirmVisible:false,confirmText:'',confirmHandler:null,menuGroups:groups,rowStatusOptions:[{label:'发布',value:'published'},{label:'下架',value:'unpublished'}],settingTabs}},
   computed:{
     editorDirty(){return Boolean(this.editor)&&this.editorState()!==this.editorBaseline},
     attractionEditorFieldGroups(){return attractionEditorFieldGroups},
