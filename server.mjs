@@ -1511,7 +1511,9 @@ function normalizeCityPayload(payload) {
 }
 async function collectionHandler(data, collection, method, pathname, payload) {
   const items = data[collection]
-  const itemId = pathname.split('/').pop()
+  // itemId 来自 URL 路径段：id 可能含空格/中文（如「Aegean Escapes」），需解码后再匹配。
+  let itemId = pathname.split('/').pop()
+  try { itemId = decodeURIComponent(itemId) } catch {}
   let normalizedPayload
   try {
     normalizedPayload = collection === 'attractions'
