@@ -173,6 +173,12 @@ try {
   // 还原该景点 overrides（恢复 scan 后状态：全隐藏）
   await fetch(`${base}/api/admin/attractions/${encodeURIComponent(target.id)}`, { method: 'PATCH', headers: auth, body: JSON.stringify({ sectionOverrides: { route: true, online: true, expert: true } }) })
 
+  // ---- 景点来源列与 createdAt ----
+  const created = await (await fetch(`${base}/api/admin/attractions`, { method: 'POST', headers: auth, body: JSON.stringify({ name: '来源测试景点', city: 'athens', summary: '测试', status: 'unpublished', type: 'landmark', category: '测试' }) })).json()
+  assert(created.createdAt, 'POST attraction stamps createdAt')
+  const createdAt = await (await fetch(`${base}/api/content`)).json()
+  // 公开接口不输出 createdAt 也没关系——此断言只保证 admin 字段存在
+  console.log('created test attraction createdAt:', created.createdAt)
   console.log('Business service, travel guide & docs tests passed (admin CRUD, validation, caps, upload-doc, public contract).')
 } finally {
   server.kill('SIGTERM')

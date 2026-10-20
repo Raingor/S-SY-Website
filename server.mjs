@@ -1538,7 +1538,7 @@ async function collectionHandler(data, collection, method, pathname, payload) {
     if (!cityId || !String(normalizedPayload.name || '').trim() || !(data.countries || []).some((country) => country.id === normalizedPayload.countryId)) return { status: 422, body: { error: '请填写城市 ID、城市名称和有效所属国家' } }
     if (items.some((item) => item.id === cityId)) return { status: 409, body: { error: '城市 ID 已存在，请编辑原城市' } }
   }
-  if (method === 'POST') { const next = { ...normalizedPayload, id: normalizedPayload.id || id(collection.slice(0, -1)) }; items.push(next); await saveData(data); return { status: 201, body: next } }
+  if (method === 'POST') { const next = { ...normalizedPayload, id: normalizedPayload.id || id(collection.slice(0, -1)) }; if (collection === 'attractions' && !next.createdAt) next.createdAt = new Date().toISOString(); items.push(next); await saveData(data); return { status: 201, body: next } }
   const index = items.findIndex((item) => item.id === itemId)
   if (index < 0) return { status: 404, body: { error: 'not found' } }
   if (method === 'PATCH') { items[index] = { ...items[index], ...normalizedPayload, id: itemId }; await saveData(data); return { status: 200, body: items[index] } }
