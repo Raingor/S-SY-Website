@@ -322,7 +322,7 @@
                     <el-tag v-else-if="column.type==='badge'" size="small" :type="statusTone(row[column.key])">{{ statusLabel(row[column.key]) }}</el-tag>
                     <el-select v-else-if="column.type==='status'" :value="rowStatus(row)" size="mini" class="status-inline" @change="value=>changeStatus(row,value)"><el-option v-for="option in statusOptionsForCurrent" :key="option.value" :label="option.label" :value="option.value"/></el-select>
                     <el-select v-else-if="column.type==='association'" :value="linkedDestinationIdsForAttraction(row.id)" multiple filterable :data-tag-cap="linkedDestinationIdsForAttraction(row.id).length" data-tag-max="5" size="mini" class="attraction-link-select" :disabled="!!destinationLinkSaving[row.id]" placeholder="选择关联目的地" @change="ids=>changeAttractionDestinationLinks(row,ids)"><el-option v-for="option in associationDestinationOptions" :key="option.value" :label="option.label" :value="option.value"/></el-select>
-                    <el-tag v-else-if="column.key==='featured'" size="small" :type="row.featured===true?'danger':'info'" effect="plain">{{ row.featured===true?"热门🔥":"普通" }}</el-tag><el-tag v-else-if="column.key==='source'" size="small" :type="attractionSource(row)=='initial'?'info':'warning'" effect="plain">{{ attractionSource(row)==='batch-1020'?'1020 导入':attractionSource(row)==='batch-import'?'批量导入':'初始内容' }}</el-tag><el-tag v-else-if="active==='audioTracks'&&column.key==='category'" size="small" effect="plain" class="audio-category-tag">{{ audioCategoryLabel(row.category) }}</el-tag>
+                    <el-form-item v-else-if="active==='destinations'&&column.key==='sort'" style="margin:0"><el-input-number :value="row.sort ?? undefined" :min="1" size="mini" controls-position="right" style="width:88px" placeholder="—" @change="value=>changeDestSort(row,value)"/></el-form-item><el-tag v-else-if="column.key==='featured'" size="small" :type="row.featured===true?'danger':'info'" effect="plain">{{ row.featured===true?"热门🔥":"普通" }}</el-tag><el-tag v-else-if="column.key==='source'" size="small" :type="attractionSource(row)=='initial'?'info':'warning'" effect="plain">{{ attractionSource(row)==='batch-1020'?'1020 导入':attractionSource(row)==='batch-import'?'批量导入':'初始内容' }}</el-tag><el-tag v-else-if="active==='audioTracks'&&column.key==='category'" size="small" effect="plain" class="audio-category-tag">{{ audioCategoryLabel(row.category) }}</el-tag>
                     <span v-else-if="column.type==='audioPin'"><template v-if="['online','expert'].includes(row.category)"><el-button size="mini" :type="row.isPinned===true?'warning':'primary'" plain :disabled="busy||batchBusy||publicationChecking" @click="changeAudioPin(row,row.isPinned!==true)">{{ row.isPinned===true?'取消置顶':'置顶' }}</el-button></template><span v-else>—</span></span>
                     <span v-else-if="column.type==='tags'" class="table-tags"><el-tag v-for="tag in tagValues(row[column.key]).slice(0,3)" :key="tag" size="mini" effect="plain">{{ tag }}</el-tag><span v-if="!tagValues(row[column.key]).length">—</span></span>
                     <span v-else>{{ column.key==='title'||column.key==='subtitle' ? localizedText(row[column.key]) : displayValue(row[column.key]) }}</span>
@@ -1321,6 +1321,18 @@ export default {
     },
     confirm(message){if(this.confirmVisible)return Promise.resolve(false);return new Promise(resolve=>{this.confirmText=message;this.confirmHandler=resolve;this.confirmVisible=true})},
     resolveConfirm(value){this.confirmVisible=false;this.confirmHandler?.(value);this.confirmHandler=null},
+    async changeDestSort(row,value){
+      if(this.busy)return
+      const next=(value==null||value==='')?null:Math.floor(Number(value))
+      if((row.sort??null)===(next??null))return
+      this.busy=true
+      try{
+        const payload=next==null?{sort:null}:{sort:next}
+        await this.request('/admin/destinations/'+encodeURIComponent(row.id),{method:'PATCH',body:JSON.stringify(payload)})
+        this.$set(row,'sort',next)
+        this.$message.success(next==null?'排序权重已清除':'排序权重已保存')
+      }catch(e){this.$message.error(e.message);await this.loadAll()}finally{this.busy=false}
+    },
     async deleteRow(row){if(!await this.confirm('确定删除这条内容吗？此操作不可撤销。'))return;try{await this.request('/admin/'+this.currentMenu.endpoint+'/'+encodeURIComponent(row.key||row.id),{method:'DELETE'});await this.loadAll();this.$message.success('已删除')}catch(e){this.$message.error(e.message)}},
     async copyGuide(row){if(!await this.confirm('将复制此导游的多语言文案、头像、资质、擅长方向与评价为新草稿，确认继续？'))return;const copy=JSON.parse(JSON.stringify(row));copy.id=(row.id||'guide')+'-copy-'+Date.now().toString(36);copy.name=(copy.name||'导游')+'（副本）';copy.enabled=false;copy.featured=false;this.openEditor(copy,true);this.$message.info('已复制为未发布草稿，请修改导游 ID 与姓名后保存')},
     async saveSettings(label='站点配置'){try{this.busy=true;await this.request('/admin/settings',{method:'PATCH',body:JSON.stringify(this.settings)});await this.loadAll();this.$message.success(`${label}已保存`)}catch(e){this.$message.error(e.message)}finally{this.busy=false}},
