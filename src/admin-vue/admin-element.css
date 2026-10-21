@@ -324,3 +324,7 @@
 
 /* 在地用车表单文案字段 */
 .vehicle-form-field { display: inline-block; width: 24%; min-width: 180px; padding-right: 12px; vertical-align: top; }
+
+/* 目的地列表行内排序：位置徽标（与小程序首页瓷贴顺序一致） */
+.sort-inline-cell { display: flex; align-items: center; gap: 6px; }
+.sort-rank-badge { flex: none; min-width: 28px; text-align: center; padding: 1px 6px; border-radius: 10px; background: #eef7f5; color: #087f7a; font-size: 12px; font-weight: 600; }
