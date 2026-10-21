@@ -1177,6 +1177,8 @@ function normalizePublicDestination(item, cities, attractions) {
   else delete result.sort
   if (item.featured === true) result.featured = true
   else delete result.featured
+  if (item.hiddenGem === true) result.hiddenGem = true
+  else delete result.hiddenGem
   return result
 }
 const miniProgramBannerHashCache = new Map()

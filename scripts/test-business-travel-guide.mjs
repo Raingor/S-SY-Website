@@ -201,6 +201,17 @@ try {
       assert(!('featured' in pubDest2), 'featured omitted when false')
     }
   }
+  // ---- hiddenGem 契约（小众💎，与 featured 互斥）----
+  const gemAfter = await (await fetch(`${base}/api/admin/destinations/${encodeURIComponent(destTarget.id)}`, { method: 'PATCH', headers: auth, body: JSON.stringify({ hiddenGem: true, featured: false }) })).json()
+  assert.equal(gemAfter.hiddenGem, true, 'hiddenGem persisted')
+  const pubGem = (await (await fetch(`${base}/api/content`)).json()).destinations.find((d) => d.id === destTarget.id)
+  if (pubGem) {
+    assert.equal(pubGem.hiddenGem, true, 'public hiddenGem output')
+    assert(!('featured' in pubGem), 'featured cleared with hiddenGem')
+    await fetch(`${base}/api/admin/destinations/${encodeURIComponent(destTarget.id)}`, { method: 'PATCH', headers: auth, body: JSON.stringify({ hiddenGem: false }) })
+    const pubGem2 = (await (await fetch(`${base}/api/content`)).json()).destinations.find((d) => d.id === destTarget.id)
+    if (pubGem2) assert(!('hiddenGem' in pubGem2), 'hiddenGem omitted when false')
+  }
   console.log('Business service, travel guide & docs tests passed (admin CRUD, validation, caps, upload-doc, public contract).')
 } finally {
   server.kill('SIGTERM')
