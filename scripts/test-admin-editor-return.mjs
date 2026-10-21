@@ -8,7 +8,7 @@ const window = { location: { origin: 'http://fixture.invalid' }, scrollX: 0, scr
 const sandbox = { window, sessionStorage: { getItem() { return null } } }
 vm.runInNewContext(script.replace(/^import .*$/gm, '').replace('export default {', 'globalThis.component = {') + '\nglobalThis.fields = fields', sandbox)
 const { component, fields } = sandbox
-for (const key of ['sort', 'featured']) {
+for (const key of ['sort', 'badgeType']) {
   assert.ok(fields.destinations.fields.some(field => field.key === key), `${key} must be an editable destination field`)
   assert.ok(fields.destinations.editorGroups.find(group => group.key === 'basic').fields.includes(key), `${key} must be visible in the destination basic tab`)
 }
@@ -163,13 +163,13 @@ for (const changeMenu of [false, true]) {
   assert.equal(f.state.form.sort, undefined, 'unset weight must stay blank instead of being clamped to the minimum')
   assert.equal(f.state.form.featured, false, 'legacy destinations without a badge remain ordinary')
   f.state.form.sort = 20
-  f.state.form.featured = true
+  f.state.form.badgeType = 'featured'
   await f.state.saveEditor(true)
   f.flush()
   assert.equal(sent.sort, 20)
   assert.equal(sent.featured, true)
   f.state.form.sort = undefined
-  f.state.form.featured = false
+  f.state.form.badgeType = 'none'
   await f.state.saveEditor(false)
   f.flush()
   assert.equal(sent.sort, null, 'clearing an existing weight must explicitly clear it on PATCH')

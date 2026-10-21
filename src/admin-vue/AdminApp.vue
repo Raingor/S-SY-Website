@@ -729,7 +729,7 @@ const detailAudioCategoryLabels = {route:'路线讲解',online:'线上预览',ex
 const basic = (key,label,type='text',extra={}) => ({ key,label,type,...extra })
 const longEditorGroups = {
   destinations:[
-    {key:'basic',label:'目的地资料',description:'维护名称、图片、排序权重、热门角标和发布状态。',fields:['id','name','en','type','image','sort','featured','status']},
+    {key:'basic',label:'目的地资料',description:'维护名称、图片、排序权重、热门角标和发布状态。',fields:['id','name','en','type','image','sort','badgeType','status']},
     {key:'links',label:'关联城市与景点',description:'选择目的地所属城市并关联已发布景点。',count:2,fields:['__destinationLinks']}
   ],
   guides:[
