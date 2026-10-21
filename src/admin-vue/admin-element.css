@@ -220,7 +220,9 @@
 .el-admin .publication-heading p,.el-admin .publication-id { display:block; margin:5px 0; color:#66747a; font-size:12px; overflow-wrap:anywhere; }
 .el-admin .publication-heading small { color:#66747a; }
 .el-admin .editor-dirty-tag { margin-left:8px; }
-.el-admin .destination-link-cell { display:flex; align-items:flex-start; flex-direction:column; gap:7px; padding:4px 0; }
+.el-admin .destination-link-cell { display:flex; align-items:center; flex-wrap:wrap; gap:10px 14px; padding:4px 0; flex-direction:row; }
+.el-admin .destination-link-cell strong { margin-right:2px; }
+.el-admin .destination-link-cell .destination-link-entry { margin-left:0; }
 .el-admin .destination-link-cell small { color:#66747a; }
 .el-admin .destination-link-editor { margin-bottom:24px; padding:20px; border:1px solid #bddbd7; border-top:3px solid var(--ea-teal); border-radius:6px; background:#fbfefd; scroll-margin-top:88px; }
 .el-admin .destination-link-editor:focus-visible { outline:2px solid var(--ea-teal); outline-offset:3px; }
