@@ -1331,6 +1331,8 @@ export default {
         const payload=next==null?{sort:null}:{sort:next}
         await this.request('/admin/destinations/'+encodeURIComponent(row.id),{method:'PATCH',body:JSON.stringify(payload)})
         this.$set(row,'sort',next)
+        const list=this.data.destinations
+        list.sort((a,b)=>{const sa=Number.isFinite(Number(a.sort))?Number(a.sort):Number.MAX_SAFE_INTEGER;const sb=Number.isFinite(Number(b.sort))?Number(b.sort):Number.MAX_SAFE_INTEGER;return sa-sb||String(a.name||'').localeCompare(String(b.name||''),'zh-CN')})
         this.$message.success(next==null?'排序权重已清除':'排序权重已保存')
       }catch(e){this.$message.error(e.message);await this.loadAll()}finally{this.busy=false}
     },
