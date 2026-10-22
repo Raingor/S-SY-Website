@@ -18,6 +18,7 @@
     "test:admin-session": "node scripts/test-admin-session.mjs",
     "test:admin-session-restart": "node scripts/test-admin-session-restart.mjs",
     "test:attraction-publish-contract": "node scripts/test-attraction-destination-links.mjs",
+    "test:annual-membership": "node scripts/test-expert-contract-fixtures.mjs",
     "test:audio-pinning": "node scripts/test-audio-pinning.mjs",
     "test:heritage-guide-banners": "node scripts/test-heritage-guide-banners.mjs",
     "test:miniprogram-service-entries": "node scripts/test-miniprogram-service-entries.mjs",

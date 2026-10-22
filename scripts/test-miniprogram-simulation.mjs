@@ -1,3 +1,4 @@
+import { syntheticContentFixture } from './helpers/synthetic-content-fixture.mjs'
 import { cp, mkdir, readFile, rm, symlink, writeFile } from 'node:fs/promises'
 import { createHash, createHmac } from 'node:crypto'
 import { mkdtemp } from 'node:fs/promises'
@@ -29,10 +30,8 @@ async function prepare() {
   await cp(join(root, 'admin-session.mjs'), join(tempRoot, 'admin-session.mjs'))
   await cp(join(root, 'heritage-content.mjs'), join(tempRoot, 'heritage-content.mjs'))
   await cp(join(root, 'attraction-ai-fill.mjs'), join(tempRoot, 'attraction-ai-fill.mjs'))
-  await cp(join(root, 'seed/site-data.json'), join(tempRoot, 'seed/site-data.json'))
-  await cp(join(root, 'seed/content-demo.json'), join(tempRoot, 'seed/content-demo.json'))
   const fixturePath = join(tempRoot, 'seed/site-data.json')
-  const fixture = JSON.parse(await readFile(fixturePath, 'utf8'))
+  const fixture = syntheticContentFixture()
   fixture.settings.miniprogramKnowledge = { products: { membership: { enabled: true, price: 0.01 } } }
   fixture.homeBanners = [
     { id: 'optimized-banner-test', title: 'Test optimized banner', description: '', alt: 'test', image: './images/home-test.png', enabled: true, sort: 1 },
@@ -81,7 +80,7 @@ function start(simulationEnabled) {
   child = spawn(process.execPath, ['server.mjs'], {
     cwd: tempRoot,
     env: {
-      ...process.env,
+      ...Object.fromEntries(['PATH','HOME','TMPDIR','LANG','TZ'].filter(key => process.env[key]).map(key => [key, process.env[key]])),
       PORT: String(port),
       SY_STORAGE: 'json',
       SY_ADMIN_PASSWORD: 'test-admin-password',
@@ -132,7 +131,7 @@ async function createSession(phone) {
 }
 
 async function stop() {
-  if (!child || child.killed) return
+  if (!child || child.exitCode !== null || child.signalCode !== null) return
   child.kill('SIGTERM')
   await new Promise((resolveExit) => child.once('exit', resolveExit))
   child = null
@@ -173,14 +172,14 @@ try {
   const explicitFullContent = await request('/api/content?includeAttractionDetails=true')
   assert(explicitFullContent.status === 200 && Object.hasOwn(explicitFullContent.data, 'attractionDetails'), 'includeAttractionDetails=true must preserve the full content contract')
   const acropolisPublic = slimContent.data.attractions.find((item) => item.id === 'acropolis')
-  assert(acropolisPublic && acropolisPublic.expertVideoUrl === 'https://example.com/expert.mp4', 'expert video URL should be exposed on the public attraction record')
+  assert(acropolisPublic && acropolisPublic.expertVideoUrl === undefined, 'hidden expert section must not expose an unguarded full video URL')
   assert(acropolisPublic.expertVideoCover === './images/expert-cover.opt.webp', 'expert video cover should use the optimized public image url')
   assert(acropolisPublic.expertVideoDuration === 300 && acropolisPublic.expertVideoTrialSeconds === 30, 'expert video duration and trial seconds should pass through from source')
 
   result = await request('/api/miniprogram/knowledge/config')
   assert(result.status === 200 && result.data.simulation === true && result.data.trialSeconds === 60 && result.data.products.attraction.price === 9.9 && result.data.products.city.price === 69.9 && result.data.products.album.price === 9.9 && result.data.products.annualMembership.price === 199 && result.data.products.membership.price === 0.01 && result.data.products.expertTrack.enabled === false && result.data.products.expertTrack.price === 0, 'config contract failed')
   assert(result.data.products.attraction.productType === 'attraction' && result.data.products.membership.productType === 'membership', 'product config failed')
-  assert(result.data.products.city.enabled === true && result.data.products.city.productType === 'city' && result.data.products.city.name === '城市景点通行' && result.data.products.city.currency === 'CNY', 'city product config must be present and complete when omitted from stored settings')
+  assert(result.data.products.city.enabled === false && result.data.products.city.productType === 'city' && result.data.products.city.name === '城市景点通行' && result.data.products.city.currency === 'CNY', 'city product config must be present and complete when omitted from stored settings')
 
   result = await request('/api/miniprogram/entitlements', { headers: auth('regular') })
   assert(result.status === 200 && result.data.member === false && result.data.orders.length === 0, 'regular fixture failed')
@@ -189,46 +188,24 @@ try {
   result = await request('/api/miniprogram/entitlements', { headers: phoneAuth })
   assert(result.status === 200 && result.data.user.phoneBound === true && !Object.hasOwn(result.data.user, 'phoneFull') && result.data.orders.length === 0, 'phone entitlement should keep its shared user projection masked')
 
-  result = await request('/api/miniprogram/orders', { method: 'POST', headers: phoneAuth, body: JSON.stringify({ productType: 'attraction', attractionId: 'acropolis' }) })
-  assert(result.status === 201 && result.data.simulation === true && result.data.order.status === 'pending' && result.data.order.price === 9.9 && result.data.order.amountTotal === 990 && result.data.order.phone === '+8613800138000' && result.data.payment === null, 'attraction order creation failed')
-  const attractionOrderId = result.data.order.id
-
-  result = await request('/api/miniprogram/orders', { method: 'POST', headers: phoneAuth, body: JSON.stringify({ productType: 'city', cityId: 'athens', price: 0.01, amountTotal: 1 }) })
-  assert(result.status === 201 && result.data.order.price === 69.9 && result.data.order.amountTotal === 6990 && result.data.order.cityId === 'athens', 'city order must use the configured price and preserve cityId')
-  const cityOrderId = result.data.order.id
-
-  result = await request('/api/miniprogram/orders', { method: 'POST', headers: phoneAuth, body: JSON.stringify({ productType: 'album', albumId: 'album-contract', price: 0.01, amountTotal: 1 }) })
-  assert(result.status === 422 && result.data.code === 'PAYMENT_PRODUCT_UNAVAILABLE', 'album single sale is retired: heritage is annual-membership only')
-
-  result = await request('/api/miniprogram/orders', { method: 'POST', headers: phoneAuth, body: JSON.stringify({ productType: 'city', cityId: 'unknown-city' }) })
-  assert(result.status === 422 && result.data.code === 'CITY_NOT_FOUND', 'city purchase must reject unknown city IDs')
-  result = await request('/api/miniprogram/orders', { method: 'POST', headers: phoneAuth, body: JSON.stringify({ productType: 'album', albumId: 'unknown-album' }) })
-  assert(result.status === 422 && result.data.code === 'PAYMENT_PRODUCT_UNAVAILABLE', 'album purchases are rejected regardless of album ID')
-
-  result = await request('/api/miniprogram/orders', { method: 'POST', headers: phoneAuth, body: JSON.stringify({ productType: 'membership' }) })
-  assert(result.status === 201 && result.data.order.productType === 'membership' && result.data.order.price === 0.01, 'membership order creation failed')
-  const membershipOrderId = result.data.order.id
-
-  result = await request('/api/miniprogram/orders', { method: 'GET', headers: phoneAuth })
-  assert(result.status === 200 && result.data.items.length === 3 && result.data.items.every((order) => order.phone === '+8613800138000'), 'order query contract failed')
-
-  result = await request(`/api/miniprogram/orders/${attractionOrderId}/simulate-paid`, { method: 'POST', headers: phoneAuth })
-  assert(result.status === 200 && result.data.order.status === 'paid' && result.data.entitlements.unlockedAttractions.includes('acropolis'), 'paid entitlement failed')
-  result = await request(`/api/miniprogram/orders/${attractionOrderId}/simulate-paid`, { method: 'POST', headers: phoneAuth })
+  for (const productType of ['attraction','city','album','expertTrack','membership']) {
+    result = await request('/api/miniprogram/orders', { method: 'POST', headers: phoneAuth, body: JSON.stringify({ productType, attractionId: 'acropolis', cityId: 'athens' }) })
+    assert(result.status === 422 && result.data.code === 'PAYMENT_PRODUCT_UNAVAILABLE', `${productType} must be retired`)
+  }
+  result = await request('/api/miniprogram/orders', { method: 'POST', headers: phoneAuth, body: JSON.stringify({ productType: 'annualMembership', price: 0.01, amountTotal: 1, durationDays: 99999 }) })
+  assert(result.status === 201 && result.data.order.price === 199 && result.data.order.amountTotal === 19900, 'annual price cannot be selected by the client')
+  const annualOrderId = result.data.order.id
+  result = await request('/api/miniprogram/orders', { headers: phoneAuth })
+  assert(result.status === 200 && result.data.items.length === 1 && result.data.items[0].phone === '+8613800138000', 'order query contract failed')
+  result = await request(`/api/miniprogram/orders/${annualOrderId}/simulate-paid`, { method: 'POST', headers: phoneAuth })
+  assert(result.status === 200 && result.data.entitlements.member === true, 'paid annual grants membership')
+  result = await request(`/api/miniprogram/orders/${annualOrderId}/simulate-paid`, { method: 'POST', headers: phoneAuth })
   assert(result.status === 200 && result.data.idempotent === true, 'paid idempotency failed')
-
-  result = await request(`/api/miniprogram/orders/${cityOrderId}/simulate-paid`, { method: 'POST', headers: phoneAuth })
-  assert(result.status === 200 && result.data.entitlements.unlockedCities.includes('athens') && result.data.entitlements.unlockedAttractions.includes('acropolis'), 'city purchase must unlock its city and all published city attractions')
-  assert(audioEntitled({ unlockMode: 'attraction', attractionId: 'acropolis' }, result.data.entitlements), 'city purchase should authorize attraction audio')
-  // New rule: the city package also unlocks 真人讲解 attached to attractions in that city.
-  assert(result.data.entitlements.unlockedExpertTracks.includes('expert-track-contract'), 'city purchase must unlock expert tracks inside that city')
-  assert(audioEntitled({ id: 'expert-track-contract', category: 'expert', unlockMode: 'expert', attractionId: 'acropolis' }, result.data.entitlements), 'city purchase should authorize expert audio for its city')
-  // Heritage stays annual-membership only even after a city purchase.
-  assert(!audioEntitled({ category: 'heritage', unlockMode: 'album', albumId: 'album-contract' }, result.data.entitlements), 'city purchase must not unlock heritage content')
-
-  result = await request(`/api/miniprogram/orders/${membershipOrderId}/simulate-failed`, { method: 'POST', headers: phoneAuth })
-  assert(result.status === 200 && result.data.order.status === 'failed' && result.data.code === 'SIMULATED_PAYMENT_FAILED' && result.data.entitlements.member === false, 'failed payment path failed')
-  result = await request(`/api/miniprogram/orders/${membershipOrderId}/simulate-failed`, { method: 'POST', headers: phoneAuth })
+  result = await request('/api/miniprogram/orders', { method: 'POST', headers: phoneAuth, body: JSON.stringify({ productType: 'annualMembership' }) })
+  const failedOrderId = result.data.order.id
+  result = await request(`/api/miniprogram/orders/${failedOrderId}/simulate-failed`, { method: 'POST', headers: phoneAuth })
+  assert(result.status === 200 && result.data.order.status === 'failed' && result.data.entitlements.member === true, 'failed renewal preserves existing membership')
+  result = await request(`/api/miniprogram/orders/${failedOrderId}/simulate-failed`, { method: 'POST', headers: phoneAuth })
   assert(result.status === 200 && result.data.idempotent === true, 'failed idempotency failed')
 
   const otherPhoneAuth = await createSession('13900139000')
@@ -236,9 +213,9 @@ try {
   assert(result.status === 200 && result.data.orders.length === 0 && result.data.unlockedAttractions.length === 0, 'phone order isolation failed')
 
   result = await request('/api/miniprogram/entitlements', { headers: auth('attraction') })
-  assert(result.status === 200 && result.data.member === false && result.data.unlockedAttractions.includes('acropolis'), 'attraction fixture failed')
+  assert(result.status === 200 && result.data.member === false && result.data.unlockedAttractions.length === 0, 'historical attraction fixture grants no rights')
   result = await request('/api/miniprogram/entitlements', { headers: auth('membership') })
-  assert(result.status === 200 && result.data.member === true && result.data.unlockedAttractions.length > 0, 'membership fixture failed')
+  assert(result.status === 200 && result.data.member === false && result.data.unlockedAttractions.length === 0, 'historical lifetime fixture grants no rights')
 
   const annualMemberAuth = await createSession('13700137000')
   result = await request('/api/miniprogram/orders', { method: 'POST', headers: annualMemberAuth, body: JSON.stringify({ productType: 'annualMembership' }) })
@@ -298,7 +275,7 @@ try {
   assert(result.status === 200 && result.data.simulation === false && result.data.payment === null && result.data.products.city.name === '测试城市' && result.data.products.city.price === 73.25, 'read-only product config must still return the admin city price when payment is unavailable')
   result = await request('/api/miniprogram/orders')
   assert(result.status === 503 && result.data.code === 'MINIPROGRAM_PAYMENT_NOT_CONFIGURED', 'orders must remain unavailable when payment is not configured')
-  console.log('PASS: default product prices, dedicated city cover priority and associated-attraction fallback, city/album purchase and entitlements, order query/isolation, membership, idempotency, content contract and authentication boundaries')
+  console.log('PASS: fixed annual product and retired sales, synthetic city cover fallback, historical rights removed, annual entitlements, order isolation/idempotency, content and authentication')
 } finally {
   await stop()
   await rm(tempRoot, { recursive: true, force: true })

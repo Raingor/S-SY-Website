@@ -1,4 +1,6 @@
+import { syntheticContentFixture } from './helpers/synthetic-content-fixture.mjs'
 import assert from 'node:assert/strict'
+import { once } from 'node:events'
 import { spawn, spawnSync } from 'node:child_process'
 import { createHash } from 'node:crypto'
 import { copyFileSync, existsSync, mkdtempSync, mkdirSync, readFileSync, rmSync, statSync, symlinkSync, writeFileSync } from 'node:fs'
@@ -21,11 +23,11 @@ async function request(path, { token, method = 'GET', body, headers } = {}) {
 }
 async function main() {
   mkdirSync(join(tmp, 'seed'))
+  mkdirSync(join(tmp, 'dist'))
+  writeFileSync(join(tmp, 'dist/index.html'), '<!doctype html><title>Synthetic fixture</title>')
   for (const name of ['server.mjs', 'storage.mjs', 'wechat-pay.mjs', 'admin-session.mjs', 'heritage-content.mjs', 'attraction-ai-fill.mjs', 'package.json']) copyFileSync(join(root, name), join(tmp, name))
-  copyFileSync(join(root, 'seed/site-data.json'), join(tmp, 'seed/site-data.json'))
-  copyFileSync(join(root, 'seed/content-demo.json'), join(tmp, 'seed/content-demo.json'))
   const fixturePath = join(tmp, 'seed/site-data.json')
-  const fixture = JSON.parse(readFileSync(fixturePath, 'utf8'))
+  const fixture = syntheticContentFixture()
   const baseAttraction = fixture.attractions.at(-1)
   fixture.attractions[0].guide = { ...(fixture.attractions[0].guide || {}), mapImage: 'mapImage-legacy123-abcdef.jpg' }
   fixture.attractions[0].highlights = Array.from({ length: 7 }, (_, index) => ({
@@ -38,7 +40,7 @@ async function main() {
   while (fixture.attractions.length < 87) fixture.attractions.push({ ...baseAttraction, id: `isolated-demo-attraction-${fixture.attractions.length + 1}`, guide: {}, exhibits: [], highlights: [], summary: '' })
   writeFileSync(fixturePath, JSON.stringify(fixture))
   symlinkSync(join(root, 'node_modules'), join(tmp, 'node_modules'), 'dir')
-  child = spawn(process.execPath, [join(tmp, 'server.mjs')], { cwd: tmp, env: { ...process.env, SY_STORAGE: 'json', PORT: String(port), SY_ADMIN_PASSWORD: 'test-only-admin-password', SY_ADMIN_SESSION_SECRET: 'test-only-heritage-session-secret', SY_MINIPROGRAM_SIMULATION_ENABLED: 'true', SY_MINIPROGRAM_SIMULATION_SECRET: 'test-only-simulation-secret', SY_AUDIO_PRIVATE_DIR: join(tmp, 'private-audio') }, stdio: ['ignore', 'pipe', 'pipe'] })
+  child = spawn(process.execPath, [join(tmp, 'server.mjs')], { cwd: tmp, env: { ...Object.fromEntries(['PATH','HOME','TMPDIR','LANG','TZ'].filter(key => process.env[key]).map(key => [key, process.env[key]])), SY_STORAGE: 'json', PORT: String(port), SY_ADMIN_PASSWORD: 'test-only-admin-password', SY_ADMIN_SESSION_SECRET: 'test-only-heritage-session-secret', SY_MINIPROGRAM_SIMULATION_ENABLED: 'true', SY_MINIPROGRAM_SIMULATION_SECRET: 'test-only-simulation-secret', SY_AUDIO_PRIVATE_DIR: join(tmp, 'private-audio') }, stdio: ['ignore', 'pipe', 'pipe'] })
   child.stdout.on('data', (chunk) => { logs += chunk.toString() })
   child.stderr.on('data', (chunk) => { logs += chunk.toString() })
   for (let i = 0; i < 100; i++) {
@@ -231,7 +233,7 @@ async function main() {
   assert.equal(anonymous.data.access, 'preview')
   assert.equal(anonymous.data.fullUrl, null)
   assert.equal((await request(`/api/miniprogram/audio/${program.data.id}/full`)).response.status, 401)
-  const member = await request(`/api/miniprogram/audio/${program.data.id}/access`, { token: 'sim-membership' })
+  const member = await request(`/api/miniprogram/audio/${program.data.id}/access`, { token: 'sim-annual' })
   assert.equal(member.data.access, 'full', JSON.stringify(member.data))
   assert.ok(member.data.fullUrl?.includes('token='))
   assert.equal((await request(member.data.fullUrl, { headers: { Range: 'bytes=0-127' } })).response.status, 206)
@@ -262,8 +264,8 @@ async function main() {
     legacyHeritageModes[mode] = (await request(`/api/miniprogram/audio/${program.data.id}/access`, { token: 'sim-attraction' })).data.access
     assert.equal(legacyHeritageModes[mode], 'preview', `heritage row with legacy ${mode} mode must stay preview-only for non-members`)
   }
-  assert.equal(legacyHeritageModes.free, 'rejected-by-validation', 'heritage tracks may not use free mode')
-  assert.equal(legacyHeritageModes.album, 'rejected-by-validation', 'heritage tracks may not use the retired album mode')
+  assert.equal(legacyHeritageModes.free, 'preview', 'legacy free mode is normalized to annual membership')
+  assert.equal(legacyHeritageModes.album, 'preview', 'legacy album mode is normalized to annual membership')
   assert.equal((await adminRequest(`/api/admin/audioTracks/${program.data.id}`, { method: 'PATCH', body: { unlockMode: 'membership' } })).response.status, 200)
   // Clients must never see legacy metadata that contradicts the enforced policy:
   // public track.unlockMode and access.unlockMode are normalised by category.
@@ -279,14 +281,14 @@ async function main() {
   assert.equal(attraction.audioGuides[0].category, 'route')
   assert.notEqual(attraction.audioGuides[0].isDemo, true)
   assert.deepEqual(attraction.audioGuides.filter((guide) => guide.isDemo), [], 'real audio replaces demo placeholders entirely')
-  assert.equal((await request(`/api/miniprogram/audio/${routeTrack.data.id}/access`, { token: 'sim-membership' })).data.access, 'full', 'existing lifetime members retain full attraction-audio access')
+  assert.equal((await request(`/api/miniprogram/audio/${routeTrack.data.id}/access`, { token: 'sim-membership' })).data.access, 'preview', 'historical lifetime membership no longer grants full access')
   const annualMemberAccess = await request(`/api/miniprogram/audio/${routeTrack.data.id}/access`, { token: 'sim-annual' })
   assert.equal(annualMemberAccess.data.access, 'full', 'active annual members receive full attraction-audio access')
   assert.match(annualMemberAccess.data.fullUrl, /\/full\?token=/)
   assert.equal((await request(annualMemberAccess.data.fullUrl, { headers: { Range: 'bytes=0-4' } })).response.status, 206, 'annual members can stream the full attraction audio')
   const attractionAccess = await request(`/api/miniprogram/audio/${routeTrack.data.id}/access`, { token: 'sim-attraction' })
-  assert.equal(attractionAccess.data.access, 'full')
-  assert.equal((await request(attractionAccess.data.fullUrl, { headers: { Range: 'bytes=0-4' } })).response.status, 206)
+  assert.equal(attractionAccess.data.access, 'preview')
+  assert.equal(attractionAccess.data.fullUrl, null)
   const crossPoint = await adminRequest('/api/admin/audioTracks', { method: 'POST', body: { title: '【TEST ONLY】错误点位', category: 'online', attractionId, exhibitId: 'other-attraction-exhibit', unlockMode: 'free', status: 'published', ...uploaded.data } })
   assert.equal(crossPoint.response.status, 422)
   const onlineTrack = await adminRequest('/api/admin/audioTracks', { method: 'POST', body: { title: '【TEST ONLY】线上点位讲解', titleTw: '【TEST ONLY】線上點位講解', titleEn: 'TEST ONLY Online Point Guide', description: '【TEST ONLY】简体简介', descriptionTw: '【TEST ONLY】繁體簡介', descriptionEn: 'TEST ONLY English description', category: 'online', attractionId, exhibitId, unlockMode: 'free', language: 'zh-CN', sort: 2, status: 'published', ...uploaded.data } })
@@ -303,34 +305,16 @@ async function main() {
   assert.equal(excludedDraft.response.status, 201)
   assert.equal((await request('/api/admin/audioTracks/bulk-attraction-unlock/preview', { method: 'POST', body: {} })).response.status, 401)
   const batchPreview = await adminRequest('/api/admin/audioTracks/bulk-attraction-unlock/preview', { method: 'POST', body: {} })
-  assert.equal(batchPreview.response.status, 200)
-  assert.equal(batchPreview.data.count, 1, 'bulk dry-run includes only eligible published online tracks with valid attraction and both media files')
-  assert.equal(batchPreview.data.items[0].id, onlineTrack.data.id)
-  const staleBatch = await adminRequest('/api/admin/audioTracks/bulk-attraction-unlock/apply', { method: 'POST', body: { confirmed: true, previewHash: 'stale', trackIds: [onlineTrack.data.id] } })
-  assert.equal(staleBatch.response.status, 409, 'stale dry-run token must block bulk changes')
-  assert.equal((await adminRequest('/api/admin/audioTracks')).data.find(item => item.id === onlineTrack.data.id).unlockMode, 'free', 'stale batch must not modify records')
-  const unconfirmedBatch = await adminRequest('/api/admin/audioTracks/bulk-attraction-unlock/apply', { method: 'POST', body: { previewHash: batchPreview.data.previewHash, trackIds: [onlineTrack.data.id] } })
-  assert.equal(unconfirmedBatch.response.status, 409, 'explicit administrator confirmation is required')
-  await adminRequest(`/api/admin/audioTracks/${onlineTrack.data.id}`, { method: 'PATCH', body: { title: '【TEST ONLY】预览后改名' } })
-  const changedBatch = await adminRequest('/api/admin/audioTracks/bulk-attraction-unlock/apply', { method: 'POST', body: { confirmed: true, previewHash: batchPreview.data.previewHash, trackIds: [onlineTrack.data.id] } })
-  assert.equal(changedBatch.response.status, 409, 'changed preview metadata must require a fresh review')
-  const freshBatch = await adminRequest('/api/admin/audioTracks/bulk-attraction-unlock/preview', { method: 'POST', body: {} })
-  const appliedBatch = await adminRequest('/api/admin/audioTracks/bulk-attraction-unlock/apply', { method: 'POST', body: { confirmed: true, previewHash: freshBatch.data.previewHash, trackIds: freshBatch.data.items.map(item => item.id) } })
-  assert.equal(appliedBatch.response.status, 200)
-  assert.equal(appliedBatch.data.count, 1)
-  assert.equal(appliedBatch.data.items[0].previousUnlockMode, 'free')
-  const auditRows = (await adminRequest('/api/admin/audioTracks/bulk-attraction-unlock/audits')).data.items
-  assert.equal(auditRows.at(-1).id, appliedBatch.data.auditId)
-  assert.equal(auditRows.at(-1).items[0].previousUnlockMode, 'free')
-  assert.equal((await adminRequest('/api/admin/audioTracks')).data.find(item => item.id === excludedExpert.data.id).unlockMode, 'expert')
-  assert.equal((await adminRequest('/api/admin/audioTracks')).data.find(item => item.id === excludedDraft.data.id).unlockMode, 'locked')
-  assert.equal((await adminRequest('/api/admin/audioTracks')).data.find(item => item.id === onlineTrack.data.id).unlockMode, 'attraction')
+  assert.equal(batchPreview.response.status, 410, 'obsolete batch unlock is retired')
+  const appliedBatch = await adminRequest('/api/admin/audioTracks/bulk-attraction-unlock/apply', { method: 'POST', body: { confirmed: true } })
+  assert.equal(appliedBatch.response.status, 410)
+  for (const id of [onlineTrack.data.id, excludedExpert.data.id, excludedDraft.data.id]) assert.equal((await adminRequest('/api/admin/audioTracks')).data.find(item => item.id === id).unlockMode, 'membership')
   const expertTrack = await adminRequest('/api/admin/audioTracks', { method: 'POST', body: { title: '【TEST ONLY】真人老师讲解', category: 'expert', attractionId, unlockMode: 'expert', language: 'zh-CN', sort: 3, status: 'published', ...uploaded.data } })
   assert.equal(expertTrack.response.status, 201, JSON.stringify(expertTrack.data))
-  assert.equal((await request(`/api/miniprogram/audio/${expertTrack.data.id}/access`, { token: 'sim-attraction' })).data.unlockMode, 'expert', 'access response normalises expert unlockMode')
+  assert.equal((await request(`/api/miniprogram/audio/${expertTrack.data.id}/access`, { token: 'sim-attraction' })).data.unlockMode, 'membership', 'access response normalises expert unlockMode')
   const expertDetail = (await request('/api/content')).data.attractionDetails?.[attractionId]
   const publicExpert = expertDetail?.audioGuides?.find((guide) => guide.id === expertTrack.data.id)
-  assert.equal(publicExpert?.unlockMode, 'expert', 'public expert guide exposes the effective expert mode')
+  assert.equal(publicExpert?.unlockMode, 'membership', 'public expert guide exposes the effective expert mode')
   const expertPreview = await request(`/api/miniprogram/audio/${expertTrack.data.id}/access`, { token: 'sim-attraction' })
   assert.equal(expertPreview.data.access, 'preview', 'ordinary attraction purchase must not unlock expert content')
   const expertMemberAccess = await request(`/api/miniprogram/audio/${expertTrack.data.id}/access`, { token: 'sim-annual' })
@@ -350,29 +334,11 @@ async function main() {
   assert.equal(expertOrder.response.status, 422, 'enabling the retired expert product cannot resurrect per-track sales')
   assert.equal((await request(`/api/miniprogram/audio/${expertTrack.data.id}/access`, { token: expertAuth })).data.access, 'preview', 'a bare account cannot unlock expert content')
   assert.equal((await request(`/api/miniprogram/audio/${excludedExpert.data.id}/access`, { token: expertAuth })).data.access, 'preview', 'expert content stays locked without membership or city package')
-  const citySession = await request('/api/miniprogram/simulation/session', { method: 'POST', body: { phone: '13900139000' } })
-  const cityToken = citySession.data.accessToken
-  const parentCityId = initial.data.attractions[0].city
-  await adminRequest(`/api/admin/cities/${parentCityId}`, { method: 'PATCH', body: { status: 'published', enabled: true } })
-  const cityOrder = await request('/api/miniprogram/orders', { method: 'POST', token: cityToken, body: { productType: 'city', cityId: parentCityId } })
-  assert.equal(cityOrder.response.status, 201, JSON.stringify(cityOrder.data))
-  await request(`/api/miniprogram/orders/${cityOrder.data.order.id}/simulate-paid`, { method: 'POST', token: cityToken })
-  assert.equal((await request(`/api/miniprogram/audio/${onlineTrack.data.id}/access`, { token: cityToken })).data.access, 'full')
-  // New rule: the city package covers 真人讲解 attached to attractions inside that city.
-  assert.equal((await request(`/api/miniprogram/audio/${expertTrack.data.id}/access`, { token: cityToken })).data.access, 'full', 'city package unlocks expert content inside that city')
-  assert.equal((await request('/api/miniprogram/entitlements', { token: cityToken })).data.unlockedExpertTracks.includes(expertTrack.data.id), true)
-  // Cross-city isolation: an expert row attached to an attraction in another city must stay locked.
-  const otherCityId = initial.data.attractions.find((item) => item.city !== parentCityId)?.city
-  if (otherCityId) {
-    const otherCityAttractionId = initial.data.attractions.find((item) => item.city === otherCityId).id
-    const foreignExpert = await adminRequest('/api/admin/audioTracks', { method: 'POST', body: { title: '【TEST ONLY】外城真人讲解', category: 'expert', attractionId: otherCityAttractionId, unlockMode: 'expert', status: 'published', ...uploaded.data } })
-    assert.equal(foreignExpert.response.status, 201, JSON.stringify(foreignExpert.data))
-    assert.equal((await request('/api/miniprogram/entitlements', { token: cityToken })).data.unlockedExpertTracks.includes(foreignExpert.data.id), false, 'city package must not unlock expert content from another city')
-    assert.equal((await request(`/api/miniprogram/audio/${foreignExpert.data.id}/access`, { token: cityToken })).data.access, 'preview', 'other-city expert content stays preview-only')
-  }
+  const cityOrder = await request('/api/miniprogram/orders', { method: 'POST', token: expertAuth, body: { productType: 'city', cityId: initial.data.attractions[0].city } })
+  assert.equal(cityOrder.response.status, 422, 'city sales are retired')
   const ordinaryExpertRule = await adminRequest(`/api/admin/audioTracks/${expertTrack.data.id}`, { method: 'PATCH', body: { unlockMode: 'attraction' } })
-  assert.equal(ordinaryExpertRule.response.status, 422, 'expert tracks cannot use ordinary attraction entitlement')
-  console.log('Local API contract sample:', JSON.stringify({ expertDefaultProduct: initial.data.settings.miniprogramKnowledge.products.expertTrack, expertSaleRejected: { status: expertOrder.response.status, code: expertOrder.data.code }, previewAccess: expertPreview.data, memberAccess: { ...expertMemberAccess.data, fullUrl: expertMemberAccess.data.fullUrl?.replace(/token=.*/, 'token=<redacted>') }, cityEntitlements: { member: (await request('/api/miniprogram/entitlements', { token: cityToken })).data.member, unlockedExpertTracks: (await request('/api/miniprogram/entitlements', { token: cityToken })).data.unlockedExpertTracks }, heritageLegacyModes: legacyHeritageModes, dryRunCount: batchPreview.data.count, batchAudit: { auditId: appliedBatch.data.auditId, count: appliedBatch.data.count, items: appliedBatch.data.items } }))
+  assert.equal(ordinaryExpertRule.response.status, 200)
+  assert.equal(ordinaryExpertRule.data.unlockMode, 'membership', 'legacy rule saves are normalized')
   const createdExhibit = { id: 'test-only-created-exhibit', name: '【TEST ONLY】新增讲解点', description: '【TEST ONLY】简体介绍', status: 'published', sort: 1 }
   const exhibitCreate = await adminRequest(`/api/admin/attractions/${encodeURIComponent(emptyAttractionId)}`, { method: 'PATCH', body: { exhibits: [createdExhibit] } })
   assert.equal(exhibitCreate.response.status, 200)
@@ -402,8 +368,8 @@ async function main() {
   assert.deepEqual((await request('/api/content')).data.audioAlbums, [])
   child.kill('SIGTERM')
   await new Promise((resolve) => child.once('exit', resolve))
-  rmSync(join(tmp, 'seed/content-demo.json'))
-  child = spawn(process.execPath, [join(tmp, 'server.mjs')], { cwd: tmp, env: { ...process.env, SY_STORAGE: 'json', PORT: String(port), SY_ADMIN_PASSWORD: 'test-only-admin-password', SY_ADMIN_SESSION_SECRET: 'test-only-heritage-session-secret', SY_MINIPROGRAM_SIMULATION_ENABLED: 'true', SY_MINIPROGRAM_SIMULATION_SECRET: 'test-only-simulation-secret', SY_AUDIO_PRIVATE_DIR: join(tmp, 'private-audio') }, stdio: ['ignore', 'pipe', 'pipe'] })
+  rmSync(join(tmp, 'seed/content-demo.json'), { force: true })
+  child = spawn(process.execPath, [join(tmp, 'server.mjs')], { cwd: tmp, env: { ...Object.fromEntries(['PATH','HOME','TMPDIR','LANG','TZ'].filter(key => process.env[key]).map(key => [key, process.env[key]])), SY_STORAGE: 'json', PORT: String(port), SY_ADMIN_PASSWORD: 'test-only-admin-password', SY_ADMIN_SESSION_SECRET: 'test-only-heritage-session-secret', SY_MINIPROGRAM_SIMULATION_ENABLED: 'true', SY_MINIPROGRAM_SIMULATION_SECRET: 'test-only-simulation-secret', SY_AUDIO_PRIVATE_DIR: join(tmp, 'private-audio') }, stdio: ['ignore', 'pipe', 'pipe'] })
   child.stdout.on('data', (chunk) => { logs += chunk.toString() })
   child.stderr.on('data', (chunk) => { logs += chunk.toString() })
   let restarted = false
@@ -416,7 +382,15 @@ async function main() {
   assert.equal(afterRestart.attractionDetailPage.audioHow.note.en, 'Isolated audio note')
   assert.equal(afterRestart.attractionDetailPage.sections.visitor.notice.en, 'Isolated official notice')
   assert.equal(afterRestart.attractions.at(-1).visitorInfo.faq, undefined, 'no demo FAQ survives restart')
-  console.log('PASS: 87 attractions, persisted config without seed, real-FAQ-only contract, no demo placeholders, multilingual visitorInfo, rich-text sanitizer/nodes, online exhibit/audio association and CRUD, private audio access controls, expert bundled with city package/annual membership (no per-track sale), heritage annual-membership-only, audited dry-run bulk unlock')
-  console.log('Storage: temp JSON copy only; local MariaDB and production unchanged')
+  console.log('PASS: 87 attractions, persisted config without seed, real-FAQ-only contract, no demo placeholders, multilingual visitorInfo, rich-text sanitizer/nodes, online exhibit/audio association and CRUD, private audio access controls, all categories annual-membership-only, retired sales and bulk unlock')
+  console.log('Storage: synthetic temporary JSON only; local MariaDB and production unchanged')
 }
-try { await main() } catch (error) { console.error(error); console.error(logs); process.exitCode = 1 } finally { if (child) { child.kill('SIGTERM'); await delay(200); if (child.exitCode === null) child.kill('SIGKILL') } rmSync(tmp, { recursive: true, force: true }) }
+try { await main() } catch (error) { console.error(error); console.error(logs); process.exitCode = 1 } finally {
+  if (child && child.exitCode === null && child.signalCode === null) {
+    const exited = once(child, 'exit')
+    child.kill('SIGTERM')
+    await Promise.race([exited, delay(2000)])
+    if (child.exitCode === null && child.signalCode === null) { child.kill('SIGKILL'); await exited }
+  }
+  rmSync(tmp, { recursive: true, force: true })
+}

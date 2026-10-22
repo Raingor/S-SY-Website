@@ -63,13 +63,13 @@ function ExpertGuideVideo({ attraction }) {
       </div>
       <div className="expert-video-copy">
         <Eyebrow>ON-SITE VIDEO GUIDE</Eyebrow>
-        <h3>{attraction.name} · 名导视频讲解</h3>
+        <h3>{attraction.name} · 游览攻略视频</h3>
         <p>{attraction.summary}</p>
         <p className="expert-video-meta">
           {Number(attraction.expertVideoDuration) > 0 && <span><Clock3 size={13} />全长约 {Math.max(1, Math.round(Number(attraction.expertVideoDuration) / 60))} 分钟</span>}
           {limit > 0 && <span><Info size={13} />试看 {limit} 秒</span>}
         </p>
-        <p className="expert-video-note"><Volume2 size={14} />完整名导视频讲解在小程序内解锁；网站提供限时试看。</p>
+        <p className="expert-video-note"><Volume2 size={14} />完整游览攻略视频在小程序内解锁；网站提供限时试看。</p>
       </div>
     </article>
   )
@@ -306,7 +306,7 @@ export function AttractionDetail({ idOverride = '' }) {
 
             {(hasExpertVideo || expertAudios.length > 0) && (
               <section className="expert-guide-section">
-                <SectionTitle eyebrow="EXPERT GUIDE" title="名导讲解" />
+                <SectionTitle eyebrow="TOURING GUIDE" title="游览攻略" />
                 {hasExpertVideo && <ExpertGuideVideo attraction={attraction} />}
                 {expertAudios.length > 0 && (
                   <div className="expert-audio-grid">
@@ -316,14 +316,14 @@ export function AttractionDetail({ idOverride = '' }) {
                         <div className="expert-audio-copy">
                           <h3>{track.title}</h3>
                           <p>{track.description}</p>
-                          <span className="expert-audio-meta"><Headphones size={13} />{track.durationSeconds ? `约 ${Math.max(1, Math.round(track.durationSeconds / 60))} 分钟` : '名导音频讲解'}</span>
+                          <span className="expert-audio-meta"><Headphones size={13} />{track.durationSeconds ? `约 ${Math.max(1, Math.round(track.durationSeconds / 60))} 分钟` : '游览攻略音频'}</span>
                           {track.previewUrl ? <audio className="exhibit-audio" controls preload="none" src={track.previewUrl}>当前浏览器不支持音频播放。</audio> : <div className="audio-placeholder"><Headphones size={18} /><span>完整音频在小程序内解锁</span></div>}
                         </div>
                       </article>
                     ))}
                   </div>
                 )}
-                <p className="expert-guide-note"><Info size={14} /> 名导讲解音频与视频的完整内容在小程序内解锁；网站提供试听与限时试看。</p>
+                <p className="expert-guide-note"><Info size={14} /> 游览攻略音频与视频的完整内容在小程序内解锁；网站提供试听与限时试看。</p>
               </section>
             )}
 

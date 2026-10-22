@@ -7,7 +7,7 @@ import crypto from 'node:crypto'
 import { setTimeout as delay } from 'node:timers/promises'
 import tls from 'node:tls'
 import { closeStorage, initStorage, readData, saveData, storageStatus } from './storage.mjs'
-import { audioEntitled, effectiveUnlockMode, hasCompleteAudioResources, publicHeritage, signedAudioToken, streamPrivateAudio, uploadPrivateAudio, validateAttraction, validateHeritageRecord, verifySignedAudioToken, normalizeVisitorSections, sanitizeRichText, visibleTrack } from './heritage-content.mjs'
+import { audioEntitled, effectiveUnlockMode, publicHeritage, signedAudioToken, streamPrivateAudio, uploadPrivateAudio, validateAttraction, validateHeritageRecord, verifySignedAudioToken, normalizeVisitorSections, sanitizeRichText, visibleTrack } from './heritage-content.mjs'
 import { amountToFen, createMiniProgramPrepay, decryptWechatNotify, queryWechatTransaction, realPayNotifyReady, realPayRequestReady, verifyWechatNotify, wechatPayConfig } from './wechat-pay.mjs'
 import { requestAdminDraft, requestAudioTrackTranslation, requestDestinationTranslation, requestTextTranslation } from './attraction-ai-fill.mjs'
 
@@ -30,8 +30,8 @@ const detailSectionDefaults = {
   highlights: { label: { zh: '必看亮点', tw: '必看亮點', en: 'Highlights' }, subtitle: { zh: '值得关注的内容', tw: '值得關注的內容', en: 'What to look for' } },
   audioHow: { label: { zh: '语音导览使用指南', tw: '語音導覽使用指南', en: 'How to use audio guides' }, subtitle: { zh: '了解试听与正式讲解', tw: '了解試聽與正式講解', en: 'Learn about previews and full guides' } },
   route: { label: { zh: '路线导览', tw: '路線導覽', en: 'Route guide' }, subtitle: { zh: '按路线探索讲解点', tw: '按路線探索講解點', en: 'Explore interpretation points by route' } },
-  online: { label: { zh: '线上预览', tw: '線上預覽', en: 'Online preview' }, subtitle: { zh: '远程了解景点内容', tw: '遠端了解景點內容', en: 'Explore the attraction remotely' } },
-  expert: { label: { zh: '名导讲解', tw: '名導講解', en: 'Expert guide' }, subtitle: { zh: '专业讲解内容', tw: '專業講解內容', en: 'Expert interpretation' } },
+  online: { label: { zh: '专业介绍', tw: '專業介紹', en: 'Professional Introduction' }, subtitle: { zh: '远程了解景点内容', tw: '遠端了解景點內容', en: 'Explore the attraction remotely' } },
+  expert: { label: { zh: '游览攻略', tw: '遊覽攻略', en: 'Touring Guide' }, subtitle: { zh: '专业讲解内容', tw: '專業講解內容', en: 'Expert interpretation' } },
 }
 const detailAudioHowDefaults = {
   steps: [
@@ -62,13 +62,19 @@ function normalizeAttractionDetailPage(input) {
     return Object.fromEntries(Object.entries(fallback).map(([key, entry]) => [key, walk(value?.[key], entry)]))
   }
   const page = walk(input, defaults)
-  page.demo.audioGuides.forEach((entry, index) => { entry.category = defaults.demo.audioGuides[index].category })
-  // 板块显隐开关（MpApp 契约）：仅 route / online / expert 支持 hidden；true 隐藏，缺省/false/其它值均显示且不写入输出。
-  for (const key of ['route', 'online', 'expert']) {
-    const hidden = input?.sections?.[key]?.hidden
-    if (hidden === true) page.sections[key].hidden = true
-    else delete page.sections[key].hidden
+  // Rename historical built-in labels too; preserve independently customized titles.
+  const oldLabels = {
+    online: ['线上预览', '线上游览', '線上預覽', '線上遊覽', 'Online preview', 'Online tour'],
+    expert: ['名导讲解', '名师讲解', '名導講解', '名師講解', 'Expert guide'],
   }
+  for (const key of ['online', 'expert']) for (const locale of ['zh', 'tw', 'en']) {
+    if (oldLabels[key].includes(page.sections[key].label[locale])) page.sections[key].label[locale] = defaults.sections[key].label[locale]
+  }
+  page.demo.audioGuides.forEach((entry, index) => { entry.category = defaults.demo.audioGuides[index].category })
+  // Current platform policy overrides historical global visibility settings.
+  page.sections.route.hidden = true
+  page.sections.expert.hidden = true
+  delete page.sections.online.hidden
   return page
 }
 const VEHICLE_OPTION_GROUPS = ['vehicle', 'duration', 'people']
@@ -610,8 +616,8 @@ function defaultMiniProgramKnowledgeConfig() {
   return {
     trialSeconds: 60,
     products: {
-      attraction: { enabled: true, productType: 'attraction', name: '景点单篇讲解', price: 9.9, currency: 'CNY' },
-      city: { enabled: true, productType: 'city', name: '城市景点通行', price: 69.9, currency: 'CNY' },
+      attraction: { enabled: false, productType: 'attraction', name: '景点单篇讲解', price: 9.9, currency: 'CNY' },
+      city: { enabled: false, productType: 'city', name: '城市景点通行', price: 69.9, currency: 'CNY' },
       album: { enabled: false, productType: 'album', name: '文史专辑（已停售）', price: 9.9, currency: 'CNY' },
       membership: { enabled: false, productType: 'membership', name: '终身会员', price: 99, currency: 'CNY' },
       annualMembership: { enabled: true, productType: 'annualMembership', name: '年会员', price: 199, currency: 'CNY', durationDays: 365 },
@@ -627,12 +633,12 @@ function miniProgramKnowledgeConfig(data) {
     return [key, {
       ...product,
       ...value,
-      // album and expertTrack are retired: heritage is annual-membership only
-      // and 真人讲解 is bundled with city packages or annual membership.
-      enabled: key === 'album' || key === 'expertTrack' ? false : (value.enabled === undefined ? product.enabled !== false : value.enabled !== false),
+      // One fixed-price annual product; stale admin settings cannot revive sales.
+      enabled: key === 'annualMembership',
       productType: key,
       name: String(value.name || product.name).trim().slice(0, 120),
-      price: Number.isFinite(Number(value.price)) && Number(value.price) >= 0 ? Number(value.price) : product.price,
+      price: key === 'annualMembership' ? 199 : (Number.isFinite(Number(value.price)) && Number(value.price) >= 0 ? Number(value.price) : product.price),
+      ...(key === 'annualMembership' ? { durationDays: 365 } : {}),
       currency: 'CNY',
     }]
   }))
@@ -654,50 +660,17 @@ function simulationState(data) {
   return data.miniprogramSimulation
 }
 function publishedAttractionIds(data) { return (data.attractions || []).filter((item) => item.status === 'published').map((item) => item.id) }
-function paidCommerceEntitlements(data, paidOrders, member) {
-  const unlockedCities = member
-    ? [...new Set((data.cities || []).filter((city) => city.status === 'published' && city.enabled !== false && (data.attractions || []).some((attraction) => attraction.city === city.id && attraction.status === 'published')).map((city) => city.id))]
-    : [...new Set(paidOrders.filter((order) => order.productType === 'city').map((order) => order.cityId).filter(Boolean))]
-  // Albums are no longer sold individually; annual membership unlocks all heritage.
-  const unlockedAlbums = member
-    ? [...new Set((data.audioAlbums || []).filter((album) => album.status === 'published' && (data.audioTracks || []).some((track) => track.albumId === album.id && track.category === 'heritage' && track.status === 'published')).map((album) => album.id))]
-    : []
-  const cityIds = new Set(unlockedCities)
-  const attractionIds = member
-    ? publishedAttractionIds(data)
-    : [...new Set([
-      ...paidOrders.filter((order) => order.productType === 'attraction').map((order) => order.attractionId),
-      ...(data.attractions || []).filter((item) => cityIds.has(item.city) && item.status === 'published').map((item) => item.id),
-    ].filter(Boolean))]
-  // Expert (真人讲解) rows unlock with annual membership or with the city package
-  // covering their attraction. They are not sold per track any more.
-  const expertTracks = (data.audioTracks || []).filter((track) => track.category === 'expert' && track.status === 'published')
-  const unlockedExpertTracks = member
-    ? [...new Set(expertTracks.map((track) => track.id))]
-    : [...new Set(expertTracks.filter((track) => {
-      const attraction = (data.attractions || []).find((item) => item.id === track.attractionId)
-      return Boolean(attraction && cityIds.has(attraction.city))
-    }).map((track) => track.id))]
-  return { unlockedAttractions: attractionIds, unlockedCities, unlockedAlbums, unlockedExpertTracks }
+function paidCommerceEntitlements(data, member) {
+  // Historical orders remain visible for accounting, but confer no playback rights.
+  const unlockedCities = member ? [...new Set((data.cities || []).filter((city) => city.status === 'published' && city.enabled !== false && (data.attractions || []).some((attraction) => attraction.city === city.id && attraction.status === 'published')).map((city) => city.id))] : []
+  const unlockedAlbums = member ? [...new Set((data.audioAlbums || []).filter((album) => album.status === 'published' && (data.audioTracks || []).some((track) => track.albumId === album.id && track.category === 'heritage' && track.status === 'published')).map((album) => album.id))] : []
+  const unlockedAttractions = member ? publishedAttractionIds(data) : []
+  const unlockedExpertTracks = member ? [...new Set((data.audioTracks || []).filter((track) => track.category === 'expert' && track.status === 'published').map((track) => track.id))] : []
+  return { unlockedAttractions, unlockedCities, unlockedAlbums, unlockedExpertTracks }
 }
-function commercePurchaseTarget(data, productType, input = {}) {
-  if (productType === 'attraction') {
-    const attractionId = String(input.attractionId || '').trim()
-    const attraction = (data.attractions || []).find((item) => item.id === attractionId && item.status === 'published')
-    return attraction ? { attractionId, label: attraction.name || attractionId } : { error: 'ATTRACTION_NOT_FOUND', message: '景点不存在或未发布' }
-  }
-  if (productType === 'city') {
-    const cityId = String(input.cityId || '').trim()
-    const city = (data.cities || []).find((item) => item.id === cityId && item.status === 'published' && item.enabled !== false)
-    if (!city) return { error: 'CITY_NOT_FOUND', message: '城市不存在、未发布或已停用' }
-    if (!(data.attractions || []).some((item) => item.city === cityId && item.status === 'published')) return { error: 'CITY_HAS_NO_PUBLISHED_ATTRACTIONS', message: '该城市目前没有已发布景点' }
-    return { cityId, label: city.name || cityId }
-  }
-  if (productType === 'album') return { error: 'PAYMENT_PRODUCT_UNAVAILABLE', message: '文史专辑单售已取消，开通年会员即可收听全部内容' }
-  if (productType === 'expertTrack') return { error: 'PAYMENT_PRODUCT_UNAVAILABLE', message: '真人讲解已改为随城市包或年会员解锁，不再单篇售卖' }
-  if (productType === 'album') return { error: 'PAYMENT_PRODUCT_UNAVAILABLE', message: '文史专辑单售已取消，开通年会员即可收听全部内容' }
-  if (productType === 'annualMembership' || productType === 'membership') return { label: '' }
-  return { error: 'PAYMENT_PRODUCT_UNAVAILABLE', message: '支付商品类型不受支持' }
+function commercePurchaseTarget(productType) {
+  if (productType === 'annualMembership') return { label: '' }
+  return { error: 'PAYMENT_PRODUCT_UNAVAILABLE', message: '仅售年会员：199 元 / 365 天，其他内容商品已停售' }
 }
 const membershipYearMs = 365 * 24 * 60 * 60 * 1000
 function membershipOrderExpiry(order) {
@@ -708,29 +681,21 @@ function membershipOrderExpiry(order) {
   return Number.isFinite(paidAt) ? paidAt + membershipYearMs : 0
 }
 function membershipSummary(orders, now = Date.now(), override = null) {
+  const ordinary = { member: false, membershipCanRenew: true, memberLabel: '普通用户', memberExpiresAt: '' }
+  if (override?.type === 'none') return ordinary
   const paid = (orders || []).filter((order) => order.status === 'paid')
-  if (override?.type === 'none') return { member: false, membershipCanRenew: true, memberLabel: '普通用户', memberExpiresAt: '' }
-  if (override?.type === 'membership') return { member: true, membershipCanRenew: false, memberLabel: '终身会员', memberExpiresAt: '' }
-  if (override?.type === 'annualMembership') {
-    const expiresAt = Date.parse(override.expiresAt || '')
-    if (Number.isFinite(expiresAt) && expiresAt > now) return { member: true, membershipCanRenew: true, memberLabel: '年会员', memberExpiresAt: new Date(expiresAt).toISOString() }
-  }
-  const lifetime = paid.some((order) => order.productType === 'membership')
-  const annualUntilMs = paid.reduce((latest, order) => Math.max(latest, membershipOrderExpiry(order)), 0)
-  const annualActive = annualUntilMs > now
-  return {
-    member: lifetime || annualActive,
-    membershipCanRenew: !lifetime,
-    memberLabel: lifetime ? '终身会员' : annualActive ? '年会员' : '普通用户',
-    memberExpiresAt: !lifetime && annualActive ? new Date(annualUntilMs).toISOString() : '',
-  }
+  const annualUntilMs = override?.type === 'annualMembership'
+    ? Date.parse(override.expiresAt || '')
+    : paid.reduce((latest, order) => Math.max(latest, membershipOrderExpiry(order)), 0)
+  if (!Number.isFinite(annualUntilMs) || annualUntilMs <= now) return ordinary
+  return { member: true, membershipCanRenew: true, memberLabel: '年会员', memberExpiresAt: new Date(annualUntilMs).toISOString() }
 }
 function assignAnnualMembershipPeriod(order, priorOrders, paidAt) {
   if (order?.productType !== 'annualMembership') return
   const paidAtMs = Date.parse(paidAt || order.paidAt || new Date().toISOString())
   if (!Number.isFinite(paidAtMs)) return
   const currentUntil = (priorOrders || []).filter((item) => item !== order && item.status === 'paid' && item.productType === 'annualMembership').reduce((latest, item) => Math.max(latest, membershipOrderExpiry(item)), 0)
-  const startsAt = Math.max(paidAtMs, currentUntil > paidAtMs ? currentUntil : paidAtMs)
+  const startsAt = Math.max(paidAtMs, currentUntil)
   order.membershipStartsAt = new Date(startsAt).toISOString()
   order.membershipExpiresAt = new Date(startsAt + membershipYearMs).toISOString()
 }
@@ -753,7 +718,7 @@ function simulationEntitlements(data, identity) {
   const paidOrders = orders.filter((order) => order.status === 'paid')
   const membership = membershipSummary(paidOrders, Date.now(), identity.userId ? (data.miniprogramUsers || []).find((user) => user.id === identity.userId)?.membershipOverride : null)
   const member = membership.member
-  const commerce = paidCommerceEntitlements(data, paidOrders, member)
+  const commerce = paidCommerceEntitlements(data, member)
   return {
     simulation: true,
     testUser: identity.key,
@@ -784,7 +749,7 @@ function realPaymentEntitlements(data, user) {
   const paidOrders = orders.filter((order) => order.status === 'paid')
   const membership = membershipSummary(paidOrders, Date.now(), user.membershipOverride)
   const member = membership.member
-  const commerce = paidCommerceEntitlements(data, paidOrders, member)
+  const commerce = paidCommerceEntitlements(data, member)
   return {
     simulation: false,
     payment: 'wechat-v3',
@@ -902,11 +867,11 @@ function adminPaymentOrder(data, order) {
 function adminPaymentMembers(data) {
   const orders = paymentOrders(data)
   return (data.miniprogramUsers || []).flatMap((user) => {
-    const paidMemberships = orders.filter((order) => order.userId === user.id && order.status === 'paid' && ['membership', 'annualMembership'].includes(order.productType)).sort((a, b) => String(a.paidAt || a.createdAt || '').localeCompare(String(b.paidAt || b.createdAt || '')))
-    const membership = membershipSummary(paidMemberships)
+    const paidMemberships = orders.filter((order) => order.userId === user.id && order.status === 'paid' && order.productType === 'annualMembership').sort((a, b) => String(a.paidAt || a.createdAt || '').localeCompare(String(b.paidAt || b.createdAt || '')))
+    const membership = membershipSummary(paidMemberships, Date.now(), user.membershipOverride)
     if (!membership.member) return []
     const latest = paidMemberships.at(-1)
-    return [{ id: user.id, nickname: user.nickname || user.id, phoneMasked: user.phone ? maskPhone(user.phone) : null, memberLabel: membership.memberLabel, memberExpiresAt: membership.memberExpiresAt, paidAt: latest.paidAt || latest.createdAt || null, orderId: latest.id, outTradeNo: latest.outTradeNo || null, orderCount: orders.filter((order) => order.userId === user.id).length, unlockedAttractions: publishedAttractionIds(data).length, createdAt: user.createdAt || null }]
+    return [{ id: user.id, nickname: user.nickname || user.id, phoneMasked: user.phone ? maskPhone(user.phone) : null, memberLabel: membership.memberLabel, memberExpiresAt: membership.memberExpiresAt, paidAt: latest?.paidAt || latest?.createdAt || null, orderId: latest?.id || null, outTradeNo: latest?.outTradeNo || null, orderCount: orders.filter((order) => order.userId === user.id).length, unlockedAttractions: publishedAttractionIds(data).length, createdAt: user.createdAt || null }]
   }).sort((a, b) => String(b.paidAt || '').localeCompare(String(a.paidAt || '')))
 }
 function beijingWindowStart(days) {
@@ -923,7 +888,7 @@ function adminCommerceStats(data) {
     const inWindow = (value) => value && new Date(value).getTime() >= start
     const windowOrders = orders.filter((order) => inWindow(order.createdAt))
     const windowPaid = windowOrders.filter((order) => order.status === 'paid')
-    const windowMembers = new Set(windowPaid.filter((order) => ['membership', 'annualMembership'].includes(order.productType) && inWindow(order.paidAt || order.createdAt)).map((order) => order.userId).filter(Boolean))
+    const windowMembers = new Set(windowPaid.filter((order) => order.productType === 'annualMembership' && members.has(order.userId) && inWindow(order.paidAt || order.createdAt)).map((order) => order.userId).filter(Boolean))
     return { orderCount: windowOrders.length, paidOrderCount: windowPaid.length, memberCount: windowMembers.size, amountTotalFen: amountTotalFen(windowPaid), amount: amountTotalFen(windowPaid) / 100 }
   }
   return { totals: { orderCount: orders.length, paidOrderCount: paidOrders.length, memberCount: members.size, amountTotalFen: amountTotalFen(paidOrders), amount: amountTotalFen(paidOrders) / 100 }, windows: { today: buildWindow(1), last7Days: buildWindow(7), last30Days: buildWindow(30) } }
@@ -1314,7 +1279,7 @@ function publicContent(data, countryId = 'greece', { includeAttractionDetails = 
     safeGuide.mapUrl = detail.visitorInfo?.mapUrl || ''
     safeGuide.mapImage = detail.visitorInfo?.mapImage || ''
     safeGuide.sourceUrl = detail.visitorInfo?.sourceUrl || ''
-    return { ...safe, hiddenSections: ['route', 'online', 'expert'].filter((key) => (safe.sectionOverrides?.[key] === true) || attractionDetailPage.sections[key].hidden === true), ...detail, guide: safeGuide, image: imageUrl(item.image), onlineCoverImage: imageUrl(item.onlineCoverImage || item.image), expertCoverImage: imageUrl(item.expertCoverImage || item.image), shareTitle: item.shareTitle || '', shareImage: imageUrl(item.shareImage), expertVideoUrl: String(item.expertVideoUrl || '').trim() || undefined, expertVideoCover: item.expertVideoCover ? imageUrl(item.expertVideoCover) : undefined, expertVideoDuration: Number.isFinite(Number(item.expertVideoDuration)) && Number(item.expertVideoDuration) >= 0 ? Number(item.expertVideoDuration) : 0, expertVideoTrialSeconds: Number.isFinite(Number(item.expertVideoTrialSeconds)) && Number(item.expertVideoTrialSeconds) >= 0 ? Number(item.expertVideoTrialSeconds) : 0, exhibits: detail.exhibits || [], highlights: detail.highlights || [], articles: (item.articles || []).map((article) => ({ ...article, cover: imageUrl(article.cover) })) }
+    return { ...safe, ...detail, sectionOverrides: { route: true, expert: true }, hiddenSections: ['route', 'expert'], guide: safeGuide, image: imageUrl(item.image), onlineCoverImage: imageUrl(item.onlineCoverImage || item.image), expertCoverImage: imageUrl(item.expertCoverImage || item.image), shareTitle: item.shareTitle || '', shareImage: imageUrl(item.shareImage), expertVideoUrl: undefined, expertVideoCover: item.expertVideoCover ? imageUrl(item.expertVideoCover) : undefined, expertVideoDuration: Number.isFinite(Number(item.expertVideoDuration)) && Number(item.expertVideoDuration) >= 0 ? Number(item.expertVideoDuration) : 0, expertVideoTrialSeconds: Number.isFinite(Number(item.expertVideoTrialSeconds)) && Number(item.expertVideoTrialSeconds) >= 0 ? Number(item.expertVideoTrialSeconds) : 0, exhibits: detail.exhibits || [], highlights: detail.highlights || [], articles: (item.articles || []).map((article) => ({ ...article, cover: imageUrl(article.cover) })) }
   })
   const publicCities = scoped(data.cities).filter((item) => item.status !== 'archived').map((item) => {
     const attractionImages = publicAttractions.filter((attraction) => attraction.city === item.id).sort((a, b) => Number(a.sort || 0) - Number(b.sort || 0)).map((attraction) => attraction.image).filter(Boolean)
@@ -1474,14 +1439,8 @@ function injectSeoHtml(html, seo) {
 function normalizeAttractionPayload(data, payload) {
   let normalized = payload
   if (Object.prototype.hasOwnProperty.call(payload, 'visitorSections')) normalized = { ...normalized, visitorSections: normalizeVisitorSections(payload.visitorSections) }
-  // 板块显隐分景点覆盖：仅接受 route/online/expert 的布尔值；全空时删除字段。
-  if (Object.prototype.hasOwnProperty.call(payload, 'sectionOverrides')) {
-    const source = payload.sectionOverrides && typeof payload.sectionOverrides === 'object' && !Array.isArray(payload.sectionOverrides) ? payload.sectionOverrides : {}
-    const overrides = {}
-    for (const key of ['route', 'online', 'expert']) if (source[key] === true) overrides[key] = true
-    if (Object.keys(overrides).length) normalized = { ...normalized, sectionOverrides: overrides }
-    else normalized = { ...normalized, sectionOverrides: null }
-  }
+  // Saving any attraction clears legacy online hiding and fixes the section policy.
+  normalized = { ...normalized, sectionOverrides: { route: true, expert: true } }
   if (Object.prototype.hasOwnProperty.call(payload, 'guide') && payload.guide && typeof payload.guide === 'object') {
     const guide = { ...payload.guide }
     if (/^[a-z0-9][a-z0-9._-]*\.(?:png|jpe?g|webp)$/i.test(String(guide.mapImage || ''))) guide.mapImage = `images/${guide.mapImage}`
@@ -1541,7 +1500,7 @@ async function collectionHandler(data, collection, method, pathname, payload) {
           ? normalizeCityPayload(payload)
           : payload
   } catch (error) { return { status: 422, body: { code: collection === 'cities' ? 'CITY_VALIDATION_FAILED' : 'ATTRACTION_VALIDATION_FAILED', error: error.message || '内容资料无效' } } }
-  if (method === 'GET') return { status: 200, body: items }
+  if (method === 'GET') return { status: 200, body: collection === 'attractions' ? items.map((item) => ({ ...item, sectionOverrides: { route: true, expert: true } })) : items }
   if (collection === 'attractions' && (method === 'POST' || method === 'PATCH')) {
     const previous = method === 'PATCH' ? items.find((item) => item.id === itemId) : null
     if (previous && normalizedPayload.guide && typeof normalizedPayload.guide === 'object') {
@@ -1610,14 +1569,13 @@ const server = http.createServer(async (req, res) => {
       const signedSubject = verifySignedAudioToken(url.searchParams.get('token'), adminSessionSecret, track.id)
       if (!signedSubject) return json(res, 401, { code: 'AUDIO_TOKEN_REQUIRED', error: '请重新获取播放地址' })
       let playbackIdentity = null
-      if (signedSubject === 'anonymous' && effectiveUnlockMode(track) === 'free') playbackIdentity = { anonymous: true }
-      else if (simulation && signedSubject.startsWith('sim-phone:')) {
+      if (simulation && signedSubject.startsWith('sim-phone:')) {
         const phoneHash = signedSubject.slice(10)
         playbackIdentity = { phoneHash, userId: `sim-phone-${phoneHash.slice(0, 20)}`, key: '' }
       }
       else if (simulation && signedSubject.startsWith('sim-key:')) playbackIdentity = { key: signedSubject.slice(8) }
       else if (!simulation && signedSubject.startsWith('user:')) playbackIdentity = (data.miniprogramUsers || []).find((user) => user.id === signedSubject.slice(5)) || null
-      const playbackEntitlements = playbackIdentity ? (playbackIdentity.anonymous ? null : simulation ? simulationEntitlements(data, playbackIdentity) : realPaymentEntitlements(data, playbackIdentity)) : null
+      const playbackEntitlements = playbackIdentity ? (simulation ? simulationEntitlements(data, playbackIdentity) : realPaymentEntitlements(data, playbackIdentity)) : null
       if (!playbackIdentity || !audioEntitled(track, playbackEntitlements)) return json(res, 403, { code: 'AUDIO_ENTITLEMENT_REQUIRED', error: '尚未获得该音频完整播放权限' })
       if (streamPrivateAudio(req, res, { previewFile: track.previewFile, audioFile: track.audioFile }, corsHeaders())) return
       return json(res, 404, { code: 'AUDIO_NOT_FOUND', error: '音频文件不可用' })
@@ -1662,7 +1620,7 @@ const server = http.createServer(async (req, res) => {
         const identity = simulationUserIdentity(req)
         if (!identity) return simulationUserRequired(res)
         if (!identity.phoneHash) return json(res, 422, { code: 'SIMULATION_PHONE_REQUIRED', error: '创建模拟订单前请先使用手机号创建测试会话' })
-        const target = commercePurchaseTarget(data, productType, input)
+        const target = commercePurchaseTarget(productType)
         if (target.error) return json(res, 422, { code: target.error, error: target.message })
         const product = simulationProduct(data, productType, target)
         if (!product || product.enabled === false) return json(res, 422, { code: 'SIMULATION_PRODUCT_UNAVAILABLE', error: '模拟商品不可用' })
@@ -1675,7 +1633,7 @@ const server = http.createServer(async (req, res) => {
       const user = miniProgramUserFromRequest(req, data)
       if (!user) return json(res, 401, { code: 'MINIPROGRAM_LOGIN_REQUIRED', error: '请先微信登录' })
       if (!user.phone) return json(res, 403, { code: 'PHONE_BIND_REQUIRED', error: '支付前请先绑定手机号' })
-      const target = commercePurchaseTarget(data, productType, input)
+      const target = commercePurchaseTarget(productType)
       if (target.error) return json(res, 422, { code: target.error, error: target.message })
       const product = realPaymentProduct(data, productType, target)
       if (!product) return json(res, 422, { code: 'PAYMENT_PRODUCT_UNAVAILABLE', error: '支付商品不可用或价格未配置' })
@@ -2017,6 +1975,8 @@ const server = http.createServer(async (req, res) => {
         const { homeBanners: _homeBanners, ...input } = await body(req)
         if (Object.prototype.hasOwnProperty.call(input, 'travelGuideDocs')) input.travelGuideDocs = normalizeTravelGuideDocs(input.travelGuideDocs)
         data.settings = { ...data.settings, ...input }
+        const { products, trialSeconds } = miniProgramKnowledgeConfig(data)
+        data.settings.miniprogramKnowledge = { products, trialSeconds }
         await saveData(data)
         const { homeBanners: _savedHomeBanners, ...settings } = data.settings
         return json(res, 200, settings)
@@ -2148,36 +2108,13 @@ const server = http.createServer(async (req, res) => {
       }
       const audioUnlockBatchPath = '/api/admin/audioTracks/bulk-attraction-unlock'
       if (url.pathname === `${audioUnlockBatchPath}/audits` && method === 'GET') return json(res, 200, { items: data.audioUnlockBatchAudits || [] })
-      if (url.pathname === `${audioUnlockBatchPath}/preview` && method === 'POST') {
-        const candidates = (data.audioTracks || []).filter((track) => track.category === 'online' && track.status === 'published' && (data.attractions || []).some((attraction) => attraction.id === track.attractionId && attraction.status === 'published') && hasCompleteAudioResources(track) && track.unlockMode !== 'attraction')
-        const snapshot = candidates.map((track) => ({ id: track.id, title: track.title, attractionId: track.attractionId, unlockMode: track.unlockMode, audioFile: track.audioFile, previewFile: track.previewFile }))
-        const previewHash = crypto.createHash('sha256').update(JSON.stringify(snapshot)).digest('hex')
-        const attractionNames = new Map((data.attractions || []).map((attraction) => [attraction.id, attraction.name || attraction.id]))
-        return json(res, 200, { targetUnlockMode: 'attraction', previewHash, count: candidates.length, items: candidates.map((track) => ({ id: track.id, title: track.title, attractionId: track.attractionId, attractionName: attractionNames.get(track.attractionId), previousUnlockMode: track.unlockMode })), criteria: { category: 'online', status: 'published', attractionStatus: 'published', completeAudioResources: true }, generatedAt: new Date().toISOString() })
-      }
-      if (url.pathname === `${audioUnlockBatchPath}/apply` && method === 'POST') {
-        const input = await body(req)
-        const candidates = (data.audioTracks || []).filter((track) => track.category === 'online' && track.status === 'published' && (data.attractions || []).some((attraction) => attraction.id === track.attractionId && attraction.status === 'published') && hasCompleteAudioResources(track) && track.unlockMode !== 'attraction')
-        const snapshot = candidates.map((track) => ({ id: track.id, title: track.title, attractionId: track.attractionId, unlockMode: track.unlockMode, audioFile: track.audioFile, previewFile: track.previewFile }))
-        const currentHash = crypto.createHash('sha256').update(JSON.stringify(snapshot)).digest('hex')
-        const expectedIds = candidates.map((track) => track.id)
-        if (input?.confirmed !== true || input?.previewHash !== currentHash || JSON.stringify(input?.trackIds) !== JSON.stringify(expectedIds)) return json(res, 409, { code: 'AUDIO_UNLOCK_PREVIEW_STALE', error: '候选列表已变化，请重新生成预览并核对' })
-        const auditId = id('audio-unlock-batch')
-        const appliedAt = new Date().toISOString()
-        for (const track of candidates) track.unlockMode = 'attraction'
-        const audit = { id: auditId, appliedAt, targetUnlockMode: 'attraction', count: candidates.length, previewHash: currentHash, items: candidates.map((track, index) => ({ id: track.id, title: track.title, attractionId: track.attractionId, previousUnlockMode: snapshot[index].unlockMode, unlockMode: 'attraction' })) }
-        data.audioUnlockBatchAudits = Array.isArray(data.audioUnlockBatchAudits) ? data.audioUnlockBatchAudits : []
-        data.audioUnlockBatchAudits.push(audit)
-        data.audioUnlockBatchAudits = data.audioUnlockBatchAudits.slice(-100)
-        await saveData(data)
-        return json(res, 200, { auditId, appliedAt, count: candidates.length, targetUnlockMode: 'attraction', items: audit.items })
-      }
+      if ([`${audioUnlockBatchPath}/preview`, `${audioUnlockBatchPath}/apply`].includes(url.pathname) && method === 'POST') return json(res, 410, { code: 'AUDIO_UNLOCK_BATCH_RETIRED', error: '单景点解锁已取消，全部音频统一由有效年会员解锁' })
       const heritageAdmin = url.pathname.match(/^\/api\/admin\/(audioAlbums|audioRoutes|audioTracks)(?:\/([^/]+))?$/)
       if (heritageAdmin && ['GET', 'POST', 'PATCH', 'DELETE'].includes(method)) {
         const collection = heritageAdmin[1]; const itemId = heritageAdmin[2] || ''
         data[collection] = Array.isArray(data[collection]) ? data[collection] : []
         const items = data[collection]
-        if (method === 'GET') return json(res, 200, collection === 'audioTracks' ? items.map((item) => ({ ...item, isPinned: item.isPinned === true })) : items)
+        if (method === 'GET') return json(res, 200, collection === 'audioTracks' ? items.map((item) => ({ ...item, unlockMode: effectiveUnlockMode(item), isPinned: item.isPinned === true })) : items)
         const index = items.findIndex((item) => item.id === itemId)
         if (method === 'DELETE') {
           if (index < 0) return json(res, 404, { code: 'CONTENT_NOT_FOUND', error: '记录不存在' })
@@ -2197,7 +2134,7 @@ const server = http.createServer(async (req, res) => {
         }
         const error = validateHeritageRecord(collection, payload, data, previous)
         if (error) return json(res, 422, { code: 'CONTENT_VALIDATION_FAILED', error })
-        if (collection === 'audioTracks') payload.isPinned = payload.isPinned === true
+        if (collection === 'audioTracks') { payload.isPinned = payload.isPinned === true; payload.unlockMode = effectiveUnlockMode(payload) }
         if (method === 'POST') items.push(payload)
         else items[index] = payload
         await saveData(data)
@@ -2257,7 +2194,7 @@ const server = http.createServer(async (req, res) => {
         const user = (data.miniprogramUsers || []).find((item) => item.id === miniUserMembershipMatch[1])
         if (!user) return json(res, 404, { error: 'not found' })
         const input = await body(req); const type = String(input.type || '')
-        if (!['auto', 'none', 'annualMembership', 'membership'].includes(type)) return json(res, 422, { error: '会员等级无效' })
+        if (!['auto', 'none', 'annualMembership'].includes(type)) return json(res, 422, { error: '会员等级无效' })
         if (type === 'auto') delete user.membershipOverride
         else if (type === 'annualMembership') {
           const expiryDate = String(input.expiresAt || '')
@@ -2302,24 +2239,13 @@ const server = http.createServer(async (req, res) => {
         Object.assign(found.item, payload, { updatedAt: new Date().toISOString() }); await saveData(data); return json(res, 200, { ...(collection === 'travelers' ? safeTraveler(found.item, true) : collection === 'documents' ? safeDocument(found.item, true) : serializer(found.item)), userId: found.user.id, userNickname: found.user.nickname || found.user.id })
       }
       if (url.pathname === '/api/admin/attractions/scan-section-overrides' && method === 'POST') {
-        // 一键扫描：按各景点路线/音频/名导数据有无，自动为无数据板块写 sectionOverrides；有数据的清除对应覆盖。
-        const scan = (items, predicate) => new Set(items.filter(predicate).map((item) => String(item.attractionId || item.id || '')))
-        const tracks = data.audioTracks || []
-        const routeTrackAttractions = scan(tracks.filter((t) => t.category === 'route'), (t) => [t.attractionId, ...(t.attractionIds || [])].filter(Boolean))
-        const onlineTrackAttractions = scan(tracks.filter((t) => t.category === 'online'), (t) => [t.attractionId, ...(t.attractionIds || [])].filter(Boolean))
-        const expertTrackAttractions = scan(tracks.filter((t) => t.category === 'expert'), (t) => [t.attractionId, ...(t.attractionIds || [])].filter(Boolean))
-        const routeAttractionIds = new Set((data.audioRoutes || []).flatMap((r) => [r.attractionId, ...(r.attractionIds || [])].filter(Boolean)))
+        // Explicit admin action normalizes saved visibility without changing content.
+        data.attractionDetailPage = normalizeAttractionDetailPage(data.attractionDetailPage)
         const applied = []
         for (const attraction of data.attractions || []) {
           const id = String(attraction.id || '')
           if (!id) continue
-          const hasRoute = routeAttractionIds.has(id) || routeTrackAttractions.has(id) || (Array.isArray(attraction.routes) && attraction.routes.length > 0)
-          const hasOnline = onlineTrackAttractions.has(id)
-          const hasExpert = expertTrackAttractions.has(id) || Boolean(String(attraction.expertVideoUrl || '').trim()) || Boolean(attraction.expertCoverImage)
-          const overrides = {}
-          if (!hasRoute) overrides.route = true
-          if (!hasOnline) overrides.online = true
-          if (!hasExpert) overrides.expert = true
+          const overrides = { route: true, expert: true }
           const before = attraction.sectionOverrides && typeof attraction.sectionOverrides === 'object' ? attraction.sectionOverrides : {}
           const changed = ['route', 'online', 'expert'].some((key) => Boolean(before[key]) !== Boolean(overrides[key]))
           if (!changed) continue

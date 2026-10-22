@@ -2,7 +2,7 @@ import assert from 'node:assert/strict'
 import { spawn, spawnSync } from 'node:child_process'
 import { once } from 'node:events'
 import { copyFile, mkdir, mkdtemp, readFile, rm, symlink, writeFile } from 'node:fs/promises'
-import { createHmac } from 'node:crypto'
+import { createHash, createHmac } from 'node:crypto'
 import net from 'node:net'
 import { tmpdir } from 'node:os'
 import { dirname, join, resolve } from 'node:path'
@@ -15,6 +15,7 @@ const outputIndex = process.argv.indexOf('--output')
 const output = outputIndex >= 0 ? resolve(process.argv[outputIndex + 1]) : ''
 const simulationSecret = 'isolated-expert-contract-secret'
 const cases = []
+const yearMs = 365 * 24 * 60 * 60 * 1000
 let child
 let logs = ''
 const listener = net.createServer()
@@ -94,17 +95,23 @@ try {
     countries: [{ id: 'greece', name: 'Fixture country', enabled: true }],
     guides: [],
     cities: [{ id: 'fixture-city', name: 'Fixture city', status: 'published', enabled: true, countryId: 'greece' }],
-    attractions: [{ id: 'fixture-attraction', name: 'Fixture attraction', city: 'fixture-city', countryId: 'greece', status: 'published', guide: {}, exhibits: [], highlights: [] }],
+    attractions: [{ id: 'fixture-attraction', name: 'Fixture attraction', city: 'fixture-city', countryId: 'greece', status: 'published', guide: {}, exhibits: [], highlights: [], sectionOverrides: { online: true } }, { id: 'fixture-empty', name: 'Empty synthetic attraction', countryId: 'greece', city: 'fixture-city', status: 'published', sectionOverrides: { online: true }, guide: {}, exhibits: [], highlights: [] }],
     audioTracks: [{ ...track, id: 'fixture-online', sort: 1 }, { ...track, id: 'fixture-expert-a', title: 'Fixture teacher A', category: 'expert', unlockMode: 'expert', sort: 2 }, { ...track, id: 'fixture-expert-b', title: 'Fixture teacher B', category: 'expert', unlockMode: 'expert', sort: 3 }, { ...track, id: 'fixture-heritage-a', title: 'Fixture heritage episode', category: 'heritage', albumId: 'fixture-album', attractionId: '', unlockMode: 'membership', sort: 4 }],
     audioUploads: [uploaded],
-    attractionDetailPage: {},
+    attractionDetailPage: { sections: { online: { hidden: true }, route: { hidden: false }, expert: { hidden: false } } },
     miniprogramUsers: [{ id: revokedUserId, nickname: 'Fixture revoked member', phone: revokedPhone }],
     miniprogramSimulation: { orders: [{ id: 'fixture-expired-annual', testUser: 'expired', productType: 'annualMembership', status: 'paid', paidAt: '2000-01-01T00:00:00.000Z', membershipExpiresAt: '2001-01-01T00:00:00.000Z' }] },
   })
+  for (const productType of ['attraction','city','album','expertTrack','membership']) fixture.miniprogramSimulation.orders.push({ id: `legacy-${productType}`, testUser: `legacy-${productType.toLowerCase()}`, productType, status: 'paid', attractionId: 'fixture-attraction', cityId: 'fixture-city', albumId: 'fixture-album', trackId: 'fixture-expert-a', paidAt: new Date().toISOString() })
+  for (const mode of ['free','locked','attraction','album','expert']) fixture.audioTracks.push({ ...track, id: `legacy-mode-${mode}`, unlockMode: mode })
+  fixture.miniprogramSimulation.orders.push({ id: 'pending-annual', testUser: 'pending', productType: 'annualMembership', status: 'pending', membershipExpiresAt: new Date(Date.now() + yearMs).toISOString() })
+  fixture.miniprogramUsers.push({ id: 'fixture-real-paid' }, { id: 'fixture-real-revoked', membershipOverride: { type: 'none' } }, { id: 'fixture-real-annual', membershipOverride: { type: 'annualMembership', expiresAt: new Date(Date.now() + yearMs).toISOString() } }, { id: 'fixture-real-lifetime', membershipOverride: { type: 'membership' } }, { id: 'fixture-real-expired', membershipOverride: { type: 'annualMembership', expiresAt: '2001-01-01T00:00:00Z' } })
+  fixture.miniprogramOrders.push({ id: 'real-legacy-paid', userId: 'fixture-real-lifetime', productType: 'membership', status: 'paid' })
+  for (const userId of ['fixture-real-paid','fixture-real-revoked']) fixture.miniprogramOrders.push({ id: `annual-${userId}`, userId, productType: 'annualMembership', status: 'paid', paidAt: new Date().toISOString(), membershipExpiresAt: new Date(Date.now() + yearMs).toISOString() })
   await writeFile(join(temp, 'seed/site-data.json'), JSON.stringify(fixture))
   // Only a temporary JSON service is spawned, with no inherited DB or payment credentials.
   const env = Object.fromEntries(['PATH', 'HOME', 'TMPDIR', 'LANG', 'TZ'].filter(key => process.env[key]).map(key => [key, process.env[key]]))
-  Object.assign(env, { SY_STORAGE: 'json', HOST: '127.0.0.1', PORT: String(port), SY_ADMIN_PASSWORD: 'isolated-contract-password', SY_ADMIN_SESSION_SECRET: 'isolated-contract-admin-secret', SY_MINIPROGRAM_SIMULATION_ENABLED: 'true', SY_MINIPROGRAM_SIMULATION_SECRET: simulationSecret, SY_AUDIO_PRIVATE_DIR: join(temp, 'private-audio') })
+  Object.assign(env, { SY_STORAGE: 'json', HOST: '127.0.0.1', PORT: String(port), SY_ADMIN_PASSWORD: 'isolated-contract-password', SY_ADMIN_SESSION_SECRET: 'isolated-contract-admin-secret', SY_MINIPROGRAM_SIMULATION_ENABLED: 'true', SY_MINIPROGRAM_SIMULATION_SECRET: simulationSecret, SY_AUDIO_PRIVATE_DIR: join(temp, 'private-audio'), SY_MINIPROGRAM_TOKEN_SECRET: 'fixture-real-session-secret' })
   child = spawn(process.execPath, ['server.mjs'], { cwd: temp, env, stdio: ['ignore', 'pipe', 'pipe'] })
   child.stdout.on('data', chunk => { logs += chunk })
   child.stderr.on('data', chunk => { logs += chunk })
@@ -118,73 +125,125 @@ try {
   const admin = await request('/api/auth/login', { method: 'POST', body: { password: env.SY_ADMIN_PASSWORD } })
   const adminToken = admin.data.token
   assert.ok(adminToken)
-  const config = await capture('expert_product_default_disabled', '/api/miniprogram/knowledge/config')
-  assert.equal(config.data.products.expertTrack.enabled, false)
-  assert.equal(config.data.products.album.enabled, false, 'album single sale is retired')
-  const content = await capture('public_track_metadata', '/api/content?includeAttractionDetails=false')
-  assert.equal(content.data.attractions[0].audioGuides.length, 3)
-  await access('anonymous_ordinary_preview', 'fixture-online', undefined, 'preview')
-  await access('anonymous_expert_preview', 'fixture-expert-a', undefined, 'preview')
-  const ordinary = await session('10000000001')
-  const city = await session('10000000002')
-  const expert = await session('10000000003')
+  const config = await capture('annual_only_config', '/api/miniprogram/knowledge/config')
+  assert.deepEqual(Object.entries(config.data.products).filter(([, product]) => product.enabled).map(([key]) => key), ['annualMembership'])
+  assert.equal(config.data.products.annualMembership.price, 199)
+  assert.equal(config.data.products.annualMembership.durationDays, 365)
+  const content = await capture('public_track_metadata', '/api/content')
+  for (const attraction of content.data.attractions) {
+    assert.deepEqual(attraction.hiddenSections, ['route','expert'])
+    assert.deepEqual(content.data.attractionDetails[attraction.id].hiddenSections, ['route','expert'])
+    assert.deepEqual(attraction.sectionOverrides, { route: true, expert: true })
+    assert.ok(attraction.audioGuides.every(track => track.unlockMode === 'membership' && track.fullUrl === null))
+  }
+  assert.equal(content.data.attractionDetailPage.sections.route.hidden, true)
+  assert.equal(content.data.attractionDetailPage.sections.expert.hidden, true)
+  assert.notEqual(content.data.attractionDetailPage.sections.online.hidden, true)
   const annual = await session('10000000004')
   const revoked = await session(revokedPhone)
-  // 真人讲解 is never sold per track any more.
-  const disabled = await capture('expert_track_order_rejected', '/api/miniprogram/orders', { method: 'POST', token: expert, body: { productType: 'expertTrack', trackId: 'fixture-expert-a' } })
-  assert.equal(disabled.statusCode, 422)
-  await purchase('ordinary', ordinary, { productType: 'attraction', attractionId: 'fixture-attraction' })
-  await access('ordinary_purchase_ordinary_full', 'fixture-online', ordinary, 'full')
-  await access('ordinary_purchase_expert_preview', 'fixture-expert-a', ordinary, 'preview')
-  await purchase('city', city, { productType: 'city', cityId: 'fixture-city' })
-  await access('city_purchase_ordinary_full', 'fixture-online', city, 'full')
-  // New rule: the city package includes 真人讲解 attached to its attractions.
-  await access('city_purchase_expert_full', 'fixture-expert-a', city, 'full')
-  await access('city_purchase_expert_b_full', 'fixture-expert-b', city, 'full')
-  await capture('city_paid_entitlements', '/api/miniprogram/entitlements', { token: city })
-  // Heritage is annual-membership only: a city package grants no heritage access.
-  await access('city_purchase_heritage_preview', 'fixture-heritage-a', city, 'preview')
-  const setExpert = async (enabled, price) => {
-    const saved = await request('/api/admin/settings', { method: 'PATCH', token: adminToken, body: { miniprogramKnowledge: { products: { expertTrack: { enabled, price } } } } })
-    assert.equal(saved.statusCode, 200)
+  for (const track of fixture.audioTracks) await access(`anonymous_${track.id}_preview`, track.id, undefined, 'preview')
+  for (const productType of ['attraction','city','album','expertTrack','membership']) {
+    const disabled = await capture(`${productType}_order_rejected`, '/api/miniprogram/orders', { method: 'POST', token: annual, body: { productType, attractionId: 'fixture-attraction', cityId: 'fixture-city', albumId: 'fixture-album', trackId: 'fixture-expert-a' } })
+    assert.equal(disabled.statusCode, 422)
+    assert.equal(disabled.data.code, 'PAYMENT_PRODUCT_UNAVAILABLE')
+    const legacyToken = `sim-legacy-${productType.toLowerCase()}`
+    const entitlements = await capture(`legacy_${productType}_entitlements`, '/api/miniprogram/entitlements', { token: legacyToken })
+    assert.equal(entitlements.data.member, false)
+    for (const field of ['unlockedAttractions','unlockedCities','unlockedAlbums','unlockedExpertTracks']) assert.deepEqual(entitlements.data[field], [])
+    assert.equal(entitlements.data.orders.length, 1, 'historical orders remain queryable')
+    await access(`legacy_${productType}_online_preview`, 'fixture-online', legacyToken, 'preview')
+    await access(`legacy_${productType}_expert_preview`, 'fixture-expert-a', legacyToken, 'preview')
   }
-  // Even if an admin tries to re-enable and price the retired product, it stays off.
-  await setExpert(true, 12.34)
-  const resurrected = await capture('expert_product_cannot_be_reenabled', '/api/miniprogram/knowledge/config')
-  assert.equal(resurrected.data.products.expertTrack.enabled, false)
-  const stillRejected = await capture('expert_track_order_still_rejected', '/api/miniprogram/orders', { method: 'POST', token: expert, body: { productType: 'expertTrack', trackId: 'fixture-expert-a' } })
-  assert.equal(stillRejected.statusCode, 422)
-  await capture('retired_album_order_rejected', '/api/miniprogram/orders', { method: 'POST', token: expert, body: { productType: 'album', albumId: 'fixture-album' } })
-  await access('unpaid_account_expert_preview', 'fixture-expert-a', expert, 'preview')
-  await purchase('annual', annual, { productType: 'annualMembership' })
-  await access('annual_purchase_expert_a_full', 'fixture-expert-a', annual, 'full')
-  await access('annual_purchase_expert_b_full', 'fixture-expert-b', annual, 'full')
-  await access('annual_purchase_ordinary_full', 'fixture-online', annual, 'full')
-  await access('annual_purchase_heritage_full', 'fixture-heritage-a', annual, 'full')
-  await capture('annual_paid_entitlements', '/api/miniprogram/entitlements', { token: annual })
-  const expired = await capture('expired_annual_entitlements', '/api/miniprogram/entitlements', { token: 'sim-expired' })
-  assert.equal(expired.data.member, false)
-  await access('expired_annual_expert_preview', 'fixture-expert-a', 'sim-expired', 'preview')
-  await purchase('revocable_annual', revoked, { productType: 'annualMembership' })
-  const preRevocation = await access('before_revocation_expert_full', 'fixture-expert-a', revoked, 'full')
-  const validFull = await capture('signed_full_before_revocation_available', preRevocation.data.fullUrl, { token: revoked })
-  assert.equal(validFull.statusCode, 200)
-  const expiredPayload = Buffer.from(JSON.stringify({ id: 'fixture-expert-a', sub: 'sim-key:annual', exp: 1 })).toString('base64url')
-  const expiredSignature = createHmac('sha256', env.SY_ADMIN_SESSION_SECRET).update(expiredPayload).digest('base64url')
-  const expiredFull = await capture('expired_signed_full_rejected', `/api/miniprogram/audio/fixture-expert-a/full?token=${expiredPayload}.${expiredSignature}`)
+  const tamper = Object.fromEntries(Object.keys(config.data.products).map(key => [key, { enabled: key !== 'annualMembership', price: 0.01, currency: 'USD', durationDays: 99999 }]))
+  const saved = await capture('admin_product_policy_save', '/api/admin/settings', { method: 'PATCH', token: adminToken, body: { miniprogramKnowledge: { products: tamper } } })
+  assert.equal(saved.statusCode, 200)
+  assert.deepEqual(Object.entries(saved.data.miniprogramKnowledge.products).filter(([, p]) => p.enabled).map(([key]) => key), ['annualMembership'])
+  for (const path of ['/api/admin/settings','/api/miniprogram/knowledge/config']) {
+    const read = await capture(`normalized_config_${path.split('/').at(-1)}`, path, { token: adminToken })
+    const product = (read.data.miniprogramKnowledge || read.data).products.annualMembership
+    assert.equal(product.price, 199); assert.equal(product.currency, 'CNY'); assert.equal(product.durationDays, 365)
+  }
+  const fixedOrder = await capture('annual_order_client_price_ignored', '/api/miniprogram/orders', { method: 'POST', token: annual, body: { productType: 'annualMembership', price: 0.01, amountTotal: 1, durationDays: 99999, currency: 'USD' } })
+  assert.equal(fixedOrder.statusCode, 201)
+  assert.equal(fixedOrder.data.order.amountTotal, 19900)
+  assert.equal(fixedOrder.data.order.price, 199)
+  assert.equal(fixedOrder.data.order.currency, 'CNY')
+  await access('pending_annual_preview', 'fixture-online', annual, 'preview')
+  const paid = await capture('annual_payment_confirmed', `/api/miniprogram/orders/${fixedOrder.data.order.id}/simulate-paid`, { method: 'POST', token: annual })
+  assert.equal(paid.statusCode, 200)
+  assert.equal(Date.parse(paid.data.order.membershipExpiresAt) - Date.parse(paid.data.order.membershipStartsAt), yearMs)
+  const expiresAt = paid.data.order.membershipExpiresAt
+  const repeated = await capture('annual_payment_idempotent', `/api/miniprogram/orders/${fixedOrder.data.order.id}/simulate-paid`, { method: 'POST', token: annual })
+  assert.equal(repeated.data.order.membershipExpiresAt, expiresAt)
+  const renewed = await purchase('renewal', annual, { productType: 'annualMembership' })
+  assert.equal(Date.parse(renewed.data.order.membershipStartsAt), Date.parse(expiresAt))
+  assert.equal(Date.parse(renewed.data.order.membershipExpiresAt) - Date.parse(expiresAt), yearMs)
+  for (const track of fixture.audioTracks) await access(`annual_${track.id}_full`, track.id, annual, 'full')
+  await access('pending_seed_annual_preview', 'fixture-online', 'sim-pending', 'preview')
+  await access('expired_annual_preview', 'fixture-online', 'sim-expired', 'preview')
+  const unavailable = await capture('unpublished_track_not_playable', '/api/miniprogram/audio/not-published/access', { token: annual })
+  assert.equal(unavailable.statusCode, 404)
+  const derivedSecret = createHash('sha256').update('sy-greece-admin-session-v1\0' + env.SY_ADMIN_SESSION_SECRET + '\0' + env.SY_ADMIN_PASSWORD).digest()
+  function signedUrl(trackId, subject, exp = Math.floor(Date.now() / 1000) + 300) {
+    const payload = Buffer.from(JSON.stringify({ id: trackId, sub: subject, exp })).toString('base64url')
+    return `/api/miniprogram/audio/${trackId}/full?token=${payload}.${createHmac('sha256', derivedSecret).update(payload).digest('base64url')}`
+  }
+  for (const subject of ['anonymous','sim-key:legacy-membership','sim-key:legacy-city','sim-key:expired']) {
+    const old = await capture(`legacy_signed_${subject}_rejected`, signedUrl('legacy-mode-free', subject))
+    assert.equal(old.statusCode, 403, 'previously issued valid signatures must recheck the current annual policy')
+  }
+  const expiredFull = await capture('expired_signed_full_rejected', signedUrl('fixture-online','sim-key:annual',1))
   assert.equal(expiredFull.statusCode, 401)
-  const override = await request(`/api/admin/miniprogram-users/${revokedUserId}/membership`, { method: 'PATCH', token: adminToken, body: { type: 'none' } })
+  await purchase('revocable_annual', revoked, { productType: 'annualMembership' })
+  const preRevocation = await access('before_revocation_full', 'fixture-expert-a', revoked, 'full')
+  const validFull = await capture('signed_full_available', preRevocation.data.fullUrl)
+  assert.equal(validFull.statusCode, 200)
+  const range = await request(preRevocation.data.fullUrl)
+  assert.ok(range.data.byteLength > 0)
+  const override = await capture('revoke_member', `/api/admin/miniprogram-users/${revokedUserId}/membership`, { method: 'PATCH', token: adminToken, body: { type: 'none' } })
   assert.equal(override.statusCode, 200)
-  await access('after_revocation_expert_preview', 'fixture-expert-a', revoked, 'preview')
-  const rejectedFull = await capture('old_signed_full_after_revocation_rejected', preRevocation.data.fullUrl, { token: revoked })
-  assert.equal(rejectedFull.statusCode, 403)
+  await access('after_revocation_preview', 'fixture-expert-a', revoked, 'preview')
+  assert.equal((await capture('old_signed_after_revocation_rejected', preRevocation.data.fullUrl)).statusCode, 403)
+  const lifetimeGrant = await capture('admin_lifetime_grant_rejected', `/api/admin/miniprogram-users/${revokedUserId}/membership`, { method: 'PATCH', token: adminToken, body: { type: 'membership' } })
+  assert.equal(lifetimeGrant.statusCode, 422)
+  const adminMembers = await capture('admin_active_members_consistent', '/api/admin/miniprogram-orders', { token: adminToken })
+  assert.deepEqual(adminMembers.data.members.map(user => user.id).sort(), ['fixture-real-annual','fixture-real-paid'])
+  const invalidMode = await capture('unknown_unlock_mode_rejected', '/api/admin/audioTracks/fixture-online', { method: 'PATCH', token: adminToken, body: { unlockMode: 'unknown' } })
+  assert.equal(invalidMode.statusCode, 422)
+  const normalPage = await capture('admin_visibility_save', '/api/admin/attraction-detail-page', { method: 'PATCH', token: adminToken, body: { sections: { route: { hidden: false }, expert: { hidden: false }, online: { hidden: true } } } })
+  assert.equal(normalPage.data.sections.route.hidden, true)
+  assert.notEqual(normalPage.data.sections.online.hidden, true)
+  const normalAttraction = await capture('admin_attraction_visibility_save', '/api/admin/attractions/fixture-attraction', { method: 'PATCH', token: adminToken, body: { sectionOverrides: { online: true, route: false, expert: false } } })
+  assert.deepEqual(normalAttraction.data.sectionOverrides, { route: true, expert: true })
+  const scan = await capture('admin_normalize_all_visibility', '/api/admin/attractions/scan-section-overrides', { method: 'POST', token: adminToken })
+  assert.equal(scan.statusCode, 200)
+  const disk = JSON.parse(await readFile(join(temp,'seed/site-data.json'), 'utf8'))
+  assert.ok(disk.attractions.every(attraction => attraction.sectionOverrides.route === true && attraction.sectionOverrides.expert === true && attraction.sectionOverrides.online !== true))
+  for (const action of ['preview','apply']) assert.equal((await capture(`retired_bulk_${action}`, `/api/admin/audioTracks/bulk-attraction-unlock/${action}`, { method: 'POST', token: adminToken, body: { confirmed: true } })).statusCode, 410)
+  // The production authentication path uses the same policy (no live payment calls).
+  async function stopChild() {
+    const exited = once(child,'exit'); child.kill('SIGTERM'); await Promise.race([exited,delay(2000)])
+    if (child.exitCode === null && child.signalCode === null) { child.kill('SIGKILL'); await exited }
+  }
+  await stopChild()
+  env.SY_MINIPROGRAM_SIMULATION_ENABLED = 'false'
+  child = spawn(process.execPath, ['server.mjs'], { cwd: temp, env, stdio: ['ignore','pipe','pipe'] })
+  child.stdout.on('data', chunk => { logs += chunk }); child.stderr.on('data', chunk => { logs += chunk })
+  let realReady = false
+  for (let i=0;i<100;i++) { try { if ((await fetch(base + '/api/health')).ok) { realReady=true; break } } catch {} await delay(50) }
+  assert.ok(realReady)
+  for (const [userId,expected] of [['fixture-real-annual','full'],['fixture-real-paid','full'],['fixture-real-lifetime','preview'],['fixture-real-expired','preview'],['fixture-real-revoked','preview']]) {
+    const payload = Buffer.from(JSON.stringify({ sub: userId, exp: Math.floor(Date.now()/1000)+300 })).toString('base64url')
+    const token = `mpv1.${payload}.${createHmac('sha256',env.SY_MINIPROGRAM_TOKEN_SECRET).update(payload).digest('base64url')}`
+    const result = await access(`real_auth_${userId}_${expected}`, 'legacy-mode-free', token, expected)
+    if (expected === 'full') assert.equal((await capture(`real_auth_signed_media_${userId}_available`,result.data.fullUrl)).statusCode,200)
+  }
   const replayFixture = {
-    schemaVersion: 2,
+    schemaVersion: 3,
     provenance: 'Captured from real loopback HTTP responses of isolated Website JSON fixture; no production or real WeChat payment calls.',
     sanitization: 'Identity/session values and signed query tokens are replaced with fixture-* placeholders; they cannot authenticate or play against any server. Order IDs are remapped consistently. Private fixture paths never enter these public responses.',
-    scope: '真人讲解 is bundled with the city package covering its attraction, or with annual membership; it is never sold per track. Heritage content is annual-membership only. Album single sale is retired.',
-    normalisation: 'Public track.unlockMode and access.unlockMode are normalised by category: heritage always reports membership, expert always reports expert, other categories report their stored value. Clients never observe legacy free/locked/album values for those two categories. `expert` is a distinct enum value meaning "unlocked by the city package covering the attraction, or by annual membership"; do not map it to city or membership. Expert tracks carry no cityId: derive the city via attractionId -> attraction.city, or simply check entitlements.unlockedExpertTracks. City orders keep the flat body {"productType":"city","cityId":"<id>"}.',
-    testPriceNotice: '12.34 is an isolated test-only price used to prove the retired expert product cannot be re-enabled; no commercial price is proposed or hard-coded.',
+    scope: 'Only active annual membership grants full playback across all published audio. Historical lifetime/city/attraction/album/expert purchases confer no rights. The only content product is CNY 199 / 365 days. Route and expert sections are hidden; online is visible even with historical overrides.',
+    normalisation: 'Every public/admin track and access response uses unlockMode=membership regardless of stored legacy mode or category. member=true requires future memberExpiresAt. Full access always supplies a server-signed fullUrl and positive expiresIn; previews supply null. Signed media rechecks current annual membership on every request. Never fabricate fullUrl.',
     cases,
   }
   const serialized = JSON.stringify(replayFixture, null, 2)
@@ -196,7 +255,7 @@ try {
     await mkdir(dirname(output), { recursive: true })
     await writeFile(output, serialized + '\n', { mode: 0o600 })
   }
-  console.log(`PASS: ${cases.length} real HTTP contract cases; expert bundled with city package and annual membership (per-track sale retired), heritage annual-membership-only, album single sale retired, expired membership and revoked signed full access`)
+  console.log(`PASS: ${cases.length} real HTTP contract cases; annual-only policy, historical rights revoked, fixed product, renewal, visibility, retired sales/bulk, signed media and real authentication path`)
   console.log('Storage: isolated temporary JSON and synthetic sine audio only; no production, MariaDB, persistent service, or real payment')
   if (output) console.log(`Sanitized replay fixture: ${output}`)
 } catch (error) {

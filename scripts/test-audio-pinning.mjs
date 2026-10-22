@@ -20,6 +20,7 @@ const uploaded = { audioFile, previewFile, durationSeconds: 20, previewSeconds: 
 const track = { title: 'Fixture guide', attractionId: 'fixture-attraction', exhibitId: 'point-a', category: 'online', unlockMode: 'free', status: 'published', ...uploaded }
 const fixture = Object.fromEntries(['routes','destinations','leads','miniprogramUsers','sampleItineraries','customTrips','destinationCategories','destinationTypes','miniprogramOrders','homeBanners','miniprogramServiceEntries','heritageGuideBanners','audioAlbums'].map(key => [key, []]))
 Object.assign(fixture, {
+  miniprogramUsers: [{ id: 'fixture-user', nickname: 'Synthetic user' }],
   settings: { siteName: 'Fixture only', siteUrl: 'https://fixture.invalid' },
   countries: [{ id: 'greece', name: 'Fixture country', enabled: true }],
   guides: [{ id: 'fixture-guide', name: 'Fixture guide', enabled: true }],
@@ -59,7 +60,7 @@ try {
   for (const name of [audioFile, previewFile]) await writeFile(join(temp, 'private-audio', name), 'synthetic audio fixture', { mode: 0o600 })
   await symlink(join(root, 'node_modules'), join(temp, 'node_modules'), 'dir')
   // Only the loopback JSON fixture receives writes; inherit no DB/payment/service credentials.
-  const env = Object.fromEntries(Object.entries(process.env).filter(([key]) => !key.startsWith('SY_') && !/^(MYSQL|MARIADB|WECHAT|SMTP|OPENAI)_/.test(key)))
+  const env = Object.fromEntries(['PATH','HOME','TMPDIR','LANG','TZ'].filter(key => process.env[key]).map(key => [key, process.env[key]]))
   Object.assign(env, { SY_STORAGE: 'json', PORT: String(port), SY_ADMIN_PASSWORD: 'fixture-audio-pinning-password', SY_ADMIN_SESSION_SECRET: 'fixture-audio-pinning-session', SY_AUDIO_PRIVATE_DIR: join(temp, 'private-audio') })
   async function startServer() {
     server = spawn(process.execPath, ['server.mjs'], { cwd: temp, env, stdio: ['ignore', 'pipe', 'pipe'] })
@@ -98,7 +99,7 @@ try {
   const source = await readFile(join(root, 'src/admin-vue/AdminApp.vue'), 'utf8')
   const script = source.match(/<script>([\s\S]*?)<\/script>/)[1].replace("import { adminAssetUrl } from './asset-url.mjs'", '').replace('export default {', 'globalThis.adminComponent = {')
   const storage = new Map([['sy-greece-admin-token', token]])
-  const context = { adminAssetUrl, sessionStorage: { getItem: key => storage.get(key) || null, setItem: (key, value) => storage.set(key, value), removeItem: key => storage.delete(key) }, window: { location: { origin: base }, addEventListener() {}, removeEventListener() {} }, fetch: (url, options) => fetch(new URL(url, base), options), Blob, URL, console, setTimeout, clearTimeout }
+  const context = { adminAssetUrl, sessionStorage: { getItem: key => storage.get(key) || null, setItem: (key, value) => storage.set(key, value), removeItem: key => storage.delete(key) }, window: { location: { origin: base }, addEventListener() {}, removeEventListener() {} }, fetch: (url, options) => fetch(new URL(url, base), options), Blob, URL, AbortController, console, setTimeout, clearTimeout }
   vm.runInNewContext(script, context, { filename: 'AdminApp.vue' })
   admin = new Vue({ ...context.adminComponent, created: undefined, mounted: undefined })
   // This harness does not mount a DOM; editor scroll-position capture may
@@ -161,10 +162,56 @@ try {
     assert.ok(records.every(row => typeof row.isPinned === 'boolean'))
     assert.deepEqual(records.filter(row => row.id !== createdId).map(row => row.id), originalOrder, 'pinning does not reorder the public API')
   }
+  // Exercise the actual settings/detail/attraction/member forms against HTTP storage.
+  admin.settings.miniprogramKnowledge.products.annualMembership.price = 0.01
+  admin.settings.miniprogramKnowledge.products.annualMembership.enabled = false
+  admin.settings.miniprogramKnowledge.products.city.enabled = true
+  await admin.saveSettings('Fixture annual policy')
+  assert.deepEqual(errors, [])
+  assert.equal(admin.settings.miniprogramKnowledge.products.annualMembership.price, 199)
+  assert.equal(admin.settings.miniprogramKnowledge.products.annualMembership.enabled, true)
+  assert.equal(admin.settings.miniprogramKnowledge.products.city.enabled, false)
+  await admin.loadDetailPage()
+  assert.equal(admin.detailPage.sections.online.visible, true)
+  assert.equal(admin.detailPage.sections.route.visible, false)
+  admin.detailPage.sections.online.visible = false
+  admin.detailPage.sections.expert.visible = true
+  await admin.saveDetailPage()
+  assert.equal(admin.detailPage.sections.online.visible, true)
+  assert.equal(admin.detailPage.sections.expert.visible, false)
+  admin.active = 'attractions'
+  admin.openEditor(admin.data.attractions.find(row => row.id === 'fixture-attraction'), false)
+  admin.form.__hideOnline = true
+  await admin.saveEditor(true)
+  assert.deepEqual(errors, [])
+  assert.equal(admin.form.__hideOnline, false)
+  assert.equal(admin.form.__hideRoute, true)
+  assert.equal(admin.form.__hideExpert, true)
+  const savedAttractions = (await jsonRequest('/api/admin/attractions', { headers: auth })).data
+  assert.deepEqual(savedAttractions[0].sectionOverrides, { route: true, expert: true })
+  admin.active = 'miniprogramUsers'
+  const user = admin.data.miniprogramUsers.find(row => row.id === 'fixture-user')
+  admin.editMembership(user)
+  admin.membershipForm.type = 'annualMembership'
+  admin.membershipForm.expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().slice(0,10)
+  await admin.saveMembershipOverride()
+  assert.deepEqual(errors, [])
+  const granted = admin.data.miniprogramUsers.find(row => row.id === 'fixture-user')
+  assert.equal(granted.member, true)
+  assert.equal(granted.memberLabel, '年会员')
+  admin.editMembership(granted)
+  assert.equal(admin.membershipForm.type, 'annualMembership')
+  assert.equal(admin.membershipForm.expiresAt, granted.memberExpiresAt.slice(0,10))
+  const savedFixture = JSON.parse(await readFile(fixturePath,'utf8'))
+  assert.equal(savedFixture.settings.miniprogramKnowledge.products.annualMembership.price, 199)
+  assert.deepEqual(savedFixture.attractions[0].sectionOverrides, { route: true, expert: true })
+  assert.equal(savedFixture.miniprogramUsers[0].membershipOverride.type, 'annualMembership')
+  assert.deepEqual(detail.hiddenSections, ['route','expert'])
+  assert.ok(detail.audioGuides.every(track => track.unlockMode === 'membership'))
   assert.deepEqual(detail.routes, originalRoutes, 'route point IDs and their order stay unchanged')
   assert.deepEqual(detail.exhibits, originalExhibits, 'exhibit order stays unchanged')
   assert.equal(detail.audioGuides.find(row => row.id === 'route-guide').sort, 4)
-  console.log('PASS: Vue create/edit/reopen and inline pin/unpin, boolean validation, legacy defaults, restart persistence, both public audioGuides contracts, unchanged route/exhibit/API order; isolated JSON fixture only')
+  console.log('PASS: Vue create/edit/reopen and inline pin/unpin, annual settings/detail/attraction/member form saves and readback, boolean validation, restart persistence, public membership modes, unchanged route/exhibit/API order; isolated JSON fixture only')
 } catch (error) {
   console.error(logs)
   throw error

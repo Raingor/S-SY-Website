@@ -169,27 +169,15 @@ export function validateHeritageRecord(kind, input, data, current = {}) {
     if (value.category !== 'route' && value.routeId) return '非路线音频不应关联路线'
     if (value.unlockMode === 'attraction' && !value.attractionId) return '单景点权限须设置景点'
   }
-  if (value.category === 'heritage' && value.unlockMode !== 'membership') return '文史节目仅支持年会员解锁（请选择会员权限）'
-  if (value.category === 'expert' && value.unlockMode === 'attraction') return '真人讲解不能使用普通单景点权益，请使用真人讲解权限'
-  if (value.category === 'expert' && value.unlockMode !== 'expert') return '真人讲解须使用真人讲解权限（城市包/年会员解锁）'
-  if (value.unlockMode === 'expert' && value.category !== 'expert') return '真人讲解权限只适用于真人讲解音频'
-  if (value.unlockMode === 'album') return '专辑单售已取消，文史节目请使用会员权限'
   if (!Number.isInteger(Number(value.previewSeconds)) || Number(value.previewSeconds) < 1 || Number(value.previewSeconds) > 60) return '试听时长须为 1 至 60 秒'
   if (value.status === 'published' && (!existingFile(value.audioFile) || !previewExists(value.previewFile))) return '发布前须上传可播放且已生成试听片段的音频'
   if (value.audioFile && !existingFile(value.audioFile)) return '音频文件不存在或不是私有上传文件'
   return ''
 }
 
-// Effective unlock mode for clients. Stored unlockMode may be legacy (a heritage
-// episode saved as free/locked/album before the annual-membership rule). Clients
-// must never see a mode that contradicts the enforced category policy, otherwise
-// they would offer a free path or block a paying member.
-export function effectiveUnlockMode(track) {
-  if (!track) return 'locked'
-  if (track.category === 'heritage') return 'membership'
-  if (track.category === 'expert') return 'expert'
-  return track.unlockMode
-}
+// All published platform audio follows the same annual-membership policy,
+// including records stored with free, locked or retired purchase modes.
+export function effectiveUnlockMode(track) { return track ? 'membership' : 'locked' }
 
 export function publicHeritage(data, countryId = 'greece') {
   const attractions = (data.attractions || []).filter((item) => isPublished(item) && (item.countryId || 'greece') === countryId)
@@ -223,7 +211,7 @@ export function publicHeritage(data, countryId = 'greece') {
         return { ...section, nodes: body.nodes, nodesTw: bodyTw.nodes, nodesEn: bodyEn.nodes }
       })
       const attractionRoutes = routes.filter((route) => route.attractionId === item.id).map((route) => ({ id: route.id, title: text(route.title), titleTw: text(route.titleTw), titleEn: text(route.titleEn), description: text(route.description), sort: integer(route.sort), pointIds: route.pointIds.filter((id) => exhibitIds.has(id)) }))
-      return [item.id, { nameTw: text(item.nameTw), summaryTw: text(item.summaryTw), summaryEn: text(item.summaryEn), visitorInfo, visitorInfoSections, customSections, highlights, exhibits, routes: attractionRoutes, audioGuides: tracks.filter((track) => track.category !== 'heritage' && track.attractionId === item.id).map(trackItem), hiddenSections: ['route', 'online', 'expert'].filter((key) => (item.sectionOverrides || {})[key] === true) }]
+      return [item.id, { nameTw: text(item.nameTw), summaryTw: text(item.summaryTw), summaryEn: text(item.summaryEn), visitorInfo, visitorInfoSections, customSections, highlights, exhibits, routes: attractionRoutes, audioGuides: tracks.filter((track) => track.category !== 'heritage' && track.attractionId === item.id).map(trackItem), hiddenSections: ['route', 'expert'] }]
     })),
     audioAlbums: albums.map((album) => ({ id: album.id, ...safeText(album, ['title', 'titleTw', 'titleEn', 'description', 'descriptionTw', 'descriptionEn']), cover: publicImage(album.cover), sort: integer(album.sort), episodes: tracks.filter((item) => item.category === 'heritage' && item.albumId === album.id).map(trackItem) })).filter((album) => album.episodes.length),
     playableTracks: tracks,
@@ -236,18 +224,8 @@ export function visibleTrack(data, id) {
 }
 
 export function audioEntitled(track, entitlements) {
-  const member = entitlements?.member === true
-  // Heritage section is gated by annual membership alone: without it every
-  // heritage episode is preview-only, whatever unlockMode a legacy row carries.
-  if (track.category === 'heritage') return member
-  // Expert (真人讲解) rows are bundled with the city package that contains the
-  // attraction, or with annual membership. They are never sold per track.
-  if (track.category === 'expert') return member || Boolean(track.id && entitlements?.unlockedExpertTracks?.includes(track.id))
-  if (track.unlockMode === 'free') return true
-  if (track.unlockMode === 'membership') return member
-  if (track.unlockMode === 'attraction') return member || Boolean(entitlements?.unlockedAttractions?.includes(track.attractionId) || entitlements?.purchases?.some((order) => order.status === 'paid' && order.productType === 'attraction' && order.attractionId === track.attractionId))
-  if (track.unlockMode === 'album') return member
-  return false
+  const expiresAt = Date.parse(entitlements?.memberExpiresAt || '')
+  return Boolean(track && entitlements?.member === true && Number.isFinite(expiresAt) && expiresAt > Date.now())
 }
 
 export function signedAudioToken(trackId, identityKey, secret, ttlSeconds = 300) {
