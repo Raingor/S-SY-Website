@@ -223,7 +223,7 @@ export function publicHeritage(data, countryId = 'greece') {
         return { ...section, nodes: body.nodes, nodesTw: bodyTw.nodes, nodesEn: bodyEn.nodes }
       })
       const attractionRoutes = routes.filter((route) => route.attractionId === item.id).map((route) => ({ id: route.id, title: text(route.title), titleTw: text(route.titleTw), titleEn: text(route.titleEn), description: text(route.description), sort: integer(route.sort), pointIds: route.pointIds.filter((id) => exhibitIds.has(id)) }))
-      return [item.id, { nameTw: text(item.nameTw), summaryTw: text(item.summaryTw), summaryEn: text(item.summaryEn), visitorInfo, visitorInfoSections, customSections, highlights, exhibits, routes: attractionRoutes, audioGuides: tracks.filter((track) => track.category !== 'heritage' && track.attractionId === item.id).map(trackItem) }]
+      return [item.id, { nameTw: text(item.nameTw), summaryTw: text(item.summaryTw), summaryEn: text(item.summaryEn), visitorInfo, visitorInfoSections, customSections, highlights, exhibits, routes: attractionRoutes, audioGuides: tracks.filter((track) => track.category !== 'heritage' && track.attractionId === item.id).map(trackItem), hiddenSections: ['route', 'online', 'expert'].filter((key) => (item.sectionOverrides || {})[key] === true) }]
     })),
     audioAlbums: albums.map((album) => ({ id: album.id, ...safeText(album, ['title', 'titleTw', 'titleEn', 'description', 'descriptionTw', 'descriptionEn']), cover: publicImage(album.cover), sort: integer(album.sort), episodes: tracks.filter((item) => item.category === 'heritage' && item.albumId === album.id).map(trackItem) })).filter((album) => album.episodes.length),
     playableTracks: tracks,
