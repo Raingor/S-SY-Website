@@ -179,10 +179,11 @@ try {
   const rejectedFull = await capture('old_signed_full_after_revocation_rejected', preRevocation.data.fullUrl, { token: revoked })
   assert.equal(rejectedFull.statusCode, 403)
   const replayFixture = {
-    schemaVersion: 1,
+    schemaVersion: 2,
     provenance: 'Captured from real loopback HTTP responses of isolated Website JSON fixture; no production or real WeChat payment calls.',
     sanitization: 'Identity/session values and signed query tokens are replaced with fixture-* placeholders; they cannot authenticate or play against any server. Order IDs are remapped consistently. Private fixture paths never enter these public responses.',
     scope: '真人讲解 is bundled with the city package covering its attraction, or with annual membership; it is never sold per track. Heritage content is annual-membership only. Album single sale is retired.',
+    normalisation: 'Public track.unlockMode and access.unlockMode are normalised by category: heritage always reports membership, expert always reports expert, other categories report their stored value. Clients never observe legacy free/locked/album values for those two categories. `expert` is a distinct enum value meaning "unlocked by the city package covering the attraction, or by annual membership"; do not map it to city or membership. Expert tracks carry no cityId: derive the city via attractionId -> attraction.city, or simply check entitlements.unlockedExpertTracks. City orders keep the flat body {"productType":"city","cityId":"<id>"}.',
     testPriceNotice: '12.34 is an isolated test-only price used to prove the retired expert product cannot be re-enabled; no commercial price is proposed or hard-coded.',
     cases,
   }
