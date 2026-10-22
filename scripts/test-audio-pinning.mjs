@@ -101,6 +101,9 @@ try {
   const context = { adminAssetUrl, sessionStorage: { getItem: key => storage.get(key) || null, setItem: (key, value) => storage.set(key, value), removeItem: key => storage.delete(key) }, window: { location: { origin: base }, addEventListener() {}, removeEventListener() {} }, fetch: (url, options) => fetch(new URL(url, base), options), Blob, URL, console, setTimeout, clearTimeout }
   vm.runInNewContext(script, context, { filename: 'AdminApp.vue' })
   admin = new Vue({ ...context.adminComponent, created: undefined, mounted: undefined })
+  // This harness does not mount a DOM; editor scroll-position capture may
+  // safely report that no list-page element is present.
+  admin.$el = { querySelector: () => null }
   admin.$message = { error: message => errors.push(message), success() {}, warning: message => errors.push(message), info() {} }
   admin.$refs.editForm = { validate: callback => callback(true), clearValidate() {} }
   admin.active = 'audioTracks'

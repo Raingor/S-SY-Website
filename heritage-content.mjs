@@ -5,7 +5,7 @@ import { spawnSync } from 'node:child_process'
 import { fileURLToPath } from 'node:url'
 
 const categories = new Set(['route', 'online', 'expert', 'heritage'])
-const unlockModes = new Set(['free', 'attraction', 'membership', 'album', 'locked'])
+const unlockModes = new Set(['free', 'attraction', 'membership', 'album', 'expert', 'locked'])
 const projectRoot = resolve(fileURLToPath(new URL('.', import.meta.url)))
 const privateDir = resolve(process.env.SY_AUDIO_PRIVATE_DIR || resolve(projectRoot, 'private-audio'))
 for (const publiclyServed of ['public', 'dist']) {
@@ -23,6 +23,7 @@ const publicImage = (value) => {
 const existingFile = (name) => /^[a-f0-9]{32}\.(?:m4a|mp3)$/.test(String(name || '')) && existsSync(resolve(privateDir, name))
 const previewName = (name) => name?.replace(/\.(?:m4a|mp3)$/, '-preview.m4a')
 const previewExists = (name) => /^[a-f0-9]{32}-preview\.m4a$/.test(String(name || '')) && existsSync(resolve(privateDir, name))
+export function hasCompleteAudioResources(track = {}) { return existingFile(track.audioFile) && previewExists(track.previewFile) }
 const isPublished = (item) => item?.status === 'published'
 const safeText = (item, keys) => Object.fromEntries(keys.map((key) => [key, text(item?.[key])]))
 const richTags = new Set(['p', 'div', 'br', 'strong', 'b', 'em', 'i', 'ul', 'ol', 'li', 'blockquote', 'h2', 'h3', 'a', 'img'])
@@ -169,6 +170,8 @@ export function validateHeritageRecord(kind, input, data, current = {}) {
     if (value.unlockMode === 'attraction' && !value.attractionId) return '单景点权限须设置景点'
   }
   if (value.category === 'heritage' && value.unlockMode === 'attraction') return '文史节目不能使用单景点权益'
+  if (value.category === 'expert' && value.unlockMode === 'attraction') return '名导讲解不能使用普通单景点权益，请使用独立名导讲解权限'
+  if (value.unlockMode === 'expert' && value.category !== 'expert') return '名导讲解权限只适用于名导讲解音频'
   if (value.unlockMode === 'album' && value.category !== 'heritage') return '专辑购买权限只适用于文史节目'
   if (!Number.isInteger(Number(value.previewSeconds)) || Number(value.previewSeconds) < 1 || Number(value.previewSeconds) > 60) return '试听时长须为 1 至 60 秒'
   if (value.status === 'published' && (!existingFile(value.audioFile) || !previewExists(value.previewFile))) return '发布前须上传可播放且已生成试听片段的音频'
@@ -221,10 +224,14 @@ export function visibleTrack(data, id) {
 }
 
 export function audioEntitled(track, entitlements) {
+  // Legacy expert rows may still carry the ordinary attraction mode. Never
+  // allow an ordinary attraction/city purchase to unlock those rows.
+  if (track.category === 'expert' && track.unlockMode === 'attraction') return entitlements?.member === true
   if (track.unlockMode === 'free') return true
   if (track.unlockMode === 'membership') return entitlements?.member === true
   if (track.unlockMode === 'attraction') return entitlements?.member === true || Boolean(entitlements?.unlockedAttractions?.includes(track.attractionId) || entitlements?.purchases?.some((order) => order.status === 'paid' && order.productType === 'attraction' && order.attractionId === track.attractionId))
   if (track.unlockMode === 'album') return entitlements?.member === true || Boolean(entitlements?.unlockedAlbums?.includes(track.albumId) || entitlements?.purchases?.some((order) => order.status === 'paid' && order.productType === 'album' && order.albumId === track.albumId))
+  if (track.unlockMode === 'expert' && track.category === 'expert') return entitlements?.member === true || Boolean(track.id && (entitlements?.unlockedExpertTracks?.includes(track.id) || entitlements?.purchases?.some((order) => order.status === 'paid' && order.productType === 'expertTrack' && order.trackId === track.id)))
   return false
 }
 

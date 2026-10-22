@@ -7,7 +7,7 @@ import crypto from 'node:crypto'
 import { setTimeout as delay } from 'node:timers/promises'
 import tls from 'node:tls'
 import { closeStorage, initStorage, readData, saveData, storageStatus } from './storage.mjs'
-import { audioEntitled, publicHeritage, signedAudioToken, streamPrivateAudio, uploadPrivateAudio, validateAttraction, validateHeritageRecord, verifySignedAudioToken, normalizeVisitorSections, sanitizeRichText, visibleTrack } from './heritage-content.mjs'
+import { audioEntitled, hasCompleteAudioResources, publicHeritage, signedAudioToken, streamPrivateAudio, uploadPrivateAudio, validateAttraction, validateHeritageRecord, verifySignedAudioToken, normalizeVisitorSections, sanitizeRichText, visibleTrack } from './heritage-content.mjs'
 import { amountToFen, createMiniProgramPrepay, decryptWechatNotify, queryWechatTransaction, realPayNotifyReady, realPayRequestReady, verifyWechatNotify, wechatPayConfig } from './wechat-pay.mjs'
 import { requestAdminDraft, requestAudioTrackTranslation, requestDestinationTranslation, requestTextTranslation } from './attraction-ai-fill.mjs'
 
@@ -615,6 +615,7 @@ function defaultMiniProgramKnowledgeConfig() {
       album: { enabled: true, productType: 'album', name: '文史专辑', price: 9.9, currency: 'CNY' },
       membership: { enabled: false, productType: 'membership', name: '终身会员', price: 99, currency: 'CNY' },
       annualMembership: { enabled: true, productType: 'annualMembership', name: '年会员', price: 199, currency: 'CNY', durationDays: 365 },
+      expertTrack: { enabled: false, productType: 'expertTrack', name: '名导单篇讲解', price: 0, currency: 'CNY' },
     },
   }
 }
@@ -626,7 +627,7 @@ function miniProgramKnowledgeConfig(data) {
     return [key, {
       ...product,
       ...value,
-      enabled: value.enabled === undefined ? product.enabled !== false : value.enabled !== false,
+      enabled: key === 'expertTrack' && !(Number(value.price ?? product.price) > 0) ? false : (value.enabled === undefined ? product.enabled !== false : value.enabled !== false),
       productType: key,
       name: String(value.name || product.name).trim().slice(0, 120),
       price: Number.isFinite(Number(value.price)) && Number(value.price) >= 0 ? Number(value.price) : product.price,
@@ -665,7 +666,10 @@ function paidCommerceEntitlements(data, paidOrders, member) {
       ...paidOrders.filter((order) => order.productType === 'attraction').map((order) => order.attractionId),
       ...(data.attractions || []).filter((item) => cityIds.has(item.city) && item.status === 'published').map((item) => item.id),
     ].filter(Boolean))]
-  return { unlockedAttractions: attractionIds, unlockedCities, unlockedAlbums }
+  const unlockedExpertTracks = member
+    ? [...new Set((data.audioTracks || []).filter((track) => track.category === 'expert' && track.status === 'published').map((track) => track.id))]
+    : [...new Set(paidOrders.filter((order) => order.productType === 'expertTrack').map((order) => order.trackId).filter(Boolean))]
+  return { unlockedAttractions: attractionIds, unlockedCities, unlockedAlbums, unlockedExpertTracks }
 }
 function commercePurchaseTarget(data, productType, input = {}) {
   if (productType === 'attraction') {
@@ -686,6 +690,12 @@ function commercePurchaseTarget(data, productType, input = {}) {
     if (!album) return { error: 'ALBUM_NOT_FOUND', message: '专辑不存在或未发布' }
     if (!(data.audioTracks || []).some((item) => item.albumId === albumId && item.status === 'published')) return { error: 'ALBUM_HAS_NO_PUBLISHED_TRACKS', message: '该专辑目前没有已发布节目' }
     return { albumId, label: album.title || albumId }
+  }
+  if (productType === 'expertTrack') {
+    const trackId = String(input.trackId || '').trim()
+    const track = visibleTrack(data, trackId)
+    if (track?.category !== 'expert' || track.unlockMode !== 'expert') return { error: 'EXPERT_TRACK_NOT_FOUND', message: '名导讲解不存在、未发布或未开放单篇购买' }
+    return track ? { trackId, label: track.title || trackId } : { error: 'EXPERT_TRACK_NOT_FOUND', message: '名导讲解不存在、未发布或音频资源不完整' }
   }
   if (productType === 'annualMembership' || productType === 'membership') return { label: '' }
   return { error: 'PAYMENT_PRODUCT_UNAVAILABLE', message: '支付商品类型不受支持' }
@@ -752,7 +762,7 @@ function simulationEntitlements(data, identity) {
     member,
     memberLabel: membership.memberLabel,
     memberExpiresAt: membership.memberExpiresAt,
-    purchases: paidOrders.map((order) => ({ orderId: order.id, productType: order.productType, name: order.name || '', attractionId: order.attractionId || '', cityId: order.cityId || '', albumId: order.albumId || '', status: order.status, purchasedAt: order.paidAt || order.createdAt })),
+    purchases: paidOrders.map((order) => ({ orderId: order.id, productType: order.productType, name: order.name || '', attractionId: order.attractionId || '', cityId: order.cityId || '', albumId: order.albumId || '', trackId: order.trackId || '', status: order.status, purchasedAt: order.paidAt || order.createdAt })),
     ...commerce,
     favorites: [],
     history: [],
@@ -783,7 +793,7 @@ function realPaymentEntitlements(data, user) {
     member,
     memberLabel: membership.memberLabel,
     memberExpiresAt: membership.memberExpiresAt,
-    purchases: paidOrders.map((order) => ({ orderId: order.id, productType: order.productType, name: order.name || '', attractionId: order.attractionId || '', cityId: order.cityId || '', albumId: order.albumId || '', status: order.status, purchasedAt: order.paidAt || order.createdAt })),
+    purchases: paidOrders.map((order) => ({ orderId: order.id, productType: order.productType, name: order.name || '', attractionId: order.attractionId || '', cityId: order.cityId || '', albumId: order.albumId || '', trackId: order.trackId || '', status: order.status, purchasedAt: order.paidAt || order.createdAt })),
     ...commerce,
     favorites: [],
     history: [],
@@ -1601,7 +1611,10 @@ const server = http.createServer(async (req, res) => {
       if (!signedSubject) return json(res, 401, { code: 'AUDIO_TOKEN_REQUIRED', error: '请重新获取播放地址' })
       let playbackIdentity = null
       if (signedSubject === 'anonymous' && track.unlockMode === 'free') playbackIdentity = { anonymous: true }
-      else if (simulation && signedSubject.startsWith('sim-phone:')) playbackIdentity = { phoneHash: signedSubject.slice(10), key: '' }
+      else if (simulation && signedSubject.startsWith('sim-phone:')) {
+        const phoneHash = signedSubject.slice(10)
+        playbackIdentity = { phoneHash, userId: `sim-phone-${phoneHash.slice(0, 20)}`, key: '' }
+      }
       else if (simulation && signedSubject.startsWith('sim-key:')) playbackIdentity = { key: signedSubject.slice(8) }
       else if (!simulation && signedSubject.startsWith('user:')) playbackIdentity = (data.miniprogramUsers || []).find((user) => user.id === signedSubject.slice(5)) || null
       const playbackEntitlements = playbackIdentity ? (playbackIdentity.anonymous ? null : simulation ? simulationEntitlements(data, playbackIdentity) : realPaymentEntitlements(data, playbackIdentity)) : null
@@ -1654,7 +1667,7 @@ const server = http.createServer(async (req, res) => {
         const product = simulationProduct(data, productType, target)
         if (!product || product.enabled === false) return json(res, 422, { code: 'SIMULATION_PRODUCT_UNAVAILABLE', error: '模拟商品不可用' })
         const now = new Date().toISOString()
-        const order = { id: id('sim-order'), testUser: identity.key, userId: identity.userId, verifiedPhone: identity.phone, phoneHash: identity.phoneHash, phone: identity.phone, status: 'pending', productType, attractionId: target.attractionId || '', cityId: target.cityId || '', albumId: target.albumId || '', name: product.description, description: product.description, price: product.price, amountTotal: product.amountTotal, currency: product.currency, createdAt: now }
+        const order = { id: id('sim-order'), testUser: identity.key, userId: identity.userId, verifiedPhone: identity.phone, phoneHash: identity.phoneHash, phone: identity.phone, status: 'pending', productType, attractionId: target.attractionId || '', cityId: target.cityId || '', albumId: target.albumId || '', trackId: target.trackId || '', name: product.description, description: product.description, price: product.price, amountTotal: product.amountTotal, currency: product.currency, createdAt: now }
         simulationState(data).orders.push(order); await saveData(data)
         return json(res, 201, { simulation: true, order: publicSimulationOrder(order), payment: null })
       }
@@ -1667,7 +1680,7 @@ const server = http.createServer(async (req, res) => {
       const product = realPaymentProduct(data, productType, target)
       if (!product) return json(res, 422, { code: 'PAYMENT_PRODUCT_UNAVAILABLE', error: '支付商品不可用或价格未配置' })
       const now = new Date().toISOString()
-      const order = { id: id('mp-order'), outTradeNo: `SY${Date.now()}${crypto.randomBytes(5).toString('hex')}`, userId: user.id, openid: user.openid, phone: user.phone, status: 'pending', productType, attractionId: target.attractionId || '', cityId: target.cityId || '', albumId: target.albumId || '', name: product.description, description: product.description, price: product.price, amountTotal: product.amountTotal, currency: product.currency, createdAt: now }
+      const order = { id: id('mp-order'), outTradeNo: `SY${Date.now()}${crypto.randomBytes(5).toString('hex')}`, userId: user.id, openid: user.openid, phone: user.phone, status: 'pending', productType, attractionId: target.attractionId || '', cityId: target.cityId || '', albumId: target.albumId || '', trackId: target.trackId || '', name: product.description, description: product.description, price: product.price, amountTotal: product.amountTotal, currency: product.currency, createdAt: now }
       try {
         const prepay = await createMiniProgramPrepay(wechatPay, { ...order, openid: user.openid })
         order.prepayId = prepay.prepayId
@@ -2132,6 +2145,32 @@ const server = http.createServer(async (req, res) => {
         else items[index] = payload
         await saveData(data)
         return json(res, method === 'POST' ? 201 : 200, payload)
+      }
+      const audioUnlockBatchPath = '/api/admin/audioTracks/bulk-attraction-unlock'
+      if (url.pathname === `${audioUnlockBatchPath}/audits` && method === 'GET') return json(res, 200, { items: data.audioUnlockBatchAudits || [] })
+      if (url.pathname === `${audioUnlockBatchPath}/preview` && method === 'POST') {
+        const candidates = (data.audioTracks || []).filter((track) => track.category === 'online' && track.status === 'published' && (data.attractions || []).some((attraction) => attraction.id === track.attractionId && attraction.status === 'published') && hasCompleteAudioResources(track) && track.unlockMode !== 'attraction')
+        const snapshot = candidates.map((track) => ({ id: track.id, title: track.title, attractionId: track.attractionId, unlockMode: track.unlockMode, audioFile: track.audioFile, previewFile: track.previewFile }))
+        const previewHash = crypto.createHash('sha256').update(JSON.stringify(snapshot)).digest('hex')
+        const attractionNames = new Map((data.attractions || []).map((attraction) => [attraction.id, attraction.name || attraction.id]))
+        return json(res, 200, { targetUnlockMode: 'attraction', previewHash, count: candidates.length, items: candidates.map((track) => ({ id: track.id, title: track.title, attractionId: track.attractionId, attractionName: attractionNames.get(track.attractionId), previousUnlockMode: track.unlockMode })), criteria: { category: 'online', status: 'published', attractionStatus: 'published', completeAudioResources: true }, generatedAt: new Date().toISOString() })
+      }
+      if (url.pathname === `${audioUnlockBatchPath}/apply` && method === 'POST') {
+        const input = await body(req)
+        const candidates = (data.audioTracks || []).filter((track) => track.category === 'online' && track.status === 'published' && (data.attractions || []).some((attraction) => attraction.id === track.attractionId && attraction.status === 'published') && hasCompleteAudioResources(track) && track.unlockMode !== 'attraction')
+        const snapshot = candidates.map((track) => ({ id: track.id, title: track.title, attractionId: track.attractionId, unlockMode: track.unlockMode, audioFile: track.audioFile, previewFile: track.previewFile }))
+        const currentHash = crypto.createHash('sha256').update(JSON.stringify(snapshot)).digest('hex')
+        const expectedIds = candidates.map((track) => track.id)
+        if (input?.confirmed !== true || input?.previewHash !== currentHash || JSON.stringify(input?.trackIds) !== JSON.stringify(expectedIds)) return json(res, 409, { code: 'AUDIO_UNLOCK_PREVIEW_STALE', error: '候选列表已变化，请重新生成预览并核对' })
+        const auditId = id('audio-unlock-batch')
+        const appliedAt = new Date().toISOString()
+        for (const track of candidates) track.unlockMode = 'attraction'
+        const audit = { id: auditId, appliedAt, targetUnlockMode: 'attraction', count: candidates.length, previewHash: currentHash, items: candidates.map((track, index) => ({ id: track.id, title: track.title, attractionId: track.attractionId, previousUnlockMode: snapshot[index].unlockMode, unlockMode: 'attraction' })) }
+        data.audioUnlockBatchAudits = Array.isArray(data.audioUnlockBatchAudits) ? data.audioUnlockBatchAudits : []
+        data.audioUnlockBatchAudits.push(audit)
+        data.audioUnlockBatchAudits = data.audioUnlockBatchAudits.slice(-100)
+        await saveData(data)
+        return json(res, 200, { auditId, appliedAt, count: candidates.length, targetUnlockMode: 'attraction', items: audit.items })
       }
       const heritageAdmin = url.pathname.match(/^\/api\/admin\/(audioAlbums|audioRoutes|audioTracks)(?:\/([^/]+))?$/)
       if (heritageAdmin && ['GET', 'POST', 'PATCH', 'DELETE'].includes(method)) {

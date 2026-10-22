@@ -56,7 +56,10 @@ async function prepare() {
   fixture.attractions.find((attraction) => attraction.id === 'acropolis').expertVideoDuration = 300
   fixture.attractions.find((attraction) => attraction.id === 'acropolis').expertVideoTrialSeconds = 30
   fixture.audioAlbums = [{ id: 'album-contract', title: '测试文史专辑', status: 'published' }, { id: 'album-draft-contract', title: '未发布专辑', status: 'draft' }]
-  fixture.audioTracks = [{ id: 'album-track-contract', category: 'heritage', title: '测试节目', albumId: 'album-contract', status: 'published', unlockMode: 'album', previewSeconds: 30 }]
+  fixture.audioTracks = [
+    { id: 'album-track-contract', category: 'heritage', title: '测试节目', albumId: 'album-contract', status: 'published', unlockMode: 'album', previewSeconds: 30 },
+    { id: 'expert-track-contract', category: 'expert', title: '测试真人老师节目', attractionId: 'acropolis', status: 'published', unlockMode: 'expert', previewSeconds: 30 },
+  ]
   await writeFile(fixturePath, JSON.stringify(fixture))
   const imageDir = join(tempRoot, 'public/images')
   await mkdir(imageDir, { recursive: true })
@@ -175,7 +178,7 @@ try {
   assert(acropolisPublic.expertVideoDuration === 300 && acropolisPublic.expertVideoTrialSeconds === 30, 'expert video duration and trial seconds should pass through from source')
 
   result = await request('/api/miniprogram/knowledge/config')
-  assert(result.status === 200 && result.data.simulation === true && result.data.trialSeconds === 60 && result.data.products.attraction.price === 9.9 && result.data.products.city.price === 69.9 && result.data.products.album.price === 9.9 && result.data.products.annualMembership.price === 199 && result.data.products.membership.price === 0.01, 'config contract failed')
+  assert(result.status === 200 && result.data.simulation === true && result.data.trialSeconds === 60 && result.data.products.attraction.price === 9.9 && result.data.products.city.price === 69.9 && result.data.products.album.price === 9.9 && result.data.products.annualMembership.price === 199 && result.data.products.membership.price === 0.01 && result.data.products.expertTrack.enabled === false && result.data.products.expertTrack.price === 0, 'config contract failed')
   assert(result.data.products.attraction.productType === 'attraction' && result.data.products.membership.productType === 'membership', 'product config failed')
   assert(result.data.products.city.enabled === true && result.data.products.city.productType === 'city' && result.data.products.city.name === '城市景点通行' && result.data.products.city.currency === 'CNY', 'city product config must be present and complete when omitted from stored settings')
 
@@ -247,6 +250,10 @@ try {
   assert(JSON.stringify([...result.data.entitlements.unlockedCities].sort()) === JSON.stringify(expectedMemberCities), 'annual membership should unlock all eligible published cities')
   assert(result.data.entitlements.unlockedAlbums.includes('album-contract') && !result.data.entitlements.unlockedAlbums.includes('album-draft-contract'), 'annual membership should unlock all published albums only')
   assert(audioEntitled({ unlockMode: 'album', albumId: 'album-contract' }, result.data.entitlements), 'annual membership should authorize full album audio playback')
+  assert(result.data.entitlements.unlockedExpertTracks.includes('expert-track-contract'), 'annual membership should enumerate all published expert tracks')
+  assert(audioEntitled({ id: 'expert-track-contract', category: 'expert', unlockMode: 'expert' }, result.data.entitlements), 'annual membership should authorize expert audio')
+  assert(!audioEntitled({ id: 'expert-track-contract', category: 'expert', attractionId: 'acropolis', unlockMode: 'expert' }, { member: false, unlockedAttractions: ['acropolis'], unlockedExpertTracks: [] }), 'ordinary attraction entitlement must not unlock expert audio')
+  assert(!audioEntitled({ id: 'expert-track-contract', category: 'expert', attractionId: 'acropolis', unlockMode: 'expert' }, { member: false, unlockedCities: ['athens'], unlockedAttractions: ['acropolis'], unlockedExpertTracks: [] }), 'city entitlement must not unlock expert audio')
 
   result = await request('/api/miniprogram/simulation/reset', { method: 'POST', headers: phoneAuth })
   assert(result.status === 200 && result.data.reset === true && result.data.entitlements.orders.length === 0, 'simulation reset failed')
