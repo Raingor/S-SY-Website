@@ -253,6 +253,18 @@ async function main() {
   assert.equal(expiredFull.response.status, 401, 'expired signed URL must be rejected')
   assert.equal(expiredFull.data.code, 'AUDIO_TOKEN_REQUIRED')
   const unpaid = await request(`/api/miniprogram/audio/${program.data.id}/access`, { token: 'sim-attraction' })
+  assert.equal(unpaid.data.access, 'preview', 'ordinary attraction purchase cannot unlock heritage content')
+  // Heritage is annual-membership only: even a legacy free/locked/album row must stay preview-only for non-members.
+  const legacyHeritageModes = {}
+  for (const mode of ['free', 'locked', 'album']) {
+    const patched = await adminRequest(`/api/admin/audioTracks/${program.data.id}`, { method: 'PATCH', body: { unlockMode: mode } })
+    if (patched.response.status === 422) { legacyHeritageModes[mode] = 'rejected-by-validation'; continue }
+    legacyHeritageModes[mode] = (await request(`/api/miniprogram/audio/${program.data.id}/access`, { token: 'sim-attraction' })).data.access
+    assert.equal(legacyHeritageModes[mode], 'preview', `heritage row with legacy ${mode} mode must stay preview-only for non-members`)
+  }
+  assert.equal(legacyHeritageModes.free, 'rejected-by-validation', 'heritage tracks may not use free mode')
+  assert.equal(legacyHeritageModes.album, 'rejected-by-validation', 'heritage tracks may not use the retired album mode')
+  assert.equal((await adminRequest(`/api/admin/audioTracks/${program.data.id}`, { method: 'PATCH', body: { unlockMode: 'membership' } })).response.status, 200)
   assert.equal(unpaid.data.access, 'preview')
   const routeTrack = await adminRequest('/api/admin/audioTracks', { method: 'POST', body: { title: '【TEST ONLY】路线点位', category: 'route', routeId: route.data.id, attractionId, exhibitId, unlockMode: 'attraction', language: 'zh-CN', sort: 1, status: 'published', ...uploaded.data } })
   assert.equal(routeTrack.response.status, 201, JSON.stringify(routeTrack.data))
@@ -318,23 +330,18 @@ async function main() {
   assert.equal((await request('/api/miniprogram/entitlements', { token: 'sim-annual' })).data.unlockedExpertTracks.includes(expertTrack.data.id), true)
   const expertSession = await request('/api/miniprogram/simulation/session', { method: 'POST', body: { phone: '13800138000' } })
   const expertAuth = expertSession.data.accessToken
+  // 真人讲解 is no longer sold per track: every purchase attempt must be rejected.
   const expertDisabledOrder = await request('/api/miniprogram/orders', { method: 'POST', token: expertAuth, body: { productType: 'expertTrack', trackId: expertTrack.data.id } })
-  assert.equal(expertDisabledOrder.response.status, 422, 'expert purchase is disabled until admin sets a price and enables it')
+  assert.equal(expertDisabledOrder.response.status, 422, 'expert track is never sold per track')
   const currentSettings = (await adminRequest('/api/admin/settings')).data
   currentSettings.miniprogramKnowledge.products.expertTrack = { ...currentSettings.miniprogramKnowledge.products.expertTrack, enabled: true, price: 12.34 }
   const configuredExpertPrice = await adminRequest('/api/admin/settings', { method: 'PATCH', body: { miniprogramKnowledge: currentSettings.miniprogramKnowledge } })
   assert.equal(configuredExpertPrice.response.status, 200)
+  assert.equal((await adminRequest('/api/admin/settings')).data.miniprogramKnowledge.products.expertTrack.enabled, false, 'expert product stays disabled even if an admin tries to enable it')
   const expertOrder = await request('/api/miniprogram/orders', { method: 'POST', token: expertAuth, body: { productType: 'expertTrack', trackId: expertTrack.data.id } })
-  assert.equal(expertOrder.response.status, 201, JSON.stringify(expertOrder.data))
-  assert.equal(expertOrder.data.order.productType, 'expertTrack')
-  assert.equal(expertOrder.data.order.trackId, expertTrack.data.id)
-  assert.equal(expertOrder.data.order.price, 12.34, 'test-only price comes from admin settings, not a hard-coded commercial price')
-  const paidExpertOrder = await request(`/api/miniprogram/orders/${expertOrder.data.order.id}/simulate-paid`, { method: 'POST', token: expertAuth })
-  assert.equal(paidExpertOrder.response.status, 200)
-  assert.ok(paidExpertOrder.data.entitlements.unlockedExpertTracks.includes(expertTrack.data.id))
-  assert.equal((await request(`/api/miniprogram/audio/${expertTrack.data.id}/access`, { token: expertAuth })).data.access, 'full')
-  assert.equal((await request(`/api/miniprogram/audio/${excludedExpert.data.id}/access`, { token: expertAuth })).data.access, 'preview', 'expert purchases are scoped to one track, not all tracks in the same attraction')
-  assert.equal((await request(`/api/miniprogram/audio/${onlineTrack.data.id}/access`, { token: expertAuth })).data.access, 'preview', 'expert purchases do not grant ordinary attraction rights')
+  assert.equal(expertOrder.response.status, 422, 'enabling the retired expert product cannot resurrect per-track sales')
+  assert.equal((await request(`/api/miniprogram/audio/${expertTrack.data.id}/access`, { token: expertAuth })).data.access, 'preview', 'a bare account cannot unlock expert content')
+  assert.equal((await request(`/api/miniprogram/audio/${excludedExpert.data.id}/access`, { token: expertAuth })).data.access, 'preview', 'expert content stays locked without membership or city package')
   const citySession = await request('/api/miniprogram/simulation/session', { method: 'POST', body: { phone: '13900139000' } })
   const cityToken = citySession.data.accessToken
   const parentCityId = initial.data.attractions[0].city
@@ -343,10 +350,21 @@ async function main() {
   assert.equal(cityOrder.response.status, 201, JSON.stringify(cityOrder.data))
   await request(`/api/miniprogram/orders/${cityOrder.data.order.id}/simulate-paid`, { method: 'POST', token: cityToken })
   assert.equal((await request(`/api/miniprogram/audio/${onlineTrack.data.id}/access`, { token: cityToken })).data.access, 'full')
-  assert.equal((await request(`/api/miniprogram/audio/${expertTrack.data.id}/access`, { token: cityToken })).data.access, 'preview', 'real city-purchase access endpoint cannot unlock expert content')
+  // New rule: the city package covers 真人讲解 attached to attractions inside that city.
+  assert.equal((await request(`/api/miniprogram/audio/${expertTrack.data.id}/access`, { token: cityToken })).data.access, 'full', 'city package unlocks expert content inside that city')
+  assert.equal((await request('/api/miniprogram/entitlements', { token: cityToken })).data.unlockedExpertTracks.includes(expertTrack.data.id), true)
+  // Cross-city isolation: an expert row attached to an attraction in another city must stay locked.
+  const otherCityId = initial.data.attractions.find((item) => item.city !== parentCityId)?.city
+  if (otherCityId) {
+    const otherCityAttractionId = initial.data.attractions.find((item) => item.city === otherCityId).id
+    const foreignExpert = await adminRequest('/api/admin/audioTracks', { method: 'POST', body: { title: '【TEST ONLY】外城真人讲解', category: 'expert', attractionId: otherCityAttractionId, unlockMode: 'expert', status: 'published', ...uploaded.data } })
+    assert.equal(foreignExpert.response.status, 201, JSON.stringify(foreignExpert.data))
+    assert.equal((await request('/api/miniprogram/entitlements', { token: cityToken })).data.unlockedExpertTracks.includes(foreignExpert.data.id), false, 'city package must not unlock expert content from another city')
+    assert.equal((await request(`/api/miniprogram/audio/${foreignExpert.data.id}/access`, { token: cityToken })).data.access, 'preview', 'other-city expert content stays preview-only')
+  }
   const ordinaryExpertRule = await adminRequest(`/api/admin/audioTracks/${expertTrack.data.id}`, { method: 'PATCH', body: { unlockMode: 'attraction' } })
   assert.equal(ordinaryExpertRule.response.status, 422, 'expert tracks cannot use ordinary attraction entitlement')
-  console.log('Local API contract sample:', JSON.stringify({ expertDefaultProduct: initial.data.settings.miniprogramKnowledge.products.expertTrack, previewAccess: expertPreview.data, memberAccess: { ...expertMemberAccess.data, fullUrl: expertMemberAccess.data.fullUrl?.replace(/token=.*/, 'token=<redacted>') }, testOnlyOrder: { productType: expertOrder.data.order.productType, trackId: expertOrder.data.order.trackId, price: expertOrder.data.order.price, amountTotal: expertOrder.data.order.amountTotal, status: expertOrder.data.order.status }, testOnlyEntitlements: { member: paidExpertOrder.data.entitlements.member, unlockedAttractions: paidExpertOrder.data.entitlements.unlockedAttractions, unlockedExpertTracks: paidExpertOrder.data.entitlements.unlockedExpertTracks }, dryRunCount: batchPreview.data.count, batchAudit: { auditId: appliedBatch.data.auditId, count: appliedBatch.data.count, items: appliedBatch.data.items } }))
+  console.log('Local API contract sample:', JSON.stringify({ expertDefaultProduct: initial.data.settings.miniprogramKnowledge.products.expertTrack, expertSaleRejected: { status: expertOrder.response.status, code: expertOrder.data.code }, previewAccess: expertPreview.data, memberAccess: { ...expertMemberAccess.data, fullUrl: expertMemberAccess.data.fullUrl?.replace(/token=.*/, 'token=<redacted>') }, cityEntitlements: { member: (await request('/api/miniprogram/entitlements', { token: cityToken })).data.member, unlockedExpertTracks: (await request('/api/miniprogram/entitlements', { token: cityToken })).data.unlockedExpertTracks }, heritageLegacyModes: legacyHeritageModes, dryRunCount: batchPreview.data.count, batchAudit: { auditId: appliedBatch.data.auditId, count: appliedBatch.data.count, items: appliedBatch.data.items } }))
   const createdExhibit = { id: 'test-only-created-exhibit', name: '【TEST ONLY】新增讲解点', description: '【TEST ONLY】简体介绍', status: 'published', sort: 1 }
   const exhibitCreate = await adminRequest(`/api/admin/attractions/${encodeURIComponent(emptyAttractionId)}`, { method: 'PATCH', body: { exhibits: [createdExhibit] } })
   assert.equal(exhibitCreate.response.status, 200)
@@ -390,7 +408,7 @@ async function main() {
   assert.equal(afterRestart.attractionDetailPage.audioHow.note.en, 'Isolated audio note')
   assert.equal(afterRestart.attractionDetailPage.sections.visitor.notice.en, 'Isolated official notice')
   assert.equal(afterRestart.attractions.at(-1).visitorInfo.faq, undefined, 'no demo FAQ survives restart')
-  console.log('PASS: 87 attractions, persisted config without seed, real-FAQ-only contract, no demo placeholders, multilingual visitorInfo, rich-text sanitizer/nodes, online exhibit/audio association and CRUD, private audio access controls, expert entitlement isolation, annual expert access, simulation expert purchase and audited dry-run bulk unlock')
+  console.log('PASS: 87 attractions, persisted config without seed, real-FAQ-only contract, no demo placeholders, multilingual visitorInfo, rich-text sanitizer/nodes, online exhibit/audio association and CRUD, private audio access controls, expert bundled with city package/annual membership (no per-track sale), heritage annual-membership-only, audited dry-run bulk unlock')
   console.log('Storage: temp JSON copy only; local MariaDB and production unchanged')
 }
 try { await main() } catch (error) { console.error(error); console.error(logs); process.exitCode = 1 } finally { if (child) { child.kill('SIGTERM'); await delay(200); if (child.exitCode === null) child.kill('SIGKILL') } rmSync(tmp, { recursive: true, force: true }) }

@@ -26,7 +26,7 @@ Object.assign(fixture, {
   cities: [{ id: 'fixture-city', countryId: 'greece', name: 'Fixture city' }],
   attractions: [{ id: 'fixture-attraction', countryId: 'greece', city: 'fixture-city', name: 'Fixture attraction', summary: 'Synthetic only', status: 'published', highlights: [], guide: {}, exhibits: [{ id: 'point-a', name: 'Point A', sort: 1 }, { id: 'point-b', name: 'Point B', sort: 2 }] }],
   audioRoutes: [{ id: 'fixture-route', attractionId: 'fixture-attraction', title: 'Fixture route', status: 'published', pointIds: ['point-b', 'point-a'], sort: 1 }],
-  audioTracks: [{ ...track, id: 'legacy-online', sort: 1 }, { ...track, id: 'pinned-online', sort: 2, isPinned: true }, { ...track, id: 'expert-guide', category: 'expert', sort: 3 }, { ...track, id: 'route-guide', category: 'route', routeId: 'fixture-route', sort: 4, isPinned: true }],
+  audioTracks: [{ ...track, id: 'legacy-online', sort: 1 }, { ...track, id: 'pinned-online', sort: 2, isPinned: true }, { ...track, id: 'expert-guide', category: 'expert', unlockMode: 'expert', sort: 3 }, { ...track, id: 'route-guide', category: 'route', routeId: 'fixture-route', sort: 4, isPinned: true }],
   audioUploads: [uploaded],
   attractionDetailPage: {},
 })

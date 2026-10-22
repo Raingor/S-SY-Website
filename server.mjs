@@ -612,10 +612,10 @@ function defaultMiniProgramKnowledgeConfig() {
     products: {
       attraction: { enabled: true, productType: 'attraction', name: '景点单篇讲解', price: 9.9, currency: 'CNY' },
       city: { enabled: true, productType: 'city', name: '城市景点通行', price: 69.9, currency: 'CNY' },
-      album: { enabled: true, productType: 'album', name: '文史专辑', price: 9.9, currency: 'CNY' },
+      album: { enabled: false, productType: 'album', name: '文史专辑（已停售）', price: 9.9, currency: 'CNY' },
       membership: { enabled: false, productType: 'membership', name: '终身会员', price: 99, currency: 'CNY' },
       annualMembership: { enabled: true, productType: 'annualMembership', name: '年会员', price: 199, currency: 'CNY', durationDays: 365 },
-      expertTrack: { enabled: false, productType: 'expertTrack', name: '名导单篇讲解', price: 0, currency: 'CNY' },
+      expertTrack: { enabled: false, productType: 'expertTrack', name: '真人讲解', price: 0, currency: 'CNY' },
     },
   }
 }
@@ -627,7 +627,9 @@ function miniProgramKnowledgeConfig(data) {
     return [key, {
       ...product,
       ...value,
-      enabled: key === 'expertTrack' && !(Number(value.price ?? product.price) > 0) ? false : (value.enabled === undefined ? product.enabled !== false : value.enabled !== false),
+      // album and expertTrack are retired: heritage is annual-membership only
+      // and 真人讲解 is bundled with city packages or annual membership.
+      enabled: key === 'album' || key === 'expertTrack' ? false : (value.enabled === undefined ? product.enabled !== false : value.enabled !== false),
       productType: key,
       name: String(value.name || product.name).trim().slice(0, 120),
       price: Number.isFinite(Number(value.price)) && Number(value.price) >= 0 ? Number(value.price) : product.price,
@@ -656,9 +658,10 @@ function paidCommerceEntitlements(data, paidOrders, member) {
   const unlockedCities = member
     ? [...new Set((data.cities || []).filter((city) => city.status === 'published' && city.enabled !== false && (data.attractions || []).some((attraction) => attraction.city === city.id && attraction.status === 'published')).map((city) => city.id))]
     : [...new Set(paidOrders.filter((order) => order.productType === 'city').map((order) => order.cityId).filter(Boolean))]
+  // Albums are no longer sold individually; annual membership unlocks all heritage.
   const unlockedAlbums = member
     ? [...new Set((data.audioAlbums || []).filter((album) => album.status === 'published' && (data.audioTracks || []).some((track) => track.albumId === album.id && track.category === 'heritage' && track.status === 'published')).map((album) => album.id))]
-    : [...new Set(paidOrders.filter((order) => order.productType === 'album').map((order) => order.albumId).filter(Boolean))]
+    : []
   const cityIds = new Set(unlockedCities)
   const attractionIds = member
     ? publishedAttractionIds(data)
@@ -666,9 +669,15 @@ function paidCommerceEntitlements(data, paidOrders, member) {
       ...paidOrders.filter((order) => order.productType === 'attraction').map((order) => order.attractionId),
       ...(data.attractions || []).filter((item) => cityIds.has(item.city) && item.status === 'published').map((item) => item.id),
     ].filter(Boolean))]
+  // Expert (真人讲解) rows unlock with annual membership or with the city package
+  // covering their attraction. They are not sold per track any more.
+  const expertTracks = (data.audioTracks || []).filter((track) => track.category === 'expert' && track.status === 'published')
   const unlockedExpertTracks = member
-    ? [...new Set((data.audioTracks || []).filter((track) => track.category === 'expert' && track.status === 'published').map((track) => track.id))]
-    : [...new Set(paidOrders.filter((order) => order.productType === 'expertTrack').map((order) => order.trackId).filter(Boolean))]
+    ? [...new Set(expertTracks.map((track) => track.id))]
+    : [...new Set(expertTracks.filter((track) => {
+      const attraction = (data.attractions || []).find((item) => item.id === track.attractionId)
+      return Boolean(attraction && cityIds.has(attraction.city))
+    }).map((track) => track.id))]
   return { unlockedAttractions: attractionIds, unlockedCities, unlockedAlbums, unlockedExpertTracks }
 }
 function commercePurchaseTarget(data, productType, input = {}) {
@@ -684,19 +693,9 @@ function commercePurchaseTarget(data, productType, input = {}) {
     if (!(data.attractions || []).some((item) => item.city === cityId && item.status === 'published')) return { error: 'CITY_HAS_NO_PUBLISHED_ATTRACTIONS', message: '该城市目前没有已发布景点' }
     return { cityId, label: city.name || cityId }
   }
-  if (productType === 'album') {
-    const albumId = String(input.albumId || '').trim()
-    const album = (data.audioAlbums || []).find((item) => item.id === albumId && item.status === 'published')
-    if (!album) return { error: 'ALBUM_NOT_FOUND', message: '专辑不存在或未发布' }
-    if (!(data.audioTracks || []).some((item) => item.albumId === albumId && item.status === 'published')) return { error: 'ALBUM_HAS_NO_PUBLISHED_TRACKS', message: '该专辑目前没有已发布节目' }
-    return { albumId, label: album.title || albumId }
-  }
-  if (productType === 'expertTrack') {
-    const trackId = String(input.trackId || '').trim()
-    const track = visibleTrack(data, trackId)
-    if (track?.category !== 'expert' || track.unlockMode !== 'expert') return { error: 'EXPERT_TRACK_NOT_FOUND', message: '名导讲解不存在、未发布或未开放单篇购买' }
-    return track ? { trackId, label: track.title || trackId } : { error: 'EXPERT_TRACK_NOT_FOUND', message: '名导讲解不存在、未发布或音频资源不完整' }
-  }
+  if (productType === 'album') return { error: 'PAYMENT_PRODUCT_UNAVAILABLE', message: '文史专辑单售已取消，开通年会员即可收听全部内容' }
+  if (productType === 'expertTrack') return { error: 'PAYMENT_PRODUCT_UNAVAILABLE', message: '真人讲解已改为随城市包或年会员解锁，不再单篇售卖' }
+  if (productType === 'album') return { error: 'PAYMENT_PRODUCT_UNAVAILABLE', message: '文史专辑单售已取消，开通年会员即可收听全部内容' }
   if (productType === 'annualMembership' || productType === 'membership') return { label: '' }
   return { error: 'PAYMENT_PRODUCT_UNAVAILABLE', message: '支付商品类型不受支持' }
 }

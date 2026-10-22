@@ -198,20 +198,19 @@ try {
   const cityOrderId = result.data.order.id
 
   result = await request('/api/miniprogram/orders', { method: 'POST', headers: phoneAuth, body: JSON.stringify({ productType: 'album', albumId: 'album-contract', price: 0.01, amountTotal: 1 }) })
-  assert(result.status === 201 && result.data.order.price === 9.9 && result.data.order.amountTotal === 990 && result.data.order.albumId === 'album-contract', 'album order must use the configured price and preserve albumId')
-  const albumOrderId = result.data.order.id
+  assert(result.status === 422 && result.data.code === 'PAYMENT_PRODUCT_UNAVAILABLE', 'album single sale is retired: heritage is annual-membership only')
 
   result = await request('/api/miniprogram/orders', { method: 'POST', headers: phoneAuth, body: JSON.stringify({ productType: 'city', cityId: 'unknown-city' }) })
   assert(result.status === 422 && result.data.code === 'CITY_NOT_FOUND', 'city purchase must reject unknown city IDs')
   result = await request('/api/miniprogram/orders', { method: 'POST', headers: phoneAuth, body: JSON.stringify({ productType: 'album', albumId: 'unknown-album' }) })
-  assert(result.status === 422 && result.data.code === 'ALBUM_NOT_FOUND', 'album purchase must reject unknown album IDs')
+  assert(result.status === 422 && result.data.code === 'PAYMENT_PRODUCT_UNAVAILABLE', 'album purchases are rejected regardless of album ID')
 
   result = await request('/api/miniprogram/orders', { method: 'POST', headers: phoneAuth, body: JSON.stringify({ productType: 'membership' }) })
   assert(result.status === 201 && result.data.order.productType === 'membership' && result.data.order.price === 0.01, 'membership order creation failed')
   const membershipOrderId = result.data.order.id
 
   result = await request('/api/miniprogram/orders', { method: 'GET', headers: phoneAuth })
-  assert(result.status === 200 && result.data.items.length === 4 && result.data.items.every((order) => order.phone === '+8613800138000'), 'order query contract failed')
+  assert(result.status === 200 && result.data.items.length === 3 && result.data.items.every((order) => order.phone === '+8613800138000'), 'order query contract failed')
 
   result = await request(`/api/miniprogram/orders/${attractionOrderId}/simulate-paid`, { method: 'POST', headers: phoneAuth })
   assert(result.status === 200 && result.data.order.status === 'paid' && result.data.entitlements.unlockedAttractions.includes('acropolis'), 'paid entitlement failed')
@@ -221,10 +220,11 @@ try {
   result = await request(`/api/miniprogram/orders/${cityOrderId}/simulate-paid`, { method: 'POST', headers: phoneAuth })
   assert(result.status === 200 && result.data.entitlements.unlockedCities.includes('athens') && result.data.entitlements.unlockedAttractions.includes('acropolis'), 'city purchase must unlock its city and all published city attractions')
   assert(audioEntitled({ unlockMode: 'attraction', attractionId: 'acropolis' }, result.data.entitlements), 'city purchase should authorize attraction audio')
-
-  result = await request(`/api/miniprogram/orders/${albumOrderId}/simulate-paid`, { method: 'POST', headers: phoneAuth })
-  assert(result.status === 200 && result.data.entitlements.unlockedAlbums.includes('album-contract'), 'album purchase entitlement failed')
-  assert(audioEntitled({ unlockMode: 'album', albumId: 'album-contract' }, result.data.entitlements), 'album purchase should authorize album audio')
+  // New rule: the city package also unlocks 真人讲解 attached to attractions in that city.
+  assert(result.data.entitlements.unlockedExpertTracks.includes('expert-track-contract'), 'city purchase must unlock expert tracks inside that city')
+  assert(audioEntitled({ id: 'expert-track-contract', category: 'expert', unlockMode: 'expert', attractionId: 'acropolis' }, result.data.entitlements), 'city purchase should authorize expert audio for its city')
+  // Heritage stays annual-membership only even after a city purchase.
+  assert(!audioEntitled({ category: 'heritage', unlockMode: 'album', albumId: 'album-contract' }, result.data.entitlements), 'city purchase must not unlock heritage content')
 
   result = await request(`/api/miniprogram/orders/${membershipOrderId}/simulate-failed`, { method: 'POST', headers: phoneAuth })
   assert(result.status === 200 && result.data.order.status === 'failed' && result.data.code === 'SIMULATED_PAYMENT_FAILED' && result.data.entitlements.member === false, 'failed payment path failed')
@@ -249,7 +249,7 @@ try {
   const expectedMemberCities = memberContent.data.cities.filter((city) => city.status === 'published' && city.enabled !== false && memberContent.data.attractions.some((attraction) => attraction.city === city.id && attraction.status === 'published')).map((city) => city.id).sort()
   assert(JSON.stringify([...result.data.entitlements.unlockedCities].sort()) === JSON.stringify(expectedMemberCities), 'annual membership should unlock all eligible published cities')
   assert(result.data.entitlements.unlockedAlbums.includes('album-contract') && !result.data.entitlements.unlockedAlbums.includes('album-draft-contract'), 'annual membership should unlock all published albums only')
-  assert(audioEntitled({ unlockMode: 'album', albumId: 'album-contract' }, result.data.entitlements), 'annual membership should authorize full album audio playback')
+  assert(audioEntitled({ category: 'heritage', unlockMode: 'membership', albumId: 'album-contract' }, result.data.entitlements), 'annual membership should authorize full heritage audio playback')
   assert(result.data.entitlements.unlockedExpertTracks.includes('expert-track-contract'), 'annual membership should enumerate all published expert tracks')
   assert(audioEntitled({ id: 'expert-track-contract', category: 'expert', unlockMode: 'expert' }, result.data.entitlements), 'annual membership should authorize expert audio')
   assert(!audioEntitled({ id: 'expert-track-contract', category: 'expert', attractionId: 'acropolis', unlockMode: 'expert' }, { member: false, unlockedAttractions: ['acropolis'], unlockedExpertTracks: [] }), 'ordinary attraction entitlement must not unlock expert audio')

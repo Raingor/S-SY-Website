@@ -1,86 +1,83 @@
-# 普通音频、真人讲解与批量配置契约
+# 音频权益矩阵（2026-10-22 改版）
 
-本文件描述本地实现，不表示已部署、已启用商品或已修改生产音频配置。
+本文件描述当前实现，不表示已部署或已修改生产音频配置。
 
 ## 权益矩阵
 
-| 权益 | 普通景点音频（`attraction`） | 真人单篇（`expert`） | 文史节目（`album`） |
+| 权益 | 普通景点音频（`online`/`attraction`） | 真人讲解（`expert`） | 文史节目（`heritage`） |
 | --- | --- | --- | --- |
 | 未购买 | 试听 | 试听 | 试听 |
-| 普通单景点购买 | 对应 attractionId | 不解锁 | 不解锁 |
-| 城市包 | 城市下已发布景点 | 不解锁 | 不解锁 |
-| 真人单篇购买 | 不解锁 | 对应 trackId | 不解锁 |
-| 专辑购买 | 不解锁 | 不解锁 | 对应 albumId |
-| 有效年会员 / 历史终身会员 | 完整收听 | 完整收听 | 完整收听 |
+| 普通单景点 ¥9.9 | 对应 attractionId | 不解锁 | 不解锁 |
+| 城市包 ¥69.9 | 城市下已发布景点 | **该城市内景点关联的真人讲解** | 不解锁 |
+| 年会员 ¥199/年 | 完整收听 | 完整收听 | **完整收听** |
 
-`free` 仍表示明确免费公开，`membership` 只接受会员，`locked` 仍表示仅试听，不被任何购买或会员越过。发布状态和文件可播放性也必须满足；未上架或资源缺失的音频不能由权益强行开放。普通音频需经管理员预览确认后配置成 `attraction`；真人讲解需明确配置 `category=expert, unlockMode=expert`。不会启动时自动迁移生产记录。
+### 核心规则
 
-## 商品与订单
+1. **普通景点音频**：单景点购买 / 所属城市包 / 年会员，三者任一即可完整收听。
+2. **真人讲解**：**不单篇售卖，不单独定价**。景点真人讲解随「该景点所属城市包」或「年会员」解锁；跨城市不串用。
+3. **文史版块**：**仅年会员**可听完整内容（含文史真人讲解）；未开通年会员只能试听。代码层面对 `category=heritage` 强制年会员判定，历史遗留的 `free`/`locked`/`album` 记录也不会对非会员开放。
+4. `locked` 仍表示仅试听，不被任何购买或会员越过。
 
-`GET /api/miniprogram/knowledge/config` 的 `products` 新增：
+### 已停售商品
 
-```json
-{"expertTrack":{"enabled":false,"productType":"expertTrack","name":"名导单篇讲解","price":0,"currency":"CNY"}}
-```
+- **文史专辑 ¥9.9**：停售。文史已改为年会员专属，专辑单售无意义；`products.album.enabled` 被服务端强制为 `false`，`POST /api/miniprogram/orders` 对 `productType=album` 返回 `PAYMENT_PRODUCT_UNAVAILABLE`。
+- **真人单篇 ¥39.8（原候选价）**：**不再定价、不再售卖**。`products.expertTrack.enabled` 被服务端强制为 `false`，即使管理员尝试开启也会被拒绝，`productType=expertTrack` 下单返回 `PAYMENT_PRODUCT_UNAVAILABLE`。
 
-0 表示尚未定价，并非免费商品。配置未启用或价格不大于 0 时不能创建该商品订单。不预设 39.8 或任何其它商业价格。后台「城市与专辑定价」增加独立价格/开关，修改需要管理员保存。
+## 商品配置
 
-`POST /api/miniprogram/orders` 仍使用既有的平面请求体（不是嵌套 target）：
+`GET /api/miniprogram/knowledge/config` 的 `products` 中：
 
-```json
-{"productType":"expertTrack","trackId":"<published-expert-track-id>"}
-```
+- `attraction`（¥9.9）、`city`（¥69.9）、`annualMembership`（¥199，365 天）为在售商品。
+- `album`、`expertTrack` 恒为 `enabled:false`，仅保留字段兼容。
 
-服务端要求目标是可公开播放的 `expert` 音轨，且 `unlockMode=expert`。价格、金额、商品类型和目标都由服务端校验，客户端金额不作为依据。真人单篇支付订单携带 `trackId`；确认支付后，订单响应和 `GET /api/miniprogram/entitlements` 新增：
+## 权益投影
 
-```json
-{"member":false,"unlockedExpertTracks":["<track-id>"],"purchases":[{"productType":"expertTrack","trackId":"<track-id>","status":"paid"}]}
-```
-
-现有 `unlockedAttractions` / `unlockedCities` / `unlockedAlbums` 不变。真人单篇不授予普通景点权益；普通景点/城市权益不授予真人单篇权益。年会员的 `member=true` 可授权真人内容，`unlockedExpertTracks` 同时列出已发布的 expert 音轨 ID。过期、失败和未支付订单不产生新权益。
-
-**完整播放唯一入口仍是** `GET /api/miniprogram/audio/:id/access`。不要只凭客户端数组推断播放权限。返回形状保持兼容：
+`GET /api/miniprogram/entitlements` 返回：
 
 ```json
-{"id":"<track-id>","access":"preview","unlockMode":"expert","previewSeconds":60,"previewUrl":"/api/miniprogram/audio/<track-id>/preview","fullUrl":null,"expiresIn":null,"reason":"AUDIO_ENTITLEMENT_REQUIRED"}
+{
+  "member": false,
+  "unlockedAttractions": ["..."],
+  "unlockedCities": ["..."],
+  "unlockedAlbums": [],
+  "unlockedExpertTracks": ["..."]
+}
 ```
 
-授权后 `access=full`，`fullUrl` 为含短期签名的 `/full?token=...`，`expiresIn=300`。实际请求完整版时再次验证发布状态、签名与当前权益。旧 expert 音频误配 `attraction` 时，普通景点/城市权益也不会授权；后续编辑这种记录会要求改用独立真人规则。
+- `unlockedExpertTracks`：年会员返回全部已发布 expert 音轨；城市包返回**该城市内**景点关联的 expert 音轨；否则为空数组。
+- `unlockedAlbums`：年会员返回全部已发布专辑；不再有专辑购买来源。
 
-## 安全批量配置
+## 播放鉴权
 
-入口：「导览音频 / 文史节目 → 线上游览 → 预览批量设为单景点解锁」。这是**全站候选预览**，不受列表筛选条件影响。
+`GET /api/miniprogram/audio/:id/access` 是完整播放权限的唯一来源。
 
-1. 管理员 `POST /api/admin/audioTracks/bulk-attraction-unlock/preview`。只读，不保存。
-2. 仅列出 `status=published, category=online`，关联已发布有效景点、试听与完整私有文件均存在、且尚未为 `attraction` 的音频。排除 expert/route/heritage、下架、失效关联与缺文件的记录。
-3. 返回 `count`、完整 `items`（音频 ID/标题/景点/原规则）、`previewHash`、筛选条件和生成时间。管理员滚动核对清单，并勾选确认框。
-4. 管理员 `POST .../apply`：
+- `access === 'full'` 时**必定**返回正数 `expiresIn`（300 秒）与带 `token` 的 `fullUrl`；二者与 `access` 同源于同一个授权布尔，不存在分叉。
+- `access === 'preview'` 时 `expiresIn` 与 `fullUrl` 均为 `null`。
+- 每次命中都重新签发新签名；旧签名在过期（401）或权益撤销（403）后失效。
 
-```json
-{"confirmed":true,"previewHash":"<hash-from-preview>","trackIds":["<ids-in-preview-order>"]}
-```
+## 音频规则校验
 
-5. 服务端重算候选和快照。清单、标题、关联景点、原规则、文件或候选资格变化时返回 409 `AUDIO_UNLOCK_PREVIEW_STALE`，不得继续应用旧清单。未明确确认或 ID 清单不完全匹配也拒绝。
-6. 成功只改 `unlockMode`，返回 `auditId`、数量、应用时间及逐条原/新规则。审计保存在现有 JSON payload 中，不修改数据库 schema；保留最近 100 批。管理员可 `GET .../audits` 查询。
+后台保存音轨时（`validateHeritageRecord`）：
 
-管理员预览确认不是授权自动修改生产。本地实现与测试结束后仍需另行确认部署，以及生产预览清单和批量应用。
+- `category=heritage` 只允许 `unlockMode=membership`，其它模式（`free`/`attraction`/`album`/`expert`/`locked`）返回 422。
+- `category=expert` 只允许 `unlockMode=expert`，使用 `attraction` 或其它模式返回 422。
+- `unlockMode=album` 已整体停用，返回「专辑单售已取消」。
 
-## 本地验证
+## 批量配置
 
-- `node --check server.mjs` / `node --check heritage-content.mjs`
-- `node scripts/test-heritage-content.mjs`：临时 JSON/音频目录，真实 HTTP 路由、试听/完整版、专家购买/会员、城市隔离、dry-run/确认/stale/audit。
-- `npm run test:miniprogram-simulation`：默认配置、城市/专辑/会员订单和独立 expert 权益。
-- `npm run test:wechat-pay`：已有签名、通知验证与解密。
-- `npm run build`：可在临时构建副本执行，避免覆盖已有根 index.html / dist/index.html。
+`POST /api/admin/audioTracks/bulk-attraction-unlock/{preview,apply}` 用于把普通 `online` 音轨批量改为单景点解锁：
 
-测试中自行设置的金额仅用于验证可配置性，不是生产定价；测试不请求微信真实扣款，不修改本地真实 seed、MariaDB 或生产数据。
+- 候选条件：`category=online` + `status=published` + 所属景点 `published` + 音频资源完整 + 非 `attraction` 模式。expert 与 heritage 类别天然不在候选内。
+- `preview` 返回 `count`、`trackIds`、`previewHash`、`criteria`；`apply` 必须同时提交 `confirmed:true`、匹配的 `previewHash` 和完整 `trackIds`，否则 409 `AUDIO_UNLOCK_PREVIEW_STALE`。
+- 每次 apply 写入 `data.audioUnlockBatchAudits`（保留最近 100 批），`GET .../audits` 可查。
 
-### 提供给 MpApp 的去敏真实 HTTP 回放
+## 契约测试
 
-运行 `node scripts/test-expert-contract-fixtures.mjs --output /tmp/sy-expert-http-replay-fixtures.json`，在独立临时 JSON 服务中采集 `{ cases: [{ name, request: { method, path, body? }, response: { statusCode, data } }] }`。脚本只继承 PATH/HOME/TMPDIR/LANG/TZ，生成测试正弦音频，不加载生产或真实数据库/支付配置；结束时自动停服并删除临时服务目录。仅保留显式指定的外置、去敏 JSON 输出，不能把该输出写入代码仓库。
+`node scripts/test-expert-contract-fixtures.mjs --output /tmp/<name>.json` 在隔离临时 JSON 服务上采集真实 HTTP 响应（36 case），去敏后输出回放 fixture：
 
-身份、会话、订单 ID、签名均替换成 `fixture-*` 标记；私有文件名和临时服务 URL 不输出。binary `/full` 成功响应以 `byteLength` 摘要记录，不携带音频字节。该样本用于小程序真实 utils/播放器的离线回放，不要求小程序仓库会话调用 Website API，也不意味着微信真实支付/真机端到端验收。
+- 覆盖：匿名/普通购买/城市包/年会员四条链路；真人讲解随城市包解锁、跨城市隔离；文史仅年会员；album/expertTrack 下单被拒；管理员尝试重新启用被拒；会员过期、撤权后旧签名 full 返回 403；签名过期返回 401。
+- 去敏规则：身份/会话/签名 token 全部替换为 `fixture-*` 占位符，订单 ID 一致重映射，不含私有文件名与 base URL。脚本运行结束自动关闭临时服务并清理目录。
 
-覆盖普通/城市购买普通 full 与 expert preview、专家单篇仅命中 trackId、年会员普通/专家 full、关闭/零价拒单、会员已过期、后台撤权后 access 降 preview，及旧签名完整版失权 403/签名过期 401。模拟签名 `/full` 恢复身份时必须保留派生 userId，以便应用最新后台会员覆盖设置。
+## 历史说明
 
-当前专家商品是单条音轨，不是景点下所有专家片段。原需求“真人老师单个景点”是否应做整包售卖仍需用户确认，不能在当前单条商品上承诺整个景点内容。
+2026-10-22 之前曾实现「真人单篇 ¥39.8」与「文史专辑 ¥9.9 单售」，均已在本次改版中撤销：真人讲解并入城市包/年会员，文史改为年会员专属。生产订单与用户为零，无需数据迁移。
