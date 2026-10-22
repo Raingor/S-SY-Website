@@ -180,6 +180,17 @@ export function validateHeritageRecord(kind, input, data, current = {}) {
   return ''
 }
 
+// Effective unlock mode for clients. Stored unlockMode may be legacy (a heritage
+// episode saved as free/locked/album before the annual-membership rule). Clients
+// must never see a mode that contradicts the enforced category policy, otherwise
+// they would offer a free path or block a paying member.
+export function effectiveUnlockMode(track) {
+  if (!track) return 'locked'
+  if (track.category === 'heritage') return 'membership'
+  if (track.category === 'expert') return 'expert'
+  return track.unlockMode
+}
+
 export function publicHeritage(data, countryId = 'greece') {
   const attractions = (data.attractions || []).filter((item) => isPublished(item) && (item.countryId || 'greece') === countryId)
   const attractionIds = new Set(attractions.map((item) => item.id))
@@ -188,7 +199,7 @@ export function publicHeritage(data, countryId = 'greece') {
   const albums = (data.audioAlbums || []).filter((item) => isPublished(item) && (item.countryId || 'greece') === countryId).sort(sortByOrder)
   const albumIds = new Set(albums.map((item) => item.id))
   const tracks = (data.audioTracks || []).filter((item) => isPublished(item) && existingFile(item.audioFile) && previewExists(item.previewFile) && (item.category === 'heritage' ? albumIds.has(item.albumId) : attractionIds.has(item.attractionId) && (item.category !== 'route' || routeIds.has(item.routeId)) && (!item.exhibitId || (attractions.find((attraction) => attraction.id === item.attractionId)?.exhibits || []).some((exhibit) => exhibit.id === item.exhibitId && (exhibit.status == null || exhibit.status === 'published'))))).sort(sortByOrder)
-  const trackItem = (item) => ({ id: item.id, category: item.category, title: text(item.title), titleTw: text(item.titleTw), titleEn: text(item.titleEn), description: text(item.description), descriptionTw: text(item.descriptionTw), descriptionEn: text(item.descriptionEn), cover: publicImage(item.cover), language: text(item.language) || 'zh-CN', attractionId: item.attractionId || null, exhibitId: item.exhibitId || null, routeId: item.routeId || null, albumId: item.albumId || null, durationSeconds: integer(item.durationSeconds), previewSeconds: Math.min(60, Math.max(1, integer(item.previewSeconds, 60))), unlockMode: item.unlockMode, isPinned: item.isPinned === true, sort: integer(item.sort), previewUrl: `/api/miniprogram/audio/${encodeURIComponent(item.id)}/preview`, accessUrl: `/api/miniprogram/audio/${encodeURIComponent(item.id)}/access`, fullUrl: null })
+  const trackItem = (item) => ({ id: item.id, category: item.category, title: text(item.title), titleTw: text(item.titleTw), titleEn: text(item.titleEn), description: text(item.description), descriptionTw: text(item.descriptionTw), descriptionEn: text(item.descriptionEn), cover: publicImage(item.cover), language: text(item.language) || 'zh-CN', attractionId: item.attractionId || null, exhibitId: item.exhibitId || null, routeId: item.routeId || null, albumId: item.albumId || null, durationSeconds: integer(item.durationSeconds), previewSeconds: Math.min(60, Math.max(1, integer(item.previewSeconds, 60))), unlockMode: effectiveUnlockMode(item), isPinned: item.isPinned === true, sort: integer(item.sort), previewUrl: `/api/miniprogram/audio/${encodeURIComponent(item.id)}/preview`, accessUrl: `/api/miniprogram/audio/${encodeURIComponent(item.id)}/access`, fullUrl: null })
   return {
     attractionDetails: Object.fromEntries(attractions.map((item) => {
       const exhibits = (item.exhibits || []).filter((entry) => entry.status == null || entry.status === 'published').map((entry, index) => ({ ...safeText(entry, ['id', 'name', 'nameTw', 'nameEn', 'description', 'descriptionTw', 'descriptionEn', 'author', 'duration']), location: entry.location || '', image: publicImage(entry.image), sort: integer(entry.sort, index + 1), routeOrder: integer(entry.routeOrder), status: 'published' })).sort(sortByOrder)

@@ -7,7 +7,7 @@ import crypto from 'node:crypto'
 import { setTimeout as delay } from 'node:timers/promises'
 import tls from 'node:tls'
 import { closeStorage, initStorage, readData, saveData, storageStatus } from './storage.mjs'
-import { audioEntitled, hasCompleteAudioResources, publicHeritage, signedAudioToken, streamPrivateAudio, uploadPrivateAudio, validateAttraction, validateHeritageRecord, verifySignedAudioToken, normalizeVisitorSections, sanitizeRichText, visibleTrack } from './heritage-content.mjs'
+import { audioEntitled, effectiveUnlockMode, hasCompleteAudioResources, publicHeritage, signedAudioToken, streamPrivateAudio, uploadPrivateAudio, validateAttraction, validateHeritageRecord, verifySignedAudioToken, normalizeVisitorSections, sanitizeRichText, visibleTrack } from './heritage-content.mjs'
 import { amountToFen, createMiniProgramPrepay, decryptWechatNotify, queryWechatTransaction, realPayNotifyReady, realPayRequestReady, verifyWechatNotify, wechatPayConfig } from './wechat-pay.mjs'
 import { requestAdminDraft, requestAudioTrackTranslation, requestDestinationTranslation, requestTextTranslation } from './attraction-ai-fill.mjs'
 
@@ -1604,12 +1604,13 @@ const server = http.createServer(async (req, res) => {
         if (method !== 'GET') return json(res, 405, { code: 'METHOD_NOT_ALLOWED', error: 'method not allowed' })
         const access = authorized ? 'full' : 'preview'
         const token = authorized ? signedAudioToken(track.id, subject || 'anonymous', adminSessionSecret) : null
-        return json(res, 200, { id: track.id, access, unlockMode: track.unlockMode, previewSeconds: Math.min(60, Math.max(1, Number(track.previewSeconds) || 60)), previewUrl, fullUrl: token ? `/api/miniprogram/audio/${encodeURIComponent(track.id)}/full?token=${encodeURIComponent(token)}` : null, expiresIn: token ? 300 : null, reason: authorized ? null : track.unlockMode === 'locked' ? 'NO_PRODUCT_CONFIGURED' : !identity ? 'MINIPROGRAM_LOGIN_REQUIRED' : 'AUDIO_ENTITLEMENT_REQUIRED' })
+        const effectiveMode = effectiveUnlockMode(track)
+        return json(res, 200, { id: track.id, access, unlockMode: effectiveMode, previewSeconds: Math.min(60, Math.max(1, Number(track.previewSeconds) || 60)), previewUrl, fullUrl: token ? `/api/miniprogram/audio/${encodeURIComponent(track.id)}/full?token=${encodeURIComponent(token)}` : null, expiresIn: token ? 300 : null, reason: authorized ? null : effectiveMode === 'locked' ? 'NO_PRODUCT_CONFIGURED' : !identity ? 'MINIPROGRAM_LOGIN_REQUIRED' : 'AUDIO_ENTITLEMENT_REQUIRED' })
       }
       const signedSubject = verifySignedAudioToken(url.searchParams.get('token'), adminSessionSecret, track.id)
       if (!signedSubject) return json(res, 401, { code: 'AUDIO_TOKEN_REQUIRED', error: '请重新获取播放地址' })
       let playbackIdentity = null
-      if (signedSubject === 'anonymous' && track.unlockMode === 'free') playbackIdentity = { anonymous: true }
+      if (signedSubject === 'anonymous' && effectiveUnlockMode(track) === 'free') playbackIdentity = { anonymous: true }
       else if (simulation && signedSubject.startsWith('sim-phone:')) {
         const phoneHash = signedSubject.slice(10)
         playbackIdentity = { phoneHash, userId: `sim-phone-${phoneHash.slice(0, 20)}`, key: '' }

@@ -265,6 +265,10 @@ async function main() {
   assert.equal(legacyHeritageModes.free, 'rejected-by-validation', 'heritage tracks may not use free mode')
   assert.equal(legacyHeritageModes.album, 'rejected-by-validation', 'heritage tracks may not use the retired album mode')
   assert.equal((await adminRequest(`/api/admin/audioTracks/${program.data.id}`, { method: 'PATCH', body: { unlockMode: 'membership' } })).response.status, 200)
+  // Clients must never see legacy metadata that contradicts the enforced policy:
+  // public track.unlockMode and access.unlockMode are normalised by category.
+  const normalizedProgram = (await request('/api/content')).data.audioAlbums.find((album) => album.id === album.data?.id || true)?.episodes?.find((episode) => episode.id === program.data.id)
+  assert.equal(normalizedProgram?.unlockMode, 'membership', 'public heritage episode exposes the effective membership mode, not a legacy value')
   assert.equal(unpaid.data.access, 'preview')
   const routeTrack = await adminRequest('/api/admin/audioTracks', { method: 'POST', body: { title: '【TEST ONLY】路线点位', category: 'route', routeId: route.data.id, attractionId, exhibitId, unlockMode: 'attraction', language: 'zh-CN', sort: 1, status: 'published', ...uploaded.data } })
   assert.equal(routeTrack.response.status, 201, JSON.stringify(routeTrack.data))
@@ -323,6 +327,10 @@ async function main() {
   assert.equal((await adminRequest('/api/admin/audioTracks')).data.find(item => item.id === onlineTrack.data.id).unlockMode, 'attraction')
   const expertTrack = await adminRequest('/api/admin/audioTracks', { method: 'POST', body: { title: '【TEST ONLY】真人老师讲解', category: 'expert', attractionId, unlockMode: 'expert', language: 'zh-CN', sort: 3, status: 'published', ...uploaded.data } })
   assert.equal(expertTrack.response.status, 201, JSON.stringify(expertTrack.data))
+  assert.equal((await request(`/api/miniprogram/audio/${expertTrack.data.id}/access`, { token: 'sim-attraction' })).data.unlockMode, 'expert', 'access response normalises expert unlockMode')
+  const expertDetail = (await request('/api/content')).data.attractionDetails?.[attractionId]
+  const publicExpert = expertDetail?.audioGuides?.find((guide) => guide.id === expertTrack.data.id)
+  assert.equal(publicExpert?.unlockMode, 'expert', 'public expert guide exposes the effective expert mode')
   const expertPreview = await request(`/api/miniprogram/audio/${expertTrack.data.id}/access`, { token: 'sim-attraction' })
   assert.equal(expertPreview.data.access, 'preview', 'ordinary attraction purchase must not unlock expert content')
   const expertMemberAccess = await request(`/api/miniprogram/audio/${expertTrack.data.id}/access`, { token: 'sim-annual' })
