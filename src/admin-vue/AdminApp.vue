@@ -535,26 +535,29 @@
                         <el-input v-for="(point,pIndex) in (card.points||[])" :key="pIndex" :value="card.points[pIndex]" class="vehicle-tag-input" placeholder="要点内容" @input="value=>$set(card.points,pIndex,value)"/>
                         <div class="form-actions"><el-button plain size="small" icon="el-icon-plus" @click="addTravelPoint(card)">添加要点</el-button><el-button v-if="(card.points||[]).length" plain size="small" type="danger" icon="el-icon-delete" @click="removeTravelPoint(card,(card.points||[]).length-1)">删除最后一条</el-button></div>
                       </el-form-item>
+                      <el-form-item label="在线阅读文档（小程序卡片入口）">
+                        <div class="travel-doc-inline">
+                          <el-input v-model="travelGuide.docs[card.key]" placeholder="上传后自动填入，也可粘贴 /docs/xxx.pdf 或 https 链接" class="travel-doc-inline-input"/>
+                          <el-upload action="#" :show-file-list="false" :http-request="req=>uploadTravelDoc(req,card.key)" accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx"><el-button plain size="small" icon="el-icon-upload">上传文档</el-button></el-upload>
+                          <el-button v-if="travelGuide.docs[card.key]" type="danger" plain size="small" icon="el-icon-delete" @click="clearTravelDoc(card.key)">清除</el-button>
+                        </div>
+                        <small class="field-help">{{ travelGuide.docs[card.key] ? '已配置：小程序该卡片将出现「在线阅读」入口。修改后请点「保存配置」。' : '未配置：小程序该卡片不显示「在线阅读」入口。支持 PDF / Word / Excel / PPT，≤20MB。' }}</small>
+                      </el-form-item>
                     </div>
                     <el-button plain icon="el-icon-plus" @click="addTravelCard(section)">添加卡片</el-button>
                   </div>
                   <div class="settings-structured"><el-button plain icon="el-icon-plus" @click="addTravelSection">添加分组</el-button></div>
-                  <div class="settings-structured travel-guide-docs"><h3>在线阅读文档（小程序卡片入口）</h3>
-                    <el-alert title="为攻略卡片配置可下载打开的文档（PDF / Word / Excel / PPT，≤20MB）。保存后小程序对应卡片出现「在线阅读」入口；未配置的卡片不显示入口。链接可手动填写站内 /docs/… 路径或外部 https 链接。" type="info" :closable="false" show-icon class="banner-note"/>
+                  <div class="settings-structured travel-guide-docs"><h3>已上传文档库与配置总览</h3>
+                    <el-alert title="每张卡片的「在线阅读文档」就在上方卡片编辑区里直接上传，保存后小程序对应卡片出现入口。这里只列出已上传文件与全部卡片的配置状态，方便核对。" type="info" :closable="false" show-icon class="banner-note"/>
                     <div v-if="(travelDocFiles||[]).length" class="travel-doc-library"><h4>已上传文档库</h4>
                       <div v-for="file in travelDocFiles" :key="file.url" class="travel-doc-item"><span class="travel-doc-name">{{ file.name }}</span><el-button type="text" @click="applyTravelDocLibrary(file.url)">应用到选中卡片</el-button></div>
                     </div>
-                    <small v-else class="field-help">暂无本面板上传的文档；下方逐卡上传后自动列入。</small>
-                    <el-form-item v-if="travelGuideCardList().length" label="选中卡片" style="max-width:420px">
+                    <small v-else class="field-help">暂无本面板上传的文档；在上方卡片里上传后自动列入。</small>
+                    <el-form-item v-if="travelGuideCardList().length" label="选中卡片（用于文档库批量应用）" style="max-width:420px">
                       <el-select v-model="travelDocSelectedKey" placeholder="选择要配置的卡片">
                         <el-option v-for="card in travelGuideCardList()" :key="card.key" :label="(card.mark ? card.mark + ' · ' : '') + (card.title || card.key)" :value="card.key"/>
                       </el-select>
                     </el-form-item>
-                    <div v-if="travelDocSelectedKey" class="vehicle-option-meta">
-                      <el-form-item label="文档链接"><el-input v-model="travelGuide.docs[travelDocSelectedKey]" placeholder="如 /docs/visa-guide.pdf 或 https://…" style="min-width:340px"/></el-form-item>
-                      <el-form-item label="上传文档"><el-upload action="#" :show-file-list="false" :http-request="uploadTravelDoc" accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx"><el-button plain icon="el-icon-upload">选择文档</el-button></el-upload></el-form-item>
-                      <el-form-item v-if="travelGuide.docs[travelDocSelectedKey]" label=" "><el-button type="danger" plain size="small" icon="el-icon-delete" @click="clearTravelDoc(travelDocSelectedKey)">清除该卡片文档</el-button></el-form-item>
-                    </div>
                     <div class="travel-doc-map">
                       <div v-for="card in travelGuideCardList()" :key="card.key" class="travel-doc-map-row"><span class="travel-doc-key">{{ card.mark ? card.mark + ' ' : '' }}{{ card.title || card.key }}<small>（{{ card.key }}）</small></span><span :class="travelGuide.docs[card.key] ? 'travel-doc-set' : 'travel-doc-unset'">{{ travelGuide.docs[card.key] ? travelGuide.docs[card.key] : '未配置' }}</span></div>
                     </div>
@@ -1173,7 +1176,7 @@ export default {
     addTravelPoint(card){if(!Array.isArray(card.points))this.$set(card,'points',[]);card.points.push('')},
     removeTravelPoint(card,index){if(Array.isArray(card.points)&&index<card.points.length)card.points.splice(index,1)},
     async refreshTravelDocLibrary(){try{const result=await this.request('/admin/travel-guide-docs');this.travelDocFiles=Array.isArray(result?.files)?result.files:[]}catch(e){this.travelDocFiles=[]}},
-    async uploadTravelDoc(req){try{const name=String(req.file.name||'');if(!/\.(pdf|doc|docx|xlsx?|pptx?)$/i.test(name))throw new Error('仅支持 PDF、Word、Excel、PPT 文档');if(req.file.size>20*1024*1024)throw new Error('文档大小需在 20MB 以内');const data=await new Promise((resolve,reject)=>{const reader=new FileReader();reader.onload=()=>resolve(reader.result);reader.onerror=reject;reader.readAsDataURL(req.file)});const result=await this.request('/admin/upload-doc',{method:'POST',body:JSON.stringify({name,type:req.file.type||'application/octet-stream',data,prefix:'guide'})});if(!this.travelDocSelectedKey){this.$message.warning('文档已上传，请先在上方选择要配置的卡片');req.onSuccess(result);return}this.$set(this.travelGuide.docs,this.travelDocSelectedKey,result.url);if(!this.travelDocFiles.some(file=>file.url===result.url))this.travelDocFiles=[{name:name,url:result.url},...this.travelDocFiles];this.$message.success(`文档已上传并应用到「${this.travelDocSelectedKey}」；记得点「保存配置」`);req.onSuccess(result)}catch(e){this.$message.error('文档上传失败：'+e.message);req.onError(e)}},
+    async uploadTravelDoc(req,targetKey){try{const name=String(req.file.name||'');if(!/\.(pdf|doc|docx|xlsx?|pptx?)$/i.test(name))throw new Error('仅支持 PDF、Word、Excel、PPT 文档');if(req.file.size>20*1024*1024)throw new Error('文档大小需在 20MB 以内');const key=String(targetKey||this.travelDocSelectedKey||'');const data=await new Promise((resolve,reject)=>{const reader=new FileReader();reader.onload=()=>resolve(reader.result);reader.onerror=reject;reader.readAsDataURL(req.file)});const result=await this.request('/admin/upload-doc',{method:'POST',body:JSON.stringify({name,type:req.file.type||'application/octet-stream',data,prefix:'guide'})});if(!key){this.$message.warning('文档已上传，请先选择要配置的卡片');req.onSuccess(result);return}this.$set(this.travelGuide.docs,key,result.url);if(!this.travelDocFiles.some(file=>file.url===result.url))this.travelDocFiles=[{name:name,url:result.url},...this.travelDocFiles];this.$message.success(`文档已上传并应用到「${key}」；记得点「保存配置」`);req.onSuccess(result)}catch(e){this.$message.error('文档上传失败：'+e.message);req.onError(e)}},
     applyTravelDocLibrary(url){if(!this.travelDocSelectedKey){this.$message.warning('请先在上方选择要配置的卡片');return}this.$set(this.travelGuide.docs,this.travelDocSelectedKey,url);this.$message.success(`已应用到「${this.travelDocSelectedKey}」；记得点「保存配置」`)},
     clearTravelDoc(key){if(!this.travelGuide||!key)return;this.$set(this.travelGuide.docs,key,'')},
     async reloadAll(){if(!await this.canLeaveEditor())return;this.editorBaseline=this.editorState();sessionStorage.setItem(ACTIVE_MENU,this.active);location.reload()},

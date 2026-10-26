@@ -133,45 +133,47 @@ try {
 
   // ---- 景点详情页板块显隐（route/online/expert hidden）----
   const detailGet = await (await fetch(`${base}/api/admin/attraction-detail-page`, { headers: auth })).json()
+  // 平台策略锁定：route/expert 恒隐藏，online 恒显示（历史全局开关不再生效）
+  assert.equal(detailGet.sections.route.hidden, true, 'route locked hidden by platform policy')
+  assert.equal(detailGet.sections.expert.hidden, true, 'expert locked hidden by platform policy')
+  assert.equal(detailGet.sections.online.hidden, undefined, 'online locked visible by platform policy')
   const detailPayload = JSON.parse(JSON.stringify(detailGet))
-  detailPayload.sections.route.hidden = true
-  detailPayload.sections.online.hidden = false
+  delete detailPayload.sections.route.hidden
   delete detailPayload.sections.expert.hidden
+  detailPayload.sections.online.hidden = true
   const detailSaved = await (await fetch(`${base}/api/admin/attraction-detail-page`, { method: 'PATCH', headers: auth, body: JSON.stringify(detailPayload) })).json()
-  assert.equal(detailSaved.sections.route.hidden, true, 'hidden true persisted')
-  assert.equal(detailSaved.sections.online.hidden, undefined, 'hidden false omitted')
-  assert.equal(detailSaved.sections.expert.hidden, undefined, 'missing hidden omitted')
+  assert.equal(detailSaved.sections.route.hidden, true, 'policy re-applies route hidden even if omitted')
+  assert.equal(detailSaved.sections.expert.hidden, true, 'policy re-applies expert hidden even if omitted')
+  assert.equal(detailSaved.sections.online.hidden, undefined, 'policy strips online hidden even if set')
   const contentDetail = await (await fetch(`${base}/api/content`)).json()
-  assert.equal(contentDetail.attractionDetailPage.sections.route.hidden, true, 'public hidden true')
-  assert.equal(contentDetail.attractionDetailPage.sections.online.hidden, undefined, 'public hidden false omitted')
-  assert.equal(contentDetail.attractionDetailPage.sections.expert.hidden, undefined, 'public missing hidden omitted')
-  // 还原默认（全显示）
-  const resetPayload = JSON.parse(JSON.stringify(detailSaved))
-  delete resetPayload.sections.route.hidden
-  const detailReset = await (await fetch(`${base}/api/admin/attraction-detail-page`, { method: 'PATCH', headers: auth, body: JSON.stringify(resetPayload) })).json()
-  assert.equal(detailReset.sections.route.hidden, undefined, 'reset removes hidden')
+  assert.equal(contentDetail.attractionDetailPage.sections.route.hidden, true, 'public route hidden')
+  assert.equal(contentDetail.attractionDetailPage.sections.expert.hidden, true, 'public expert hidden')
+  assert.equal(contentDetail.attractionDetailPage.sections.online.hidden, undefined, 'public online visible')
+  // 历史内置标签被重命名，自定义标题保留
+  assert.equal(contentDetail.attractionDetailPage.sections.expert.label.zh, '游览攻略', 'legacy expert label renamed')
+  assert.equal(contentDetail.attractionDetailPage.sections.online.label.zh, '专业介绍', 'legacy online label renamed')
 
   // ---- 分景点板块覆盖（sectionOverrides + scan + hiddenSections 合并输出）----
   const scan = await (await fetch(`${base}/api/admin/attractions/scan-section-overrides`, { method: 'POST', headers: auth })).json()
   assert(Array.isArray(scan.applied), 'scan returns applied list')
   const attsContent = (await (await fetch(`${base}/api/content`)).json()).attractions
   const withHidden = attsContent.filter((a) => Array.isArray(a.hiddenSections) && a.hiddenSections.length)
-  assert(withHidden.length > 0, 'scan should hide empty sections for at least one attraction')
+  assert(withHidden.length > 0, 'every attraction hides the locked sections')
   for (const attraction of withHidden) {
     for (const key of attraction.hiddenSections) assert(['route', 'online', 'expert'].includes(key), 'hiddenSections keys valid')
-    // 全局 hidden=true 的 key 不重复输出语义（仍并列即可）
   }
-  // 手动 PATCH 单景点 override -> hiddenSections 反映（fixture 无 online 数据时对任意景点验证 override 语义）
-  const target = attsContent.find((a) => !(a.hiddenSections || []).includes('route')) || attsContent[0]
+  // 平台策略锁定：每个景点的 route/expert 恒隐藏、online 恒显示，不随请求变化
+  for (const attraction of attsContent) {
+    assert.deepEqual(attraction.hiddenSections, ['route', 'expert'], 'policy locks route+expert hidden, online visible')
+  }
+  const target = attsContent[0]
   const ovPatch = await (await fetch(`${base}/api/admin/attractions/${encodeURIComponent(target.id)}`, { method: 'PATCH', headers: auth, body: JSON.stringify({ sectionOverrides: { online: true } }) })).json()
-  assert.equal(ovPatch.sectionOverrides.online, true, 'override persisted')
+  assert.deepEqual(ovPatch.sectionOverrides, { route: true, expert: true }, 'override writes are normalised to the locked policy')
   const afterPatch = (await (await fetch(`${base}/api/content`)).json()).attractions.find((a) => a.id === target.id)
-  assert((afterPatch.hiddenSections || []).includes('online'), 'hiddenSections includes online after override')
-  // 非法 key / 非布尔值被忽略
+  assert.deepEqual(afterPatch.hiddenSections, ['route', 'expert'], 'public hiddenSections stay policy-locked')
+  // 非法 key / 非布尔值被丢弃，仍归一到策略值
   const badOv = await (await fetch(`${base}/api/admin/attractions/${encodeURIComponent(target.id)}`, { method: 'PATCH', headers: auth, body: JSON.stringify({ sectionOverrides: { visitor: true, online: 'yes' } }) })).json()
-  assert(!badOv.sectionOverrides || (!badOv.sectionOverrides.visitor && !badOv.sectionOverrides.online), 'invalid override keys dropped')
-  // 还原该景点 overrides（恢复 scan 后状态：全隐藏）
-  await fetch(`${base}/api/admin/attractions/${encodeURIComponent(target.id)}`, { method: 'PATCH', headers: auth, body: JSON.stringify({ sectionOverrides: { route: true, online: true, expert: true } }) })
+  assert.deepEqual(badOv.sectionOverrides, { route: true, expert: true }, 'invalid override input normalised to policy')
 
   // ---- 景点来源列与 createdAt ----
   const created = await (await fetch(`${base}/api/admin/attractions`, { method: 'POST', headers: auth, body: JSON.stringify({ name: '来源测试景点', city: 'athens', summary: '测试', status: 'unpublished', type: 'landmark', category: '测试' }) })).json()
