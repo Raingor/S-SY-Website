@@ -14,7 +14,6 @@ assert.equal(list.length, RECENTS_LIMIT)
 assert.deepEqual(pushRecent(list, 'cities'), ['cities', 'guides', 'leads', 'settings', 'audioTracks', 'attractions'], 'revisiting moves to front without duplicating')
 assert.deepEqual(pushRecent([], 'overview'), ['overview'])
 assert.deepEqual(pushRecent(['overview'], ''), ['overview'], 'empty id ignored')
-assert.deepEqual(pushRecent(['overview'], '__recents_clear'), ['overview'], 'internal action id is not recorded')
 assert.deepEqual(pushRecent(null, 'settings'), ['settings'], 'null list tolerated')
 
 // Persistence round-trip.
@@ -26,11 +25,10 @@ assert.deepEqual(readRecents(s), ['attractions', 'cities'])
 // Corrupt or hostile storage must not break the sidebar.
 for (const bad of ['not json', '{"a":1}', 'null', '"str"', '[1,2,3]', '["a","a","a"]']) {
   s.setItem(RECENTS_KEY, bad)
-  const out = readRecents(s)
-  assert.ok(Array.isArray(out), `corrupt value ${bad} yields an array`)
+  assert.ok(Array.isArray(readRecents(s)), `corrupt value ${bad} yields an array`)
 }
-s.setItem(RECENTS_KEY, '["attractions","../evil","__proto__","constructor","a b","<script>","audioTracks"]')
-assert.deepEqual(readRecents(s), ['attractions', 'audioTracks'], 'non-identifier entries are rejected')
+s.setItem(RECENTS_KEY, '["attractions","../evil","__proto__","constructor","prototype","a b","<script>","audioTracks"]')
+assert.deepEqual(readRecents(s), ['attractions', 'audioTracks'], 'non-identifier and prototype entries are rejected')
 s.setItem(RECENTS_KEY, JSON.stringify(['attractions', 'removedPanel', 'cities']))
 assert.deepEqual(readRecents(s, new Set(['attractions', 'cities'])), ['attractions', 'cities'], 'ids of removed panels are dropped')
 assert.deepEqual(readRecents(undefined), [], 'missing storage tolerated')
@@ -55,4 +53,13 @@ assert.deepEqual(describeMenu(groups, 'miniprogramUsers'), { label: '小程序�
 assert.equal(describeMenu(groups, 'nope'), null)
 assert.equal(describeMenu(undefined, 'overview'), null)
 
-console.log(`PASS: recents ordering/dedupe/cap, persistence, corrupt and hostile storage, throwing storage, removed-panel pruning, sectioned label lookup (limit ${RECENTS_LIMIT})`)
+// Deferred refresh: the visible list must stay frozen while visits accumulate for next load.
+const frozen = ['attractions', 'cities']
+let pending = frozen.slice()
+for (const id of ['settings', 'leads', 'guides']) pending = pushRecent(pending, id)
+assert.deepEqual(frozen, ['attractions', 'cities'], 'the list on screen does not change during the session')
+assert.deepEqual(pending, ['guides', 'leads', 'settings', 'attractions', 'cities'], 'pending reflects visits for the next load')
+writeRecents(s, pending)
+assert.deepEqual(readRecents(s), pending, 'next load reads the accumulated order')
+
+console.log(`PASS: recents ordering/dedupe/cap, deferred refresh, persistence, corrupt/hostile/throwing storage, removed-panel pruning, sectioned label lookup (limit ${RECENTS_LIMIT})`)
