@@ -38,25 +38,27 @@ return Boolean(product && product.enabled === true && Number(product.price) === 
 
 **调用点**：`utils/city-commerce.js`、`pages/city/index.js`、`pages/city/spots.js`、`pages/attraction/detail.js`、`pages/membership/shop.js`、`pages/audio/detail.js`。
 
-**硬编码 ¥199 文案：20 行、24 条**（三语各一套），全部在 `utils/i18n.js`：
+**硬编码 ¥199 文案：20 行、25 条键值、7 个唯一键名**（三语各一套），全部在 `utils/i18n.js`：
 
-| 行 | 语言 | 键 |
-| --- | --- | --- |
-| 272 | zh-CN | `cityPaywallSubtitle`、`annualPlanDesc` |
-| 274 | zh-TW | `cityPaywallSubtitle`、`annualPlanDesc` |
-| 276 | en | `annualPlanDesc` |
-| 288 / 289 | zh-CN | `memberDesc`（contentPage、paidContent 各一） |
-| 293 / 294 | zh-TW | `memberDesc`（同上） |
-| 298 | en | `memberDesc` |
-| 349 / 350 | zh-CN | `expertAccessDesc`、`heritageAccess` |
-| 352 | zh-CN | `memberDesc` |
-| 361 / 362 / 364 | zh-TW | `expertAccessDesc`、`heritageAccess`、`memberDesc` |
-| 373 / 374 / 376 | en | `expertAccessDesc`、`heritageAccess`、`memberDesc` |
-| 381 | zh-CN | `vipShopSubtitle`、`vipShopBenefits` |
-| 382 | zh-TW | `vipShopSubtitle`、`vipShopBenefits` |
-| 383 | en | `vipShopSubtitle`、`vipShopBenefits` |
+| 行 | 语言 | 键 | 条数 |
+| --- | --- | --- | --- |
+| 272 | zh-CN | `cityPaywallSubtitle`、`annualPlanDesc` | 2 |
+| 274 | zh-TW | `cityPaywallSubtitle`、`annualPlanDesc` | 2 |
+| 276 | en | `annualPlanDesc` | 1 |
+| 288 / 289 | zh-CN | `memberDesc`（contentPage、paidContent 各一） | 2 |
+| 293 / 294 | zh-TW | `memberDesc`（同上） | 2 |
+| 298 | en | `memberDesc` | 1 |
+| 349 / 350 | zh-CN | `expertAccessDesc`、`heritageAccess` | 2 |
+| 352 | zh-CN | `memberDesc` | 1 |
+| 361 / 362 / 364 | zh-TW | `expertAccessDesc`、`heritageAccess`、`memberDesc` | 3 |
+| 373 / 374 / 376 | en | `expertAccessDesc`、`heritageAccess`、`memberDesc` | 3 |
+| 381 / 382 / 383 | 简/繁/英 | `vipShopSubtitle`、`vipShopBenefits`（每行各 2 条） | 6 |
 
-> 早前会话记录曾写「6 处 ¥199」，该数字不准确；实际为上述 20 行 24 条。以本表为准。
+合计 **20 行 25 条**。按唯一键名统计：`memberDesc` 8、`annualPlanDesc` 3、`expertAccessDesc` 3、`heritageAccess` 3、`vipShopSubtitle` 3、`vipShopBenefits` 3、`cityPaywallSubtitle` 2。
+
+写法分布：`¥199` **18 处 / 14 行**；`CNY 199` **7 处 / 6 行**（276/298/373/374/376/383，其中 383 行含 2 条）。
+
+> 早前会话记录曾写「6 处 ¥199」，后修正为「24 条」，**两个数字都不准确**。以本表 20 行 25 条为准（脚本逐行扫描 `utils/i18n.js` 复核）。
 
 ## 改价清单（若未来调整价格）
 
@@ -66,7 +68,7 @@ return Boolean(product && product.enabled === true && Number(product.price) === 
 2. `server.mjs` `miniProgramKnowledgeConfig()` 三元表达式里的 `199`
 3. `server.mjs` `commercePurchaseTarget()` 错误消息中的「199 元 / 365 天」
 4. MpApp `utils/paid-content.js` `annualProductAvailable()` 的 `=== 199`
-5. MpApp `utils/i18n.js` 上表 20 行 24 条文案（三语齐全，繁体与英文不可漏）
+5. MpApp `utils/i18n.js` 上表 20 行 25 条文案（三语齐全，繁体与英文不可漏；注意 272/274/381/382/383 每行各 2 条）
 6. 双端聚焦测试：Website `npm run test:miniprogram-simulation`、`npm run test:wechat-pay`、`npm run test:audio-pinning`；MpApp 支付相关 `.cjs` 回放
 7. 更稳妥的长期方案：把价格改为单一来源（服务端下发，客户端只校验 `enabled` 与 `currency`，文案用 `productPriceDisplay()` 动态拼接），消除三处同步成本
 
