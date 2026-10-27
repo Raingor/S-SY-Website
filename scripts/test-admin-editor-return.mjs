@@ -5,7 +5,7 @@ import vm from 'node:vm'
 const source = readFileSync(new URL('../src/admin-vue/AdminApp.vue', import.meta.url), 'utf8')
 const script = source.match(/<script>([\s\S]*?)<\/script>/)[1]
 const window = { location: { origin: 'http://fixture.invalid' }, scrollX: 0, scrollY: 0, scrollTo({ left, top }) { this.scrollX = left; this.scrollY = top } }
-const sandbox = { window, sessionStorage: { getItem() { return null } }, VisitorGuideEditor: {}, attractionEditorFieldGroups: [], attractionFieldGroup: () => 'hidden', matchesAttractionAudio: () => true }
+const sandbox = { window, sessionStorage: { getItem() { return null } }, VisitorGuideEditor: {}, attractionEditorFieldGroups: [], attractionFieldGroup: () => 'hidden', matchesAttractionAudio: () => true, clearRecents: () => {}, describeMenu: () => null, pushRecent: (l,i)=>[i,...l], readRecents: () => [], writeRecents: () => {} }
 vm.runInNewContext(script.replace(/^import .*$/gm, '').replace(/^const attractionEditorFieldGroups = [[sS]*?^]/m, '').replace('export default {', 'globalThis.component = {') + '\nglobalThis.fields = fields', sandbox)
 const { component, fields } = sandbox
 for (const key of ['sort', 'badgeType']) {

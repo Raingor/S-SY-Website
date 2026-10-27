@@ -18,7 +18,7 @@ const sandbox = {
   window: { location: { origin: 'http://fixture.invalid' } },
   sessionStorage: { getItem() { return null } },
   FileReader: class { readAsDataURL() { this.result = 'data:image/png;base64,fixture'; this.onload() } },
-  VisitorGuideEditor: {}, attractionEditorFieldGroups: [], attractionFieldGroup: () => 'hidden', matchesAttractionAudio: () => true,
+  VisitorGuideEditor: {}, attractionEditorFieldGroups: [], attractionFieldGroup: () => 'hidden', matchesAttractionAudio: () => true, clearRecents: () => {}, describeMenu: () => null, pushRecent: (l,i)=>[i,...l], readRecents: () => [], writeRecents: () => {},
 }
 vm.runInNewContext(script.replace(/^import .*$/gm, '').replace(/^const attractionEditorFieldGroups = [[sS]*?^]/m, '').replace('export default {', 'globalThis.component = {'), sandbox)
 const { component } = sandbox

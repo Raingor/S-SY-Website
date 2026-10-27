@@ -11,6 +11,7 @@ import vm from 'node:vm'
 import Vue from 'vue'
 import { adminAssetUrl } from '../src/admin-vue/asset-url.mjs'
 import { attractionEditorFieldGroups, attractionFieldGroup, matchesAttractionAudio } from '../src/admin-vue/visitor-guide-editor.mjs'
+import { clearRecents, describeMenu, pushRecent, readRecents, writeRecents } from '../src/admin-vue/recents.mjs'
 
 const root = fileURLToPath(new URL('..', import.meta.url))
 const temp = await mkdtemp(join(tmpdir(), 'sy-audio-pinning-'))
@@ -98,9 +99,9 @@ try {
 
   // Instantiate the real Vue component; its save and inline toggle call the fixture HTTP APIs.
   const source = await readFile(join(root, 'src/admin-vue/AdminApp.vue'), 'utf8')
-  const script = source.match(/<script>([\s\S]*?)<\/script>/)[1].replace("import { adminAssetUrl } from './asset-url.mjs'", '').replace("import VisitorGuideEditor from './VisitorGuideEditor.vue'", '').replace("import { attractionEditorFieldGroups, attractionFieldGroup, matchesAttractionAudio } from './visitor-guide-editor.mjs'", '').replace('export default {', 'globalThis.adminComponent = {')
+  const script = source.match(/<script>([\s\S]*?)<\/script>/)[1].replace("import { adminAssetUrl } from './asset-url.mjs'", '').replace("import VisitorGuideEditor from './VisitorGuideEditor.vue'", '').replace("import { attractionEditorFieldGroups, attractionFieldGroup, matchesAttractionAudio } from './visitor-guide-editor.mjs'", '').replace("import { clearRecents, describeMenu, pushRecent, readRecents, writeRecents } from './recents.mjs'", '').replace('export default {', 'globalThis.adminComponent = {')
   const storage = new Map([['sy-greece-admin-token', token]])
-  const context = { adminAssetUrl, attractionEditorFieldGroups, attractionFieldGroup, matchesAttractionAudio, VisitorGuideEditor: {}, sessionStorage: { getItem: key => storage.get(key) || null, setItem: (key, value) => storage.set(key, value), removeItem: key => storage.delete(key) }, window: { location: { origin: base }, addEventListener() {}, removeEventListener() {} }, fetch: (url, options) => fetch(new URL(url, base), options), Blob, URL, AbortController, console, setTimeout, clearTimeout }
+  const context = { adminAssetUrl, attractionEditorFieldGroups, attractionFieldGroup, matchesAttractionAudio, clearRecents, describeMenu, pushRecent, readRecents, writeRecents, VisitorGuideEditor: {}, sessionStorage: { getItem: key => storage.get(key) || null, setItem: (key, value) => storage.set(key, value), removeItem: key => storage.delete(key) }, window: { location: { origin: base }, addEventListener() {}, removeEventListener() {} }, fetch: (url, options) => fetch(new URL(url, base), options), Blob, URL, AbortController, console, setTimeout, clearTimeout }
   vm.runInNewContext(script, context, { filename: 'AdminApp.vue' })
   admin = new Vue({ ...context.adminComponent, created: undefined, mounted: undefined })
   // This harness does not mount a DOM; editor scroll-position capture may

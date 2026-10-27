@@ -59,6 +59,17 @@
 .el-admin .side-menu .el-menu-item:hover { background:#2d3039!important; }
 .el-admin .side-menu .el-menu-item.is-active { color:#fff; background:#008f83!important; }
 .el-admin .side-menu .el-menu-item.is-active i { color:#fff; }
+.el-admin .side-menu .side-menu-recents > .el-submenu__title { color:#c3cad3; font-weight:600; }
+.el-admin .side-menu .side-menu-recents > .el-submenu__title i { color:#929aa4; }
+.el-admin .side-menu .side-menu-recents .el-menu--inline { padding:2px 0 4px; }
+.el-admin .side-menu .el-menu-item.recent-item { display:block!important; height:auto!important; line-height:1.4!important; white-space:normal!important; padding:8px 12px 8px 28px!important; margin:1px 7px; }
+.el-admin .side-menu .recent-item .recent-item-copy { display:block!important; }
+.el-admin .side-menu .recent-item .recent-item-copy b { display:block!important; color:#e7eaee; font-size:12px; font-weight:500; line-height:1.4; white-space:normal; }
+.el-admin .side-menu .recent-item .recent-item-copy small { display:block!important; margin-top:2px; color:#79818d; font-size:10px; line-height:1.4; white-space:normal; letter-spacing:.02em; }
+.el-admin .side-menu .recent-item.is-active .recent-item-copy b,
+.el-admin .side-menu .recent-item.is-active .recent-item-copy small { color:#fff; }
+.el-admin .side-menu .el-menu-item.recent-clear { height:32px!important; line-height:32px!important; padding-left:28px!important; margin:2px 7px 4px; color:#79818d; font-size:11px; }
+.el-admin .side-menu .recent-clear i { font-size:11px; margin-right:7px; }
 .el-admin .aside-foot { min-height:58px; display:flex; justify-content:space-between; align-items:center; padding:0 14px; border-top:1px solid #ffffff12; }
 .el-admin .aside-foot .el-button { color:#c9ced5; }
 .el-admin .admin-main { min-height:100vh; margin-left:232px; }
