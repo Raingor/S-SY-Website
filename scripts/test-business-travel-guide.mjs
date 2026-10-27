@@ -27,7 +27,7 @@ const base = `http://127.0.0.1:${port}`
 // 在临时目录内运行 server（storage.mjs 硬编码 seed/site-data.json 相对仓库根），避免污染仓库 seed。
 await mkdir(join(tempRoot, 'seed'), { recursive: true })
 const { cp, symlink } = await import('node:fs/promises')
-for (const file of ['server.mjs', 'storage.mjs', 'admin-session.mjs', 'heritage-content.mjs', 'attraction-ai-fill.mjs', 'wechat-pay.mjs', 'seed/site-data.json', 'seed/content-demo.json']) {
+for (const file of ['server.mjs', 'storage.mjs', 'admin-session.mjs', 'heritage-content.mjs', 'private-map.mjs', 'attraction-ai-fill.mjs', 'wechat-pay.mjs', 'seed/site-data.json', 'seed/content-demo.json']) {
   await cp(join(root, file), join(tempRoot, file))
 }
 await symlink(join(root, 'node_modules'), join(tempRoot, 'node_modules'), 'dir')

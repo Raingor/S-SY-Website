@@ -19,7 +19,7 @@ assert.match(adminStyles, /\.el-admin \.admin-data-table \.status-inline\s*\{\s*
 const temp = mkdtempSync(join(tmpdir(), 'sy-attraction-links-'))
 const password = 'test-only-attraction-links-password'
 const secret = 'test-only-attraction-links-session-secret'
-const files = ['server.mjs', 'storage.mjs', 'wechat-pay.mjs', 'admin-session.mjs', 'heritage-content.mjs', 'attraction-ai-fill.mjs', 'package.json']
+const files = ['server.mjs', 'storage.mjs', 'wechat-pay.mjs', 'admin-session.mjs', 'heritage-content.mjs', 'private-map.mjs', 'attraction-ai-fill.mjs', 'package.json']
 let child
 
 async function availablePort() {

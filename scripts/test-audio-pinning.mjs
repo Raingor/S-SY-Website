@@ -10,6 +10,7 @@ import { fileURLToPath } from 'node:url'
 import vm from 'node:vm'
 import Vue from 'vue'
 import { adminAssetUrl } from '../src/admin-vue/asset-url.mjs'
+import { attractionEditorFieldGroups, attractionFieldGroup, matchesAttractionAudio } from '../src/admin-vue/visitor-guide-editor.mjs'
 
 const root = fileURLToPath(new URL('..', import.meta.url))
 const temp = await mkdtemp(join(tmpdir(), 'sy-audio-pinning-'))
@@ -56,7 +57,7 @@ try {
   await mkdir(join(temp, 'seed'))
   await mkdir(join(temp, 'private-audio'), { mode: 0o700 })
   await writeFile(fixturePath, JSON.stringify(fixture), { mode: 0o600 })
-  for (const name of ['server.mjs','storage.mjs','wechat-pay.mjs','admin-session.mjs','heritage-content.mjs','attraction-ai-fill.mjs','package.json']) await copyFile(join(root, name), join(temp, name))
+  for (const name of ['server.mjs','storage.mjs','wechat-pay.mjs','admin-session.mjs','heritage-content.mjs', 'private-map.mjs','attraction-ai-fill.mjs','package.json']) await copyFile(join(root, name), join(temp, name))
   for (const name of [audioFile, previewFile]) await writeFile(join(temp, 'private-audio', name), 'synthetic audio fixture', { mode: 0o600 })
   await symlink(join(root, 'node_modules'), join(temp, 'node_modules'), 'dir')
   // Only the loopback JSON fixture receives writes; inherit no DB/payment/service credentials.
@@ -97,9 +98,9 @@ try {
 
   // Instantiate the real Vue component; its save and inline toggle call the fixture HTTP APIs.
   const source = await readFile(join(root, 'src/admin-vue/AdminApp.vue'), 'utf8')
-  const script = source.match(/<script>([\s\S]*?)<\/script>/)[1].replace("import { adminAssetUrl } from './asset-url.mjs'", '').replace('export default {', 'globalThis.adminComponent = {')
+  const script = source.match(/<script>([\s\S]*?)<\/script>/)[1].replace("import { adminAssetUrl } from './asset-url.mjs'", '').replace("import VisitorGuideEditor from './VisitorGuideEditor.vue'", '').replace("import { attractionEditorFieldGroups, attractionFieldGroup, matchesAttractionAudio } from './visitor-guide-editor.mjs'", '').replace('export default {', 'globalThis.adminComponent = {')
   const storage = new Map([['sy-greece-admin-token', token]])
-  const context = { adminAssetUrl, sessionStorage: { getItem: key => storage.get(key) || null, setItem: (key, value) => storage.set(key, value), removeItem: key => storage.delete(key) }, window: { location: { origin: base }, addEventListener() {}, removeEventListener() {} }, fetch: (url, options) => fetch(new URL(url, base), options), Blob, URL, AbortController, console, setTimeout, clearTimeout }
+  const context = { adminAssetUrl, attractionEditorFieldGroups, attractionFieldGroup, matchesAttractionAudio, VisitorGuideEditor: {}, sessionStorage: { getItem: key => storage.get(key) || null, setItem: (key, value) => storage.set(key, value), removeItem: key => storage.delete(key) }, window: { location: { origin: base }, addEventListener() {}, removeEventListener() {} }, fetch: (url, options) => fetch(new URL(url, base), options), Blob, URL, AbortController, console, setTimeout, clearTimeout }
   vm.runInNewContext(script, context, { filename: 'AdminApp.vue' })
   admin = new Vue({ ...context.adminComponent, created: undefined, mounted: undefined })
   // This harness does not mount a DOM; editor scroll-position capture may

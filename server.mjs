@@ -8,6 +8,7 @@ import { setTimeout as delay } from 'node:timers/promises'
 import tls from 'node:tls'
 import { closeStorage, initStorage, readData, saveData, storageStatus } from './storage.mjs'
 import { audioEntitled, effectiveUnlockMode, publicHeritage, signedAudioToken, streamPrivateAudio, uploadPrivateAudio, validateAttraction, validateHeritageRecord, verifySignedAudioToken, normalizeVisitorSections, sanitizeRichText, visibleTrack } from './heritage-content.mjs'
+import { privateMapUrl, removePrivateMap, streamPrivateMap, uploadPrivateMap } from './private-map.mjs'
 import { amountToFen, createMiniProgramPrepay, decryptWechatNotify, queryWechatTransaction, realPayNotifyReady, realPayRequestReady, verifyWechatNotify, wechatPayConfig } from './wechat-pay.mjs'
 import { requestAdminDraft, requestAudioTrackTranslation, requestDestinationTranslation, requestTextTranslation } from './attraction-ai-fill.mjs'
 
@@ -1508,6 +1509,11 @@ async function collectionHandler(data, collection, method, pathname, payload) {
     }
     const problem = validateAttraction({ ...previous, ...normalizedPayload }, data)
     if (problem) return { status: 422, body: { code: 'ATTRACTION_VALIDATION_FAILED', error: problem } }
+    // Replacing or clearing a private map deletes the superseded file so it cannot linger
+    // unreferenced in the view-only directory.
+    const previousMap = String(previous?.guide?.mapImage || '')
+    const nextMap = String(normalizedPayload.guide?.mapImage || '')
+    if (previousMap !== nextMap) { const stale = previousMap.match(/^\/api\/miniprogram\/attraction-map\/([a-f0-9]{32}\.(?:png|jpe?g|webp))$/i); if (stale) removePrivateMap(stale[1]) }
   }
   if (collection === 'cities' && method === 'POST') {
     const cityId = String(normalizedPayload.id || '').trim()
@@ -1543,6 +1549,12 @@ const server = http.createServer(async (req, res) => {
     if (url.pathname === '/api/content' && method === 'GET') return json(res, 200, publicContent(readData(), url.searchParams.get('country') || 'greece', { includeAttractionDetails: url.searchParams.get('includeAttractionDetails')?.toLowerCase() !== 'false' }))
     if (url.pathname === '/api/miniprogram/access' && method === 'GET') return json(res, 200, miniProgramAccessPayload(readData()))
     if (url.pathname === '/api/wechat/pay/notify' && method === 'POST') return handleWechatPayNotify(req, res)
+    const mapRoute = url.pathname.match(/^\/api\/miniprogram\/attraction-map\/([a-f0-9]{32}\.(?:png|jpe?g|webp))$/i)
+    if (mapRoute && ['GET', 'HEAD'].includes(method)) {
+      // View-only: streamed from a private directory with no download filename and no static path.
+      if (streamPrivateMap(req, res, mapRoute[1], corsHeaders())) return
+      return json(res, 404, { code: 'MAP_NOT_FOUND', error: '地图不存在' })
+    }
     const audioRoute = url.pathname.match(/^\/api\/miniprogram\/audio\/([^/]+)\/(preview|access|full)$/)
     if (audioRoute && ['GET', 'HEAD'].includes(method)) {
       const data = readData()
@@ -2152,6 +2164,13 @@ const server = http.createServer(async (req, res) => {
           await saveData(data)
           return json(res, 201, result)
         } catch (error) { return json(res, 422, { code: 'INVALID_AUDIO_UPLOAD', error: error.message }) }
+      }
+      if (url.pathname === '/api/admin/upload-map' && method === 'POST') {
+        const input = await body(req, 16 * 1024 * 1024)
+        try {
+          const result = uploadPrivateMap(input)
+          return json(res, 201, { path: privateMapUrl(result.mapFile), mapFile: result.mapFile })
+        } catch (error) { return json(res, 422, { code: 'INVALID_MAP_UPLOAD', error: error.message }) }
       }
       if (url.pathname === '/api/admin/upload-image' && method === 'POST') {
         const input = await body(req, 8 * 1024 * 1024)

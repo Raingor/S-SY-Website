@@ -38,6 +38,9 @@ function decodeEntities(value) {
 }
 function safeMapImage(value) {
   const raw = text(value, 1000).trim()
+  // New private maps stream from a non-static endpoint so the file cannot be downloaded by URL.
+  const privateMatch = raw.match(/^\/api\/miniprogram\/attraction-map\/([a-f0-9]{32}\.(?:png|jpe?g|webp))$/i)
+  if (privateMatch) return `/api/miniprogram/attraction-map/${encodeURIComponent(privateMatch[1])}`
   const normalized = /^[a-z0-9][a-z0-9._-]*\.(?:png|jpe?g|webp)$/i.test(raw) ? `images/${raw}` : raw
   const url = safeUrl(normalized, true)
   if (!url) return ''
@@ -138,7 +141,7 @@ export function validateAttraction(input, data) {
   if (input.guide?.mapUrl && !/^https:\/\//i.test(input.guide.mapUrl)) return '地图链接必须以 https:// 开头'
   if (input.guide?.sourceUrl && !/^https:\/\//i.test(input.guide.sourceUrl)) return '来源链接必须以 https:// 开头'
   if (input.guide?.verifiedAt && !/^\d{4}-\d{2}-\d{2}$/.test(input.guide.verifiedAt)) return '核对日期应为 YYYY-MM-DD'
-  if (input.guide?.mapImage && !/^(?:images\/|\/images\/|\.\/images\/|https:\/\/)/i.test(input.guide.mapImage)) return '地图图片须使用已上传图片或 HTTPS 链接'
+  if (input.guide?.mapImage && !/^(?:images\/|\/images\/|\.\/images\/|https:\/\/|\/api\/miniprogram\/attraction-map\/)/i.test(input.guide.mapImage)) return '地图图片须使用已上传地图、站内图片或 HTTPS 链接'
   return ''
 }
 

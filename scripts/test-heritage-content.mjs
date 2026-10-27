@@ -1,4 +1,5 @@
 import { syntheticContentFixture } from './helpers/synthetic-content-fixture.mjs'
+import { updateVisitorGuide } from '../src/admin-vue/visitor-guide-editor.mjs'
 import assert from 'node:assert/strict'
 import { once } from 'node:events'
 import { spawn, spawnSync } from 'node:child_process'
@@ -25,7 +26,7 @@ async function main() {
   mkdirSync(join(tmp, 'seed'))
   mkdirSync(join(tmp, 'dist'))
   writeFileSync(join(tmp, 'dist/index.html'), '<!doctype html><title>Synthetic fixture</title>')
-  for (const name of ['server.mjs', 'storage.mjs', 'wechat-pay.mjs', 'admin-session.mjs', 'heritage-content.mjs', 'attraction-ai-fill.mjs', 'package.json']) copyFileSync(join(root, name), join(tmp, name))
+  for (const name of ['server.mjs', 'storage.mjs', 'wechat-pay.mjs', 'admin-session.mjs', 'heritage-content.mjs', 'private-map.mjs', 'attraction-ai-fill.mjs', 'package.json']) copyFileSync(join(root, name), join(tmp, name))
   const fixturePath = join(tmp, 'seed/site-data.json')
   const fixture = syntheticContentFixture()
   const baseAttraction = fixture.attractions.at(-1)
@@ -366,6 +367,41 @@ async function main() {
   assert.equal(unpublished.response.status, 200)
   assert.equal((await request(member.data.fullUrl)).response.status, 404)
   assert.deepEqual((await request('/api/content')).data.audioAlbums, [])
+  // Compact visitor editor: saving the four rich fields preserves hidden history,
+  // translations, map resources, and the existing frontend visibility policy.
+  const editorRecord = (await adminRequest('/api/admin/attractions')).data.find(item => item.id === attractionId)
+  let editedGuide = { ...editorRecord.guide, worth: 'KEEP historical worth', services: 'KEEP historical services', hoursHtmlTw: '<p>保留繁體時間</p>', mapImage: '/images/test-only-map.webp', mapUrl: 'https://example.test/map', sourceUrl: 'https://example.test/official' }
+  for (const kind of ['hours', 'tickets', 'transport', 'map']) editedGuide = updateVisitorGuide(editedGuide, kind, '', `<h3>${kind}</h3><p><strong>Test text</strong></p><ul><li>First item</li></ul><p><a href="https://example.test/${kind}">Official site</a></p>`, `${kind}\nTest text\nFirst item\nOfficial site`)
+  const editorSaved = await adminRequest(`/api/admin/attractions/${encodeURIComponent(attractionId)}`, { method: 'PATCH', body: { ...editorRecord, guide: editedGuide } })
+  assert.equal(editorSaved.response.status, 200)
+  for (const key of ['articles', 'deepDive', 'visitorSections']) assert.deepEqual(editorSaved.data[key], editorRecord[key], `hidden ${key} survives editing`)
+  for (const key of ['worth', 'services', 'hoursHtmlTw', 'mapImage']) assert.equal(editorSaved.data.guide[key], editedGuide[key])
+  const compactResponse = await request('/api/content?country=greece&includeAttractionDetails=false')
+  assert.equal(compactResponse.response.status, 200)
+  assert.equal(compactResponse.data.attractionDetails, undefined, 'only the redundant top-level map is omitted')
+  const compactSpot = compactResponse.data.attractions.find(item => item.id === attractionId)
+  assert.deepEqual(compactSpot.hiddenSections, ['route', 'expert'])
+  for (const kind of ['hours', 'tickets', 'transport', 'map']) {
+    const section = compactSpot.visitorInfoSections.find(item => item.kind === kind)
+    assert.ok(section.bodyHtml.includes('<h3>') && section.bodyHtml.includes('<ul>'))
+    assert.ok(JSON.stringify(section.nodes).includes(`https://example.test/${kind}`), 'HTTPS links survive the real compact API')
+  }
+  const compactMap = compactSpot.visitorInfoSections.find(item => item.kind === 'map')
+  assert.equal(compactMap.map.image, editedGuide.mapImage)
+  assert.equal(compactMap.map.description, editedGuide.mapHtml)
+  assert.equal(compactMap.map.url, editedGuide.mapUrl)
+  assert.equal(compactMap.sourceUrl, editedGuide.sourceUrl)
+  const fixtureIndex = process.argv.indexOf('--visitor-fixture')
+  if (fixtureIndex !== -1) {
+    const fixture = JSON.stringify({ schemaVersion: 1, synthetic: true, request: { method: 'GET', path: '/api/content?country=greece&includeAttractionDetails=false' }, response: { status: 200, body: compactResponse.data } }, null, 2) + '\n'
+    writeFileSync(process.argv[fixtureIndex + 1], fixture)
+    console.log('Visitor HTTP fixture SHA256:', createHash('sha256').update(fixture).digest('hex'))
+  }
+  const clearGuide = updateVisitorGuide(editedGuide, 'hours', '', '', '')
+  assert.equal((await adminRequest(`/api/admin/attractions/${encodeURIComponent(attractionId)}`, { method: 'PATCH', body: { guide: clearGuide } })).response.status, 200)
+  const clearedSpot = (await request('/api/content?includeAttractionDetails=false')).data.attractions.find(item => item.id === attractionId)
+  assert.equal(clearedSpot.visitorInfoSections.find(item => item.kind === 'hours').bodyHtml, '')
+
   child.kill('SIGTERM')
   await new Promise((resolve) => child.once('exit', resolve))
   rmSync(join(tmp, 'seed/content-demo.json'), { force: true })

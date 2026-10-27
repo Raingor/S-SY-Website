@@ -75,7 +75,7 @@ async function access(name, trackId, token, expected) {
 try {
   await mkdir(join(temp, 'seed'))
   await mkdir(join(temp, 'private-audio'))
-  for (const name of ['server.mjs', 'storage.mjs', 'wechat-pay.mjs', 'admin-session.mjs', 'heritage-content.mjs', 'attraction-ai-fill.mjs', 'package.json']) await copyFile(join(root, name), join(temp, name))
+  for (const name of ['server.mjs', 'storage.mjs', 'wechat-pay.mjs', 'admin-session.mjs', 'heritage-content.mjs', 'private-map.mjs', 'attraction-ai-fill.mjs', 'package.json']) await copyFile(join(root, name), join(temp, name))
   await symlink(join(root, 'node_modules'), join(temp, 'node_modules'), 'dir')
   const audioFile = `${'e'.repeat(32)}.mp3`
   const previewFile = `${'e'.repeat(32)}-preview.m4a`

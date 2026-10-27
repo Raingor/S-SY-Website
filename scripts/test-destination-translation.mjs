@@ -42,7 +42,7 @@ async function request(path, options = {}) {
 
 try {
   await new Promise((resolveListen, reject) => provider.once('error', reject).listen(providerPort, '127.0.0.1', resolveListen))
-  for (const file of ['server.mjs', 'wechat-pay.mjs', 'storage.mjs', 'admin-session.mjs', 'heritage-content.mjs', 'attraction-ai-fill.mjs']) await cp(join(root, file), join(tempRoot, file))
+  for (const file of ['server.mjs', 'wechat-pay.mjs', 'storage.mjs', 'admin-session.mjs', 'heritage-content.mjs', 'private-map.mjs', 'attraction-ai-fill.mjs']) await cp(join(root, file), join(tempRoot, file))
   await cp(join(root, 'seed/site-data.json'), join(tempRoot, 'seed', 'site-data.json'))
   await cp(join(root, 'seed/content-demo.json'), join(tempRoot, 'seed', 'content-demo.json'))
   await symlink(join(root, 'node_modules'), join(tempRoot, 'node_modules'), 'dir')

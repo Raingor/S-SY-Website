@@ -26,7 +26,7 @@ function assert(condition, message) { if (!condition) throw new Error(message) }
 
 async function prepare() {
   await mkdir(join(tempRoot, 'seed'), { recursive: true })
-  for (const file of ['server.mjs', 'storage.mjs', 'admin-session.mjs', 'heritage-content.mjs', 'attraction-ai-fill.mjs', 'wechat-pay.mjs']) {
+  for (const file of ['server.mjs', 'storage.mjs', 'admin-session.mjs', 'heritage-content.mjs', 'private-map.mjs', 'attraction-ai-fill.mjs', 'wechat-pay.mjs']) {
     await writeFile(join(tempRoot, file), await readFile(join(root, file)))
   }
   const fixture = JSON.parse(await readFile(join(root, 'seed/site-data.json'), 'utf8'))

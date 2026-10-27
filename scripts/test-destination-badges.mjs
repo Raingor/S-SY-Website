@@ -18,8 +18,9 @@ const sandbox = {
   window: { location: { origin: 'http://fixture.invalid' } },
   sessionStorage: { getItem() { return null } },
   FileReader: class { readAsDataURL() { this.result = 'data:image/png;base64,fixture'; this.onload() } },
+  VisitorGuideEditor: {}, attractionEditorFieldGroups: [], attractionFieldGroup: () => 'hidden', matchesAttractionAudio: () => true,
 }
-vm.runInNewContext(script.replace(/^import .*$/gm, '').replace('export default {', 'globalThis.component = {'), sandbox)
+vm.runInNewContext(script.replace(/^import .*$/gm, '').replace(/^const attractionEditorFieldGroups = [[sS]*?^]/m, '').replace('export default {', 'globalThis.component = {'), sandbox)
 const { component } = sandbox
 const plain = value => JSON.parse(JSON.stringify(value))
 const blank = { featured: { text: '', textTw: '', textEn: '', icon: '' }, hiddenGem: { text: '', textTw: '', textEn: '', icon: '' } }
@@ -70,7 +71,7 @@ console.log('PASS badge upload target isolation, canonical URL and existing imag
 
 const tempRoot = await mkdtemp(join(tmpdir(), 'sy-destination-badges-'))
 await mkdir(join(tempRoot, 'seed'))
-for (const file of ['server.mjs', 'storage.mjs', 'admin-session.mjs', 'heritage-content.mjs', 'attraction-ai-fill.mjs', 'wechat-pay.mjs', 'seed/content-demo.json']) await cp(join(root, file), join(tempRoot, file))
+for (const file of ['server.mjs', 'storage.mjs', 'admin-session.mjs', 'heritage-content.mjs', 'private-map.mjs', 'attraction-ai-fill.mjs', 'wechat-pay.mjs', 'seed/content-demo.json']) await cp(join(root, file), join(tempRoot, file))
 await symlink(join(root, 'node_modules'), join(tempRoot, 'node_modules'), 'dir')
 const fixture = { settings: { siteName: 'Badge fixture', ogImage: 'images/original-og.webp', unrelatedFixture: { keep: true } }, countries: [{ id: 'greece', name: '希腊', enabled: true }] }
 for (const key of ['cities', 'destinations', 'attractions', 'routes', 'audioRoutes', 'audioTracks', 'audioAlbums', 'sampleItineraries', 'customTrips', 'leads', 'guides', 'destinationTypes', 'guideBookings', 'miniProgramBookings', 'miniprogramUsers', 'miniprogramOrders', 'miniprogramTravelers', 'miniprogramDocuments', 'miniprogramCoupons', 'homeBanners', 'miniprogramBanners', 'miniprogramServiceEntries', 'heritageGuideBanners']) fixture[key] = []

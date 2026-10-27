@@ -24,7 +24,7 @@ let serverCwd = root
 // never touches the version-controlled seed/site-data.json.
 async function prepareIsolatedServer() {
   const tempRoot = await mkdtemp(join(tmpdir(), 'sy-admin-session-restart-'))
-  for (const name of ['server.mjs', 'storage.mjs', 'wechat-pay.mjs', 'admin-session.mjs', 'heritage-content.mjs', 'attraction-ai-fill.mjs', 'package.json']) {
+  for (const name of ['server.mjs', 'storage.mjs', 'wechat-pay.mjs', 'admin-session.mjs', 'heritage-content.mjs', 'private-map.mjs', 'attraction-ai-fill.mjs', 'package.json']) {
     await cp(join(root, name), join(tempRoot, name))
   }
   await symlink(join(root, 'node_modules'), join(tempRoot, 'node_modules'), 'dir')

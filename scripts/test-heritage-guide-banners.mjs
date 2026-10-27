@@ -35,6 +35,7 @@ async function prepare() {
   await cp(join(root, 'wechat-pay.mjs'), join(tempRoot, 'wechat-pay.mjs'))
   await cp(join(root, 'admin-session.mjs'), join(tempRoot, 'admin-session.mjs'))
   await cp(join(root, 'heritage-content.mjs'), join(tempRoot, 'heritage-content.mjs'))
+  await cp(join(root, 'private-map.mjs'), join(tempRoot, 'private-map.mjs'))
   await cp(join(root, 'attraction-ai-fill.mjs'), join(tempRoot, 'attraction-ai-fill.mjs'))
   await cp(join(root, 'package.json'), join(tempRoot, 'package.json'))
   await cp(join(root, 'seed', 'site-data.json'), join(tempRoot, 'seed', 'site-data.json'))

@@ -1,5 +1,6 @@
 node_modules/
 private-audio/
+private-maps/
 dist/
 .pi/
 .env
