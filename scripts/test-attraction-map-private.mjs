@@ -96,10 +96,19 @@ async function main() {
   assert.equal(existsSync(join(mapDir, second.mapFile)), false, 'cleared map file deleted')
   assert.equal((await fetch(`${base}/api/content`)).ok, true)
 
+  // Deleting the attraction also removes its view-only map file.
+  const beforeDelete = (await (await fetch(`${base}/api/admin/attractions`, { headers: auth })).json()).find(item => item.id === spot.id)
+  const third = await (await fetch(`${base}/api/admin/upload-map`, { method: 'POST', headers: auth, body: JSON.stringify({ name: 'del.png', type: 'image/png', data: dataUrl }) })).json()
+  await fetch(`${base}/api/admin/attractions/${encodeURIComponent(spot.id)}`, { method: 'PATCH', headers: auth, body: JSON.stringify({ ...beforeDelete, guide: { ...beforeDelete.guide, mapImage: third.path } }) })
+  assert.ok(existsSync(join(mapDir, third.mapFile)))
+  assert.equal((await fetch(`${base}/api/admin/attractions/${encodeURIComponent(spot.id)}`, { method: 'DELETE', headers: auth })).status, 204)
+  assert.equal(existsSync(join(mapDir, third.mapFile)), false, 'deleting the attraction deletes its map file')
+  assert.equal((await fetch(`${base}${third.path}`)).status, 404)
+
   // Legacy public maps keep working; the endpoint is additive.
   assert.equal((await fetch(`${base}/api/admin/upload-map`, { method: 'POST', headers: auth, body: JSON.stringify({ name: 'legacy.png', type: 'image/png', data: dataUrl }) })).status, 201)
-  assert.equal(JSON.parse(readFileSync(join(tmp, 'seed/site-data.json'), 'utf8')).attractions.length, fixture.attractions.length)
-  console.log('PASS: private map upload, view-only streaming (no filename/no static path/no public cache), HEAD+Range, magic-byte and mime rejection, admin auth, replace/clear file cleanup, public map contract')
+  assert.equal(JSON.parse(readFileSync(join(tmp, 'seed/site-data.json'), 'utf8')).attractions.length, fixture.attractions.length - 1, 'only the deliberately deleted attraction is gone')
+  console.log('PASS: private map upload, view-only streaming (no filename/no static path/no public cache), HEAD+Range, magic-byte and mime rejection, admin auth, replace/clear/delete cleanup, public map contract')
 }
 try { await main() } catch (error) { console.error(error); console.error(logs); process.exitCode = 1 } finally {
   if (child && child.exitCode === null) { child.kill('SIGTERM'); await Promise.race([once(child, 'exit'), delay(2000)]) }

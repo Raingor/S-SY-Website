@@ -1524,7 +1524,11 @@ async function collectionHandler(data, collection, method, pathname, payload) {
   const index = items.findIndex((item) => item.id === itemId)
   if (index < 0) return { status: 404, body: { error: 'not found' } }
   if (method === 'PATCH') { items[index] = { ...items[index], ...normalizedPayload, id: itemId }; await saveData(data); return { status: 200, body: items[index] } }
-  if (method === 'DELETE') { items.splice(index, 1); await saveData(data); return { status: 204, body: null } }
+  if (method === 'DELETE') {
+    // A deleted attraction must not leave its view-only map readable behind it.
+    if (collection === 'attractions') { const stale = String(items[index]?.guide?.mapImage || '').match(/^\/api\/miniprogram\/attraction-map\/([a-f0-9]{32}\.(?:png|jpe?g|webp))$/i); if (stale) removePrivateMap(stale[1]) }
+    items.splice(index, 1); await saveData(data); return { status: 204, body: null }
+  }
   return { status: 405, body: { error: 'method not allowed' } }
 }
 
