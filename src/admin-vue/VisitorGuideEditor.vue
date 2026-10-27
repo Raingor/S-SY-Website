@@ -6,7 +6,7 @@
         <el-option label="简体中文" value=""/><el-option label="繁體中文" value="Tw"/><el-option label="English" value="En"/>
       </el-select>
     </div>
-    <el-alert title="支持段落、小标题、粗体、列表与官网链接。小程序点击官网链接后提示：已复制，请在浏览器打开。修改或上传后须保存景点。" type="info" :closable="false" show-icon/>
+    <el-alert title="支持正文、小标题、粗体、列表与官网链接；排版操作可撤销或重做，也可使用 Ctrl/Cmd+Z。小程序点击官网链接后提示：已复制，请在浏览器打开。修改或上传后须保存景点。" type="info" :closable="false" show-icon/>
     <section v-for="(section,index) in sections" :key="section.key" class="visitor-guide-section" :data-visitor-kind="section.key">
       <h3><small>0{{ index+1 }}</small>{{ section.title }}</h3>
       <slot v-if="section.key==='map'" name="map"/>
@@ -52,7 +52,7 @@ export default {
 .el-admin .visitor-guide-intro { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 16px; color: #65777c; font-size: 13px; }
 .el-admin .visitor-guide-intro .el-select { width: 150px; }
 .el-admin .visitor-guide-section { margin-top: 28px; padding-top: 20px; border-top: 1px solid #e3ecec; }
-.el-admin .visitor-guide-section h3 { display: flex; align-items: center; gap: 12px; margin: 0 0 18px; color: #25464d; font-size: 18px; }
-.el-admin .visitor-guide-section h3 small { color: #168c88; font-size: 12px; letter-spacing: 1px; }
+.el-admin .visitor-guide-section > h3 { display: flex; align-items: center; gap: 12px; margin: 0 0 18px; color: #25464d; font-size: 18px; }
+.el-admin .visitor-guide-section > h3 small { color: #168c88; font-size: 12px; letter-spacing: 1px; }
 .el-admin .visitor-guide-section .el-form-item { margin-bottom: 18px; }
 </style>
