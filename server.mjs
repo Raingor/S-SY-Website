@@ -1341,6 +1341,10 @@ function demoAttractionContent(item, detail, imageUrl, page) {
   const audioGuides = detail.audioGuides || []
   return { ...detail, summary: item.summary || '', visitorInfo, visitorInfoSections, exhibits, highlights, routes, audioGuides, demoFields: {} }
 }
+// Platform policy locks the route section hidden everywhere; the expert (游览攻略)
+// section stays hidden unless the attraction opts in via showGuideVideo (e.g. the
+// Acropolis long-form video entry requested on 2026-10-29).
+function attractionHiddenSections(item) { return item?.showGuideVideo === true ? ['route'] : ['route', 'expert'] }
 function publicContent(data, countryId = 'greece', { includeAttractionDetails = true } = {}) {
   const imageUrl = optimizedPublicImageUrl
   const countries = (data.countries || []).filter((item) => item.enabled !== false).sort((a, b) => Number(a.sort || 0) - Number(b.sort || 0))
@@ -1356,7 +1360,7 @@ function publicContent(data, countryId = 'greece', { includeAttractionDetails = 
     safeGuide.mapUrl = detail.visitorInfo?.mapUrl || ''
     safeGuide.mapImage = detail.visitorInfo?.mapImage || ''
     safeGuide.sourceUrl = detail.visitorInfo?.sourceUrl || ''
-    return { ...safe, ...detail, sectionOverrides: { route: true, expert: true }, hiddenSections: ['route', 'expert'], guide: safeGuide, image: imageUrl(item.image), onlineCoverImage: imageUrl(item.onlineCoverImage || item.image), expertCoverImage: imageUrl(item.expertCoverImage || item.image), shareTitle: item.shareTitle || '', shareImage: imageUrl(item.shareImage), expertVideoUrl: undefined, expertVideoCover: item.expertVideoCover ? imageUrl(item.expertVideoCover) : undefined, expertVideoDuration: Number.isFinite(Number(item.expertVideoDuration)) && Number(item.expertVideoDuration) >= 0 ? Number(item.expertVideoDuration) : 0, expertVideoTrialSeconds: Number.isFinite(Number(item.expertVideoTrialSeconds)) && Number(item.expertVideoTrialSeconds) >= 0 ? Number(item.expertVideoTrialSeconds) : 0, exhibits: detail.exhibits || [], highlights: detail.highlights || [], articles: (item.articles || []).map((article) => ({ ...article, cover: imageUrl(article.cover) })) }
+    return { ...safe, ...detail, sectionOverrides: { route: true, expert: true }, hiddenSections: attractionHiddenSections(item), guide: safeGuide, image: imageUrl(item.image), onlineCoverImage: imageUrl(item.onlineCoverImage || item.image), expertCoverImage: imageUrl(item.expertCoverImage || item.image), shareTitle: item.shareTitle || '', shareImage: imageUrl(item.shareImage), expertVideoUrl: undefined, expertVideoCover: item.expertVideoCover ? imageUrl(item.expertVideoCover) : undefined, expertVideoDuration: Number.isFinite(Number(item.expertVideoDuration)) && Number(item.expertVideoDuration) >= 0 ? Number(item.expertVideoDuration) : 0, expertVideoTrialSeconds: Number.isFinite(Number(item.expertVideoTrialSeconds)) && Number(item.expertVideoTrialSeconds) >= 0 ? Number(item.expertVideoTrialSeconds) : 0, exhibits: detail.exhibits || [], highlights: detail.highlights || [], articles: (item.articles || []).map((article) => ({ ...article, cover: imageUrl(article.cover) })) }
   })
   const publicCities = scoped(data.cities).filter((item) => item.status !== 'archived').map((item) => {
     const attractionImages = publicAttractions.filter((attraction) => attraction.city === item.id).sort((a, b) => Number(a.sort || 0) - Number(b.sort || 0)).map((attraction) => attraction.image).filter(Boolean)

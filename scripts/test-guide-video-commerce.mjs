@@ -22,7 +22,8 @@ for (const file of ['server.mjs', 'storage.mjs', 'admin-session.mjs', 'heritage-
 await symlink(join(root, 'node_modules'), join(temp, 'node_modules'), 'dir')
 const fixture = syntheticContentFixture()
 fixture.settings.miniprogramKnowledge = { products: { membership: { enabled: true, price: 0.01 } } }
-fixture.guideVideos = [{ id: 'video-fixture', attractionId: 'acropolis', title: '雅典卫城：山顶上的古希腊文明密码', description: '合成描述', ossKey: 'video/guide-acropolis.mp4', durationSeconds: 2375, sizeBytes: 900000000, status: 'published' }]
+fixture.attractions = fixture.attractions.map((a) => a.id === 'acropolis' ? { ...a, showGuideVideo: true } : a)
+  fixture.guideVideos = [{ id: 'video-fixture', attractionId: 'acropolis', title: '雅典卫城：山顶上的古希腊文明密码', description: '合成描述', ossKey: 'video/guide-acropolis.mp4', durationSeconds: 2375, sizeBytes: 900000000, status: 'published' }]
 await writeFile(join(temp, 'seed/site-data.json'), JSON.stringify(fixture))
 
 const server = spawn(process.execPath, ['server.mjs'], { cwd: temp, env: { PATH: process.env.PATH, HOME: process.env.HOME, PORT: String(port), SY_STORAGE: 'json', SY_ADMIN_PASSWORD: '{{SECRET_bltmqvjs}}', SY_MINIPROGRAM_SIMULATION_ENABLED: 'true', SY_MINIPROGRAM_SIMULATION_SECRET: '{{SECRET_9cr0wkpq}}', SY_OSS_ACCESS_KEY_ID: 'test-key-id', SY_OSS_ACCESS_KEY_SECRET: 'test-key-secret', SY_OSS_BUCKET: 'sy-mpapp', SY_OSS_HOST: 'oss-cn-shenzhen.aliyuncs.com' }, stdio: ['ignore', 'pipe', 'pipe'] })
@@ -51,6 +52,10 @@ try {
   assert.equal(content.guideVideos[0].id, 'video-fixture')
   assert.equal(content.guideVideos[0].ossKey, undefined)
   assert.equal(content.guideVideos[0].accessUrl, '/api/miniprogram/video/video-fixture/access')
+  // Opted-in attraction reveals the 游览攻略 section for the video entry; others stay locked.
+  assert.deepEqual(content.attractions.find((a) => a.id === 'acropolis').hiddenSections, ['route'])
+  assert.deepEqual(content.attractions.find((a) => a.id !== 'acropolis').hiddenSections, ['route', 'expert'])
+  assert.deepEqual(content.attractionDetails.acropolis.hiddenSections, ['route'])
 
   // 2) Admin CRUD basics.
   const login = await json('/api/auth/login', { method: 'POST', body: JSON.stringify({ password: '{{SECRET_bltmqvjs}}' }) })
