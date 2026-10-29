@@ -126,9 +126,12 @@ try {
   const adminToken = admin.data.token
   assert.ok(adminToken)
   const config = await capture('annual_only_config', '/api/miniprogram/knowledge/config')
-  assert.deepEqual(Object.entries(config.data.products).filter(([, product]) => product.enabled).map(([key]) => key), ['annualMembership'])
+  // 2026-10-29 policy: annual membership plus the fixed-price guide video (no trial, purchase to watch).
+  assert.deepEqual(Object.entries(config.data.products).filter(([, product]) => product.enabled).map(([key]) => key), ['annualMembership', 'guideVideo'])
   assert.equal(config.data.products.annualMembership.price, 199)
   assert.equal(config.data.products.annualMembership.durationDays, 365)
+  assert.equal(config.data.products.guideVideo.price, 168)
+  assert.equal(config.data.products.guideVideo.currency, 'CNY')
   const content = await capture('public_track_metadata', '/api/content')
   for (const attraction of content.data.attractions) {
     assert.deepEqual(attraction.hiddenSections, ['route','expert'])
@@ -154,10 +157,10 @@ try {
     await access(`legacy_${productType}_online_preview`, 'fixture-online', legacyToken, 'preview')
     await access(`legacy_${productType}_expert_preview`, 'fixture-expert-a', legacyToken, 'preview')
   }
-  const tamper = Object.fromEntries(Object.keys(config.data.products).map(key => [key, { enabled: key !== 'annualMembership', price: 0.01, currency: 'USD', durationDays: 99999 }]))
+  const tamper = Object.fromEntries(Object.keys(config.data.products).map(key => [key, { enabled: !['annualMembership', 'guideVideo'].includes(key), price: 0.01, currency: 'USD', durationDays: 99999 }]))
   const saved = await capture('admin_product_policy_save', '/api/admin/settings', { method: 'PATCH', token: adminToken, body: { miniprogramKnowledge: { products: tamper } } })
   assert.equal(saved.statusCode, 200)
-  assert.deepEqual(Object.entries(saved.data.miniprogramKnowledge.products).filter(([, p]) => p.enabled).map(([key]) => key), ['annualMembership'])
+  assert.deepEqual(Object.entries(saved.data.miniprogramKnowledge.products).filter(([, p]) => p.enabled).map(([key]) => key), ['annualMembership', 'guideVideo'])
   for (const path of ['/api/admin/settings','/api/miniprogram/knowledge/config']) {
     const read = await capture(`normalized_config_${path.split('/').at(-1)}`, path, { token: adminToken })
     const product = (read.data.miniprogramKnowledge || read.data).products.annualMembership

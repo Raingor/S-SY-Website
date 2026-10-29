@@ -529,6 +529,47 @@ const runtimeDocDir = resolve(root, 'public/docs')
 const ALLOWED_DOC_EXTENSIONS = new Set(['.pdf', '.doc', '.docx', '.xls', '.xlsx', '.ppt', '.pptx'])
 const DOC_MIME_BY_EXTENSION = { '.pdf': 'application/pdf', '.doc': 'application/msword', '.docx': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', '.xls': 'application/vnd.ms-excel', '.xlsx': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', '.ppt': 'application/vnd.ms-powerpoint', '.pptx': 'application/vnd.openxmlformats-officedocument.presentationml.presentation' }
 const DOC_MAX_BYTES = 20 * 1024 * 1024
+// Guide videos live in a private OSS bucket; playback URLs are signed per request after an entitlement check.
+function ossVideoConfig() {
+  const accessKeyId = String(process.env.SY_OSS_ACCESS_KEY_ID || '').trim()
+  const accessKeySecret = String(process.env.SY_OSS_ACCESS_KEY_SECRET || '').trim()
+  if (!accessKeyId || !accessKeySecret) return null
+  return { accessKeyId, accessKeySecret, bucket: String(process.env.SY_OSS_BUCKET || 'sy-mpapp').trim(), host: String(process.env.SY_OSS_HOST || 'oss-cn-shenzhen.aliyuncs.com').trim() }
+}
+function ossSignedGetUrl(objectKey, expiresInSeconds = 600) {
+  const config = ossVideoConfig()
+  if (!config) return null
+  const key = String(objectKey || '').trim().replace(/^\/+/, '')
+  if (!key || key.split('/').includes('..')) return null
+  const expires = Math.floor(Date.now() / 1000) + expiresInSeconds
+  const stringToSign = `GET\n\n\n${expires}\n/${config.bucket}/${key}`
+  const signature = crypto.createHmac('sha1', config.accessKeySecret).update(stringToSign).digest('base64')
+  return `https://${config.bucket}.${config.host}/${encodeURI(key)}?OSSAccessKeyId=${encodeURIComponent(config.accessKeyId)}&Expires=${expires}&Signature=${encodeURIComponent(signature)}`
+}
+function normalizeGuideVideo(input, index) {
+  const source = input && typeof input === 'object' && !Array.isArray(input) ? input : {}
+  const text = (value, max = 300) => String(value ?? '').trim().slice(0, max)
+  const video = {
+    id: text(source.id, 120) || `guide-video-${index + 1}`,
+    attractionId: text(source.attractionId, 120),
+    title: text(source.title, 200),
+    description: text(source.description, 2000),
+    cover: text(source.cover, 300),
+    ossKey: text(source.ossKey, 300).replace(/^\/+/, ''),
+    durationSeconds: Number.isFinite(Number(source.durationSeconds)) && Number(source.durationSeconds) > 0 ? Math.round(Number(source.durationSeconds)) : 0,
+    sizeBytes: Number.isFinite(Number(source.sizeBytes)) && Number(source.sizeBytes) > 0 ? Math.round(Number(source.sizeBytes)) : 0,
+    status: source.status === 'published' ? 'published' : 'unpublished',
+    createdAt: text(source.createdAt, 40) || new Date().toISOString(),
+  }
+  video.titleTw = text(source.titleTw, 200) || video.title
+  video.titleEn = text(source.titleEn, 200) || video.title
+  video.descriptionTw = text(source.descriptionTw, 2000) || video.description
+  video.descriptionEn = text(source.descriptionEn, 2000) || video.description
+  return video
+}
+function publicGuideVideos(data) {
+  return (data.guideVideos || []).filter((video) => video.status === 'published').map((video) => ({ id: video.id, attractionId: video.attractionId, title: video.title, titleTw: video.titleTw, titleEn: video.titleEn, description: video.description, descriptionTw: video.descriptionTw, descriptionEn: video.descriptionEn, cover: video.cover, durationSeconds: video.durationSeconds, accessUrl: `/api/miniprogram/video/${encodeURIComponent(video.id)}/access` }))
+}
 function normalizeTravelGuideDocs(input) {
   const source = input && typeof input === 'object' && !Array.isArray(input) ? input : {}
   const docs = {}
@@ -622,6 +663,7 @@ function defaultMiniProgramKnowledgeConfig() {
       album: { enabled: false, productType: 'album', name: '文史专辑（已停售）', price: 9.9, currency: 'CNY' },
       membership: { enabled: false, productType: 'membership', name: '终身会员', price: 99, currency: 'CNY' },
       annualMembership: { enabled: true, productType: 'annualMembership', name: '年会员', price: 199, currency: 'CNY', durationDays: 365 },
+      guideVideo: { enabled: true, productType: 'guideVideo', name: '游览攻略视频', price: 168, currency: 'CNY' },
       expertTrack: { enabled: false, productType: 'expertTrack', name: '真人讲解', price: 0, currency: 'CNY' },
     },
   }
@@ -634,11 +676,11 @@ function miniProgramKnowledgeConfig(data) {
     return [key, {
       ...product,
       ...value,
-      // One fixed-price annual product; stale admin settings cannot revive sales.
-      enabled: key === 'annualMembership',
+      // Fixed-price products; stale admin settings cannot revive or reprice them.
+      enabled: key === 'annualMembership' || key === 'guideVideo',
       productType: key,
       name: String(value.name || product.name).trim().slice(0, 120),
-      price: key === 'annualMembership' ? 199 : (Number.isFinite(Number(value.price)) && Number(value.price) >= 0 ? Number(value.price) : product.price),
+      price: key === 'annualMembership' ? 199 : key === 'guideVideo' ? 168 : (Number.isFinite(Number(value.price)) && Number(value.price) >= 0 ? Number(value.price) : product.price),
       ...(key === 'annualMembership' ? { durationDays: 365 } : {}),
       currency: 'CNY',
     }]
@@ -669,9 +711,25 @@ function paidCommerceEntitlements(data, member) {
   const unlockedExpertTracks = member ? [...new Set((data.audioTracks || []).filter((track) => track.category === 'expert' && track.status === 'published').map((track) => track.id))] : []
   return { unlockedAttractions, unlockedCities, unlockedAlbums, unlockedExpertTracks }
 }
-function commercePurchaseTarget(productType) {
+function videoEntitlements(data, paidOrders, member) {
+  // Annual members include every published guide video; others need a per-video purchase.
+  const all = [...new Set((data.guideVideos || []).filter((video) => video.status === 'published').map((video) => video.id))]
+  const purchased = [...new Set(paidOrders.filter((order) => order.productType === 'guideVideo' && order.videoId).map((order) => order.videoId))]
+  return { unlockedVideos: member ? all : all.filter((id) => purchased.includes(id)) }
+}
+function videoEntitled(video, entitlements) {
+  return Boolean(video && (entitlements?.member === true || entitlements?.unlockedVideos?.includes(video.id)))
+}
+function commercePurchaseTarget(productType, input, data) {
   if (productType === 'annualMembership') return { label: '' }
-  return { error: 'PAYMENT_PRODUCT_UNAVAILABLE', message: '仅售年会员：199 元 / 365 天，其他内容商品已停售' }
+  if (productType === 'guideVideo') {
+    const videoId = String(input?.videoId || '').trim()
+    if (!videoId) return { error: 'VIDEO_ID_REQUIRED', message: '请指定要购买的攻略视频' }
+    const video = (data.guideVideos || []).find((item) => item.id === videoId && item.status === 'published')
+    if (!video) return { error: 'VIDEO_NOT_FOUND', message: '攻略视频不存在或未发布' }
+    return { label: video.title, videoId }
+  }
+  return { error: 'PAYMENT_PRODUCT_UNAVAILABLE', message: '仅售年会员（199元/365天）与游览攻略视频（168元），其他内容商品已停售' }
 }
 const membershipYearMs = 365 * 24 * 60 * 60 * 1000
 function membershipOrderExpiry(order) {
@@ -727,8 +785,9 @@ function simulationEntitlements(data, identity) {
     member,
     memberLabel: membership.memberLabel,
     memberExpiresAt: membership.memberExpiresAt,
-    purchases: paidOrders.map((order) => ({ orderId: order.id, productType: order.productType, name: order.name || '', attractionId: order.attractionId || '', cityId: order.cityId || '', albumId: order.albumId || '', trackId: order.trackId || '', status: order.status, purchasedAt: order.paidAt || order.createdAt })),
+    purchases: paidOrders.map((order) => ({ orderId: order.id, productType: order.productType, name: order.name || '', attractionId: order.attractionId || '', cityId: order.cityId || '', albumId: order.albumId || '', trackId: order.trackId || '', videoId: order.videoId || '', status: order.status, purchasedAt: order.paidAt || order.createdAt })),
     ...commerce,
+    ...videoEntitlements(data, paidOrders, member),
     favorites: [],
     history: [],
     orders: orders.map(publicSimulationOrder),
@@ -758,8 +817,9 @@ function realPaymentEntitlements(data, user) {
     member,
     memberLabel: membership.memberLabel,
     memberExpiresAt: membership.memberExpiresAt,
-    purchases: paidOrders.map((order) => ({ orderId: order.id, productType: order.productType, name: order.name || '', attractionId: order.attractionId || '', cityId: order.cityId || '', albumId: order.albumId || '', trackId: order.trackId || '', status: order.status, purchasedAt: order.paidAt || order.createdAt })),
+    purchases: paidOrders.map((order) => ({ orderId: order.id, productType: order.productType, name: order.name || '', attractionId: order.attractionId || '', cityId: order.cityId || '', albumId: order.albumId || '', trackId: order.trackId || '', videoId: order.videoId || '', status: order.status, purchasedAt: order.paidAt || order.createdAt })),
     ...commerce,
+    ...videoEntitlements(data, paidOrders, member),
     favorites: [],
     history: [],
     orders: orders.map(publicPaymentOrder)
@@ -1301,6 +1361,7 @@ function publicContent(data, countryId = 'greece', { includeAttractionDetails = 
     vehicleService: publicVehicleService(data),
     businessService: publicBusinessService(data),
     travelGuide: publicTravelGuide(data),
+    guideVideos: publicGuideVideos(data),
     countries: countries.map((item) => ({ ...item, heroImage: imageUrl(item.heroImage) })),
     guides: guides.map((item) => ({ ...item, avatar: imageUrl(item.avatar), fullImage: imageUrl(item.fullImage) })),
     routes: scoped(data.routes).filter((item) => item.status === 'published').map((item) => ({ ...item, image: imageUrl(item.image) })),
@@ -1608,6 +1669,22 @@ const server = http.createServer(async (req, res) => {
     if (url.pathname === '/api/miniprogram/knowledge/config' && method === 'GET') {
       return json(res, 200, miniProgramKnowledgeConfig(readData()))
     }
+    const videoAccessMatch = url.pathname.match(/^\/api\/miniprogram\/video\/([^/]+)\/access$/)
+    if (videoAccessMatch && method === 'GET') {
+      const data = readData()
+      const video = (data.guideVideos || []).find((item) => item.id === decodeURIComponent(videoAccessMatch[1]) && item.status === 'published')
+      if (!video) return json(res, 404, { code: 'VIDEO_NOT_FOUND', error: '攻略视频不存在或未发布' })
+      let identity = null
+      if (miniProgramSimulationEnabled()) identity = simulationUserIdentity(req)
+      else if (miniProgramRealPayEnabled()) { const user = miniProgramUserFromRequest(req, data); identity = user ? { key: 'user-'+user.id, userId: user.id, phone: user.phone, phoneHash: '' } : null }
+      let entitlements = null
+      if (identity) entitlements = miniProgramSimulationEnabled() ? simulationEntitlements(data, identity) : realPaymentEntitlements(data, miniProgramUserFromRequest(req, data))
+      if (!identity) return json(res, 200, { id: video.id, access: 'locked', reason: 'MINIPROGRAM_LOGIN_REQUIRED', message: '请先微信登录' })
+      if (!videoEntitled(video, entitlements)) return json(res, 200, { id: video.id, access: 'locked', reason: 'VIDEO_PURCHASE_REQUIRED', message: '购买后可观看完整视频', product: miniProgramKnowledgeConfig(data).products.guideVideo })
+      const playUrl = ossSignedGetUrl(video.ossKey, 600)
+      if (!playUrl) return json(res, 503, { code: 'VIDEO_STREAM_NOT_CONFIGURED', error: '视频服务未配置，请稍后再试' })
+      return json(res, 200, { id: video.id, access: 'full', playUrl, expiresIn: 600, unlockedVia: entitlements.member === true ? 'membership' : 'purchase' })
+    }
     if (url.pathname === '/api/miniprogram/entitlements' && method === 'GET') {
       if (miniProgramSimulationEnabled()) {
         const data = readData(); const identity = simulationUserIdentity(req)
@@ -1636,12 +1713,12 @@ const server = http.createServer(async (req, res) => {
         const identity = simulationUserIdentity(req)
         if (!identity) return simulationUserRequired(res)
         if (!identity.phoneHash) return json(res, 422, { code: 'SIMULATION_PHONE_REQUIRED', error: '创建模拟订单前请先使用手机号创建测试会话' })
-        const target = commercePurchaseTarget(productType)
+        const target = commercePurchaseTarget(productType, input, data)
         if (target.error) return json(res, 422, { code: target.error, error: target.message })
         const product = simulationProduct(data, productType, target)
         if (!product || product.enabled === false) return json(res, 422, { code: 'SIMULATION_PRODUCT_UNAVAILABLE', error: '模拟商品不可用' })
         const now = new Date().toISOString()
-        const order = { id: id('sim-order'), testUser: identity.key, userId: identity.userId, verifiedPhone: identity.phone, phoneHash: identity.phoneHash, phone: identity.phone, status: 'pending', productType, attractionId: target.attractionId || '', cityId: target.cityId || '', albumId: target.albumId || '', trackId: target.trackId || '', name: product.description, description: product.description, price: product.price, amountTotal: product.amountTotal, currency: product.currency, createdAt: now }
+        const order = { id: id('sim-order'), testUser: identity.key, userId: identity.userId, verifiedPhone: identity.phone, phoneHash: identity.phoneHash, phone: identity.phone, status: 'pending', productType, attractionId: target.attractionId || '', cityId: target.cityId || '', albumId: target.albumId || '', trackId: target.trackId || '', videoId: target.videoId || '', name: product.description, description: product.description, price: product.price, amountTotal: product.amountTotal, currency: product.currency, createdAt: now }
         simulationState(data).orders.push(order); await saveData(data)
         return json(res, 201, { simulation: true, order: publicSimulationOrder(order), payment: null })
       }
@@ -1649,12 +1726,12 @@ const server = http.createServer(async (req, res) => {
       const user = miniProgramUserFromRequest(req, data)
       if (!user) return json(res, 401, { code: 'MINIPROGRAM_LOGIN_REQUIRED', error: '请先微信登录' })
       if (!user.phone) return json(res, 403, { code: 'PHONE_BIND_REQUIRED', error: '支付前请先绑定手机号' })
-      const target = commercePurchaseTarget(productType)
+      const target = commercePurchaseTarget(productType, input, data)
       if (target.error) return json(res, 422, { code: target.error, error: target.message })
       const product = realPaymentProduct(data, productType, target)
       if (!product) return json(res, 422, { code: 'PAYMENT_PRODUCT_UNAVAILABLE', error: '支付商品不可用或价格未配置' })
       const now = new Date().toISOString()
-      const order = { id: id('mp-order'), outTradeNo: `SY${Date.now()}${crypto.randomBytes(5).toString('hex')}`, userId: user.id, openid: user.openid, phone: user.phone, status: 'pending', productType, attractionId: target.attractionId || '', cityId: target.cityId || '', albumId: target.albumId || '', trackId: target.trackId || '', name: product.description, description: product.description, price: product.price, amountTotal: product.amountTotal, currency: product.currency, createdAt: now }
+      const order = { id: id('mp-order'), outTradeNo: `SY${Date.now()}${crypto.randomBytes(5).toString('hex')}`, userId: user.id, openid: user.openid, phone: user.phone, status: 'pending', productType, attractionId: target.attractionId || '', cityId: target.cityId || '', albumId: target.albumId || '', trackId: target.trackId || '', videoId: target.videoId || '', name: product.description, description: product.description, price: product.price, amountTotal: product.amountTotal, currency: product.currency, createdAt: now }
       try {
         const prepay = await createMiniProgramPrepay(wechatPay, { ...order, openid: user.openid })
         order.prepayId = prepay.prepayId
@@ -2126,6 +2203,33 @@ const server = http.createServer(async (req, res) => {
       if (url.pathname === `${audioUnlockBatchPath}/audits` && method === 'GET') return json(res, 200, { items: data.audioUnlockBatchAudits || [] })
       if ([`${audioUnlockBatchPath}/preview`, `${audioUnlockBatchPath}/apply`].includes(url.pathname) && method === 'POST') return json(res, 410, { code: 'AUDIO_UNLOCK_BATCH_RETIRED', error: '单景点解锁已取消，全部音频统一由有效年会员解锁' })
       const heritageAdmin = url.pathname.match(/^\/api\/admin\/(audioAlbums|audioRoutes|audioTracks)(?:\/([^/]+))?$/)
+      if (url.pathname === '/api/admin/guideVideos' && method === 'GET') return json(res, 200, (data.guideVideos || []).map((video) => ({ ...video })))
+      const guideVideoMatch = url.pathname.match(/^\/api\/admin\/guideVideos\/([^/]+)$/)
+      if (guideVideoMatch && ['PATCH', 'DELETE'].includes(method)) {
+        const videoId = decodeURIComponent(guideVideoMatch[1])
+        const index = (data.guideVideos || []).findIndex((video) => video.id === videoId)
+        if (index < 0) return json(res, 404, { code: 'CONTENT_NOT_FOUND', error: '攻略视频不存在' })
+        if (method === 'DELETE') {
+          data.guideVideos.splice(index, 1); await saveData(data)
+          return res.writeHead(204).end()
+        }
+        const input = await body(req)
+        const merged = normalizeGuideVideo({ ...data.guideVideos[index], ...input, id: videoId }, index)
+        if (!merged.title) return json(res, 422, { code: 'CONTENT_VALIDATION_FAILED', error: '请填写视频标题' })
+        if (merged.status === 'published' && (!merged.ossKey || !merged.attractionId)) return json(res, 422, { code: 'CONTENT_VALIDATION_FAILED', error: '发布前需填写 OSS 文件路径并关联景点' })
+        data.guideVideos[index] = merged; await saveData(data)
+        return json(res, 200, merged)
+      }
+      if (url.pathname === '/api/admin/guideVideos' && method === 'POST') {
+        const input = await body(req)
+        const video = normalizeGuideVideo(input, (data.guideVideos || []).length)
+        if (!video.title) return json(res, 422, { code: 'CONTENT_VALIDATION_FAILED', error: '请填写视频标题' })
+        if ((data.guideVideos || []).some((item) => item.id === video.id)) return json(res, 409, { code: 'DUPLICATE_ID', error: '视频 ID 已存在' })
+        if (video.status === 'published' && (!video.ossKey || !video.attractionId)) return json(res, 422, { code: 'CONTENT_VALIDATION_FAILED', error: '发布前需填写 OSS 文件路径并关联景点' })
+        data.guideVideos = Array.isArray(data.guideVideos) ? data.guideVideos : []
+        data.guideVideos.push(video); await saveData(data)
+        return json(res, 201, video)
+      }
       if (heritageAdmin && ['GET', 'POST', 'PATCH', 'DELETE'].includes(method)) {
         const collection = heritageAdmin[1]; const itemId = heritageAdmin[2] || ''
         data[collection] = Array.isArray(data[collection]) ? data[collection] : []
@@ -2435,6 +2539,7 @@ async function start() {
     if (!data.vehicleService || typeof data.vehicleService !== 'object' || Array.isArray(data.vehicleService)) data.vehicleService = defaultVehicleService()
     if (!data.businessService || typeof data.businessService !== 'object' || Array.isArray(data.businessService)) data.businessService = defaultBusinessService()
     if (!data.travelGuide || typeof data.travelGuide !== 'object' || Array.isArray(data.travelGuide)) data.travelGuide = defaultTravelGuide()
+    if (!Array.isArray(data.guideVideos)) data.guideVideos = []
     if (!data.attractionDetailPage || typeof data.attractionDetailPage !== 'object' || Array.isArray(data.attractionDetailPage)) {
       if (!demoContent) throw new Error('seed/content-demo.json is required for the first attraction-detail-page migration')
       data.attractionDetailPage = normalizeAttractionDetailPage(defaultAttractionDetailPage())
