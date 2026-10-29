@@ -36,7 +36,9 @@ function ossAudioConfig() {
   const accessKeySecret = String(process.env.SY_OSS_ACCESS_KEY_SECRET || '').trim()
   if (!accessKeyId || !accessKeySecret) return null
   const endpoint = String(process.env.SY_OSS_ENDPOINT || '').trim().replace(/\/+$/, '')
-  return { accessKeyId, accessKeySecret, endpoint: endpoint || `https://${String(process.env.SY_OSS_BUCKET || 'sy-mpapp').trim()}.${String(process.env.SY_OSS_HOST || 'oss-cn-shenzhen.aliyuncs.com').trim()}` }
+  const bucket = String(process.env.SY_OSS_BUCKET || 'sy-mpapp').trim()
+  const host = String(process.env.SY_OSS_HOST || 'oss-cn-shenzhen.aliyuncs.com').trim()
+  return { accessKeyId, accessKeySecret, bucket, host, endpoint: endpoint || `https://${bucket}.${host}` }
 }
 export function ossAudioConfigured() { return Boolean(ossAudioConfig()) }
 function ossAudioSignedUrl(name, expiresInSeconds, { method = 'GET', contentType = '' } = {}) {
@@ -44,7 +46,8 @@ function ossAudioSignedUrl(name, expiresInSeconds, { method = 'GET', contentType
   if (!config || !audioNamePattern.test(String(name || ''))) return null
   const expires = Math.floor(Date.now() / 1000) + expiresInSeconds
   const objectKey = `audio/${name}`
-  const stringToSign = `${method}\n\n${contentType}\n${expires}\n/${config.endpoint.replace(/^https?:\/\//, '')}/${objectKey}`
+  // OSS V1 canonical resource is /<bucket>/<object>, never the host-prefixed form.
+  const stringToSign = `${method}\n\n${contentType}\n${expires}\n/${config.bucket}/${objectKey}`
   const signature = crypto.createHmac('sha1', config.accessKeySecret).update(stringToSign).digest('base64')
   return `${config.endpoint}/${objectKey}?OSSAccessKeyId=${encodeURIComponent(config.accessKeyId)}&Expires=${expires}&Signature=${encodeURIComponent(signature)}`
 }
