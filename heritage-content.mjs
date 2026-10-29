@@ -1,5 +1,5 @@
 import crypto from 'node:crypto'
-import { createReadStream, existsSync, mkdirSync, rmSync, statSync, writeFileSync } from 'node:fs'
+import { createReadStream, existsSync, mkdirSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs'
 import { extname, resolve } from 'node:path'
 import { spawnSync } from 'node:child_process'
 import { fileURLToPath } from 'node:url'
@@ -23,6 +23,41 @@ const publicImage = (value) => {
 const existingFile = (name) => /^[a-f0-9]{32}\.(?:m4a|mp3)$/.test(String(name || '')) && existsSync(resolve(privateDir, name))
 const previewName = (name) => name?.replace(/\.(?:m4a|mp3)$/, '-preview.m4a')
 const previewExists = (name) => /^[a-f0-9]{32}-preview\.m4a$/.test(String(name || '')) && existsSync(resolve(privateDir, name))
+const audioNamePattern = /^[a-f0-9]{32}(?:\.(?:m4a|mp3)|-preview\.m4a)$/
+// After the OSS migration the server no longer keeps audio files locally; the
+// upload manifest (data.audioUploads) is the source of truth for known files.
+export function audioResourceKnown(data, name) {
+  if (!audioNamePattern.test(String(name || ''))) return false
+  if (existsSync(resolve(privateDir, name))) return true
+  return (data?.audioUploads || []).some((upload) => upload.audioFile === name || upload.previewFile === name)
+}
+function ossAudioConfig() {
+  const accessKeyId = String(process.env.SY_OSS_ACCESS_KEY_ID || '').trim()
+  const accessKeySecret = String(process.env.SY_OSS_ACCESS_KEY_SECRET || '').trim()
+  if (!accessKeyId || !accessKeySecret) return null
+  const endpoint = String(process.env.SY_OSS_ENDPOINT || '').trim().replace(/\/+$/, '')
+  return { accessKeyId, accessKeySecret, endpoint: endpoint || `https://${String(process.env.SY_OSS_BUCKET || 'sy-mpapp').trim()}.${String(process.env.SY_OSS_HOST || 'oss-cn-shenzhen.aliyuncs.com').trim()}` }
+}
+export function ossAudioConfigured() { return Boolean(ossAudioConfig()) }
+function ossAudioSignedUrl(name, expiresInSeconds, { method = 'GET', contentType = '' } = {}) {
+  const config = ossAudioConfig()
+  if (!config || !audioNamePattern.test(String(name || ''))) return null
+  const expires = Math.floor(Date.now() / 1000) + expiresInSeconds
+  const objectKey = `audio/${name}`
+  const stringToSign = `${method}\n\n${contentType}\n${expires}\n/${config.endpoint.replace(/^https?:\/\//, '')}/${objectKey}`
+  const signature = crypto.createHmac('sha1', config.accessKeySecret).update(stringToSign).digest('base64')
+  return `${config.endpoint}/${objectKey}?OSSAccessKeyId=${encodeURIComponent(config.accessKeyId)}&Expires=${expires}&Signature=${encodeURIComponent(signature)}`
+}
+export function ossAudioReadUrl(name, expiresInSeconds = 600) { return ossAudioSignedUrl(name, expiresInSeconds) }
+export async function uploadPrivateAudioToOss(name) {
+  const contentType = name.endsWith('.mp3') ? 'audio/mpeg' : 'audio/mp4'
+  const url = ossAudioSignedUrl(name, 3600, { method: 'PUT', contentType })
+  if (!url) return false
+  try {
+    const res = await fetch(url, { method: 'PUT', headers: { 'Content-Type': contentType }, body: readFileSync(resolve(privateDir, name)) })
+    return res.ok
+  } catch { return false }
+}
 export function hasCompleteAudioResources(track = {}) { return existingFile(track.audioFile) && previewExists(track.previewFile) }
 const isPublished = (item) => item?.status === 'published'
 const safeText = (item, keys) => Object.fromEntries(keys.map((key) => [key, text(item?.[key])]))
@@ -173,8 +208,8 @@ export function validateHeritageRecord(kind, input, data, current = {}) {
     if (value.unlockMode === 'attraction' && !value.attractionId) return '单景点权限须设置景点'
   }
   if (!Number.isInteger(Number(value.previewSeconds)) || Number(value.previewSeconds) < 1 || Number(value.previewSeconds) > 60) return '试听时长须为 1 至 60 秒'
-  if (value.status === 'published' && (!existingFile(value.audioFile) || !previewExists(value.previewFile))) return '发布前须上传可播放且已生成试听片段的音频'
-  if (value.audioFile && !existingFile(value.audioFile)) return '音频文件不存在或不是私有上传文件'
+  if (value.status === 'published' && (!audioResourceKnown(data, value.audioFile) || !audioResourceKnown(data, value.previewFile))) return '发布前须上传可播放且已生成试听片段的音频'
+  if (value.audioFile && !audioResourceKnown(data, value.audioFile)) return '音频文件不存在或不是私有上传文件'
   return ''
 }
 
@@ -189,7 +224,7 @@ export function publicHeritage(data, countryId = 'greece') {
   const routeIds = new Set(routes.map((item) => item.id))
   const albums = (data.audioAlbums || []).filter((item) => isPublished(item) && (item.countryId || 'greece') === countryId).sort(sortByOrder)
   const albumIds = new Set(albums.map((item) => item.id))
-  const tracks = (data.audioTracks || []).filter((item) => isPublished(item) && existingFile(item.audioFile) && previewExists(item.previewFile) && (item.category === 'heritage' ? albumIds.has(item.albumId) : attractionIds.has(item.attractionId) && (item.category !== 'route' || routeIds.has(item.routeId)) && (!item.exhibitId || (attractions.find((attraction) => attraction.id === item.attractionId)?.exhibits || []).some((exhibit) => exhibit.id === item.exhibitId && (exhibit.status == null || exhibit.status === 'published'))))).sort(sortByOrder)
+  const tracks = (data.audioTracks || []).filter((item) => isPublished(item) && audioResourceKnown(data, item.audioFile) && audioResourceKnown(data, item.previewFile) && (item.category === 'heritage' ? albumIds.has(item.albumId) : attractionIds.has(item.attractionId) && (item.category !== 'route' || routeIds.has(item.routeId)) && (!item.exhibitId || (attractions.find((attraction) => attraction.id === item.attractionId)?.exhibits || []).some((exhibit) => exhibit.id === item.exhibitId && (exhibit.status == null || exhibit.status === 'published'))))).sort(sortByOrder)
   const trackItem = (item) => ({ id: item.id, category: item.category, title: text(item.title), titleTw: text(item.titleTw), titleEn: text(item.titleEn), description: text(item.description), descriptionTw: text(item.descriptionTw), descriptionEn: text(item.descriptionEn), cover: publicImage(item.cover), language: text(item.language) || 'zh-CN', attractionId: item.attractionId || null, exhibitId: item.exhibitId || null, routeId: item.routeId || null, albumId: item.albumId || null, durationSeconds: integer(item.durationSeconds), previewSeconds: Math.min(60, Math.max(1, integer(item.previewSeconds, 60))), unlockMode: effectiveUnlockMode(item), isPinned: item.isPinned === true, sort: integer(item.sort), previewUrl: `/api/miniprogram/audio/${encodeURIComponent(item.id)}/preview`, accessUrl: `/api/miniprogram/audio/${encodeURIComponent(item.id)}/access`, fullUrl: null })
   return {
     attractionDetails: Object.fromEntries(attractions.map((item) => {

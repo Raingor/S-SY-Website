@@ -30,7 +30,8 @@
     "test:attraction-map": "node scripts/test-attraction-map-private.mjs",
     "test:admin-recents": "node scripts/test-admin-recents.mjs",
     "test:admin-travel-guide-save": "node scripts/test-admin-travel-guide-save.mjs",
-    "test:guide-video-commerce": "node scripts/test-guide-video-commerce.mjs"
+    "test:guide-video-commerce": "node scripts/test-guide-video-commerce.mjs",
+    "test:audio-oss-migration": "node scripts/test-audio-oss-migration.mjs"
   },
   "dependencies": {
     "@vitejs/plugin-react": "^5.1.1",

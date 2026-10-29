@@ -7,7 +7,7 @@ import crypto from 'node:crypto'
 import { setTimeout as delay } from 'node:timers/promises'
 import tls from 'node:tls'
 import { closeStorage, initStorage, readData, saveData, storageStatus } from './storage.mjs'
-import { audioEntitled, effectiveUnlockMode, publicHeritage, signedAudioToken, streamPrivateAudio, uploadPrivateAudio, validateAttraction, validateHeritageRecord, verifySignedAudioToken, normalizeVisitorSections, sanitizeRichText, visibleTrack } from './heritage-content.mjs'
+import { audioEntitled, effectiveUnlockMode, publicHeritage, signedAudioToken, streamPrivateAudio, uploadPrivateAudio, uploadPrivateAudioToOss, validateAttraction, validateHeritageRecord, verifySignedAudioToken, ossAudioConfigured, ossAudioReadUrl, normalizeVisitorSections, sanitizeRichText, visibleTrack } from './heritage-content.mjs'
 import { privateMapUrl, removePrivateMap, streamPrivateMap, uploadPrivateMap } from './private-map.mjs'
 import { amountToFen, createMiniProgramPrepay, decryptWechatNotify, queryWechatTransaction, realPayNotifyReady, realPayRequestReady, verifyWechatNotify, wechatPayConfig } from './wechat-pay.mjs'
 import { requestAdminDraft, requestAudioTrackTranslation, requestDestinationTranslation, requestTextTranslation } from './attraction-ai-fill.mjs'
@@ -614,6 +614,22 @@ async function toWebpOrOriginal(buffer, contentType) {
 function corsHeaders() { return { ...(allowedOrigin ? { 'Access-Control-Allow-Origin': allowedOrigin, Vary: 'Origin' } : {}), 'Access-Control-Allow-Methods': 'GET,POST,PATCH,DELETE,OPTIONS', 'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Mini-Program-Env' } }
 function json(res, status, body) { res.writeHead(status, { ...corsHeaders(), 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' }); res.end(JSON.stringify(body)) }
 function text(res, status, body, contentType) { res.writeHead(status, { 'Content-Type': contentType, 'Cache-Control': 'public, max-age=300' }); res.end(body) }
+// After the OSS migration audio files may no longer live on disk; stream them through
+// from OSS (signed, short-TTL) so every deployed client keeps its byte-level contract.
+async function proxyOssAudio(req, res, name, cors) {
+  const url = ossAudioReadUrl(name, 120)
+  if (!url) return false
+  try {
+    const upstream = await fetch(url, { headers: req.headers.range ? { Range: String(req.headers.range) } : {} })
+    if (!upstream.ok || !upstream.body) return false
+    const headers = { ...cors, 'Content-Type': upstream.headers.get('content-type') || (name.endsWith('.mp3') ? 'audio/mpeg' : 'audio/mp4'), 'Accept-Ranges': 'bytes', 'Cache-Control': 'private, no-store' }
+    for (const header of ['Content-Length', 'Content-Range']) { const value = upstream.headers.get(header); if (value) headers[header] = value }
+    res.writeHead(upstream.status, headers)
+    const { Readable } = await import('node:stream')
+    Readable.fromWeb(upstream.body).pipe(res)
+    return true
+  } catch { return false }
+}
 function isGuideBooking(lead) { return lead.leadType === 'guide-booking' || Boolean(lead.guideSlug) }
 function isMiniProgramBooking(lead) { return ['miniprogram', 'wechat-miniprogram'].includes(lead.platform) || ['miniprogram', 'wechat-miniprogram'].includes(lead.source) || lead.leadType === 'mini-program-booking' }
 function leadsOfType(leads, leadType) { return leadType ? leads.filter((lead) => lead.leadType === leadType) : leads }
@@ -1628,6 +1644,7 @@ const server = http.createServer(async (req, res) => {
       const section = audioRoute[2]
       if (section === 'preview') {
         if (streamPrivateAudio(req, res, { previewFile: track.previewFile, audioFile: track.audioFile }, corsHeaders())) return
+        if (await proxyOssAudio(req, res, track.previewFile, corsHeaders())) return
         return json(res, 404, { code: 'AUDIO_NOT_FOUND', error: '试听文件不可用' })
       }
       const simulation = miniProgramSimulationEnabled()
@@ -1655,6 +1672,7 @@ const server = http.createServer(async (req, res) => {
       const playbackEntitlements = playbackIdentity ? (simulation ? simulationEntitlements(data, playbackIdentity) : realPaymentEntitlements(data, playbackIdentity)) : null
       if (!playbackIdentity || !audioEntitled(track, playbackEntitlements)) return json(res, 403, { code: 'AUDIO_ENTITLEMENT_REQUIRED', error: '尚未获得该音频完整播放权限' })
       if (streamPrivateAudio(req, res, { previewFile: track.previewFile, audioFile: track.audioFile }, corsHeaders())) return
+      if (await proxyOssAudio(req, res, track.audioFile, corsHeaders())) return
       return json(res, 404, { code: 'AUDIO_NOT_FOUND', error: '音频文件不可用' })
     }
     if (url.pathname === '/api/miniprogram/simulation/session' && method === 'POST') {
@@ -2267,8 +2285,18 @@ const server = http.createServer(async (req, res) => {
           : await body(req, 42 * 1024 * 1024)
         try {
           const result = uploadPrivateAudio(input)
+          // Sync to OSS immediately and free the local copy when configured; disk-first keeps working otherwise.
+          let ossSynced = false
+          if (ossAudioConfigured()) {
+            const [audioOk, previewOk] = await Promise.all([uploadPrivateAudioToOss(result.audioFile), uploadPrivateAudioToOss(result.previewFile)])
+            if (audioOk && previewOk) {
+              ossSynced = true
+              const { rmSync } = await import('node:fs')
+              for (const name of [result.audioFile, result.previewFile]) { try { rmSync(resolve(process.cwd(), 'private-audio', name)) } catch {} }
+            }
+          }
           data.audioUploads = Array.isArray(data.audioUploads) ? data.audioUploads : []
-          data.audioUploads.push(result)
+          data.audioUploads.push({ ...result, ...(ossSynced ? { storage: 'oss' } : {}) })
           await saveData(data)
           return json(res, 201, result)
         } catch (error) { return json(res, 422, { code: 'INVALID_AUDIO_UPLOAD', error: error.message }) }
