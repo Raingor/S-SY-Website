@@ -728,13 +728,15 @@ function paidCommerceEntitlements(data, member) {
   return { unlockedAttractions, unlockedCities, unlockedAlbums, unlockedExpertTracks }
 }
 function videoEntitlements(data, paidOrders, member) {
-  // Annual members include every published guide video; others need a per-video purchase.
+  // 2026-10-29 rule change: the guide video is a standalone purchase; annual
+  // members no longer get it for free. Only per-video purchases unlock it.
   const all = [...new Set((data.guideVideos || []).filter((video) => video.status === 'published').map((video) => video.id))]
   const purchased = [...new Set(paidOrders.filter((order) => order.productType === 'guideVideo' && order.videoId).map((order) => order.videoId))]
-  return { unlockedVideos: member ? all : all.filter((id) => purchased.includes(id)) }
+  return { unlockedVideos: all.filter((id) => purchased.includes(id)) }
 }
 function videoEntitled(video, entitlements) {
-  return Boolean(video && (entitlements?.member === true || entitlements?.unlockedVideos?.includes(video.id)))
+  // Only an explicit per-video purchase unlocks playback (membership does not).
+  return Boolean(video && entitlements?.unlockedVideos?.includes(video.id))
 }
 function commercePurchaseTarget(productType, input, data) {
   if (productType === 'annualMembership') return { label: '' }
@@ -1278,7 +1280,9 @@ function homeBannerPayload(input = {}, current = {}) {
   const image = String(input.image ?? current.image ?? '').trim().slice(0, 500)
   if (!title || !description || !alt || !image) return null
   const sort = Math.max(1, Math.min(9999, Number(input.sort ?? current.sort ?? 1) || 1))
-  return { title, description, alt, image, enabled: input.enabled !== undefined ? input.enabled !== false : current.enabled !== false, sort, ...(current.createdAt ? { createdAt: current.createdAt } : {}) }
+  // Optional jump target for the mini-program home banner, e.g. 'attraction:acropolis'.
+  const link = String(input.link ?? current.link ?? '').trim().slice(0, 300)
+  return { title, description, alt, image, link, enabled: input.enabled !== undefined ? input.enabled !== false : current.enabled !== false, sort, ...(current.createdAt ? { createdAt: current.createdAt } : {}) }
 }
 function publicHomeBanners(data) {
   const imageUrl = optimizedPublicImageUrl
@@ -1705,7 +1709,7 @@ const server = http.createServer(async (req, res) => {
       if (!videoEntitled(video, entitlements)) return json(res, 200, { id: video.id, access: 'locked', reason: 'VIDEO_PURCHASE_REQUIRED', message: '购买后可观看完整视频', product: miniProgramKnowledgeConfig(data).products.guideVideo })
       const playUrl = ossSignedGetUrl(video.ossKey, 600)
       if (!playUrl) return json(res, 503, { code: 'VIDEO_STREAM_NOT_CONFIGURED', error: '视频服务未配置，请稍后再试' })
-      return json(res, 200, { id: video.id, access: 'full', playUrl, expiresIn: 600, unlockedVia: entitlements.member === true ? 'membership' : 'purchase' })
+      return json(res, 200, { id: video.id, access: 'full', playUrl, expiresIn: 600, unlockedVia: 'purchase' })
     }
     if (url.pathname === '/api/miniprogram/entitlements' && method === 'GET') {
       if (miniProgramSimulationEnabled()) {

@@ -101,14 +101,21 @@ try {
   assert.equal(access.body.expiresIn, 600)
   assert.equal(access.body.unlockedVia, 'purchase')
 
-  // 7) Annual member includes the video without purchase.
+  // 7) 2026-10-29 rule change: annual members must also purchase the video.
   const annualSession = await json('/api/miniprogram/simulation/session', { method: 'POST', body: JSON.stringify({ phone: '+15550002222' }) })
   const annualOrder = await json('/api/miniprogram/orders', { method: 'POST', body: JSON.stringify({ productType: 'annualMembership' }) }, annualSession.body.accessToken)
   assert.equal(annualOrder.status, 201)
-  await json(`/api/miniprogram/orders/${annualOrder.body.order.id}/simulate-paid`, { method: 'POST' }, annualSession.body.accessToken)
+  const annualPaid = await json(`/api/miniprogram/orders/${annualOrder.body.order.id}/simulate-paid`, { method: 'POST' }, annualSession.body.accessToken)
+  assert.equal(annualPaid.body.entitlements.member, true)
+  assert.equal(annualPaid.body.entitlements.unlockedVideos.includes('video-fixture'), false, 'membership alone does not unlock the video')
+  const memberLocked = await json('/api/miniprogram/video/video-fixture/access', {}, annualSession.body.accessToken)
+  assert.equal(memberLocked.body.access, 'locked')
+  assert.equal(memberLocked.body.reason, 'VIDEO_PURCHASE_REQUIRED')
+  const memberPurchase = await json('/api/miniprogram/orders', { method: 'POST', body: JSON.stringify({ productType: 'guideVideo', videoId: 'video-fixture' }) }, annualSession.body.accessToken)
+  await json(`/api/miniprogram/orders/${memberPurchase.body.order.id}/simulate-paid`, { method: 'POST' }, annualSession.body.accessToken)
   const memberAccess = await json('/api/miniprogram/video/video-fixture/access', {}, annualSession.body.accessToken)
   assert.equal(memberAccess.body.access, 'full')
-  assert.equal(memberAccess.body.unlockedVia, 'membership')
+  assert.equal(memberAccess.body.unlockedVia, 'purchase')
 
   // 8) Retired products stay unavailable.
   const retired = await json('/api/miniprogram/orders', { method: 'POST', body: JSON.stringify({ productType: 'album', albumId: 'x' }) }, session.body.accessToken)
@@ -120,6 +127,12 @@ try {
   assert.equal(contentAfter.guideVideos.length, 1)
   const missingAccess = await json('/api/miniprogram/video/video-draft/access', {}, session.body.accessToken)
   assert.equal(missingAccess.status, 404)
+
+  // Banner link passthrough for the mini-program jump target.
+  const banner = await json('/api/admin/miniprogram-home-banners', { method: 'POST', body: JSON.stringify({ id: 'banner-link-test', title: '跳转测试', description: 'desc', alt: 'alt', image: './images/home-test.png', link: 'attraction:acropolis' }) }, admin)
+  assert.equal(banner.status, 201)
+  const pubBanners = (await json('/api/content')).body.settings.homeBanners || []
+  assert.equal(pubBanners.find((b) => b.id === 'banner-link-test')?.link, 'attraction:acropolis')
 
   console.log('PASS guide-video commerce: fixed ¥168 product, admin CRUD guards, access entitlement (anonymous/login/purchase/annual-member), signed OSS playUrl, retired products unavailable, unpublished hidden.')
 } finally {
