@@ -71,4 +71,12 @@ assert.doesNotMatch(source, /1200×1440|5:6 竖图/, 'the old portrait banner hi
   assert.equal(state.form.status, 'unpublished', 'new records start unpublished')
 }
 
+// The shared home-banner collection must expose the jump target the operators set via API.
+for (const menu of ['homeBanners', 'miniprogramBanners']) {
+  const bannerFields = fields[menu].fields.map((field) => field.key)
+  assert.ok(bannerFields.includes('link'), `${menu} exposes the link field`)
+}
+assert.ok(source.includes('小程序首页只有排序最前的第一张 Banner 响应点击'), 'link help states the first-banner-only client rule')
+assert.ok(fields.homeBanners.columns.some((column) => column[0] === 'link'), 'banner list shows the jump target')
+
 console.log('PASS admin guide-videos UI: 开发配置 menu group, route/data plumbing, editable fields, PATCH/POST endpoint shape, generated ids, unpublished default')
