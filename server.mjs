@@ -1405,12 +1405,33 @@ function publicHomeBanners(data) {
   const imageUrl = optimizedPublicImageUrl
   return homeSettings(data, (value) => miniProgramBannerImage(value, imageUrl)).banners.map((item) => ({ ...item, description: item.description || '', alt: item.alt || item.title, enabled: true, sort: Number(item.sort || 0) }))
 }
+function publicHomeAudioPreview(data) {
+  const preview = data.home?.audioPreview
+  if (!preview || preview.kind !== 'human-video-audio' || preview.attractionId !== 'acropolis' || preview.previewSeconds !== 60) return null
+  const source = (data.guideVideos || []).find((video) => video.id === preview.sourceVideoId && video.attractionId === preview.attractionId && video.status === 'published')
+  if (!source || Number(source.durationSeconds) < 60) return null
+  // Only publish the separate public audio excerpt; private video URLs never enter this contract.
+  if (typeof preview.previewUrl !== 'string') return null
+  let audioPath = preview.previewUrl
+  if (audioPath.startsWith('https://')) {
+    try {
+      const url = new URL(audioPath)
+      if (!['https://sy-greece.com', 'https://www.sy-greece.com'].includes(url.origin) || url.username || url.password || url.search || url.hash) return null
+      audioPath = url.pathname
+    } catch { return null }
+  }
+  if (!/^\/audio\/[a-z0-9][a-z0-9._-]*\.(?:m4a|mp3)$/i.test(audioPath)) return null
+  if (!existsSync(resolve(root, 'public', audioPath.slice(1)))) return null
+  return { sourceVideoId: source.id, attractionId: source.attractionId, kind: 'human-video-audio', previewUrl: preview.previewUrl, previewSeconds: 60 }
+}
 function publicHome(data) {
+  const audioPreview = publicHomeAudioPreview(data)
   return {
     eyebrow: data.settings?.homeEyebrow || 'Greece Travel Butler',
     title: data.settings?.homeTitle || '希腊旅行管家',
     description: data.settings?.homeDescription || '希伴旅 · 只为一生美好回忆',
     banners: publicHomeBanners(data),
+    ...(audioPreview ? { audioPreview } : {}),
   }
 }
 function managedHighlightImage(value) {
@@ -1491,6 +1512,8 @@ function publicContent(data, countryId = 'greece', { includeAttractionDetails = 
   })
   const publicDestinations = scoped(data.destinations).filter((item) => item.status === 'published').map((item) => ({ ...normalizePublicDestination(item, publicCities, publicAttractions), image: imageUrl(item.image) })).filter((item) => item.cityId && item.attractionIds.length > 0)
   const home = homeSettings(data, (value) => miniProgramBannerImage(value, imageUrl))
+  const audioPreview = publicHomeAudioPreview(data)
+  if (audioPreview) home.audioPreview = audioPreview
   const activeDestinationCategories = (data.destinationCategories || []).filter((item) => item.enabled !== false).sort((a, b) => Number(a.sort || 0) - Number(b.sort || 0))
   const payload = {
     settings: { ...data.settings, travelGuideDocs: normalizeTravelGuideDocs(data.settings?.travelGuideDocs), miniprogramKnowledge: miniProgramKnowledgeConfig(data), homeEyebrow: home.eyebrow, homeTitle: home.title, homeDescription: home.description, homeBanners: home.banners },
@@ -2596,11 +2619,13 @@ const server = http.createServer(async (req, res) => {
     const filePath = join(distDir, safePath)
     const publicImagePath = safePath.startsWith('/images/') ? join(root, 'public', safePath.slice(1)) : ''
     const publicDocPath = safePath.startsWith('/docs/') && ALLOWED_DOC_EXTENSIONS.has(extname(safePath).toLowerCase()) ? join(root, 'public', safePath.slice(1)) : ''
+    const publicAudioPath = safePath.startsWith('/audio/') && ['.m4a', '.mp3'].includes(extname(safePath).toLowerCase()) ? join(root, 'public', safePath.slice(1)) : ''
     const fallback = join(distDir, 'index.html')
-    let target = existsSync(filePath) ? filePath : publicImagePath && existsSync(publicImagePath) ? publicImagePath : publicDocPath && existsSync(publicDocPath) ? publicDocPath : ''
+    let target = existsSync(filePath) ? filePath : publicImagePath && existsSync(publicImagePath) ? publicImagePath : publicDocPath && existsSync(publicDocPath) ? publicDocPath : publicAudioPath && existsSync(publicAudioPath) ? publicAudioPath : ''
     if (!target) {
       // /docs/ 下缺失的合法文档类型返回真 404，避免 SPA fallback 让客户端下载 HTML。
       if (publicDocPath) return text(res, 404, 'document not found', 'text/plain; charset=utf-8')
+      if (publicAudioPath) return text(res, 404, 'audio not found', 'text/plain; charset=utf-8')
       target = fallback
     }
     if (safePath.startsWith('/images/') && /\.(?:png|jpe?g|webp|svg)$/i.test(target) && !/\.opt\.webp$/i.test(target)) {
