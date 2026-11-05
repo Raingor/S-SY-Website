@@ -370,7 +370,8 @@
               <el-alert v-if="currentMenu.miniProgramDisplay" :title="'小程序展示位置：'+currentMenu.miniProgramDisplay" type="info" :closable="false" show-icon class="banner-note module-display-note"/>
               <el-alert v-if="active==='audioTracks'" title="只需填写简体标题与简介；点击表单底部「自动翻译」生成繁体和英文标题、简介。修改简体内容后需重新翻译，再保存。" type="info" :closable="false" show-icon class="banner-note"/>
               <el-alert v-if="active==='destinations'" title="只需填写中文名称；点击表单底部「自动翻译」生成英文名称。修改中文名称后需重新翻译，再保存。" type="info" :closable="false" show-icon class="banner-note"/>
-              <el-alert v-if="translatableFieldGroups[active]" title="只需填写简体内容；点击表单底部「自动翻译」生成繁体和英文内容。修改简体内容后需重新翻译，再保存。" type="info" :closable="false" show-icon class="banner-note"/>
+              <el-alert v-if="active==='guideVideos'" title="填写简体标题与简介后，点击「一键翻译」生成繁体和英文；核对后再保存。" type="info" :closable="false" show-icon class="banner-note"><el-button size="small" icon="el-icon-magic-stick" :loading="aiTranslating" :disabled="!localAiEnabled||busy" :title="localAiEnabled ? '根据简体标题与简介生成繁体和英文' : 'AI 翻译未启用，请检查服务端配置'" @click="translateRecordFields">一键翻译</el-button></el-alert>
+              <el-alert v-if="translatableFieldGroups[active]&&active!=='guideVideos'" title="只需填写简体内容；点击表单底部「自动翻译」生成繁体和英文内容。修改简体内容后需重新翻译，再保存。" type="info" :closable="false" show-icon class="banner-note"/>
               <div v-if="editor.template" class="template-guide"><div><span class="eyebrow">FILLING TEMPLATE / 填写引导</span><h3>{{ editor.template.title }}</h3><p>{{ editor.template.tip }}</p></div><div class="template-guide-actions"><el-button v-if="['routes','destinations','attractions'].includes(active)&&localAiEnabled" type="primary" icon="el-icon-magic-stick" @click="openAiFillDialog">智能填写</el-button><el-button type="warning" plain @click="fillTemplate">一键填写拟真示例</el-button></div></div>
               <el-form ref="editForm" :disabled="busy" :model="form" :rules="formRules" :label-position="currentMenu.singleColumn ? 'left' : 'top'" :label-width="currentMenu.singleColumn ? '200px' : undefined" :class="{ 'edit-form-horizontal': currentMenu.singleColumn }" class="edit-form" @submit.native.prevent="saveEditor">
                 <div v-if="recordEditorGroups.length" class="attraction-editor-tabs record-editor-tabs" role="tablist" :aria-label="editor.title+'内容板块'">
@@ -607,7 +608,7 @@
               </div>
               <div v-else-if="embeddedService" class="embedded-service-config"><el-empty :description="embeddedLoadingLabel"/></div>
             </template>
-<el-alert v-if="jsonError" :title="jsonError" type="error" :closable="false" show-icon/><div class="form-actions"><el-button plain :disabled="busy||aiTranslating" @click="closeEditor">取消</el-button><el-button v-if="active==='audioTracks'&&recordEditorTab==='content'" icon="el-icon-magic-stick" :loading="aiTranslating" :disabled="!localAiEnabled || busy" :title="localAiEnabled ? '根据简体标题和简介生成繁体及英文内容' : 'AI 翻译未启用，请检查服务端配置'" @click="translateAudioTrack">自动翻译</el-button><el-button v-if="active==='destinations'" icon="el-icon-magic-stick" :loading="aiTranslating" :disabled="!localAiEnabled || busy" :title="localAiEnabled ? '根据简体名称生成英文名称' : 'AI 翻译未启用，请检查服务端配置'" @click="translateDestination">自动翻译</el-button><el-button v-if="translatableFieldGroups[active]" icon="el-icon-magic-stick" :loading="aiTranslating" :disabled="!localAiEnabled || busy" :title="localAiEnabled ? '根据简体内容生成繁体和英文翻译' : 'AI 翻译未启用，请检查服务端配置'" @click="translateRecordFields">自动翻译</el-button><el-button class="save-continue" type="primary" plain :loading="busy" :disabled="publicationChecking||aiFilling||aiTranslating" @click="saveEditor(true)">保存并继续编辑</el-button><el-button class="save-return" type="primary" icon="el-icon-check" :loading="busy" :disabled="publicationChecking||aiFilling||aiTranslating" @click="saveEditor(false)">保存并返回</el-button></div></el-form>
+<el-alert v-if="jsonError" :title="jsonError" type="error" :closable="false" show-icon/><div class="form-actions"><el-button plain :disabled="busy||aiTranslating" @click="closeEditor">取消</el-button><el-button v-if="active==='audioTracks'&&recordEditorTab==='content'" icon="el-icon-magic-stick" :loading="aiTranslating" :disabled="!localAiEnabled || busy" :title="localAiEnabled ? '根据简体标题和简介生成繁体及英文内容' : 'AI 翻译未启用，请检查服务端配置'" @click="translateAudioTrack">自动翻译</el-button><el-button v-if="active==='destinations'" icon="el-icon-magic-stick" :loading="aiTranslating" :disabled="!localAiEnabled || busy" :title="localAiEnabled ? '根据简体名称生成英文名称' : 'AI 翻译未启用，请检查服务端配置'" @click="translateDestination">自动翻译</el-button><el-button v-if="translatableFieldGroups[active]" icon="el-icon-magic-stick" :loading="aiTranslating" :disabled="!localAiEnabled || busy" :title="localAiEnabled ? '根据简体内容生成繁体和英文翻译' : 'AI 翻译未启用，请检查服务端配置'" @click="translateRecordFields">{{ active==='guideVideos' ? '一键翻译' : '自动翻译' }}</el-button><el-button class="save-continue" type="primary" plain :loading="busy" :disabled="publicationChecking||aiFilling||aiTranslating" @click="saveEditor(true)">保存并继续编辑</el-button><el-button class="save-return" type="primary" icon="el-icon-check" :loading="busy" :disabled="publicationChecking||aiFilling||aiTranslating" @click="saveEditor(false)">保存并返回</el-button></div></el-form>
             </el-card>
           </section>
         </main>
@@ -839,6 +840,10 @@ const listFilterLabels = {enabled:'发布状态',featured:'首页推荐',country
 const listDateFilterKeys = ['period','createdAt','bookingDate','expiry','expiresAt','vehicleDate']
 const listNumberFilterKeys = ['priceCny']
 const translatableFieldGroups = {
+  guideVideos: [
+    { source: 'title', tw: 'titleTw', en: 'titleEn' },
+    { source: 'description', tw: 'descriptionTw', en: 'descriptionEn' },
+  ],
   audioRoutes: [{ source: 'title', tw: 'titleTw', en: 'titleEn' }],
   countries: [{ source: 'name', tw: 'nameTw', en: 'nameEn' }],
   destinationTypes: [{ source: 'name', tw: 'nameTw', en: 'nameEn' }],
@@ -1139,18 +1144,20 @@ export default {
       if(this.aiTranslating||this.busy)return
       const groups=translatableFieldGroups[this.active]
       if(!groups)return
-      const pending=groups.filter((group)=>String(this.form[group.source]||'').trim())
+      const pending=groups.map((group)=>({...group,text:String(this.form[group.source]||'').trim()})).filter((group)=>group.text)
       if(!pending.length){this.$message.warning('请先填写简体内容');return}
       const editor=this.editor,editorActive=this.active
       this.aiTranslating=true
       try{
+        const translated=[]
         for(const group of pending){
-          const text=String(this.form[group.source]||'').trim()
+          const text=group.text
           const result=await this.request('/admin/text-translation',{method:'POST',body:JSON.stringify({text})})
-          if(this.editor!==editor||this.active!==editorActive||String(this.form[group.source]||'').trim()!==text){this.$message.warning('简体内容已改变，请重新点击自动翻译');return}
-          this.$set(this.form,group.tw,result?.tw||'')
-          this.$set(this.form,group.en,result?.en||'')
+          if(this.editor!==editor||this.active!==editorActive||pending.some((item)=>String(this.form[item.source]||'').trim()!==item.text)){this.$message.warning('简体内容或编辑页面已改变，请重新翻译');return}
+          if(typeof result?.tw!=='string'||!result.tw.trim()||typeof result?.en!=='string'||!result.en.trim())throw new Error('接口未返回完整的繁体及英文翻译')
+          translated.push({group,tw:result.tw,en:result.en})
         }
+        translated.forEach(({group,tw,en})=>{this.$set(this.form,group.tw,tw);this.$set(this.form,group.en,en)})
         this.$message.success('繁体与英文内容已自动翻译，请核对后保存')
       }catch(error){this.$message.error('自动翻译失败：'+error.message)}finally{this.aiTranslating=false}
     },

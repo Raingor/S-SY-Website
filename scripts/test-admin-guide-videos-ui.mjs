@@ -38,6 +38,7 @@ const associationField = config.fields.find((field) => field.key === 'attraction
 assert.equal(associationField.type, 'select', 'API association is one attraction ID')
 assert.equal(associationField.clearable, true, 'humanities can clear the association')
 assert.match(config.miniProgramDisplay, /希腊人文影集.*无需关联景点/)
+assert.match(source, /填写简体标题与简介后.*一键翻译/, 'video editor exposes one-click translation from Simplified Chinese')
 const listFilterKeys = sandbox.listFilterKeys || null
 // status filter key wired for the list view
 assert.match(source, /audioAlbums:\['status'\], guideVideos:\['status'\]/, 'list filter keys include guideVideos')
@@ -103,6 +104,46 @@ assert.doesNotMatch(source, /1200×1440|5:6 竖图/, 'the old portrait banner hi
 }
 
 // The shared home-banner collection must expose the jump target the operators set via API.
+{
+  const makeState = () => {
+    const notices = []
+    const state = { ...component.methods, active: 'guideVideos', editor: {}, busy: false, aiTranslating: false, form: { title: '希腊人文', description: '历史与艺术', titleTw: '旧繁体标题', titleEn: 'Old title', descriptionTw: '旧繁体简介', descriptionEn: 'Old description' }, $set(target, key, value) { target[key] = value }, $message: Object.fromEntries(['success','warning','error'].map((kind) => [kind, (text) => notices.push({ kind, text })])) }
+    return { state, notices }
+  }
+  const { state, notices } = makeState()
+  const sent = []
+  state.request = async (path, options) => {
+    assert.equal(path, '/admin/text-translation')
+    const text = JSON.parse(options.body).text; sent.push(text)
+    return text === '希腊人文' ? { tw: '希臘人文', en: 'Greek humanities' } : { tw: '歷史與藝術', en: 'History and art' }
+  }
+  await state.translateRecordFields()
+  assert.deepEqual(sent, ['希腊人文', '历史与艺术'])
+  assert.equal(state.form.titleTw, '希臘人文'); assert.equal(state.form.titleEn, 'Greek humanities')
+  assert.equal(state.form.descriptionTw, '歷史與藝術'); assert.equal(state.form.descriptionEn, 'History and art')
+  assert.equal(state.aiTranslating, false)
+  assert.equal(notices.at(-1).kind, 'success')
+  for (const mode of ['sourceChanged','editorChanged','requestFailed','missingTranslation']) {
+    const { state, notices } = makeState()
+    const original = { titleTw: state.form.titleTw, titleEn: state.form.titleEn, descriptionTw: state.form.descriptionTw, descriptionEn: state.form.descriptionEn }
+    let calls = 0
+    state.request = async () => {
+      calls++
+      if (mode === 'sourceChanged') state.form.description = '编辑期间更改的简介'
+      if (mode === 'editorChanged') state.editor = {}
+      if (mode === 'requestFailed' && calls === 2) throw new Error('translation unavailable')
+      return mode === 'missingTranslation' ? { tw: '只有繁体' } : { tw: '译文', en: 'Translation' }
+    }
+    await state.translateRecordFields()
+    for (const [key, value] of Object.entries(original)) assert.equal(state.form[key], value, mode + ' preserves previous translations')
+    assert.equal(state.aiTranslating, false)
+    assert(['warning','error'].includes(notices.at(-1).kind))
+  }
+  const empty = makeState(); empty.state.form = { title: '', description: '' }
+  empty.state.request = async () => assert.fail('empty source must not request translation')
+  await empty.state.translateRecordFields(); assert.equal(empty.notices.at(-1).kind, 'warning')
+}
+
 {
   const state = { ...component.methods, busy: false, editor: {}, form: { ossKey: 'video/original.mp4', durationSeconds: 30, sizeBytes: 200 }, $set(target, key, value) { target[key] = value }, $message: { success() {} }, readVideoDuration: async () => 65, notifyUploadError() {} }
   const file = { name: 'fixture.mp4', size: 5 * 1024 * 1024 + 128, slice(start, end) { return { size: end - start } } }
