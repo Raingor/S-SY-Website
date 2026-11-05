@@ -551,6 +551,8 @@ function normalizeGuideVideo(input, index) {
   const text = (value, max = 300) => String(value ?? '').trim().slice(0, max)
   const video = {
     id: text(source.id, 120) || `guide-video-${index + 1}`,
+    category: text(source.category, 40) || 'attraction',
+    sort: Number.isFinite(Number(source.sort)) ? Math.max(0, Math.round(Number(source.sort))) : 0,
     attractionId: text(source.attractionId, 120),
     title: text(source.title, 200),
     description: text(source.description, 2000),
@@ -567,8 +569,15 @@ function normalizeGuideVideo(input, index) {
   video.descriptionEn = text(source.descriptionEn, 2000) || video.description
   return video
 }
+function guideVideoValidationError(video) {
+  if (!video.title) return '请填写视频标题'
+  if (!['attraction', 'humanities'].includes(video.category)) return '请选择景点讲解或希腊人文影集分类'
+  if (video.status === 'published' && !video.ossKey) return '发布前需填写 OSS 文件路径'
+  if (video.status === 'published' && video.category === 'attraction' && !video.attractionId) return '景点讲解发布前需关联景点'
+  return ''
+}
 function publicGuideVideos(data) {
-  return (data.guideVideos || []).filter((video) => video.status === 'published').map((video) => ({ id: video.id, attractionId: video.attractionId, title: video.title, titleTw: video.titleTw, titleEn: video.titleEn, description: video.description, descriptionTw: video.descriptionTw, descriptionEn: video.descriptionEn, cover: video.cover, durationSeconds: video.durationSeconds, accessUrl: `/api/miniprogram/video/${encodeURIComponent(video.id)}/access` }))
+  return (data.guideVideos || []).filter((video) => video.status === 'published').map(normalizeGuideVideo).sort((a, b) => a.sort - b.sort).map((video) => ({ id: video.id, category: video.category, sort: video.sort, attractionId: video.attractionId, title: video.title, titleTw: video.titleTw, titleEn: video.titleEn, description: video.description, descriptionTw: video.descriptionTw, descriptionEn: video.descriptionEn, cover: video.cover, durationSeconds: video.durationSeconds, accessUrl: `/api/miniprogram/video/${encodeURIComponent(video.id)}/access` }))
 }
 function normalizeTravelGuideDocs(input) {
   const source = input && typeof input === 'object' && !Array.isArray(input) ? input : {}
@@ -2229,7 +2238,7 @@ const server = http.createServer(async (req, res) => {
       if (url.pathname === `${audioUnlockBatchPath}/audits` && method === 'GET') return json(res, 200, { items: data.audioUnlockBatchAudits || [] })
       if ([`${audioUnlockBatchPath}/preview`, `${audioUnlockBatchPath}/apply`].includes(url.pathname) && method === 'POST') return json(res, 410, { code: 'AUDIO_UNLOCK_BATCH_RETIRED', error: '单景点解锁已取消，全部音频统一由有效年会员解锁' })
       const heritageAdmin = url.pathname.match(/^\/api\/admin\/(audioAlbums|audioRoutes|audioTracks)(?:\/([^/]+))?$/)
-      if (url.pathname === '/api/admin/guideVideos' && method === 'GET') return json(res, 200, (data.guideVideos || []).map((video) => ({ ...video })))
+      if (url.pathname === '/api/admin/guideVideos' && method === 'GET') return json(res, 200, (data.guideVideos || []).map(normalizeGuideVideo))
       const guideVideoMatch = url.pathname.match(/^\/api\/admin\/guideVideos\/([^/]+)$/)
       if (guideVideoMatch && ['PATCH', 'DELETE'].includes(method)) {
         const videoId = decodeURIComponent(guideVideoMatch[1])
@@ -2241,17 +2250,17 @@ const server = http.createServer(async (req, res) => {
         }
         const input = await body(req)
         const merged = normalizeGuideVideo({ ...data.guideVideos[index], ...input, id: videoId }, index)
-        if (!merged.title) return json(res, 422, { code: 'CONTENT_VALIDATION_FAILED', error: '请填写视频标题' })
-        if (merged.status === 'published' && (!merged.ossKey || !merged.attractionId)) return json(res, 422, { code: 'CONTENT_VALIDATION_FAILED', error: '发布前需填写 OSS 文件路径并关联景点' })
+        const validationError = guideVideoValidationError(merged)
+        if (validationError) return json(res, 422, { code: 'CONTENT_VALIDATION_FAILED', error: validationError })
         data.guideVideos[index] = merged; await saveData(data)
         return json(res, 200, merged)
       }
       if (url.pathname === '/api/admin/guideVideos' && method === 'POST') {
         const input = await body(req)
         const video = normalizeGuideVideo(input, (data.guideVideos || []).length)
-        if (!video.title) return json(res, 422, { code: 'CONTENT_VALIDATION_FAILED', error: '请填写视频标题' })
+        const validationError = guideVideoValidationError(video)
+        if (validationError) return json(res, 422, { code: 'CONTENT_VALIDATION_FAILED', error: validationError })
         if ((data.guideVideos || []).some((item) => item.id === video.id)) return json(res, 409, { code: 'DUPLICATE_ID', error: '视频 ID 已存在' })
-        if (video.status === 'published' && (!video.ossKey || !video.attractionId)) return json(res, 422, { code: 'CONTENT_VALIDATION_FAILED', error: '发布前需填写 OSS 文件路径并关联景点' })
         data.guideVideos = Array.isArray(data.guideVideos) ? data.guideVideos : []
         data.guideVideos.push(video); await saveData(data)
         return json(res, 201, video)

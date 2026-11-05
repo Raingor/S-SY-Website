@@ -23,7 +23,7 @@ await symlink(join(root, 'node_modules'), join(temp, 'node_modules'), 'dir')
 const fixture = syntheticContentFixture()
 fixture.settings.miniprogramKnowledge = { products: { membership: { enabled: true, price: 0.01 } } }
 fixture.attractions = fixture.attractions.map((a) => a.id === 'acropolis' ? { ...a, showGuideVideo: true } : a)
-  fixture.guideVideos = [{ id: 'video-fixture', attractionId: 'acropolis', title: '雅典卫城：山顶上的古希腊文明密码', description: '合成描述', ossKey: 'video/guide-acropolis.mp4', durationSeconds: 2375, sizeBytes: 900000000, status: 'published' }]
+  fixture.guideVideos = [{ id: 'video-fixture', attractionId: 'acropolis', title: '雅典卫城：山顶上的古希腊文明密码', description: '合成描述', cover: '/images/guide-cover-fixture.webp', ossKey: 'video/guide-acropolis.mp4', durationSeconds: 2375, sizeBytes: 900000000, status: 'published' }]
 await writeFile(join(temp, 'seed/site-data.json'), JSON.stringify(fixture))
 
 const server = spawn(process.execPath, ['server.mjs'], { cwd: temp, env: { PATH: process.env.PATH, HOME: process.env.HOME, PORT: String(port), SY_STORAGE: 'json', SY_ADMIN_PASSWORD: '{{SECRET_bltmqvjs}}', SY_MINIPROGRAM_SIMULATION_ENABLED: 'true', SY_MINIPROGRAM_SIMULATION_SECRET: '{{SECRET_9cr0wkpq}}', SY_OSS_ACCESS_KEY_ID: 'test-key-id', SY_OSS_ACCESS_KEY_SECRET: 'test-key-secret', SY_OSS_BUCKET: 'sy-mpapp', SY_OSS_HOST: 'oss-cn-shenzhen.aliyuncs.com' }, stdio: ['ignore', 'pipe', 'pipe'] })
@@ -35,7 +35,7 @@ async function waitForServer() {
 }
 async function json(path, options = {}, token) {
   const r = await fetch(base + path, { ...options, headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) } })
-  const body = await r.json()
+  const body = r.status === 204 ? null : await r.json()
   return { status: r.status, body }
 }
 try {
@@ -50,6 +50,10 @@ try {
   // Public list strips ossKey and includes accessUrl.
   assert.equal(content.guideVideos.length, 1)
   assert.equal(content.guideVideos[0].id, 'video-fixture')
+  assert.equal(content.guideVideos[0].category, 'attraction', 'legacy videos default to attraction category')
+  assert.equal(content.guideVideos[0].sort, 0, 'legacy videos default to stable insertion order')
+  assert.equal(content.guideVideos[0].cover, '/images/guide-cover-fixture.webp', 'anonymous public content includes the configured cover')
+  for (const key of ['playUrl', 'fullUrl', 'sizeBytes']) assert.equal(content.guideVideos[0][key], undefined, 'public cover must not expose ' + key)
   assert.equal(content.guideVideos[0].ossKey, undefined)
   assert.equal(content.guideVideos[0].accessUrl, '/api/miniprogram/video/video-fixture/access')
   // Opted-in attraction reveals the 游览攻略 section for the video entry; others stay locked.
@@ -69,9 +73,42 @@ try {
   const noTitle = await json('/api/admin/guideVideos', { method: 'POST', body: JSON.stringify({ title: '  ' }) }, admin)
   assert.equal(noTitle.status, 422)
 
+  // Humanities publish without an attraction; category, languages and sorting survive readback.
+  const humanVideo = { id: 'humanities-main', category: 'humanities', sort: 20, title: '希腊人文影集', titleTw: '希臘人文影集', titleEn: 'Greek Humanities', description: '人文课程', descriptionTw: '人文課程', descriptionEn: 'A humanities course', cover: '/images/humanities.webp', durationSeconds: 3600, ossKey: 'video/humanities.mp4', status: 'published' }
+  const humanCreated = await json('/api/admin/guideVideos', { method: 'POST', body: JSON.stringify(humanVideo) }, admin)
+  assert.equal(humanCreated.status, 201, JSON.stringify(humanCreated.body))
+  assert.equal(humanCreated.body.attractionId, '')
+  const humanFirst = await json('/api/admin/guideVideos', { method: 'POST', body: JSON.stringify({ ...humanVideo, id: 'humanities-first', sort: 10 }) }, admin)
+  assert.equal(humanFirst.status, 201)
+  const humanTied = await json('/api/admin/guideVideos', { method: 'POST', body: JSON.stringify({ ...humanVideo, id: 'humanities-tied' }) }, admin)
+  assert.equal(humanTied.status, 201)
+  const humanDraft = await json('/api/admin/guideVideos', { method: 'POST', body: JSON.stringify({ id: 'humanities-draft', category: 'humanities', title: '未发布人文课程' }) }, admin)
+  assert.equal(humanDraft.status, 201)
+  const humanMissingFile = await json('/api/admin/guideVideos/humanities-draft', { method: 'PATCH', body: JSON.stringify({ status: 'published' }) }, admin)
+  assert.equal(humanMissingFile.status, 422, 'humanities still require private video media before publishing')
+  const humanPublished = await json('/api/admin/guideVideos/humanities-draft', { method: 'PATCH', body: JSON.stringify({ status: 'published', ossKey: 'video/humanities-draft.mp4' }) }, admin)
+  assert.equal(humanPublished.status, 200, 'humanities can publish without an attraction via PATCH')
+  await json('/api/admin/guideVideos/humanities-draft', { method: 'PATCH', body: JSON.stringify({ status: 'unpublished' }) }, admin)
+  const attractionMissing = await json('/api/admin/guideVideos', { method: 'POST', body: JSON.stringify({ title: '无关联景点', status: 'published', ossKey: 'video/test.mp4' }) }, admin)
+  assert.equal(attractionMissing.status, 422, 'attraction videos still require an association')
+  const changedCategory = await json('/api/admin/guideVideos/humanities-main', { method: 'PATCH', body: JSON.stringify({ category: 'attraction' }) }, admin)
+  assert.equal(changedCategory.status, 422, 'switching category cannot bypass the attraction requirement')
+  const invalidCategory = await json('/api/admin/guideVideos', { method: 'POST', body: JSON.stringify({ title: '错误分类', category: 'humanity' }) }, admin)
+  assert.equal(invalidCategory.status, 422, 'category typos are rejected')
+  const adminVideos = (await json('/api/admin/guideVideos', {}, admin)).body
+  assert.equal(adminVideos.find((video) => video.id === 'video-fixture').category, 'attraction')
+  for (const key of Object.keys(humanVideo)) assert.equal(adminVideos.find((video) => video.id === humanVideo.id)[key], humanVideo[key], 'admin readback retains ' + key)
+  const humanPublic = (await json('/api/content')).body.guideVideos.filter((video) => video.category === 'humanities')
+  assert.deepEqual(humanPublic.map((video) => video.id), ['humanities-first', 'humanities-main', 'humanities-tied'], 'humanities sorted ascending with stable ties; drafts hidden')
+  const publicCourse = humanPublic.find((video) => video.id === humanVideo.id)
+  for (const key of ['titleTw', 'titleEn', 'descriptionTw', 'descriptionEn', 'cover', 'durationSeconds', 'sort']) assert.equal(publicCourse[key], humanVideo[key])
+  assert.equal(publicCourse.accessUrl, '/api/miniprogram/video/humanities-main/access')
+  for (const key of ['ossKey', 'playUrl', 'fullUrl', 'sizeBytes']) assert.equal(publicCourse[key], undefined, 'public humanities must not expose ' + key)
+
   // 3) Access endpoint without login → locked.
   const anon = await json('/api/miniprogram/video/video-fixture/access')
   assert.equal(anon.status, 200); assert.equal(anon.body.access, 'locked'); assert.equal(anon.body.reason, 'MINIPROGRAM_LOGIN_REQUIRED')
+  assert.equal(anon.body.playUrl, undefined, 'public cover does not expose anonymous playback')
 
   // 4) Logged-in simulation user without purchase → VIDEO_PURCHASE_REQUIRED with product info.
   const session = await json('/api/miniprogram/simulation/session', { method: 'POST', body: JSON.stringify({ phone: '+15550001111' }) })
@@ -79,6 +116,7 @@ try {
   const locked = await json('/api/miniprogram/video/video-fixture/access', {}, session.body.accessToken)
   assert.equal(locked.body.access, 'locked'); assert.equal(locked.body.reason, 'VIDEO_PURCHASE_REQUIRED')
   assert.equal(locked.body.product.price, 168)
+  assert.equal(locked.body.playUrl, undefined, 'unpaid users still cannot obtain playback')
 
   // 5) Missing videoId in order → clear error.
   const noVideo = await json('/api/miniprogram/orders', { method: 'POST', body: JSON.stringify({ productType: 'guideVideo' }) }, session.body.accessToken)
@@ -101,6 +139,22 @@ try {
   assert.equal(access.body.expiresIn, 600)
   assert.equal(access.body.unlockedVia, 'purchase')
 
+  const humanitiesAnon = await json(publicCourse.accessUrl)
+  assert.equal(humanitiesAnon.body.reason, 'MINIPROGRAM_LOGIN_REQUIRED')
+  assert.equal(humanitiesAnon.body.playUrl, undefined)
+  const humanLocked = await json(publicCourse.accessUrl, {}, session.body.accessToken)
+  assert.equal(humanLocked.body.reason, 'VIDEO_PURCHASE_REQUIRED', 'a different video purchase does not unlock humanities')
+  const humanOrder = await json('/api/miniprogram/orders', { method: 'POST', body: JSON.stringify({ productType: 'guideVideo', videoId: humanVideo.id, price: 1 }) }, session.body.accessToken)
+  assert.equal(humanOrder.status, 201)
+  assert.equal(humanOrder.body.order.price, 168, 'humanities use fixed video pricing')
+  await json(`/api/miniprogram/orders/${humanOrder.body.order.id}/simulate-paid`, { method: 'POST' }, session.body.accessToken)
+  const humanAccess = await json(publicCourse.accessUrl, {}, session.body.accessToken)
+  assert.equal(humanAccess.body.access, 'full')
+  assert.match(humanAccess.body.playUrl, /\/video\/humanities\.mp4\?/)
+  assert.equal(humanAccess.body.unlockedVia, 'purchase')
+  const otherHumanAccess = await json('/api/miniprogram/video/humanities-first/access', {}, session.body.accessToken)
+  assert.equal(otherHumanAccess.body.reason, 'VIDEO_PURCHASE_REQUIRED', 'a humanities purchase unlocks only that course')
+
   // 7) 2026-10-29 rule change: annual members must also purchase the video.
   const annualSession = await json('/api/miniprogram/simulation/session', { method: 'POST', body: JSON.stringify({ phone: '+15550002222' }) })
   const annualOrder = await json('/api/miniprogram/orders', { method: 'POST', body: JSON.stringify({ productType: 'annualMembership' }) }, annualSession.body.accessToken)
@@ -111,6 +165,8 @@ try {
   const memberLocked = await json('/api/miniprogram/video/video-fixture/access', {}, annualSession.body.accessToken)
   assert.equal(memberLocked.body.access, 'locked')
   assert.equal(memberLocked.body.reason, 'VIDEO_PURCHASE_REQUIRED')
+  const annualHumanLocked = await json(publicCourse.accessUrl, {}, annualSession.body.accessToken)
+  assert.equal(annualHumanLocked.body.reason, 'VIDEO_PURCHASE_REQUIRED', 'annual membership does not include humanities')
   const memberPurchase = await json('/api/miniprogram/orders', { method: 'POST', body: JSON.stringify({ productType: 'guideVideo', videoId: 'video-fixture' }) }, annualSession.body.accessToken)
   await json(`/api/miniprogram/orders/${memberPurchase.body.order.id}/simulate-paid`, { method: 'POST' }, annualSession.body.accessToken)
   const memberAccess = await json('/api/miniprogram/video/video-fixture/access', {}, annualSession.body.accessToken)
@@ -122,6 +178,10 @@ try {
   assert.equal(retired.status, 422); assert.equal(retired.body.code, 'PAYMENT_PRODUCT_UNAVAILABLE')
 
   // 9) Unpublished video hidden from public list and access 404.
+  for (const id of ['humanities-main', 'humanities-first', 'humanities-tied', 'humanities-draft']) {
+    const deleted = await json(`/api/admin/guideVideos/${id}`, { method: 'DELETE' }, admin)
+    assert.equal(deleted.status, 204)
+  }
   await json('/api/admin/guideVideos/video-draft', { method: 'PATCH', body: JSON.stringify({ status: 'unpublished' }) }, admin)
   const contentAfter = (await json('/api/content')).body
   assert.equal(contentAfter.guideVideos.length, 1)

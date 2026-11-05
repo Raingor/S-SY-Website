@@ -9,7 +9,7 @@ const sandbox = {
   sessionStorage: { getItem() { return null } },
   VisitorGuideEditor: {}, attractionEditorFieldGroups: [], attractionFieldGroup: () => 'hidden', matchesAttractionAudio: () => true,
 }
-vm.runInNewContext(script.replace(/^import .*$/gm, '').replace(/^const attractionEditorFieldGroups = [[\s\S]*?^]/m, '').replace('export default {', 'globalThis.component = {') + '\nglobalThis.fields = fields; globalThis.groups = groups; globalThis.routes = routes; globalThis.emptyData = emptyData', sandbox)
+vm.runInNewContext(script.replace(/^import .*$/gm, '').replace(/^const attractionEditorFieldGroups = [[\s\S]*?^]/m, '').replace('export default {', 'globalThis.component = {') + '\nglobalThis.fields = fields; globalThis.groups = groups; globalThis.routes = routes; globalThis.emptyData = emptyData; globalThis.imageGuidanceByField = imageGuidanceByField', sandbox)
 const { component, fields, groups, routes, emptyData } = sandbox
 
 // Menu entry + routing + data plumbing for the 开发配置 group.
@@ -22,14 +22,27 @@ assert.ok(Array.isArray(emptyData.guideVideos), 'emptyData seeds guideVideos')
 
 const config = fields.guideVideos
 assert.equal(config.endpoint, 'guideVideos')
-for (const key of ['title', 'attractionId', 'cover', 'description', 'ossKey', 'durationSeconds', 'sizeBytes', 'status']) {
+assert.match(config.miniProgramDisplay, /独立「视频讲解」板块/, 'guide videos use an independent section')
+assert.match(config.miniProgramDisplay, /封面公开展示，未购买也可查看/, 'cover visibility does not require purchase')
+assert.match(config.miniProgramDisplay, /视频播放仍需单独购买/, 'cover visibility does not unlock playback')
+assert.match(sandbox.imageGuidanceByField['guideVideos.cover'], /封面公开展示/, 'cover upload hint states public visibility')
+assert.match(sandbox.imageGuidanceByField['guideVideos.cover'], /必须再点「保存」才生效/, 'cover changes still require saving')
+assert.doesNotMatch(config.miniProgramDisplay + sandbox.imageGuidanceByField['guideVideos.cover'], /不展示封面|未购买.*只展示锁头/, 'obsolete locked-cover copy is gone')
+assert.match(config.fields.find((field) => field.key === 'attractionId').help, /独立.*「视频讲解」/, 'association hint points to the independent video section')
+
+for (const key of ['category', 'sort', 'title', 'titleTw', 'titleEn', 'attractionId', 'cover', 'description', 'descriptionTw', 'descriptionEn', 'ossKey', 'durationSeconds', 'sizeBytes', 'status']) {
   assert.ok(config.fields.some((field) => field.key === key), `field ${key} editable`)
 }
+assert.deepEqual(Array.from(config.fields.find((field) => field.key === 'category').options, (option) => option.value), ['attraction', 'humanities'])
+const associationField = config.fields.find((field) => field.key === 'attractionId')
+assert.equal(associationField.type, 'select', 'API association is one attraction ID')
+assert.equal(associationField.clearable, true, 'humanities can clear the association')
+assert.match(config.miniProgramDisplay, /希腊人文影集.*无需关联景点/)
 const listFilterKeys = sandbox.listFilterKeys || null
 // status filter key wired for the list view
 assert.match(source, /audioAlbums:\['status'\], guideVideos:\['status'\]/, 'list filter keys include guideVideos')
 assert.match(source, /if\(this\.active==='guideVideos'\)\{row\.id='guide-video-'/, 'new records get a generated id')
-assert.match(source, /showGuideVideo/, 'guide video section opt-in field referenced')
+assert.doesNotMatch(config.fields.find((field) => field.key === 'attractionId').help, /showGuideVideo/, 'independent video guidance does not require the retired section opt-in')
 
 // Image guidance copy matches the real display containers.
 const guidanceChecks = [
@@ -69,6 +82,24 @@ assert.doesNotMatch(source, /1200×1440|5:6 竖图/, 'the old portrait banner hi
   state.startCreate()
   assert.match(state.form.id, /^guide-video-/, 'startCreate generates the id')
   assert.equal(state.form.status, 'unpublished', 'new records start unpublished')
+  assert.equal(state.form.category, 'attraction', 'new records default to attraction category')
+  assert.equal(state.form.attractionId, '', 'single association starts empty')
+  state.form.category = 'humanities'
+  state.form.title = '希腊人文影集'
+  state.form.titleTw = '希臘人文影集'
+  state.form.titleEn = 'Greek Humanities'
+  state.form.sort = 20
+  await state.saveEditor(false)
+  const humanPayload = JSON.parse(sent.options.body)
+  assert.equal(sent.options.method, 'POST')
+  assert.equal(humanPayload.category, 'humanities')
+  assert.equal(humanPayload.attractionId, '')
+  assert.equal(humanPayload.sort, 20)
+  assert.equal(humanPayload.titleEn, 'Greek Humanities')
+  state.openEditor({ id: 'legacy-video', title: '旧视频', attractionId: 'acropolis' }, false)
+  assert.equal(state.form.category, 'attraction', 'legacy records get a visible default category')
+  assert.equal(state.form.sort, 0)
+  assert.equal(state.form.attractionId, 'acropolis', 'opening a legacy association retains a scalar ID')
 }
 
 // The shared home-banner collection must expose the jump target the operators set via API.
