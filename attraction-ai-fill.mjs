@@ -272,7 +272,7 @@ export async function requestTextTranslation({ text, apiKey, fetchImpl = fetch }
     response = await fetchImpl(gatewayUrl, {
       method: 'POST',
       headers: { Authorization: `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ model, messages: [{ role: 'user', content: prompt }], temperature: 0.1, max_tokens: 2200, stream: false }),
+      body: JSON.stringify({ model, messages: [{ role: 'user', content: prompt }], temperature: 0.1, max_tokens: 2200, stream: false, ...(model === 'sensenova-6.8-flash-lite' ? { reasoning_effort: 'none' } : {}) }),
       signal: AbortSignal.timeout(60000),
     })
   } catch {
@@ -285,6 +285,7 @@ export async function requestTextTranslation({ text, apiKey, fetchImpl = fetch }
   }
   let payload
   try { payload = await response.json() } catch { throw new Error('AI 返回内容格式无效，请稍后重试') }
+  if (payload?.choices?.[0]?.finish_reason === 'length') throw new Error('AI 翻译内容超出输出限制，请缩短简体内容后重试')
   return sanitizeTextTranslation(parseModelJson(payload?.choices?.[0]?.message?.content), source)
 }
 
