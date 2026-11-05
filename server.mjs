@@ -7,7 +7,7 @@ import crypto from 'node:crypto'
 import { setTimeout as delay } from 'node:timers/promises'
 import tls from 'node:tls'
 import { closeStorage, initStorage, readData, saveData, storageStatus } from './storage.mjs'
-import { audioEntitled, effectiveUnlockMode, publicHeritage, signedAudioToken, streamPrivateAudio, uploadPrivateAudio, uploadPrivateAudioToOss, validateAttraction, validateHeritageRecord, verifySignedAudioToken, ossAudioConfigured, ossAudioReadUrl, normalizeVisitorSections, sanitizeRichText, visibleTrack } from './heritage-content.mjs'
+import { audioEntitled, effectiveUnlockMode, publicHeritage, signedAudioToken, streamPrivateAudio, uploadPrivateAudio, uploadPrivateAudioToOss, removePrivateAudioFiles, ossMediaRequest, validateAttraction, validateHeritageRecord, verifySignedAudioToken, ossAudioConfigured, ossAudioReadUrl, normalizeVisitorSections, sanitizeRichText, visibleTrack } from './heritage-content.mjs'
 import { privateMapUrl, removePrivateMap, streamPrivateMap, uploadPrivateMap } from './private-map.mjs'
 import { amountToFen, createMiniProgramPrepay, decryptWechatNotify, queryWechatTransaction, realPayNotifyReady, realPayRequestReady, verifyWechatNotify, wechatPayConfig } from './wechat-pay.mjs'
 import { requestAdminDraft, requestAudioTrackTranslation, requestDestinationTranslation, requestTextTranslation } from './attraction-ai-fill.mjs'
@@ -546,6 +546,108 @@ function ossSignedGetUrl(objectKey, expiresInSeconds = 600) {
   const signature = crypto.createHmac('sha1', config.accessKeySecret).update(stringToSign).digest('base64')
   return `https://${config.bucket}.${config.host}/${encodeURI(key)}?OSSAccessKeyId=${encodeURIComponent(config.accessKeyId)}&Expires=${expires}&Signature=${encodeURIComponent(signature)}`
 }
+const mediaUploadPartSize = 5 * 1024 * 1024
+const videoUploadMaxSize = 2 * 1024 * 1024 * 1024
+const mediaUploadSessions = new Map()
+function mediaUploadError(message, status = 422, code = 'INVALID_MEDIA_UPLOAD') {
+  return Object.assign(new Error(message), { status, code })
+}
+async function requireOssResponse(key, options) {
+  let response
+  try { response = await ossMediaRequest(key, options) } catch { throw mediaUploadError('OSS 连接失败，请重试上传', 502, 'OSS_UPLOAD_FAILED') }
+  if (!response.ok) { await response.arrayBuffer(); throw mediaUploadError('OSS 操作失败，请检查存储权限后重试', 502, 'OSS_UPLOAD_FAILED') }
+  return response
+}
+async function discardMediaUpload(session) {
+  const query = session.uploaded ? {} : { uploadId: session.uploadId }
+  const response = await requireOssResponse(session.ossKey, { method: 'DELETE', query })
+  await response.arrayBuffer()
+}
+async function startMediaUpload(input) {
+  for (const [id, session] of mediaUploadSessions) {
+    if (Date.now() - session.updatedAt > 60 * 60 * 1000 && !session.busy) {
+      mediaUploadSessions.delete(id)
+      if (!session.result) void discardMediaUpload(session).catch(() => {})
+    }
+  }
+  if ([...mediaUploadSessions.values()].filter((session) => !session.result).length >= 8) throw mediaUploadError('同时上传的媒体过多，请稍后重试', 429)
+  const kind = input.kind === 'audio' ? 'audio' : input.kind === 'video' ? 'video' : ''
+  const extension = extname(String(input.name || '')).toLowerCase()
+  if (!kind || (kind === 'video' ? extension !== '.mp4' || input.type !== 'video/mp4' : !['.mp3', '.m4a'].includes(extension) || !/^audio\/(mpeg|mp3|mp4|x-m4a|m4a)$/.test(input.type))) throw mediaUploadError('请选择 MP4 视频或 MP3/M4A 音频')
+  const sizeBytes = Number(input.sizeBytes)
+  const durationSeconds = Number(input.durationSeconds)
+  const maxSize = kind === 'video' ? videoUploadMaxSize : 30 * 1024 * 1024
+  if (!Number.isSafeInteger(sizeBytes) || sizeBytes < 24 || sizeBytes > maxSize) throw mediaUploadError(kind === 'video' ? '视频不可为空，且须在 2GB 以内' : '音频不可为空，且须在 30MB 以内')
+  if (kind === 'video' && (!Number.isFinite(durationSeconds) || durationSeconds <= 0)) throw mediaUploadError('视频时长无效，请选择可播放的 MP4 文件')
+  const previewSeconds = Number(input.previewSeconds ?? 60)
+  if (kind === 'audio' && (!Number.isInteger(previewSeconds) || previewSeconds < 1 || previewSeconds > 60)) throw mediaUploadError('试听时长须为 1 至 60 秒')
+  const ossKey = `${kind === 'video' ? 'video' : 'audio'}/${crypto.randomBytes(16).toString('hex')}${extension}`
+  const response = await requireOssResponse(ossKey, { method: 'POST', query: { uploads: '' }, headers: { 'Content-Type': input.type } })
+  const xml = await response.text()
+  const uploadId = xml.match(/<UploadId>([a-zA-Z0-9_-]+)<\/UploadId>/)?.[1]
+  if (!uploadId) throw mediaUploadError('OSS 未返回有效的上传任务', 502, 'OSS_UPLOAD_FAILED')
+  const id = crypto.randomBytes(16).toString('hex')
+  mediaUploadSessions.set(id, { kind, name: `upload${extension}`, type: input.type, previewSeconds, ossKey, uploadId, sizeBytes, durationSeconds: kind === 'video' ? Math.ceil(durationSeconds) : 0, parts: new Map(), updatedAt: Date.now(), busy: false })
+  return { id, partSize: mediaUploadPartSize, partCount: Math.ceil(sizeBytes / mediaUploadPartSize) }
+}
+async function uploadMediaPart(req, session, partNumber) {
+  const count = Math.ceil(session.sizeBytes / mediaUploadPartSize)
+  if (!Number.isInteger(partNumber) || partNumber < 1 || partNumber > count || session.uploaded) throw mediaUploadError('媒体分片编号无效')
+  const expectedSize = Math.min(mediaUploadPartSize, session.sizeBytes - (partNumber - 1) * mediaUploadPartSize)
+  const buffer = await audioBody(req, mediaUploadPartSize)
+  if (buffer.length !== expectedSize) throw mediaUploadError('媒体分片大小不匹配，请重新上传')
+  if (partNumber === 1 && session.kind === 'video' && (buffer.length < 24 || buffer.toString('ascii', 4, 8) !== 'ftyp')) throw mediaUploadError('文件不是有效的 MP4 视频')
+  const response = await requireOssResponse(session.ossKey, { method: 'PUT', query: { partNumber, uploadId: session.uploadId }, headers: { 'Content-Type': 'application/octet-stream', 'Content-MD5': crypto.createHash('md5').update(buffer).digest('base64') }, body: buffer })
+  const etag = response.headers.get('etag')?.replace(/^"|"$/g, '')
+  await response.arrayBuffer()
+  if (!etag || !/^[a-fA-F0-9]{32}$/.test(etag)) throw mediaUploadError('OSS 未确认媒体分片，请重试', 502, 'OSS_UPLOAD_FAILED')
+  session.parts.set(partNumber, etag)
+  return { partNumber }
+}
+async function completeMediaUpload(session) {
+  if (session.result) return session.result
+  const count = Math.ceil(session.sizeBytes / mediaUploadPartSize)
+  if (session.parts.size !== count) throw mediaUploadError('媒体分片尚未全部上传')
+  if (!session.uploaded) {
+    const parts = Array.from({ length: count }, (_, index) => `<Part><PartNumber>${index + 1}</PartNumber><ETag>"${session.parts.get(index + 1)}"</ETag></Part>`).join('')
+    const response = await requireOssResponse(session.ossKey, { method: 'POST', query: { uploadId: session.uploadId }, headers: { 'Content-Type': 'application/xml', 'x-oss-object-acl': 'private' }, body: `<CompleteMultipartUpload>${parts}</CompleteMultipartUpload>` })
+    const xml = await response.text()
+    if (!/<CompleteMultipartUploadResult[\s>]/.test(xml) || /<Error[\s>]/.test(xml)) throw mediaUploadError('OSS 合并媒体失败，请重试', 502, 'OSS_UPLOAD_FAILED')
+    session.uploaded = true
+  }
+  const head = await requireOssResponse(session.ossKey, { method: 'HEAD' })
+  if (Number(head.headers.get('content-length')) !== session.sizeBytes) throw mediaUploadError('OSS 媒体大小核验失败，请重新上传', 502, 'OSS_UPLOAD_FAILED')
+  if (session.kind === 'audio') {
+    const response = await requireOssResponse(session.ossKey, { method: 'GET' })
+    const buffer = Buffer.from(await response.arrayBuffer())
+    if (buffer.length !== session.sizeBytes) throw mediaUploadError('OSS 音频大小核验失败，请重新上传', 502, 'OSS_UPLOAD_FAILED')
+    session.result = await storeAudioUploadInOss({ name: session.name, type: session.type, previewSeconds: session.previewSeconds, buffer }, readData())
+    // The validated full audio and clipped preview now have their final names.
+    void discardMediaUpload(session).catch(() => {})
+  } else session.result = { ossKey: session.ossKey, sizeBytes: session.sizeBytes, durationSeconds: session.durationSeconds, storage: 'oss' }
+  return session.result
+}
+async function storeAudioUploadInOss(input, data) {
+  let result
+  let saved = false
+  try {
+    result = uploadPrivateAudio(input)
+    const uploaded = await Promise.all([uploadPrivateAudioToOss(result.audioFile), uploadPrivateAudioToOss(result.previewFile)])
+    if (!uploaded.every(Boolean)) throw mediaUploadError('音频上传 OSS 失败，未保存，请重试', 502, 'OSS_UPLOAD_FAILED')
+    removePrivateAudioFiles(result)
+    data.audioUploads = Array.isArray(data.audioUploads) ? data.audioUploads : []
+    data.audioUploads.push({ ...result, storage: 'oss' })
+    await saveData(data)
+    saved = true
+    return { ...result, storage: 'oss' }
+  } catch (error) {
+    if (result && !saved) {
+      data.audioUploads = (data.audioUploads || []).filter((upload) => upload.audioFile !== result.audioFile)
+      await Promise.allSettled([result.audioFile, result.previewFile].map(async (name) => { const response = await ossMediaRequest(`audio/${name}`, { method: 'DELETE' }); await response.arrayBuffer() }))
+    }
+    throw error
+  } finally { if (result) { try { removePrivateAudioFiles(result) } catch { console.error('Temporary audio cleanup failed') } } }
+}
 function normalizeGuideVideo(input, index) {
   const source = input && typeof input === 'object' && !Array.isArray(input) ? input : {}
   const text = (value, max = 300) => String(value ?? '').trim().slice(0, max)
@@ -630,7 +732,13 @@ async function proxyOssAudio(req, res, name, cors) {
   if (!url) return false
   try {
     const upstream = await fetch(url, { headers: req.headers.range ? { Range: String(req.headers.range) } : {} })
-    if (!upstream.ok || !upstream.body) return false
+    if (upstream.status === 416) {
+      const contentRange = upstream.headers.get('content-range')
+      await upstream.arrayBuffer()
+      res.writeHead(416, { ...cors, 'Accept-Ranges': 'bytes', 'Content-Length': '0', 'Cache-Control': 'private, no-store', ...(contentRange ? { 'Content-Range': contentRange } : {}) }).end()
+      return true
+    }
+    if (!upstream.ok || !upstream.body) { await upstream.body?.cancel(); return false }
     const headers = { ...cors, 'Content-Type': upstream.headers.get('content-type') || (name.endsWith('.mp3') ? 'audio/mpeg' : 'audio/mp4'), 'Accept-Ranges': 'bytes', 'Cache-Control': 'private, no-store' }
     for (const header of ['Content-Length', 'Content-Range']) { const value = upstream.headers.get(header); if (value) headers[header] = value }
     res.writeHead(upstream.status, headers)
@@ -1944,6 +2052,30 @@ const server = http.createServer(async (req, res) => {
     }
     if (url.pathname.startsWith('/api/admin/')) {
       if (!isAdmin(req)) return json(res, 401, { error: '未授权，请先登录后台' })
+      if (url.pathname === '/api/admin/media-uploads' && method === 'POST') {
+        if (!ossAudioConfigured()) return json(res, 503, { code: 'OSS_NOT_CONFIGURED', error: 'OSS 未配置，媒体不能上传到本机，请联系管理员配置 OSS' })
+        try { return json(res, 201, await startMediaUpload(await body(req))) }
+        catch (error) { return json(res, error.status || 422, { code: error.code || 'INVALID_MEDIA_UPLOAD', error: error.message }) }
+      }
+      const mediaUploadMatch = url.pathname.match(/^\/api\/admin\/media-uploads\/([a-f0-9]{32})(?:\/parts\/(\d+)|\/(complete))?$/)
+      if (mediaUploadMatch && ['POST', 'PUT', 'DELETE'].includes(method)) {
+        const session = mediaUploadSessions.get(mediaUploadMatch[1])
+        if (!session || Date.now() - session.updatedAt > 60 * 60 * 1000) return json(res, 404, { code: 'UPLOAD_SESSION_EXPIRED', error: '媒体上传任务已过期，请重新选择文件' })
+        if (session.busy) return json(res, 409, { error: '媒体分片正在处理，请稍后重试' })
+        session.busy = true
+        session.updatedAt = Date.now()
+        try {
+          if (method === 'PUT' && mediaUploadMatch[2]) return json(res, 200, await uploadMediaPart(req, session, Number(mediaUploadMatch[2])))
+          if (method === 'POST' && mediaUploadMatch[3]) return json(res, 201, await completeMediaUpload(session))
+          if (method === 'DELETE' && !mediaUploadMatch[2] && !mediaUploadMatch[3]) {
+            if (!session.result) await discardMediaUpload(session)
+            mediaUploadSessions.delete(mediaUploadMatch[1])
+            return res.writeHead(204).end()
+          }
+          return json(res, 405, { error: 'method not allowed' })
+        } catch (error) { return json(res, error.status || (error.message === 'payload too large' ? 413 : 422), { code: error.code || 'INVALID_MEDIA_UPLOAD', error: error.message }) }
+        finally { session.busy = false; session.updatedAt = Date.now() }
+      }
       if (url.pathname === '/api/admin/audio-track-translation' && method === 'POST') {
         if (!attractionAiEnabled()) return json(res, 404, { error: 'AI 翻译未启用：服务端未配置 SY_LOCAL_ASSISTANT_ENABLED 或 SY_SENSENOVA_API_KEY' })
         let input
@@ -2296,27 +2428,14 @@ const server = http.createServer(async (req, res) => {
         return json(res, method === 'POST' ? 201 : 200, payload)
       }
       if (url.pathname === '/api/admin/upload-audio' && method === 'POST') {
-        const binary = /^audio\/(?:mpeg|mp3|mp4|x-m4a|m4a)$/i.test(String(req.headers['content-type'] || ''))
-        const input = binary
-          ? { name: decodeURIComponent(String(req.headers['x-file-name'] || '')), type: req.headers['content-type'], previewSeconds: req.headers['x-preview-seconds'], buffer: await audioBody(req) }
-          : await body(req, 42 * 1024 * 1024)
+        if (!ossAudioConfigured()) return json(res, 503, { code: 'OSS_NOT_CONFIGURED', error: 'OSS 未配置，音频不能上传到本机，请联系管理员配置 OSS' })
         try {
-          const result = uploadPrivateAudio(input)
-          // Sync to OSS immediately and free the local copy when configured; disk-first keeps working otherwise.
-          let ossSynced = false
-          if (ossAudioConfigured()) {
-            const [audioOk, previewOk] = await Promise.all([uploadPrivateAudioToOss(result.audioFile), uploadPrivateAudioToOss(result.previewFile)])
-            if (audioOk && previewOk) {
-              ossSynced = true
-              const { rmSync } = await import('node:fs')
-              for (const name of [result.audioFile, result.previewFile]) { try { rmSync(resolve(process.cwd(), 'private-audio', name)) } catch {} }
-            }
-          }
-          data.audioUploads = Array.isArray(data.audioUploads) ? data.audioUploads : []
-          data.audioUploads.push({ ...result, ...(ossSynced ? { storage: 'oss' } : {}) })
-          await saveData(data)
-          return json(res, 201, result)
-        } catch (error) { return json(res, 422, { code: 'INVALID_AUDIO_UPLOAD', error: error.message }) }
+          const binary = /^audio\/(?:mpeg|mp3|mp4|x-m4a|m4a)$/i.test(String(req.headers['content-type'] || ''))
+          const input = binary
+            ? { name: decodeURIComponent(String(req.headers['x-file-name'] || '')), type: req.headers['content-type'], previewSeconds: req.headers['x-preview-seconds'], buffer: await audioBody(req) }
+            : await body(req, 42 * 1024 * 1024)
+          return json(res, 201, await storeAudioUploadInOss(input, data))
+        } catch (error) { return json(res, error.status || (error.message === 'payload too large' ? 413 : 422), { code: error.code || 'INVALID_AUDIO_UPLOAD', error: error.message }) }
       }
       if (url.pathname === '/api/admin/upload-map' && method === 'POST') {
         const input = await body(req, 16 * 1024 * 1024)

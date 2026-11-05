@@ -32,6 +32,7 @@
     "test:admin-travel-guide-save": "node scripts/test-admin-travel-guide-save.mjs",
     "test:guide-video-commerce": "node scripts/test-guide-video-commerce.mjs",
     "test:audio-oss-migration": "node scripts/test-audio-oss-migration.mjs",
+    "test:media-oss-upload": "node scripts/test-media-oss-upload.mjs",
     "test:admin-guide-videos-ui": "node scripts/test-admin-guide-videos-ui.mjs"
   },
   "dependencies": {

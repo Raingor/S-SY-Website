@@ -103,6 +103,57 @@ assert.doesNotMatch(source, /1200×1440|5:6 竖图/, 'the old portrait banner hi
 }
 
 // The shared home-banner collection must expose the jump target the operators set via API.
+{
+  const state = { ...component.methods, busy: false, editor: {}, form: { ossKey: 'video/original.mp4', durationSeconds: 30, sizeBytes: 200 }, $set(target, key, value) { target[key] = value }, $message: { success() {} }, readVideoDuration: async () => 65, notifyUploadError() {} }
+  const file = { name: 'fixture.mp4', size: 5 * 1024 * 1024 + 128, slice(start, end) { return { size: end - start } } }
+  const paths = [], progress = []
+  let transientFailure = true, uploaded, failed
+  state.request = async (path, options) => {
+    paths.push(path)
+    if (path === '/admin/media-uploads') {
+      const input = JSON.parse(options.body)
+      assert.equal(input.kind, 'video'); assert.equal(input.durationSeconds, 65)
+      return { id: 'fixture-task', partSize: 5 * 1024 * 1024, partCount: 2 }
+    }
+    if (path.endsWith('/parts/1') && transientFailure) { transientFailure = false; throw Object.assign(new Error('OSS unavailable'), { status: 502 }) }
+    if (path.endsWith('/complete')) return { storage: 'oss', ossKey: 'video/new.mp4', sizeBytes: file.size, durationSeconds: 65 }
+    return {}
+  }
+  await state.uploadVideo({ file, onProgress(value) { progress.push(value.percent) }, onSuccess(value) { uploaded = value }, onError(error) { failed = error } })
+  assert.equal(failed, undefined)
+  assert.equal(uploaded.storage, 'oss')
+  assert.equal(state.form.ossKey, 'video/new.mp4')
+  assert.equal(state.form.durationSeconds, 65)
+  assert.equal(state.form.sizeBytes, file.size)
+  assert.equal(paths.filter((path) => path.endsWith('/parts/1')).length, 2, 'transient part failure is retried')
+  assert(paths.every((path) => path.startsWith('/admin/media-uploads')), 'upload does not save the content record')
+  assert(progress.length === 2 && progress.at(-1) === 99)
+  assert.equal(state.busy, false)
+  const original = JSON.stringify(state.form)
+  const failurePaths = []
+  state.request = async (path) => {
+    failurePaths.push(path)
+    if (path === '/admin/media-uploads') return { id: 'failed-task', partSize: 5 * 1024 * 1024, partCount: 2 }
+    if (path.includes('/parts/')) throw Object.assign(new Error('Invalid part'), { status: 422 })
+    return null
+  }
+  await state.uploadVideo({ file, onSuccess() { assert.fail('failed upload cannot succeed') }, onError(error) { failed = error } })
+  assert.equal(failed.status, 422)
+  assert.equal(failurePaths.filter((path) => path.includes('/parts/')).length, 1, 'validation failures are not retried')
+  assert(failurePaths.includes('/admin/media-uploads/failed-task'), 'failed task is aborted')
+  assert.equal(JSON.stringify(state.form), original, 'failure preserves the original video')
+  state.form = { previewSeconds: 30 }
+  state.request = async (path, options) => {
+    if (path === '/admin/media-uploads') { assert.equal(JSON.parse(options.body).kind, 'audio'); return { id: 'audio-task', partSize: 1024, partCount: 1 } }
+    if (path.endsWith('/complete')) return { storage: 'oss', audioFile: 'full.mp3', previewFile: 'preview.m4a', durationSeconds: 65, previewSeconds: 29 }
+    return {}
+  }
+  await state.uploadAudio({ file: { name: 'fixture.mp3', size: 100, slice() { return {} } }, onSuccess() {}, onError(error) { throw error } })
+  assert.equal(state.form.audioFile, 'full.mp3')
+  assert.equal(state.form.previewFile, 'preview.m4a')
+  assert.equal(state.form.previewSeconds, 29)
+}
+
 for (const menu of ['homeBanners', 'miniprogramBanners']) {
   const bannerFields = fields[menu].fields.map((field) => field.key)
   assert.ok(bannerFields.includes('link'), `${menu} exposes the link field`)
