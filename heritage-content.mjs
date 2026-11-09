@@ -41,6 +41,29 @@ function ossAudioConfig() {
   return { accessKeyId, accessKeySecret, bucket, host, endpoint: endpoint || `https://${bucket}.${host}` }
 }
 export function ossAudioConfigured() { return Boolean(ossAudioConfig()) }
+// Server-only OSS requests. Keep credentials and upload signatures out of the browser.
+export async function ossMediaRequest(key, { method = 'GET', query = {}, headers = {}, body } = {}) {
+  const config = ossAudioConfig()
+  if (!config) throw new Error('OSS 未配置，无法上传媒体')
+  if (!/^(audio|video)\/[a-zA-Z0-9._/-]+$/.test(key) || key.split('/').includes('..')) throw new Error('OSS 文件路径无效')
+  const requestHeaders = Object.fromEntries(Object.entries(headers).map(([name, value]) => [name.toLowerCase(), String(value).trim()]))
+  const date = new Date().toUTCString()
+  const parameters = Object.keys(query).sort()
+  const resourceQuery = parameters.map((name) => query[name] === '' ? name : `${name}=${query[name]}`).join('&')
+  const urlQuery = parameters.map((name) => query[name] === '' ? name : `${encodeURIComponent(name)}=${encodeURIComponent(query[name])}`).join('&')
+  const canonicalHeaders = Object.keys(requestHeaders).filter((name) => name.startsWith('x-oss-')).sort().map((name) => `${name}:${requestHeaders[name]}\n`).join('')
+  const stringToSign = `${method}\n${requestHeaders['content-md5'] || ''}\n${requestHeaders['content-type'] || ''}\n${date}\n${canonicalHeaders}/${config.bucket}/${key}${resourceQuery ? '?' + resourceQuery : ''}`
+  const signature = crypto.createHmac('sha1', config.accessKeySecret).update(stringToSign).digest('base64')
+  return fetch(`${config.endpoint}/${key}${urlQuery ? '?' + urlQuery : ''}`, {
+    method, headers: { ...requestHeaders, Date: date, Authorization: `OSS ${config.accessKeyId}:${signature}` },
+    ...(body == null ? {} : { body }), signal: AbortSignal.timeout(120000), redirect: 'error',
+  })
+}
+export function removePrivateAudioFiles(upload) {
+  for (const name of [upload?.audioFile, upload?.previewFile]) {
+    if (audioNamePattern.test(String(name || ''))) rmSync(resolve(privateDir, name), { force: true })
+  }
+}
 function ossAudioSignedUrl(name, expiresInSeconds, { method = 'GET', contentType = '' } = {}) {
   const config = ossAudioConfig()
   if (!config || !audioNamePattern.test(String(name || ''))) return null
@@ -54,10 +77,11 @@ function ossAudioSignedUrl(name, expiresInSeconds, { method = 'GET', contentType
 export function ossAudioReadUrl(name, expiresInSeconds = 600) { return ossAudioSignedUrl(name, expiresInSeconds) }
 export async function uploadPrivateAudioToOss(name) {
   const contentType = name.endsWith('.mp3') ? 'audio/mpeg' : 'audio/mp4'
-  const url = ossAudioSignedUrl(name, 3600, { method: 'PUT', contentType })
-  if (!url) return false
+  if (!audioNamePattern.test(String(name || ''))) return false
   try {
-    const res = await fetch(url, { method: 'PUT', headers: { 'Content-Type': contentType }, body: readFileSync(resolve(privateDir, name)) })
+    const buffer = readFileSync(resolve(privateDir, name))
+    const res = await ossMediaRequest(`audio/${name}`, { method: 'PUT', headers: { 'Content-Type': contentType, 'Content-MD5': crypto.createHash('md5').update(buffer).digest('base64'), 'x-oss-object-acl': 'private' }, body: buffer })
+    await res.arrayBuffer()
     return res.ok
   } catch { return false }
 }

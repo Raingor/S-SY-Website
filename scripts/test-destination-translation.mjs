@@ -23,16 +23,19 @@ let child
 let providerRequests = 0
 let providerPrompt = ''
 let providerModel = ''
+let providerReasoningEffort
+let truncateText = false
 const provider = createServer(async (req, res) => {
   const chunks = []
   for await (const chunk of req) chunks.push(chunk)
   providerRequests += 1
   const input = JSON.parse(Buffer.concat(chunks).toString('utf8'))
   providerModel = input.model
+  providerReasoningEffort = input.reasoning_effort
   providerPrompt = input.messages?.[0]?.content || ''
   const result = providerRequests === 2 ? { en: '' } : providerPrompt.includes('目的地名称') ? { en: 'Athens' } : providerPrompt.includes('文本') ? { tw: '雅典衛城', en: 'The Acropolis of Athens' } : { tw: '雅典', en: 'Athens' }
   res.writeHead(200, { 'Content-Type': 'application/json' })
-  res.end(JSON.stringify({ choices: [{ message: { content: JSON.stringify(result) } }] }))
+  res.end(JSON.stringify({ choices: [{ finish_reason: truncateText ? 'length' : 'stop', message: { content: truncateText ? '' : JSON.stringify(result) } }] }))
 })
 
 async function request(path, options = {}) {
@@ -95,9 +98,15 @@ try {
   assert.equal(translatedText.status, 200)
   assert.deepEqual(translatedText.data, { tw: '雅典衛城', en: 'The Acropolis of Athens' })
   assert.equal(providerRequests, 3)
+  assert.equal(providerReasoningEffort, 'none', 'structured text translation disables reasoning for SenseNova Lite')
   const missingText = await request('/api/admin/text-translation', { method: 'POST', headers, body: JSON.stringify({ text: ' ' }) })
   assert.equal(missingText.status, 422)
   assert.equal(providerRequests, 3, 'invalid text source must not call the AI provider')
+  truncateText = true
+  const truncated = await request('/api/admin/text-translation', { method: 'POST', headers, body: JSON.stringify({ text: '较长的简体内容' }) })
+  assert.equal(truncated.status, 502)
+  assert.match(truncated.data.error, /输出限制/, 'truncated final output is an explicit failure')
+  truncateText = false
   child.kill('SIGTERM')
   await new Promise(resolveExit => child.once('exit', resolveExit))
   child = spawn(process.execPath, ['server.mjs'], {
@@ -117,7 +126,7 @@ try {
   assert.equal(disabled.status, 404, 'translation endpoint must respect explicit AI enable flag')
   const disabledText = await request('/api/admin/text-translation', { method: 'POST', headers: { Authorization: `Bearer ${disabledLogin.data.token}` }, body: JSON.stringify({ text: '雅典' }) })
   assert.equal(disabledText.status, 404, 'text translation endpoint must respect explicit AI enable flag')
-  assert.equal(providerRequests, 3, 'disabled AI must not call the AI provider')
+  assert.equal(providerRequests, 4, 'disabled AI must not call the AI provider')
   console.log('Destination translation endpoint tests passed (admin auth, mock provider, output shape, source validation, empty-result handling, explicit AI flag).')
 } finally {
   if (child && child.exitCode === null) {

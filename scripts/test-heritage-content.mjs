@@ -4,15 +4,23 @@ import assert from 'node:assert/strict'
 import { once } from 'node:events'
 import { spawn, spawnSync } from 'node:child_process'
 import { createHash } from 'node:crypto'
-import { copyFileSync, existsSync, mkdtempSync, mkdirSync, readFileSync, rmSync, statSync, symlinkSync, writeFileSync } from 'node:fs'
+import { copyFileSync, existsSync, mkdtempSync, mkdirSync, readFileSync, rmSync, symlinkSync, writeFileSync } from 'node:fs'
 import { signedAudioToken } from '../heritage-content.mjs'
 import { dirname, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { tmpdir } from 'node:os'
 import { setTimeout as delay } from 'node:timers/promises'
+import { createMockPrivateOss } from './helpers/mock-private-oss.mjs'
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..')
 const tmp = mkdtempSync(join(tmpdir(), 'sy-heritage-test-'))
+const oss = await createMockPrivateOss()
+function probeOssPreview(name) {
+  const path = join(tmp, 'probe-' + name)
+  writeFileSync(path, oss.objects.get('audio/' + name).body)
+  try { return spawnSync('ffprobe', ['-v', 'error', '-show_entries', 'format=duration', '-of', 'default=noprint_wrappers=1:nokey=1', path], { encoding: 'utf8' }) }
+  finally { rmSync(path, { force: true }) }
+}
 const port = 50000 + Math.floor(Math.random() * 10000)
 let child
 let logs = ''
@@ -41,7 +49,7 @@ async function main() {
   while (fixture.attractions.length < 87) fixture.attractions.push({ ...baseAttraction, id: `isolated-demo-attraction-${fixture.attractions.length + 1}`, guide: {}, exhibits: [], highlights: [], summary: '' })
   writeFileSync(fixturePath, JSON.stringify(fixture))
   symlinkSync(join(root, 'node_modules'), join(tmp, 'node_modules'), 'dir')
-  child = spawn(process.execPath, [join(tmp, 'server.mjs')], { cwd: tmp, env: { ...Object.fromEntries(['PATH','HOME','TMPDIR','LANG','TZ'].filter(key => process.env[key]).map(key => [key, process.env[key]])), SY_STORAGE: 'json', PORT: String(port), SY_ADMIN_PASSWORD: 'test-only-admin-password', SY_ADMIN_SESSION_SECRET: 'test-only-heritage-session-secret', SY_MINIPROGRAM_SIMULATION_ENABLED: 'true', SY_MINIPROGRAM_SIMULATION_SECRET: 'test-only-simulation-secret', SY_AUDIO_PRIVATE_DIR: join(tmp, 'private-audio') }, stdio: ['ignore', 'pipe', 'pipe'] })
+  child = spawn(process.execPath, [join(tmp, 'server.mjs')], { cwd: tmp, env: { ...Object.fromEntries(['PATH','HOME','TMPDIR','LANG','TZ'].filter(key => process.env[key]).map(key => [key, process.env[key]])), SY_STORAGE: 'json', PORT: String(port), SY_ADMIN_PASSWORD: 'test-only-admin-password', SY_ADMIN_SESSION_SECRET: 'test-only-heritage-session-secret', SY_MINIPROGRAM_SIMULATION_ENABLED: 'true', SY_MINIPROGRAM_SIMULATION_SECRET: 'test-only-simulation-secret', SY_AUDIO_PRIVATE_DIR: join(tmp, 'private-audio'), ...oss.env }, stdio: ['ignore', 'pipe', 'pipe'] })
   child.stdout.on('data', (chunk) => { logs += chunk.toString() })
   child.stderr.on('data', (chunk) => { logs += chunk.toString() })
   for (let i = 0; i < 100; i++) {
@@ -206,13 +214,15 @@ async function main() {
   const uploaded = await adminRequest('/api/admin/upload-audio', { method: 'POST', body: { name: 'TEST-ONLY-65s.mp3', type: 'audio/mpeg', data: 'data:audio/mpeg;base64,' + audio.stdout.toString('base64') } })
   assert.equal(uploaded.response.status, 201)
   assert.ok(uploaded.data.previewSeconds <= 60)
-  assert.ok(existsSync(join(tmp, 'private-audio', uploaded.data.audioFile)))
+  assert.equal(existsSync(join(tmp, 'private-audio', uploaded.data.audioFile)), false)
+  assert.ok(oss.objects.has('audio/' + uploaded.data.audioFile))
   const rawUploadResponse = await fetch(base + '/api/admin/upload-audio', { method: 'POST', headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'audio/mpeg', 'X-File-Name': encodeURIComponent('TEST-ONLY-binary-upload.mp3'), 'X-Preview-Seconds': '30' }, body: audio.stdout })
   assert.equal(rawUploadResponse.status, 201, 'production-compatible binary admin audio upload must remain supported')
   const rawUpload = await rawUploadResponse.json()
-  assert.ok(existsSync(join(tmp, 'private-audio', rawUpload.audioFile)))
+  assert.equal(existsSync(join(tmp, 'private-audio', rawUpload.audioFile)), false)
+  assert.ok(oss.objects.has('audio/' + rawUpload.audioFile))
   assert.ok(rawUpload.previewSeconds <= 30)
-  const actualSixtySecondPreview = spawnSync('ffprobe', ['-v', 'error', '-show_entries', 'format=duration', '-of', 'default=noprint_wrappers=1:nokey=1', join(tmp, 'private-audio', uploaded.data.previewFile)], { encoding: 'utf8' })
+  const actualSixtySecondPreview = probeOssPreview(uploaded.data.previewFile)
   assert.equal(actualSixtySecondPreview.status, 0)
   assert.ok(Number(actualSixtySecondPreview.stdout.trim()) <= 60, `65s source preview exceeds 60s: ${actualSixtySecondPreview.stdout}`)
   const directPrivate = await request(`/private-audio/${uploaded.data.audioFile}`)
@@ -226,7 +236,7 @@ async function main() {
   const preview = await request(content.data.audioAlbums[0].episodes[0].previewUrl, { headers: { Range: 'bytes=0-127' } })
   assert.equal(preview.response.status, 206)
   assert.equal(preview.data.byteLength, 128)
-  const previewSize = statSync(join(tmp, 'private-audio', uploaded.data.previewFile)).size
+  const previewSize = oss.objects.get('audio/' + uploaded.data.previewFile).body.length
   const outsidePreview = await request(content.data.audioAlbums[0].episodes[0].previewUrl, { headers: { Range: `bytes=${previewSize}-` } })
   assert.equal(outsidePreview.response.status, 416, 'out-of-bounds preview Range must be rejected')
   assert.equal(outsidePreview.response.headers.get('content-range'), `bytes */${previewSize}`)
@@ -238,7 +248,7 @@ async function main() {
   assert.equal(member.data.access, 'full', JSON.stringify(member.data))
   assert.ok(member.data.fullUrl?.includes('token='))
   assert.equal((await request(member.data.fullUrl, { headers: { Range: 'bytes=0-127' } })).response.status, 206)
-  const fullSize = statSync(join(tmp, 'private-audio', uploaded.data.audioFile)).size
+  const fullSize = oss.objects.get('audio/' + uploaded.data.audioFile).body.length
   const outsideFull = await request(member.data.fullUrl, { headers: { Range: `bytes=${fullSize}-` } })
   assert.equal(outsideFull.response.status, 416, 'out-of-bounds full-audio Range must be rejected')
   assert.equal(outsideFull.response.headers.get('content-range'), `bytes */${fullSize}`)
@@ -354,7 +364,7 @@ async function main() {
   const short = await adminRequest('/api/admin/upload-audio', { method: 'POST', body: { name: 'TEST-ONLY-short.mp3', type: 'audio/mpeg', previewSeconds: 30, data: 'data:audio/mpeg;base64,' + audio.stdout.toString('base64') } })
   assert.equal(short.response.status, 201)
   assert.ok(short.data.previewSeconds <= 30)
-  const actualPreview = spawnSync('ffprobe', ['-v', 'error', '-show_entries', 'format=duration', '-of', 'default=noprint_wrappers=1:nokey=1', join(tmp, 'private-audio', short.data.previewFile)], { encoding: 'utf8' })
+  const actualPreview = probeOssPreview(short.data.previewFile)
   assert.ok(Number(actualPreview.stdout.trim()) <= 30, `preview media duration exceeded configured limit: ${actualPreview.stdout}`)
   const tampered = await adminRequest(`/api/admin/audioTracks/${routeTrack.data.id}`, { method: 'PATCH', body: { previewSeconds: 10 } })
   assert.equal(tampered.response.status, 422, 'editing seconds without regenerating clipped file must fail')
@@ -405,7 +415,7 @@ async function main() {
   child.kill('SIGTERM')
   await new Promise((resolve) => child.once('exit', resolve))
   rmSync(join(tmp, 'seed/content-demo.json'), { force: true })
-  child = spawn(process.execPath, [join(tmp, 'server.mjs')], { cwd: tmp, env: { ...Object.fromEntries(['PATH','HOME','TMPDIR','LANG','TZ'].filter(key => process.env[key]).map(key => [key, process.env[key]])), SY_STORAGE: 'json', PORT: String(port), SY_ADMIN_PASSWORD: 'test-only-admin-password', SY_ADMIN_SESSION_SECRET: 'test-only-heritage-session-secret', SY_MINIPROGRAM_SIMULATION_ENABLED: 'true', SY_MINIPROGRAM_SIMULATION_SECRET: 'test-only-simulation-secret', SY_AUDIO_PRIVATE_DIR: join(tmp, 'private-audio') }, stdio: ['ignore', 'pipe', 'pipe'] })
+  child = spawn(process.execPath, [join(tmp, 'server.mjs')], { cwd: tmp, env: { ...Object.fromEntries(['PATH','HOME','TMPDIR','LANG','TZ'].filter(key => process.env[key]).map(key => [key, process.env[key]])), SY_STORAGE: 'json', PORT: String(port), SY_ADMIN_PASSWORD: 'test-only-admin-password', SY_ADMIN_SESSION_SECRET: 'test-only-heritage-session-secret', SY_MINIPROGRAM_SIMULATION_ENABLED: 'true', SY_MINIPROGRAM_SIMULATION_SECRET: 'test-only-simulation-secret', SY_AUDIO_PRIVATE_DIR: join(tmp, 'private-audio'), ...oss.env }, stdio: ['ignore', 'pipe', 'pipe'] })
   child.stdout.on('data', (chunk) => { logs += chunk.toString() })
   child.stderr.on('data', (chunk) => { logs += chunk.toString() })
   let restarted = false
@@ -422,6 +432,8 @@ async function main() {
   console.log('Storage: synthetic temporary JSON only; local MariaDB and production unchanged')
 }
 try { await main() } catch (error) { console.error(error); console.error(logs); process.exitCode = 1 } finally {
+  oss.server.closeAllConnections()
+  await new Promise((resolve) => oss.server.close(resolve))
   if (child && child.exitCode === null && child.signalCode === null) {
     const exited = once(child, 'exit')
     child.kill('SIGTERM')
