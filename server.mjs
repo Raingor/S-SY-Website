@@ -656,6 +656,9 @@ function normalizeGuideVideo(input, index) {
     category: text(source.category, 40) || 'attraction',
     sort: Number.isFinite(Number(source.sort)) ? Math.max(0, Math.round(Number(source.sort))) : 0,
     attractionId: text(source.attractionId, 120),
+    albumId: text(source.albumId, 120),
+    section: text(source.section, 64),
+    episode: Number.isFinite(Number(source.episode)) ? Math.max(0, Math.round(Number(source.episode))) : 0,
     title: text(source.title, 200),
     description: text(source.description, 2000),
     cover: text(source.cover, 300),
@@ -678,8 +681,43 @@ function guideVideoValidationError(video) {
   if (video.status === 'published' && video.category === 'attraction' && !video.attractionId) return '景点讲解发布前需关联景点'
   return ''
 }
+function normalizeGuideVideoAlbum(input, index) {
+  const source = input && typeof input === 'object' && !Array.isArray(input) ? input : {}
+  const text = (value, max = 300) => String(value ?? '').trim().slice(0, max)
+  const sections = (Array.isArray(source.sections) ? source.sections : []).map((section, position) => {
+    const item = section && typeof section === 'object' && !Array.isArray(section) ? section : {}
+    const normalized = {
+      key: text(item.key, 64),
+      title: text(item.title, 200),
+      sort: Number.isFinite(Number(item.sort)) ? Math.max(0, Math.round(Number(item.sort))) : position + 1,
+    }
+    return { ...normalized, titleTw: text(item.titleTw, 200) || normalized.title, titleEn: text(item.titleEn, 200) || normalized.title }
+  }).filter((section) => section.key)
+  const album = {
+    id: text(source.id, 120) || `guide-video-album-${index + 1}`,
+    title: text(source.title, 200),
+    description: text(source.description, 2000),
+    cover: text(source.cover, 300),
+    sections,
+    sort: Number.isFinite(Number(source.sort)) ? Math.max(0, Math.round(Number(source.sort))) : 0,
+    status: source.status === 'published' ? 'published' : 'unpublished',
+    createdAt: text(source.createdAt, 40) || new Date().toISOString(),
+  }
+  album.titleTw = text(source.titleTw, 200) || album.title
+  album.titleEn = text(source.titleEn, 200) || album.title
+  album.descriptionTw = text(source.descriptionTw, 2000) || album.description
+  album.descriptionEn = text(source.descriptionEn, 2000) || album.description
+  return album
+}
+function guideVideoAlbumValidationError(album) {
+  if (!album.title) return '请填写专辑名称'
+  return ''
+}
+function publicGuideVideoAlbums(data) {
+  return (data.guideVideoAlbums || []).filter((album) => album.status === 'published').map(normalizeGuideVideoAlbum).sort((a, b) => a.sort - b.sort).map((album) => ({ id: album.id, title: album.title, titleTw: album.titleTw, titleEn: album.titleEn, description: album.description, descriptionTw: album.descriptionTw, descriptionEn: album.descriptionEn, cover: album.cover, sort: album.sort, status: album.status, sections: album.sections }))
+}
 function publicGuideVideos(data) {
-  return (data.guideVideos || []).filter((video) => video.status === 'published').map(normalizeGuideVideo).sort((a, b) => a.sort - b.sort).map((video) => ({ id: video.id, category: video.category, sort: video.sort, attractionId: video.attractionId, title: video.title, titleTw: video.titleTw, titleEn: video.titleEn, description: video.description, descriptionTw: video.descriptionTw, descriptionEn: video.descriptionEn, cover: video.cover, durationSeconds: video.durationSeconds, accessUrl: `/api/miniprogram/video/${encodeURIComponent(video.id)}/access` }))
+  return (data.guideVideos || []).filter((video) => video.status === 'published').map(normalizeGuideVideo).sort((a, b) => a.sort - b.sort).map((video) => ({ id: video.id, category: video.category, sort: video.sort, attractionId: video.attractionId, albumId: video.albumId, section: video.section, episode: video.episode, title: video.title, titleTw: video.titleTw, titleEn: video.titleEn, description: video.description, descriptionTw: video.descriptionTw, descriptionEn: video.descriptionEn, cover: video.cover, durationSeconds: video.durationSeconds, accessUrl: `/api/miniprogram/video/${encodeURIComponent(video.id)}/access` }))
 }
 function normalizeTravelGuideDocs(input) {
   const source = input && typeof input === 'object' && !Array.isArray(input) ? input : {}
@@ -1532,6 +1570,7 @@ function publicContent(data, countryId = 'greece', { includeAttractionDetails = 
     businessService: publicBusinessService(data),
     travelGuide: publicTravelGuide(data),
     guideVideos: publicGuideVideos(data),
+    guideVideoAlbums: publicGuideVideoAlbums(data),
     countries: countries.map((item) => ({ ...item, heroImage: imageUrl(item.heroImage) })),
     guides: guides.map((item) => ({ ...item, avatar: imageUrl(item.avatar), fullImage: imageUrl(item.fullImage) })),
     routes: scoped(data.routes).filter((item) => item.status === 'published').map((item) => ({ ...item, image: imageUrl(item.image) })),
@@ -2426,6 +2465,33 @@ const server = http.createServer(async (req, res) => {
         data.guideVideos.push(video); await saveData(data)
         return json(res, 201, video)
       }
+      if (url.pathname === '/api/admin/guideVideoAlbums' && method === 'GET') return json(res, 200, (data.guideVideoAlbums || []).map(normalizeGuideVideoAlbum))
+      const guideVideoAlbumMatch = url.pathname.match(/^\/api\/admin\/guideVideoAlbums\/([^/]+)$/)
+      if (guideVideoAlbumMatch && ['PATCH', 'DELETE'].includes(method)) {
+        const albumId = decodeURIComponent(guideVideoAlbumMatch[1])
+        const index = (data.guideVideoAlbums || []).findIndex((album) => album.id === albumId)
+        if (index < 0) return json(res, 404, { code: 'CONTENT_NOT_FOUND', error: '专辑不存在' })
+        if (method === 'DELETE') {
+          data.guideVideoAlbums.splice(index, 1); await saveData(data)
+          return res.writeHead(204).end()
+        }
+        const input = await body(req)
+        const merged = normalizeGuideVideoAlbum({ ...data.guideVideoAlbums[index], ...input, id: albumId }, index)
+        const validationError = guideVideoAlbumValidationError(merged)
+        if (validationError) return json(res, 422, { code: 'CONTENT_VALIDATION_FAILED', error: validationError })
+        data.guideVideoAlbums[index] = merged; await saveData(data)
+        return json(res, 200, merged)
+      }
+      if (url.pathname === '/api/admin/guideVideoAlbums' && method === 'POST') {
+        const input = await body(req)
+        const album = normalizeGuideVideoAlbum(input, (data.guideVideoAlbums || []).length)
+        const validationError = guideVideoAlbumValidationError(album)
+        if (validationError) return json(res, 422, { code: 'CONTENT_VALIDATION_FAILED', error: validationError })
+        if ((data.guideVideoAlbums || []).some((item) => item.id === album.id)) return json(res, 409, { code: 'DUPLICATE_ID', error: '专辑 ID 已存在' })
+        data.guideVideoAlbums = Array.isArray(data.guideVideoAlbums) ? data.guideVideoAlbums : []
+        data.guideVideoAlbums.push(album); await saveData(data)
+        return json(res, 201, album)
+      }
       if (heritageAdmin && ['GET', 'POST', 'PATCH', 'DELETE'].includes(method)) {
         const collection = heritageAdmin[1]; const itemId = heritageAdmin[2] || ''
         data[collection] = Array.isArray(data[collection]) ? data[collection] : []
@@ -2735,6 +2801,7 @@ async function start() {
     if (!data.businessService || typeof data.businessService !== 'object' || Array.isArray(data.businessService)) data.businessService = defaultBusinessService()
     if (!data.travelGuide || typeof data.travelGuide !== 'object' || Array.isArray(data.travelGuide)) data.travelGuide = defaultTravelGuide()
     if (!Array.isArray(data.guideVideos)) data.guideVideos = []
+    if (!Array.isArray(data.guideVideoAlbums)) data.guideVideoAlbums = []
     if (!data.attractionDetailPage || typeof data.attractionDetailPage !== 'object' || Array.isArray(data.attractionDetailPage)) {
       if (!demoContent) throw new Error('seed/content-demo.json is required for the first attraction-detail-page migration')
       data.attractionDetailPage = normalizeAttractionDetailPage(defaultAttractionDetailPage())

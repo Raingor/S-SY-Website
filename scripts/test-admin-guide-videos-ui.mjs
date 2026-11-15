@@ -203,4 +203,21 @@ for (const menu of ['homeBanners', 'miniprogramBanners']) {
 assert.ok(source.includes('小程序首页只有排序最前的第一张 Banner 响应点击'), 'link help states the first-banner-only client rule')
 assert.ok(fields.homeBanners.columns.some((column) => column[0] === 'link'), 'banner list shows the jump target')
 
+// 人文影集专辑（guideVideoAlbums）后台：菜单、路由、编辑器字段与新建默认值。
+assert.ok(devGroup.items.some((item) => item[0] === 'guideVideoAlbums'), '人文影集专辑 menu item present')
+assert.equal(routes.guideVideoAlbums, '/admin/guideVideoAlbums')
+assert.ok(Array.isArray(emptyData.guideVideoAlbums), 'emptyData seeds guideVideoAlbums')
+const albumConfig = fields.guideVideoAlbums
+assert.equal(albumConfig.endpoint, 'guideVideoAlbums')
+assert.equal(albumConfig.addLabel, '新增专辑')
+assert.ok(albumConfig.columns.some((column) => column[0] === 'cover'))
+for (const key of ['title', 'description', 'cover', 'sections', 'sort', 'status']) assert.ok(albumConfig.fields.some((field) => field.key === key), `album field ${key} editable`)
+const sectionsField = albumConfig.fields.find((field) => field.key === 'sections')
+assert.equal(sectionsField.type, 'array', 'sections use the shared array editor')
+assert.deepEqual(Array.from(sectionsField.fields, (field) => field.key), ['key', 'title', 'sort'], 'section editor owns key/title/sort')
+for (const key of ['albumId', 'section', 'episode']) assert.ok(config.fields.some((field) => field.key === key), `video field ${key} editable`)
+assert.equal(config.fields.find((field) => field.key === 'albumId').options, 'guideVideoAlbums', 'video album picker reads the album collection')
+assert.match(source, /if\(this\.active==='guideVideoAlbums'\)\{row\.id='guide-video-album-'/, 'new albums get a generated id')
+assert.match(source, /guideVideoAlbums:\s*\[\s*\{ source: 'title'/, 'album title/description are translatable')
+
 console.log('PASS admin guide-videos UI: 开发配置 menu group, route/data plumbing, editable fields, PATCH/POST endpoint shape, generated ids, unpublished default')
