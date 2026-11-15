@@ -851,8 +851,13 @@ function videoEntitlements(data, paidOrders, member) {
   const purchased = [...new Set(paidOrders.filter((order) => order.productType === 'guideVideo' && order.videoId).map((order) => order.videoId))]
   return { unlockedVideos: all.filter((id) => purchased.includes(id)) }
 }
+function isFreeHumanitiesVideo(video) {
+  return video?.category === 'humanities'
+}
 function videoEntitled(video, entitlements) {
-  // Only an explicit per-video purchase unlocks playback (membership does not).
+  // Humanities films are free after login. Attraction guide videos still need an
+  // explicit per-video purchase (membership does not unlock them).
+  if (isFreeHumanitiesVideo(video)) return true
   return Boolean(video && entitlements?.unlockedVideos?.includes(video.id))
 }
 function commercePurchaseTarget(productType, input, data) {
@@ -862,6 +867,7 @@ function commercePurchaseTarget(productType, input, data) {
     if (!videoId) return { error: 'VIDEO_ID_REQUIRED', message: '请指定要购买的攻略视频' }
     const video = (data.guideVideos || []).find((item) => item.id === videoId && item.status === 'published')
     if (!video) return { error: 'VIDEO_NOT_FOUND', message: '攻略视频不存在或未发布' }
+    if (isFreeHumanitiesVideo(video)) return { error: 'VIDEO_NOT_PURCHASABLE', message: '希腊人文影集免费观看，无需购买' }
     return { label: video.title, videoId }
   }
   return { error: 'PAYMENT_PRODUCT_UNAVAILABLE', message: '仅售年会员（199元/365天）与游览攻略视频（168元），其他内容商品已停售' }
@@ -1849,7 +1855,7 @@ const server = http.createServer(async (req, res) => {
       if (!videoEntitled(video, entitlements)) return json(res, 200, { id: video.id, access: 'locked', reason: 'VIDEO_PURCHASE_REQUIRED', message: '购买后可观看完整视频', product: miniProgramKnowledgeConfig(data).products.guideVideo })
       const playUrl = ossSignedGetUrl(video.ossKey, 600)
       if (!playUrl) return json(res, 503, { code: 'VIDEO_STREAM_NOT_CONFIGURED', error: '视频服务未配置，请稍后再试' })
-      return json(res, 200, { id: video.id, access: 'full', playUrl, expiresIn: 600, unlockedVia: 'purchase' })
+      return json(res, 200, { id: video.id, access: 'full', playUrl, expiresIn: 600, unlockedVia: isFreeHumanitiesVideo(video) ? 'free' : 'purchase' })
     }
     if (url.pathname === '/api/miniprogram/entitlements' && method === 'GET') {
       if (miniProgramSimulationEnabled()) {

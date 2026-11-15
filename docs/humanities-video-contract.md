@@ -1,6 +1,6 @@
 # 希腊人文影集接口与后台
 
-本功能复用 `guideVideos` 内容和现有视频购买流程。以下为本地实现契约，未部署；不会自动把旧景点视频归入人文影集，不新增影片或迁移生产数据。
+本功能复用 `guideVideos` 内容。希腊人文影集（`category: humanities`）登录后免费观看；景点讲解视频仍走 ¥168 单独购买。以下为本地实现契约；不会自动把旧景点视频归入人文影集，不新增影片或迁移生产数据。
 
 ## 内容接口
 
@@ -27,13 +27,16 @@ API 沿用 `GET/POST /api/admin/guideVideos`、`PATCH/DELETE /api/admin/guideVid
 ## 购买与播放
 
 - 详情页只需视频 `id`，无需景点 ID。
-- `GET /api/miniprogram/video/:id/access`：匿名返回 `access:'locked', reason:'MINIPROGRAM_LOGIN_REQUIRED'`；登录未购买返回 `VIDEO_PURCHASE_REQUIRED`；购买后返回有效期 600 秒的私有 OSS 签名 `playUrl`。
-- `POST /api/miniprogram/orders` 传 `{productType:'guideVideo', videoId:'…'}`，价格固定 CNY 168，复用现有微信支付及订单确认流程。
-- 年会员不包含视频；每次购买只解锁对应 `videoId`，不解锁整个人文分类或其他课程。封面公开不授予播放权限，无试看。
+- `GET /api/miniprogram/video/:id/access`：
+  - 匿名一律返回 `access:'locked', reason:'MINIPROGRAM_LOGIN_REQUIRED'`（不返回 `playUrl` / `product`）。
+  - **人文影集**（`category === 'humanities'`）：登录后直接 `access:'full'` + 有效期 600 秒的私有 OSS 签名 `playUrl`，`unlockedVia:'free'`；不返回 `VIDEO_PURCHASE_REQUIRED`，不下发 `guideVideo` 商品。
+  - **景点讲解**（`category === 'attraction'` 或未设置）：登录未购买返回 `VIDEO_PURCHASE_REQUIRED` 并附带 `product`（¥168）；购买后返回签名 `playUrl`，`unlockedVia:'purchase'`。
+- `POST /api/miniprogram/orders` 的 `guideVideo` 仅适用于景点讲解；对人文影集返回 `VIDEO_NOT_PURCHASABLE`。景点讲解价格固定 CNY 168。
+- 年会员不包含景点讲解视频；人文影集与会员状态无关，登录即可看。封面公开不授予播放权限。
 - 草稿或已下架视频不在公开列表中，播放权限接口返回 404。
 
 ## 验证
 
-`npm run test:guide-video-commerce` 使用临时 JSON 服务与合成内容，覆盖旧分类默认、人文影片无景点发布、分类校验、三语与排序、公开字段边界、单视频购买隔离、会员不包含视频、下架和删除。
+`npm run test:guide-video-commerce` 使用临时 JSON 服务与合成内容，覆盖旧分类默认、人文影片无景点发布、分类校验、三语与排序、公开字段边界、人文影集登录免购（含会员）、人文下单拒绝、景点讲解单视频购买隔离、会员不包含景点讲解、下架和删除。
 
 `npm run test:admin-guide-videos-ui` 验证字段、单选关联、创建默认值及人文表单提交。构建与浏览器核验使用临时副本，不覆盖工作区生成文件或读取生产数据。
