@@ -67,10 +67,28 @@ try {
 
   // 2) Public videos carry the album join fields used by the mini program.
   const acropolis = content.guideVideos.find((v) => v.id === 'video-fixture')
-  assert.equal(acropolis.albumId, 'album-fixture')
-  assert.equal(acropolis.section, 'monuments')
-  assert.equal(acropolis.episode, 1)
+  assert.equal(acropolis.category, 'attraction')
+  assert.equal(acropolis.attractionId, 'acropolis', '真人讲解保留独立景点入口')
+  assert.equal(acropolis.albumId, '', 'legacy mixed albumId must not join the humanities album')
+  assert.equal(acropolis.section, '')
+  assert.equal(acropolis.episode, 0)
   assert.equal(acropolis.ossKey, undefined)
+  const humanities = content.guideVideos.find((v) => v.id === 'video-humanities')
+  assert.equal(humanities.albumId, 'album-fixture')
+  assert.equal(humanities.section, 'stories')
+  assert.equal(humanities.episode, 1)
+  const attractionPatch = await json('/api/admin/guideVideos/video-fixture', { method: 'PATCH', body: JSON.stringify({ albumId: 'album-fixture', section: 'monuments', episode: 3 }) }, token)
+  assert.equal(attractionPatch.status, 200)
+  assert.equal(attractionPatch.body.albumId, '', 'admin save cannot reintroduce a cross-category join')
+  assert.equal(attractionPatch.body.section, '')
+  assert.equal(attractionPatch.body.episode, 0)
+  const adminVideos = await json('/api/admin/guideVideos', {}, token)
+  assert.equal(adminVideos.body.find((v) => v.id === 'video-fixture').albumId, '')
+  const attractionCreated = await json('/api/admin/guideVideos', { method: 'POST', body: JSON.stringify({ id: 'new-attraction', category: 'attraction', title: '真人讲解', albumId: 'album-fixture', section: 'stories', episode: 9 }) }, token)
+  assert.equal(attractionCreated.status, 201)
+  assert.equal(attractionCreated.body.albumId, '', 'new attraction records cannot join humanities albums either')
+  assert.equal(attractionCreated.body.section, '')
+  assert.equal(attractionCreated.body.episode, 0)
 
   // 3) Admin list returns drafts too.
   const adminList = await json('/api/admin/guideVideoAlbums', {}, token)
@@ -109,6 +127,13 @@ try {
   assert.equal(patchedVideo.albumId, 'album-new')
   assert.equal(patchedVideo.section, 'islands')
   assert.equal(patchedVideo.episode, 2)
+
+  // Category changes clear album join metadata without changing the independent video.
+  const changedCategory = await json('/api/admin/guideVideos/video-humanities', { method: 'PATCH', body: JSON.stringify({ category: 'attraction', attractionId: 'acropolis' }) }, token)
+  assert.equal(changedCategory.status, 200)
+  assert.equal(changedCategory.body.albumId, '')
+  assert.equal(changedCategory.body.section, '')
+  assert.equal(changedCategory.body.episode, 0)
 
   // 8) Delete removes the album and its public entry.
   assert.equal((await json('/api/admin/guideVideoAlbums/album-new', { method: 'DELETE' }, token)).status, 204)

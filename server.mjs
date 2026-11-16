@@ -668,6 +668,12 @@ function normalizeGuideVideo(input, index) {
     status: source.status === 'published' ? 'published' : 'unpublished',
     createdAt: text(source.createdAt, 40) || new Date().toISOString(),
   }
+  // 真人景点讲解独立展示；旧数据中的混合专辑关联也不对外下发。
+  if (video.category !== 'humanities') {
+    video.albumId = ''
+    video.section = ''
+    video.episode = 0
+  }
   video.titleTw = text(source.titleTw, 200) || video.title
   video.titleEn = text(source.titleEn, 200) || video.title
   video.descriptionTw = text(source.descriptionTw, 2000) || video.description

@@ -22,6 +22,11 @@ assert.ok(Array.isArray(emptyData.guideVideos), 'emptyData seeds guideVideos')
 
 const config = fields.guideVideos
 assert.equal(config.endpoint, 'guideVideos')
+for (const key of ['albumId', 'section', 'episode']) {
+  assert.deepEqual(Array.from(config.fields.find((field) => field.key === key).categories), ['humanities'], `${key} is hidden for independent attraction videos`)
+}
+assert.match(fields.guideVideoAlbums.miniProgramDisplay, /只收录外网博主旅行人文视频/)
+assert.match(fields.guideVideoAlbums.miniProgramDisplay, /不得使用卫城真人讲解封面/)
 assert.match(config.miniProgramDisplay, /独立「视频讲解」板块/, 'guide videos use an independent section')
 assert.match(config.miniProgramDisplay, /封面公开展示/, 'cover visibility does not require purchase')
 assert.match(config.miniProgramDisplay, /人文影集登录后免费观看/, 'humanities are free after login')
