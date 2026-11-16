@@ -3,7 +3,7 @@
 ## 操作
 
 - 视频：在「开发配置 → 攻略视频」编辑记录，使用「上传视频到 OSS」。支持 MP4、最大 2 GiB，上传完成自动回填 OSS 路径、时长与大小。
-- 音频：在音频编辑页上传 MP3/M4A，最大 30 MiB。服务器验证音频并生成 1–60 秒内的试听片段，完整音频和试听均写入私有 OSS。
+- 音频：在音频编辑页上传 MP3/M4A，最大 30 MiB。服务器验证音频并生成 1–60 秒内的试听片段；完整音频写入私有前缀，试听同时写入 OSS 公读前缀 `public/audio/`。
 - 两者都通过最多 5 MiB 的分片请求上传，显示上传进度，单片暂时失败最多重试两次。成功后仍需点击「保存」，才会绑定内容记录。上传失败保留原表单中的媒体引用。
 - 未配置 OSS 返回 503；OSS 上传或合并失败返回 502。不会将仅保存到本机的文件当作上传成功。
 
@@ -13,7 +13,9 @@
 
 本地已通过用户提供的 `ali.md` 只读核对 `sy-mpapp` bucket，区域为 `oss-cn-shenzhen`、ACL 为 private；本机缺少的设置已补入被忽略的 `.env`，权限为 600。未上传真实 bucket 测试对象，未修改 bucket、生产配置或生产内容。
 
-所有媒体对象写入时显式设为 private。RAM 权限需允许该 bucket 下 `video/`、`audio/` 的读取、写入、私有 ACL 设置及中止分片；失败清理还需删除本次随机生成对象的权限。代码不会修改 bucket 策略。分片由网站后端转发，不要求浏览器直连 OSS 或新增 OSS CORS 规则。
+所有付费媒体对象写入时显式设为 private。RAM 权限需允许该 bucket 下 `video/`、`audio/` 的读取、写入、私有 ACL 设置及中止分片；失败清理还需删除本次随机生成对象的权限。代码不会修改 bucket 策略。分片由网站后端转发，不要求浏览器直连 OSS 或新增 OSS CORS 规则。
+
+公开试听对象写入 `public/audio/` 前缀，写入时显式设置对象级 `public-read` 与 `Cache-Control: public, max-age=31536000, immutable`，不依赖 bucket 默认 ACL。RAM 需额外允许 `public/` 前缀的 PUT（含 `x-oss-object-acl`、`Cache-Control` 头）以及以 `x-oss-copy-source` 复制私有对象。公读域名默认 `<SY_OSS_ENDPOINT>/public`，可用 `SY_OSS_PUBLIC_BASE` 覆盖为自有 CDN 域名。
 
 ## 上传 API
 
@@ -28,6 +30,15 @@
 
 音频临时处理使用 `SY_AUDIO_PRIVATE_DIR`，默认 `private-audio/`；成功和失败均清理本次临时文件。音频原始分片对象只用于处理，成功后清理；不把服务器硬盘作为持久存储。旧 `POST /api/admin/upload-audio` 二进制/JSON 入口仍兼容，同样强制 OSS 成功；新后台统一使用分片入口。
 
+## 公开试听与公读前缀
+
+- 公开可试听的音频（音轨 1–60 秒片段、首页试听）一律放在 OSS `public/audio/`，由 OSS/CDN 直接下发，网站 nginx 的 `/audio/` 不再是媒体源。
+- `/api/content`、`/api/miniprogram/home` 与 `/api/miniprogram/audio/:id/access` 的公开试听字段返回 OSS 绝对 URL；付费原片仍只在私有前缀并以 600 秒签名 URL 下发。
+- OSS 未配置时（本地开发/测试）保留站内相对路径回退，便于离线实验；生产必须配置，否则后台保存站内路径会尝试上传并失败（502 `OSS_PUBLIC_AUDIO_SYNC_FAILED`）。
+- 后台把首页试听保存为站内 `/audio/<name>` 时，服务端自动上传到公读前缀并回填绝对地址；已是公读绝对地址则幂等跳过。
+- 历史试听补齐用运维脚本 `npm run media:public-audio`（在生产 release 目录、带 OSS 与 DB 环境变量运行，`--dry-run` 只预演）：本地 `public/audio/*` 上传、私有对象用 `x-oss-copy-source` 复制，逐对象 HEAD 校验大小与 immutable，输出 JSON 汇总，失败退出码 1。脚本只写 OSS，不改数据库。
+- 公开片段文件名必须匹配 `<32 位十六进制>-preview.(m4a|mp3)` 等既有规则；不符合规范的路径不会进入公开字段。
+
 ## 播放与发布
 
 上传不自动创建、发布或保存视频/音轨。原音频年会员权限、视频按 `videoId` 单独购买及私有签名播放沿用；公开内容不返回 OSS 路径或未鉴权播放地址。音频 OSS 代理保留 Range 的 206、416 及 Content-Range，兼容播放器请求。
@@ -36,7 +47,8 @@
 
 ## 验证与依据
 
-- `npm run test:media-oss-upload`：隔离 OSS 签名模拟服务验证私有上传、分片大小、完整性、重试/中止/重复完成、错误 XML、大小核验、音频试听、临时清理、无配置拒绝。
+- `npm run test:media-oss-upload`：隔离 OSS 签名模拟服务验证私有上传、分片大小、完整性、重试/中止/重复完成、错误 XML、大小核验、音频试听、临时清理、无配置拒绝；同时断言只有 `public/audio/` 可为 `public-read` 且带 immutable，完整音频永不进入公读前缀。
+- `npm run test:public-audio-oss`：模拟 OSS（公读前缀、copy-source、Range）验证绝对 URL 契约、后台站内路径自动发布、幂等、`access` 试听地址、私有不泄露、copy 迁移与 206 透传。
 - `npm run test:audio-oss-migration`、`node scripts/test-heritage-content.mjs`：旧音频读取、OSS 试听及完整播放、权限、Range 与历史内容兼容。
 - `npm run test:admin-guide-videos-ui`：真实组件方法验证上传回填、失败保留旧引用、重试和必须单独保存。
 - OSS 协议依据：[分片上传](https://www.alibabacloud.com/help/en/oss/user-guide/multipart-upload)、[V1 请求签名](https://www.alibabacloud.com/help/en/oss/developer-reference/include-signatures-in-the-authorization-header)、[合并分片](https://www.alibabacloud.com/help/en/oss/developer-reference/completemultipartupload)。

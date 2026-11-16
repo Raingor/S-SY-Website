@@ -20,7 +20,7 @@ export async function createMockPrivateOss() {
       for await (const chunk of req) chunks.push(chunk)
       const body = Buffer.concat(chunks)
       if (req.headers['content-md5'] && req.headers['content-md5'] !== crypto.createHash('md5').update(body).digest('base64')) { res.writeHead(400); res.end(); return }
-      requests.push({ method: req.method, key, query, size: body.length, acl: req.headers['x-oss-object-acl'] })
+      requests.push({ method: req.method, key, query, size: body.length, acl: req.headers['x-oss-object-acl'], cacheControl: req.headers['cache-control'] || '' })
       const uploadId = url.searchParams.get('uploadId')
       if (req.method === 'POST' && url.searchParams.has('uploads')) {
         const id = crypto.randomBytes(16).toString('hex')
@@ -44,8 +44,10 @@ export async function createMockPrivateOss() {
         res.end('<CompleteMultipartUploadResult><ETag>"complete"</ETag></CompleteMultipartUploadResult>')
       } else if (req.method === 'PUT') {
         if (control.failPreview && key.includes('-preview.')) { res.writeHead(503); res.end(); return }
-        if (req.headers['x-oss-object-acl'] !== 'private') { res.writeHead(403); res.end(); return }
-        objects.set(key, { body, type: req.headers['content-type'], acl: 'private' }); res.end()
+        const acl = req.headers['x-oss-object-acl']
+        // Private prefixes stay private; only `public/` objects may be published.
+        if (acl !== 'private' && !(acl === 'public-read' && key.startsWith('public/'))) { res.writeHead(403); res.end(); return }
+        objects.set(key, { body, type: req.headers['content-type'], acl, cacheControl: req.headers['cache-control'] || '' }); res.end()
       } else if (req.method === 'DELETE') {
         if (uploadId) uploads.delete(uploadId)
         else objects.delete(key)

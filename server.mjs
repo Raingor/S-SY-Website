@@ -7,7 +7,7 @@ import crypto from 'node:crypto'
 import { setTimeout as delay } from 'node:timers/promises'
 import tls from 'node:tls'
 import { closeStorage, initStorage, readData, saveData, storageStatus } from './storage.mjs'
-import { audioEntitled, effectiveUnlockMode, publicHeritage, signedAudioToken, streamPrivateAudio, uploadPrivateAudio, uploadPrivateAudioToOss, removePrivateAudioFiles, ossMediaRequest, validateAttraction, validateHeritageRecord, verifySignedAudioToken, ossAudioConfigured, ossAudioReadUrl, normalizeVisitorSections, sanitizeRichText, visibleTrack } from './heritage-content.mjs'
+import { audioEntitled, effectiveUnlockMode, publicHeritage, signedAudioToken, streamPrivateAudio, uploadPrivateAudio, uploadPrivateAudioToOss, uploadPublicAudioToOss, copyPublicAudioFromPrivateOss, publicAudioUrl, ossPublicMediaBase, removePrivateAudioFiles, ossMediaRequest, validateAttraction, validateHeritageRecord, verifySignedAudioToken, ossAudioConfigured, ossAudioReadUrl, normalizeVisitorSections, sanitizeRichText, visibleTrack } from './heritage-content.mjs'
 import { privateMapUrl, removePrivateMap, streamPrivateMap, uploadPrivateMap } from './private-map.mjs'
 import { amountToFen, createMiniProgramPrepay, decryptWechatNotify, queryWechatTransaction, realPayNotifyReady, realPayRequestReady, verifyWechatNotify, wechatPayConfig } from './wechat-pay.mjs'
 import { requestAdminDraft, requestAudioTrackTranslation, requestDestinationTranslation, requestTextTranslation } from './attraction-ai-fill.mjs'
@@ -634,6 +634,8 @@ async function storeAudioUploadInOss(input, data) {
     result = uploadPrivateAudio(input)
     const uploaded = await Promise.all([uploadPrivateAudioToOss(result.audioFile), uploadPrivateAudioToOss(result.previewFile)])
     if (!uploaded.every(Boolean)) throw mediaUploadError('音频上传 OSS 失败，未保存，请重试', 502, 'OSS_UPLOAD_FAILED')
+    // The 60s excerpt is public content: publish it under the immutable public prefix.
+    if (!await uploadPublicAudioToOss(result.previewFile)) throw mediaUploadError('音频试听上传 OSS 公开域名失败，请重试', 502, 'OSS_PUBLIC_AUDIO_SYNC_FAILED')
     removePrivateAudioFiles(result)
     data.audioUploads = Array.isArray(data.audioUploads) ? data.audioUploads : []
     data.audioUploads.push({ ...result, storage: 'oss' })
@@ -644,6 +646,7 @@ async function storeAudioUploadInOss(input, data) {
     if (result && !saved) {
       data.audioUploads = (data.audioUploads || []).filter((upload) => upload.audioFile !== result.audioFile)
       await Promise.allSettled([result.audioFile, result.previewFile].map(async (name) => { const response = await ossMediaRequest(`audio/${name}`, { method: 'DELETE' }); await response.arrayBuffer() }))
+      await Promise.allSettled([`public/audio/${result.previewFile}`].map(async (key) => { const response = await ossMediaRequest(key, { method: 'DELETE' }); await response.arrayBuffer() }))
     }
     throw error
   } finally { if (result) { try { removePrivateAudioFiles(result) } catch { console.error('Temporary audio cleanup failed') } } }
@@ -1523,6 +1526,19 @@ function publicHomeBanners(data) {
   return homeSettings(data, (value) => miniProgramBannerImage(value, imageUrl)).banners.map((item) => ({ ...item, description: item.description || '', alt: item.alt || item.title, enabled: true, sort: Number(item.sort || 0) }))
 }
 const HOME_AUDIO_PREVIEW_PATH = /^\/audio\/[a-z0-9][a-z0-9._-]*\.(?:m4a|mp3|aac|wav)$/i
+// Public excerpts are served by OSS (`<public base>/audio/<file>`) with an
+// immutable cache; site paths stay accepted for legacy configs and OSS-less dev.
+function homeAudioPreviewOssUrl(value) {
+  if (typeof value !== 'string') return ''
+  const base = ossPublicMediaBase()
+  if (!base) return ''
+  let url
+  try { url = new URL(value.trim()) } catch { return '' }
+  if (url.username || url.password || url.search || url.hash) return ''
+  const target = `${url.origin}${url.pathname}`
+  const audioPath = target.startsWith(`${base}/audio/`) ? target.slice(base.length) : ''
+  return audioPath && HOME_AUDIO_PREVIEW_PATH.test(audioPath) ? target : ''
+}
 function homeAudioPreviewPath(value) {
   if (typeof value !== 'string') return ''
   let audioPath = value.trim()
@@ -1538,6 +1554,15 @@ function homeAudioPreviewPath(value) {
   if (!existsSync(resolve(root, 'public', audioPath.slice(1)))) return ''
   return audioPath
 }
+// Upload the local excerpt to the OSS public prefix and return the absolute URL.
+async function publishHomeAudioPreview(value) {
+  const audioPath = homeAudioPreviewPath(value)
+  if (!audioPath || !ossAudioConfigured()) return value
+  const name = audioPath.slice('/audio/'.length)
+  const uploaded = await uploadPublicAudioToOss(name, resolve(root, 'public', audioPath.slice(1)))
+  if (!uploaded) throw Object.assign(new Error('OSS 公开音频同步失败，请稍后重试'), { status: 502, code: 'OSS_PUBLIC_AUDIO_SYNC_FAILED' })
+  return publicAudioUrl(name) || value
+}
 function publicHomeAudioPreview(data) {
   const preview = data.home?.audioPreview
   if (!preview || preview.enabled === false) return null
@@ -1545,10 +1570,12 @@ function publicHomeAudioPreview(data) {
   const attractionId = String(preview.attractionId || '').trim()
   const seconds = Number(preview.previewSeconds)
   if (!attractionId || !Number.isInteger(seconds) || seconds < 1 || seconds > 60) return null
-  const audioPath = homeAudioPreviewPath(preview.previewUrl)
-  if (!audioPath) return null
+  const rawUrl = String(preview.previewUrl || '').trim()
+  const ossUrl = homeAudioPreviewOssUrl(rawUrl)
+  const audioPath = ossUrl ? '' : homeAudioPreviewPath(rawUrl)
+  if (!ossUrl && !audioPath) return null
   // Private video URLs never enter this contract: only the separate public excerpt is published.
-  const previewUrl = /^https:\/\//i.test(String(preview.previewUrl || '')) ? `https://sy-greece.com${audioPath}` : audioPath
+  const previewUrl = ossUrl || publicAudioUrl(audioPath.slice('/audio/'.length)) || (/^https:\/\//i.test(rawUrl) ? `https://sy-greece.com${audioPath}` : audioPath)
   if (kind === 'human-video-audio') {
     if (seconds !== 60) return null
     const source = (data.guideVideos || []).find((video) => video.id === preview.sourceVideoId && video.attractionId === attractionId && video.status === 'published')
@@ -1941,7 +1968,7 @@ const server = http.createServer(async (req, res) => {
       const subject = simulation ? identity && (identity.phoneHash ? `sim-phone:${identity.phoneHash}` : `sim-key:${identity.key}`) : identity && `user:${identity.id}`
       const entitlements = identity ? (simulation ? simulationEntitlements(data, identity) : realPaymentEntitlements(data, identity)) : null
       const authorized = audioEntitled(track, entitlements)
-      const previewUrl = `/api/miniprogram/audio/${encodeURIComponent(track.id)}/preview`
+      const previewUrl = publicAudioUrl(track.previewFile) || `/api/miniprogram/audio/${encodeURIComponent(track.id)}/preview`
       if (section === 'access') {
         if (method !== 'GET') return json(res, 405, { code: 'METHOD_NOT_ALLOWED', error: 'method not allowed' })
         const access = authorized ? 'full' : 'preview'
@@ -2418,6 +2445,8 @@ const server = http.createServer(async (req, res) => {
         if (method === 'GET') return json(res, 200, { audioPreview: data.home.audioPreview || null, published: publicHomeAudioPreview(data) })
         const input = await body(req)
         const next = { ...(data.home.audioPreview || {}), ...input }
+        // Store the OSS public URL so clients never assemble a site-relative path.
+        if (next.previewUrl) next.previewUrl = await publishHomeAudioPreview(next.previewUrl)
         const published = publicHomeAudioPreview({ ...data, home: { ...data.home, audioPreview: next } })
         if (!published) return json(res, 422, { code: 'CONTENT_VALIDATION_FAILED', error: '首页试听配置无效：需要 attractionId、有效的 /audio/ 片段（m4a/mp3/aac/wav）与 1–60 秒的 previewSeconds' })
         data.home.audioPreview = next

@@ -31,6 +31,8 @@ export function audioResourceKnown(data, name) {
   if (existsSync(resolve(privateDir, name))) return true
   return (data?.audioUploads || []).some((upload) => upload.audioFile === name || upload.previewFile === name)
 }
+// Only excerpts copied to the public prefix get an OSS URL in the public contract.
+export function audioPublicPreviewKnown(name) { return Boolean(publicAudioUrl(name)) }
 function ossAudioConfig() {
   const accessKeyId = String(process.env.SY_OSS_ACCESS_KEY_ID || '').trim()
   const accessKeySecret = String(process.env.SY_OSS_ACCESS_KEY_SECRET || '').trim()
@@ -41,11 +43,54 @@ function ossAudioConfig() {
   return { accessKeyId, accessKeySecret, bucket, host, endpoint: endpoint || `https://${bucket}.${host}` }
 }
 export function ossAudioConfigured() { return Boolean(ossAudioConfig()) }
+// Publicly playable excerpts live under the bucket's `public/` prefix with a
+// long-lived immutable cache; paid originals stay under `audio/` and `video/`.
+export function ossPublicMediaBase() {
+  const config = ossAudioConfig()
+  if (!config) return ''
+  const override = String(process.env.SY_OSS_PUBLIC_BASE || '').trim().replace(/\/+$/, '')
+  if (override) return override
+  return `${config.endpoint}/public`
+}
+export function publicAudioUrl(name) {
+  const base = ossPublicMediaBase()
+  if (!base || !audioNamePattern.test(String(name || ''))) return null
+  return `${base}/audio/${name}`
+}
+export const PUBLIC_AUDIO_CACHE_CONTROL = 'public, max-age=31536000, immutable'
+async function putPublicAudioObject(name, body) {
+  const contentType = name.endsWith('.mp3') ? 'audio/mpeg' : 'audio/mp4'
+  const response = await ossMediaRequest(`public/audio/${name}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': contentType, 'Content-MD5': crypto.createHash('md5').update(body).digest('base64'), 'Cache-Control': PUBLIC_AUDIO_CACHE_CONTROL, 'x-oss-object-acl': 'public-read' },
+    body,
+  })
+  await response.arrayBuffer()
+  return response.ok
+}
+// Upload an excerpt so the CDN/OSS public domain can serve it directly.
+export async function uploadPublicAudioToOss(name, sourcePath = '') {
+  if (!ossAudioConfigured() || !audioNamePattern.test(String(name || ''))) return false
+  try { return await putPublicAudioObject(name, readFileSync(sourcePath || resolve(privateDir, name))) } catch { return false }
+}
+// Copy an existing private object into the public prefix without re-uploading bytes.
+export async function copyPublicAudioFromPrivateOss(name) {
+  const config = ossAudioConfig()
+  if (!config || !audioNamePattern.test(String(name || ''))) return false
+  try {
+    const response = await ossMediaRequest(`public/audio/${name}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': name.endsWith('.mp3') ? 'audio/mpeg' : 'audio/mp4', 'Cache-Control': PUBLIC_AUDIO_CACHE_CONTROL, 'x-oss-object-acl': 'public-read', 'x-oss-copy-source': `/${config.bucket}/audio/${name}`, 'x-oss-metadata-directive': 'REPLACE' },
+    })
+    const xml = await response.text()
+    return response.ok && /<CopyObjectResult[\s>]/.test(xml)
+  } catch { return false }
+}
 // Server-only OSS requests. Keep credentials and upload signatures out of the browser.
 export async function ossMediaRequest(key, { method = 'GET', query = {}, headers = {}, body } = {}) {
   const config = ossAudioConfig()
   if (!config) throw new Error('OSS 未配置，无法上传媒体')
-  if (!/^(audio|video)\/[a-zA-Z0-9._/-]+$/.test(key) || key.split('/').includes('..')) throw new Error('OSS 文件路径无效')
+  if (!/^(?:audio|video|public\/(?:audio|video))\/[a-zA-Z0-9._/-]+$/.test(key) || key.split('/').includes('..')) throw new Error('OSS 文件路径无效')
   const requestHeaders = Object.fromEntries(Object.entries(headers).map(([name, value]) => [name.toLowerCase(), String(value).trim()]))
   const date = new Date().toUTCString()
   const parameters = Object.keys(query).sort()
@@ -252,7 +297,7 @@ export function publicHeritage(data, countryId = 'greece') {
   const albums = (data.audioAlbums || []).filter((item) => isPublished(item) && (item.countryId || 'greece') === countryId).sort(sortByOrder)
   const albumIds = new Set(albums.map((item) => item.id))
   const tracks = (data.audioTracks || []).filter((item) => isPublished(item) && audioResourceKnown(data, item.audioFile) && audioResourceKnown(data, item.previewFile) && (item.category === 'heritage' ? albumIds.has(item.albumId) : attractionIds.has(item.attractionId) && (item.category !== 'route' || routeIds.has(item.routeId)) && (!item.exhibitId || (attractions.find((attraction) => attraction.id === item.attractionId)?.exhibits || []).some((exhibit) => exhibit.id === item.exhibitId && (exhibit.status == null || exhibit.status === 'published'))))).sort(sortByOrder)
-  const trackItem = (item) => ({ id: item.id, category: item.category, title: text(item.title), titleTw: text(item.titleTw), titleEn: text(item.titleEn), description: text(item.description), descriptionTw: text(item.descriptionTw), descriptionEn: text(item.descriptionEn), cover: publicImage(item.cover), language: text(item.language) || 'zh-CN', attractionId: item.attractionId || null, exhibitId: item.exhibitId || null, routeId: item.routeId || null, albumId: item.albumId || null, durationSeconds: integer(item.durationSeconds), previewSeconds: Math.min(60, Math.max(1, integer(item.previewSeconds, 60))), unlockMode: effectiveUnlockMode(item), isPinned: item.isPinned === true, sort: integer(item.sort), previewUrl: `/api/miniprogram/audio/${encodeURIComponent(item.id)}/preview`, accessUrl: `/api/miniprogram/audio/${encodeURIComponent(item.id)}/access`, fullUrl: null })
+  const trackItem = (item) => ({ id: item.id, category: item.category, title: text(item.title), titleTw: text(item.titleTw), titleEn: text(item.titleEn), description: text(item.description), descriptionTw: text(item.descriptionTw), descriptionEn: text(item.descriptionEn), cover: publicImage(item.cover), language: text(item.language) || 'zh-CN', attractionId: item.attractionId || null, exhibitId: item.exhibitId || null, routeId: item.routeId || null, albumId: item.albumId || null, durationSeconds: integer(item.durationSeconds), previewSeconds: Math.min(60, Math.max(1, integer(item.previewSeconds, 60))), unlockMode: effectiveUnlockMode(item), isPinned: item.isPinned === true, sort: integer(item.sort), previewUrl: audioPublicPreviewKnown(item.previewFile) ? publicAudioUrl(item.previewFile) : `/api/miniprogram/audio/${encodeURIComponent(item.id)}/preview`, accessUrl: `/api/miniprogram/audio/${encodeURIComponent(item.id)}/access`, fullUrl: null })
   return {
     attractionDetails: Object.fromEntries(attractions.map((item) => {
       const exhibits = (item.exhibits || []).filter((entry) => entry.status == null || entry.status === 'published').map((entry, index) => ({ ...safeText(entry, ['id', 'name', 'nameTw', 'nameEn', 'description', 'descriptionTw', 'descriptionEn', 'author', 'duration']), location: entry.location || '', image: publicImage(entry.image), sort: integer(entry.sort, index + 1), routeOrder: integer(entry.routeOrder), status: 'published' })).sort(sortByOrder)

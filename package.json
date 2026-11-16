@@ -36,7 +36,9 @@
     "test:admin-guide-videos-ui": "node scripts/test-admin-guide-videos-ui.mjs",
     "test:home-human-video-audio": "node scripts/test-home-human-video-audio.mjs",
     "test:guide-video-albums": "node scripts/test-guide-video-albums.mjs",
-    "test:share-cards": "node scripts/test-share-cards.mjs"
+    "test:share-cards": "node scripts/test-share-cards.mjs",
+    "test:public-audio-oss": "node scripts/test-public-audio-oss.mjs",
+    "media:public-audio": "node scripts/migrate-public-audio-to-oss.mjs"
   },
   "dependencies": {
     "@vitejs/plugin-react": "^5.1.1",
