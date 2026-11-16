@@ -23,8 +23,10 @@ delete process.env.SY_OSS_ENDPOINT
 assert.equal(ossPublicMediaBase(), 'https://demo-bucket.oss-example.aliyuncs.com/public')
 const trackName = 'a'.repeat(32) + '-preview.m4a'
 assert.equal(publicAudioUrl(trackName), `https://demo-bucket.oss-example.aliyuncs.com/public/audio/${trackName}`)
-assert.equal(publicAudioUrl('../etc/passwd'), null, '路径穿越与非法文件名必须被拒')
-assert.equal(publicAudioUrl('not-a-hash-preview.m4a'), null)
+assert.equal(publicAudioUrl('selected-routes-intro.m4a'), 'https://demo-bucket.oss-example.aliyuncs.com/public/audio/selected-routes-intro.m4a', '历史可读文件名仍可公开')
+assert.equal(publicAudioUrl('../etc/passwd.m4a'), null, '路径穿越必须被拒')
+assert.equal(publicAudioUrl('a/b.m4a'), null, '不允许子路径')
+assert.equal(publicAudioUrl('notes.txt'), null, '非音频扩展名被拒')
 assert.equal(PUBLIC_AUDIO_CACHE_CONTROL, 'public, max-age=31536000, immutable')
 
 // 2) 端到端：模拟 OSS（私有 + 公读前缀），验证上传公读对像带 immutable ACL 与正确字节。

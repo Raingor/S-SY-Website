@@ -52,10 +52,14 @@ export function ossPublicMediaBase() {
   if (override) return override
   return `${config.endpoint}/public`
 }
+// Public excerpts may keep legacy human-readable names (e.g. `selected-routes-intro.m4a`),
+// so only a flat, path-free file name is required here.
+const publicAudioNamePattern = /^[a-z0-9][a-z0-9._-]*\.(?:m4a|mp3|aac|wav)$/i
 export function publicAudioUrl(name) {
   const base = ossPublicMediaBase()
-  if (!base || !audioNamePattern.test(String(name || ''))) return null
-  return `${base}/audio/${name}`
+  const value = String(name || '')
+  if (!base || !publicAudioNamePattern.test(value) || value.includes('..')) return null
+  return `${base}/audio/${value}`
 }
 export const PUBLIC_AUDIO_CACHE_CONTROL = 'public, max-age=31536000, immutable'
 async function putPublicAudioObject(name, body) {
@@ -70,13 +74,13 @@ async function putPublicAudioObject(name, body) {
 }
 // Upload an excerpt so the CDN/OSS public domain can serve it directly.
 export async function uploadPublicAudioToOss(name, sourcePath = '') {
-  if (!ossAudioConfigured() || !audioNamePattern.test(String(name || ''))) return false
+  if (!ossAudioConfigured() || !publicAudioNamePattern.test(String(name || '')) || String(name).includes('..')) return false
   try { return await putPublicAudioObject(name, readFileSync(sourcePath || resolve(privateDir, name))) } catch { return false }
 }
 // Copy an existing private object into the public prefix without re-uploading bytes.
 export async function copyPublicAudioFromPrivateOss(name) {
   const config = ossAudioConfig()
-  if (!config || !audioNamePattern.test(String(name || ''))) return false
+  if (!config || !publicAudioNamePattern.test(String(name || '')) || String(name).includes('..')) return false
   try {
     const response = await ossMediaRequest(`public/audio/${name}`, {
       method: 'PUT',
