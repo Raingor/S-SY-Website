@@ -7,7 +7,7 @@ import crypto from 'node:crypto'
 import { setTimeout as delay } from 'node:timers/promises'
 import tls from 'node:tls'
 import { closeStorage, initStorage, readData, saveData, storageStatus } from './storage.mjs'
-import { audioEntitled, effectiveUnlockMode, publicHeritage, signedAudioToken, streamPrivateAudio, uploadPrivateAudio, uploadPrivateAudioToOss, uploadPublicAudioToOss, copyPublicAudioFromPrivateOss, publicAudioUrl, ossPublicMediaBase, removePrivateAudioFiles, ossMediaRequest, validateAttraction, validateHeritageRecord, verifySignedAudioToken, ossAudioConfigured, ossAudioReadUrl, normalizeVisitorSections, sanitizeRichText, visibleTrack } from './heritage-content.mjs'
+import { audioEntitled, effectiveUnlockMode, isPublicAudioExcerpt, publicHeritage, signedAudioToken, streamPrivateAudio, uploadPrivateAudio, uploadPrivateAudioToOss, uploadPublicAudioToOss, copyPublicAudioFromPrivateOss, publicAudioUrl, ossPublicMediaBase, removePrivateAudioFiles, ossMediaRequest, validateAttraction, validateHeritageRecord, verifySignedAudioToken, ossAudioConfigured, ossAudioReadUrl, normalizeVisitorSections, sanitizeRichText, visibleTrack } from './heritage-content.mjs'
 import { privateMapUrl, removePrivateMap, streamPrivateMap, uploadPrivateMap } from './private-map.mjs'
 import { amountToFen, createMiniProgramPrepay, decryptWechatNotify, queryWechatTransaction, realPayNotifyReady, realPayRequestReady, verifyWechatNotify, wechatPayConfig } from './wechat-pay.mjs'
 import { requestAdminDraft, requestAudioTrackTranslation, requestDestinationTranslation, requestTextTranslation } from './attraction-ai-fill.mjs'
@@ -1559,6 +1559,8 @@ async function publishHomeAudioPreview(value) {
   const audioPath = homeAudioPreviewPath(value)
   if (!audioPath || !ossAudioConfigured()) return value
   const name = audioPath.slice('/audio/'.length)
+  // Only excerpts may be published; a full recording must never become public.
+  if (!isPublicAudioExcerpt(name)) throw Object.assign(new Error('首页试听必须使用试听片段文件（文件名含 preview），完整录音不能公读'), { status: 422, code: 'PUBLIC_AUDIO_EXCERPT_REQUIRED' })
   const uploaded = await uploadPublicAudioToOss(name, resolve(root, 'public', audioPath.slice(1)))
   if (!uploaded) throw Object.assign(new Error('OSS 公开音频同步失败，请稍后重试'), { status: 502, code: 'OSS_PUBLIC_AUDIO_SYNC_FAILED' })
   return publicAudioUrl(name) || value
@@ -1586,7 +1588,9 @@ function publicHomeAudioPreview(data) {
     const sourceAudioId = String(preview.sourceAudioId || preview.sourceVideoId || '').trim().slice(0, 120)
     if (!sourceAudioId) return null
     if (!(data.attractions || []).some((attraction) => attraction.id === attractionId)) return null
-    return { kind, attractionId, sourceAudioId, previewUrl, previewSeconds: seconds }
+    // Emit both legacy id fields: clients read `sourceAudioId` first and keep
+    // `sourceVideoId` for older adapters; either may be empty.
+    return { kind, attractionId, sourceVideoId: String(preview.sourceVideoId || '').trim().slice(0, 120), sourceAudioId, previewUrl, previewSeconds: seconds }
   }
   return null
 }
@@ -2934,7 +2938,7 @@ const server = http.createServer(async (req, res) => {
       if (!res.writableEnded) res.end()
       return
     }
-    json(res, error.message === 'payload too large' ? 413 : 400, { error: error.message })
+    json(res, error.status || (error.message === 'payload too large' ? 413 : 400), { ...(error.code ? { code: error.code } : {}), error: error.message })
   }
 })
 

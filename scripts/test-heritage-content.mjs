@@ -23,6 +23,15 @@ function probeOssPreview(name) {
 }
 const port = 50000 + Math.floor(Math.random() * 10000)
 let child
+async function requestUrl(url, { headers } = {}) {
+  const response = await fetch(url, { headers })
+  return { response, data: await response.arrayBuffer() }
+}
+// Public excerpts now point at the OSS public prefix, so fetch the absolute URL itself.
+function mediaUrl(url) {
+  assert.match(String(url), /^https?:\/\//, `media URL must be absolute: ${url}`)
+  return new URL(url).toString()
+}
 let logs = ''
 const base = `http://127.0.0.1:${port}`
 async function request(path, { token, method = 'GET', body, headers } = {}) {
@@ -233,11 +242,11 @@ async function main() {
   assert.equal(content.data.audioAlbums[0].episodes[0].id, program.data.id)
   assert.equal(content.data.audioAlbums[0].episodes[0].fullUrl, null)
   assert.equal(JSON.stringify(content.data).includes(uploaded.data.audioFile), false)
-  const preview = await request(content.data.audioAlbums[0].episodes[0].previewUrl, { headers: { Range: 'bytes=0-127' } })
+  const preview = await requestUrl(mediaUrl(content.data.audioAlbums[0].episodes[0].previewUrl), { headers: { Range: 'bytes=0-127' } })
   assert.equal(preview.response.status, 206)
   assert.equal(preview.data.byteLength, 128)
   const previewSize = oss.objects.get('audio/' + uploaded.data.previewFile).body.length
-  const outsidePreview = await request(content.data.audioAlbums[0].episodes[0].previewUrl, { headers: { Range: `bytes=${previewSize}-` } })
+  const outsidePreview = await requestUrl(mediaUrl(content.data.audioAlbums[0].episodes[0].previewUrl), { headers: { Range: `bytes=${previewSize}-` } })
   assert.equal(outsidePreview.response.status, 416, 'out-of-bounds preview Range must be rejected')
   assert.equal(outsidePreview.response.headers.get('content-range'), `bytes */${previewSize}`)
   const anonymous = await request(`/api/miniprogram/audio/${program.data.id}/access`)
@@ -307,7 +316,7 @@ async function main() {
   const onlineContent = await request('/api/content')
   const publishedOnlineTrack = onlineContent.data.attractions.find(item => item.id === attractionId).audioGuides.find(item => item.id === onlineTrack.data.id)
   assert.deepEqual({ category: publishedOnlineTrack.category, attractionId: publishedOnlineTrack.attractionId, exhibitId: publishedOnlineTrack.exhibitId, titleTw: publishedOnlineTrack.titleTw, titleEn: publishedOnlineTrack.titleEn, descriptionTw: publishedOnlineTrack.descriptionTw, descriptionEn: publishedOnlineTrack.descriptionEn }, { category: 'online', attractionId, exhibitId, titleTw: '【TEST ONLY】線上點位講解', titleEn: 'TEST ONLY Online Point Guide', descriptionTw: '【TEST ONLY】繁體簡介', descriptionEn: 'TEST ONLY English description' })
-  assert.match(publishedOnlineTrack.previewUrl, /\/api\/miniprogram\/audio\//)
+  assert.equal(new URL(publishedOnlineTrack.previewUrl).pathname, `/public/audio/${uploaded.data.previewFile}`, 'published preview must live in the OSS public prefix')
   assert.match(publishedOnlineTrack.accessUrl, /\/api\/miniprogram\/audio\//)
   assert.equal(publishedOnlineTrack.fullUrl, null)
   const excludedExpert = await adminRequest('/api/admin/audioTracks', { method: 'POST', body: { title: '【TEST ONLY】名导排除项', category: 'expert', attractionId, unlockMode: 'expert', status: 'published', ...uploaded.data } })

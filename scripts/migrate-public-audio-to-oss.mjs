@@ -2,9 +2,10 @@
 // 只写 OSS 对象，不改数据库、不改线上服务进程内存。
 // 运行（生产 release 目录，需 SY_OSS_* 与 SY_STORAGE/SY_DB_* 环境变量）：
 //   node scripts/migrate-public-audio-to-oss.mjs [--dry-run]
-import { readdirSync, statSync } from 'node:fs'
+import { readdirSync, readFileSync, statSync } from 'node:fs'
+import { createHash } from 'node:crypto'
 import { resolve } from 'node:path'
-import { copyPublicAudioFromPrivateOss, ossAudioConfigured, ossMediaRequest, ossPublicMediaBase, publicAudioUrl, uploadPublicAudioToOss } from '../heritage-content.mjs'
+import { copyPublicAudioFromPrivateOss, isPublicAudioExcerpt, ossAudioConfigured, ossMediaRequest, ossPublicMediaBase, publicAudioUrl, uploadPublicAudioToOss } from '../heritage-content.mjs'
 import { closeStorage, initStorage, readData } from '../storage.mjs'
 
 const root = resolve(new URL('..', import.meta.url).pathname)
@@ -36,12 +37,41 @@ async function main() {
   const uploads = Array.isArray(data.audioUploads) ? data.audioUploads : []
   const previewNames = [...new Set([...tracks, ...uploads].map((item) => item.previewFile).filter(Boolean))]
   const files = localPublicAudio()
-  const summary = { localFiles: files.length, previewObjects: previewNames.length, uploaded: [], copied: [], skipped: [], failed: [] }
+  const summary = { localFiles: files.length, previewObjects: previewNames.length, uploaded: [], copied: [], keptPrivate: [], movedPrivate: [], removedFromPublic: [], skipped: [], failed: [] }
 
   for (const name of files) {
     const filePath = resolve(root, 'public/audio', name)
     const size = statSync(filePath).size
-    if (!publicAudioUrl(name)) { summary.failed.push({ name, reason: '不支持的公开音频文件名' }); continue }
+    if (!publicAudioUrl(name) && !/^[a-z0-9][a-z0-9._-]*\.(?:m4a|mp3|aac|wav)$/i.test(name)) { summary.failed.push({ name, reason: '不支持的文件名' }); continue }
+    if (!isPublicAudioExcerpt(name)) {
+      // Full originals: private prefix only, and never reachable anonymously.
+      const privateKey = `audio/${name}`
+      const existingPrivate = await head(privateKey)
+      if (existingPrivate && existingPrivate.size === size) {
+        summary.keptPrivate.push({ name, size, reason: '私有已存在' })
+      } else if (dryRun) {
+        summary.movedPrivate.push({ name, size, dryRun: true })
+      } else {
+        const body = readFileSync(filePath)
+        const response = await ossMediaRequest(privateKey, { method: 'PUT', headers: { 'Content-Type': name.endsWith('.mp3') ? 'audio/mpeg' : 'audio/mp4', 'Content-MD5': createHash('md5').update(body).digest('base64'), 'x-oss-object-acl': 'private' }, body })
+        await response.arrayBuffer()
+        const afterPrivate = response.ok ? await head(privateKey) : null
+        if (afterPrivate && afterPrivate.size === size) {
+          summary.movedPrivate.push({ name, size })
+        } else {
+          summary.failed.push({ name, reason: '私有前缀上传或校验失败' })
+        }
+      }
+      if (!dryRun) {
+        const leaked = await head(`public/audio/${name}`)
+        if (leaked) {
+          const removed = await ossMediaRequest(`public/audio/${name}`, { method: 'DELETE' })
+          await removed.arrayBuffer()
+          summary.removedFromPublic.push({ name, size: leaked.size, status: removed.status })
+        }
+      } else if (await head(`public/audio/${name}`)) summary.removedFromPublic.push({ name, dryRun: true })
+      continue
+    }
     const existing = await head(`public/audio/${name}`)
     if (existing && existing.size === size && existing.cacheControl.includes('immutable')) {
       summary.skipped.push({ name, size, reason: '已存在且缓存策略正确' })

@@ -9,7 +9,7 @@ import net from 'node:net'
 import { tmpdir } from 'node:os'
 import { join, resolve } from 'node:path'
 import { setTimeout as sleep } from 'node:timers/promises'
-import { copyPublicAudioFromPrivateOss, ossPublicMediaBase, publicAudioUrl, PUBLIC_AUDIO_CACHE_CONTROL } from '../heritage-content.mjs'
+import { copyPublicAudioFromPrivateOss, isPublicAudioExcerpt, ossPublicMediaBase, publicAudioUrl, PUBLIC_AUDIO_CACHE_CONTROL } from '../heritage-content.mjs'
 import { syntheticContentFixture } from './helpers/synthetic-content-fixture.mjs'
 
 const root = resolve(new URL('..', import.meta.url).pathname)
@@ -28,6 +28,11 @@ assert.equal(publicAudioUrl('../etc/passwd.m4a'), null, '路径穿越必须被�
 assert.equal(publicAudioUrl('a/b.m4a'), null, '不允许子路径')
 assert.equal(publicAudioUrl('notes.txt'), null, '非音频扩展名被拒')
 assert.equal(PUBLIC_AUDIO_CACHE_CONTROL, 'public, max-age=31536000, immutable')
+// 只有短试听（和显式白名单的引导音频）允许进公读前缀，正片必须私有。
+assert.equal(isPublicAudioExcerpt('acropolis-guide-preview-60s-74cb88c5.m4a'), true)
+assert.equal(isPublicAudioExcerpt('de12f7f1f5561f93831784819d52adda-preview.m4a'), true)
+assert.equal(isPublicAudioExcerpt('selected-routes-intro.m4a'), true)
+assert.equal(isPublicAudioExcerpt('acropolis-guide-30min-74cb88c5.mp3'), false, '43MB 正片不得公读')
 
 // 2) 端到端：模拟 OSS（私有 + 公读前缀），验证上传公读对像带 immutable ACL 与正确字节。
 const temp = await mkdtemp(join(tmpdir(), 'sy-public-audio-'))
@@ -95,7 +100,9 @@ fixture.audioUploads = [{ audioFile, previewFile, durationSeconds: 30, previewSe
 fixture.audioTracks = [{ id: 'track-public', category: 'online', title: 'OSS 公开试听', attractionId: 'acropolis', status: 'published', unlockMode: 'membership', previewSeconds: 30, audioFile, previewFile, durationSeconds: 30 }]
 // 首页试听：本地片段 + 配置指向站内路径（后台写入时应转成 OSS 绝对地址）。
 const localPreview = 'f'.repeat(32) + '-preview.m4a'
+const fullRecording = 'acropolis-guide-30min-fixture.mp3'
 await writeFile(join(temp, 'public/audio', localPreview), Buffer.alloc(512, 7))
+await writeFile(join(temp, 'public/audio', fullRecording), Buffer.alloc(4096, 9))
 fixture.home = { ...(fixture.home || {}), audioPreview: { kind: 'guide-audio', attractionId: 'acropolis', sourceAudioId: 'acropolis-guide-30min', previewUrl: `/audio/${localPreview}`, previewSeconds: 60, enabled: true } }
 await writeFile(join(temp, 'seed/site-data.json'), JSON.stringify(fixture))
 
@@ -163,6 +170,17 @@ try {
   assert.equal(authorize.data.previewUrl, `${publicBase}/audio/${previewFile}`, 'access 也应回传 OSS 试听地址')
   assert.equal(authorize.data.access, 'preview')
   assert(!objects.has(`public/audio/${audioFile}`), '完整原片不得复制到公读前缀')
+
+  // 完整录音绝不公读：后台把正片设为首页试听直接 422，且不会上传到公读前缀。
+  const rejected = await json('/api/admin/home-audio-preview', {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${login.data.token}` },
+    body: JSON.stringify({ previewUrl: `/audio/${fullRecording}`, kind: 'guide-audio', attractionId: 'acropolis', sourceAudioId: 'acropolis-guide-30min', previewSeconds: 60, enabled: true }),
+  })
+  assert.equal(rejected.status, 422, JSON.stringify(rejected.data))
+  assert.equal(rejected.data.code, 'PUBLIC_AUDIO_EXCERPT_REQUIRED')
+  assert(!objects.has(`public/audio/${fullRecording}`), '完整录音不得进入公读前缀')
+  assert.equal((await json('/api/content')).data.home.audioPreview.previewUrl, `${publicBase}/audio/${localPreview}`, '被拒的写入不得篡改已生效配置')
 
   // 新上传：完整音频进私有、试听进公读。
   const upload = await fetch(`${base}/api/admin/upload-audio`, { method: 'POST', headers: { 'Content-Type': 'audio/mpeg', Authorization: `Bearer ${login.data.token}`, 'X-File-Name': 'c'.repeat(32) + '.mp3', 'X-Preview-Seconds': '30' }, body: mp3 })

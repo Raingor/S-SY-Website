@@ -38,6 +38,8 @@
 - 后台把首页试听保存为站内 `/audio/<name>` 时，服务端自动上传到公读前缀并回填绝对地址；已是公读绝对地址则幂等跳过。
 - 历史试听补齐用运维脚本 `npm run media:public-audio`（在生产 release 目录、带 OSS 与 DB 环境变量运行，`--dry-run` 只预演）：本地 `public/audio/*` 上传、私有对象用 `x-oss-copy-source` 复制，逐对象 HEAD 校验大小与 immutable，输出 JSON 汇总，失败退出码 1。脚本只写 OSS，不改数据库。
 - 公开片段只接受不含路径的纯文件名（`.m4a`/`.mp3`/`.aac`/`.wav`），既可沿用历史可读文件名（如 `selected-routes-intro.m4a`），也支持 `<32 位十六进制>-preview` 形式；带 `..`、子目录或非音频扩展名的路径不会进入公开字段。
+- **只有试听片段可以公读**：`isPublicAudioExcerpt(name)` 要求文件名含 `preview`，或属于白名单短音频（`selected-routes-intro.m4a`、`*-intro.m4a`）。上传与首页试听发布都走同一判断：完整录音即使放在 `public/audio/` 也不会被上传为 public-read，后台把正片设为首页试听直接返回 422 `PUBLIC_AUDIO_EXCERPT_REQUIRED`。运维迁移脚本对非片段只写私有前缀 `audio/`，并删除历史遗留的 `public/audio/<正片>` 对象。
+- `guide-audio` 首页试听同时下发 `sourceAudioId`（必需）与 `sourceVideoId`（可空，兼容旧适配器），任一存在即可通过校验；仅 `sourceVideoId` 时该字段回填音频 id，客户端两种都接受。
 
 ## 播放与发布
 
@@ -48,7 +50,7 @@
 ## 验证与依据
 
 - `npm run test:media-oss-upload`：隔离 OSS 签名模拟服务验证私有上传、分片大小、完整性、重试/中止/重复完成、错误 XML、大小核验、音频试听、临时清理、无配置拒绝；同时断言只有 `public/audio/` 可为 `public-read` 且带 immutable，完整音频永不进入公读前缀。
-- `npm run test:public-audio-oss`：模拟 OSS（公读前缀、copy-source、Range）验证绝对 URL 契约、后台站内路径自动发布、幂等、`access` 试听地址、私有不泄露、copy 迁移与 206 透传。
+- `npm run test:public-audio-oss`：模拟 OSS（公读前缀、copy-source、Range）验证绝对 URL 契约、后台站内路径自动发布、幂等、`access` 试听地址、私有不泄露、copy 迁移与 206 透传；并断言完整录音被拒（422）且不会进入公读前缀。
 - `npm run test:audio-oss-migration`、`node scripts/test-heritage-content.mjs`：旧音频读取、OSS 试听及完整播放、权限、Range 与历史内容兼容。
 - `npm run test:admin-guide-videos-ui`：真实组件方法验证上传回填、失败保留旧引用、重试和必须单独保存。
 - OSS 协议依据：[分片上传](https://www.alibabacloud.com/help/en/oss/user-guide/multipart-upload)、[V1 请求签名](https://www.alibabacloud.com/help/en/oss/developer-reference/include-signatures-in-the-authorization-header)、[合并分片](https://www.alibabacloud.com/help/en/oss/developer-reference/completemultipartupload)。

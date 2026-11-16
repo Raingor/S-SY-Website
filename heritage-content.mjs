@@ -62,6 +62,13 @@ export function publicAudioUrl(name) {
   return `${base}/audio/${value}`
 }
 export const PUBLIC_AUDIO_CACHE_CONTROL = 'public, max-age=31536000, immutable'
+// Only short excerpts (and this explicit promo intro) may live on the public
+// prefix; full recordings stay private behind 600s signed URLs.
+const publicExcerptNames = new Set(['selected-routes-intro.m4a'])
+export function isPublicAudioExcerpt(name) {
+  const value = String(name || '')
+  return publicExcerptNames.has(value) || /(?:^|[-_.])preview(?:[-_.]|$)/i.test(value)
+}
 async function putPublicAudioObject(name, body) {
   const contentType = name.endsWith('.mp3') ? 'audio/mpeg' : 'audio/mp4'
   const response = await ossMediaRequest(`public/audio/${name}`, {
@@ -75,6 +82,7 @@ async function putPublicAudioObject(name, body) {
 // Upload an excerpt so the CDN/OSS public domain can serve it directly.
 export async function uploadPublicAudioToOss(name, sourcePath = '') {
   if (!ossAudioConfigured() || !publicAudioNamePattern.test(String(name || '')) || String(name).includes('..')) return false
+  if (!isPublicAudioExcerpt(name)) return false
   try { return await putPublicAudioObject(name, readFileSync(sourcePath || resolve(privateDir, name))) } catch { return false }
 }
 // Copy an existing private object into the public prefix without re-uploading bytes.

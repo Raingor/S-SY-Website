@@ -11,11 +11,13 @@ export async function createMockPrivateOss() {
       const url = new URL(req.url, 'http://fixture.invalid')
       const key = decodeURIComponent(url.pathname.slice(1))
       const signedQuery = url.searchParams.has('Signature')
+      // OSS honours object-level public-read ACLs: unsigned GET/HEAD succeeds for public objects.
+      const anonymousPublicRead = ['GET', 'HEAD'].includes(req.method) && key.startsWith('public/') && objects.get(key)?.acl === 'public-read'
       const query = [...url.searchParams.keys()].filter((name) => !['Signature','Expires','OSSAccessKeyId'].includes(name)).sort().map((name) => url.searchParams.get(name) ? `${name}=${url.searchParams.get(name)}` : name).join('&')
       const headers = Object.keys(req.headers).filter((name) => name.startsWith('x-oss-')).sort().map((name) => `${name}:${req.headers[name]}\n`).join('')
       const canonical = `${req.method}\n${req.headers['content-md5'] || ''}\n${req.headers['content-type'] || ''}\n${signedQuery ? url.searchParams.get('Expires') : req.headers.date}\n${headers}/${bucket}/${key}${query ? '?' + query : ''}`
       const signature = crypto.createHmac('sha1', secret).update(canonical).digest('base64')
-      if (signedQuery ? url.searchParams.get('Signature') !== signature || url.searchParams.get('OSSAccessKeyId') !== accessKeyId : req.headers.authorization !== 'OSS ' + accessKeyId + ':' + signature) { res.writeHead(403); res.end('<Error><Code>SignatureDoesNotMatch</Code></Error>'); return }
+      if (!anonymousPublicRead && (signedQuery ? url.searchParams.get('Signature') !== signature || url.searchParams.get('OSSAccessKeyId') !== accessKeyId : req.headers.authorization !== 'OSS ' + accessKeyId + ':' + signature)) { res.writeHead(403); res.end('<Error><Code>SignatureDoesNotMatch</Code></Error>'); return }
       const chunks = []
       for await (const chunk of req) chunks.push(chunk)
       const body = Buffer.concat(chunks)
