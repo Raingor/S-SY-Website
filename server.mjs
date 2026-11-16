@@ -1376,6 +1376,72 @@ function publicMiniprogramServiceEntries(data, imageUrl = (value) => value) {
     })
     .sort((a, b) => a.sort - b.sort)
 }
+// 小程序分享卡：按页面路径配置转发标题与图片；未配置的页面由小程序沿用页面标题与首图。
+const SHARE_CARD_ROUTES = [
+  '/pages/index/index', '/pages/knowledge/knowledge', '/pages/attraction/detail', '/pages/attraction/visitor-section',
+  '/pages/city/index', '/pages/city/spots', '/pages/video/index', '/pages/video/detail',
+  '/pages/audio/detail', '/pages/audio/album', '/pages/audio/route', '/pages/audio/collection',
+  '/pages/guide/guide', '/pages/travel-guide/travel-guide', '/pages/itinerary/index', '/pages/itinerary/detail',
+  '/pages/vehicle/vehicle', '/pages/business/business', '/pages/customize/customize', '/pages/service-flow/service-flow',
+  '/pages/luxury/detail', '/pages/membership/shop',
+]
+function normalizeShareCardRoute(value) {
+  let route = String(value || '').trim()
+  if (!route) return ''
+  route = route.split('?')[0].split('#')[0].trim()
+  route = route.replace(/\/+$/, '') || '/'
+  return /^\/pages\/[a-z0-9-]+\/[a-z0-9-]+$/i.test(route) ? route : ''
+}
+function normalizeShareCardImage(value) {
+  const raw = String(value || '').trim()
+  if (!raw) return ''
+  if (/^https:\/\/[^\s"'<>]+$/i.test(raw)) return raw.slice(0, 500)
+  const cleaned = raw.replace(/^\.\//, '').replace(/^\/+/, '')
+  return /^images\/[\w./-]+$/.test(cleaned) ? cleaned.slice(0, 500) : ''
+}
+function normalizeShareCard(item = {}, fallbackSort = 1, index = 0) {
+  const text = (value, max) => String(value ?? '').trim().slice(0, max)
+  const sortValue = Number(item.sort)
+  return {
+    id: String(item.id || `share-card-${index + 1}`).trim().slice(0, 100),
+    route: normalizeShareCardRoute(item.route),
+    title: text(item.title, 64),
+    titleTw: text(item.titleTw, 64),
+    titleEn: text(item.titleEn, 64),
+    description: text(item.description, 160),
+    descriptionTw: text(item.descriptionTw, 160),
+    descriptionEn: text(item.descriptionEn, 160),
+    image: normalizeShareCardImage(item.image),
+    sort: Number.isFinite(sortValue) && sortValue > 0 ? Math.min(9999, sortValue) : fallbackSort,
+    status: item.status === 'published' ? 'published' : 'unpublished',
+    ...(item.createdAt ? { createdAt: item.createdAt } : {}),
+    ...(item.updatedAt ? { updatedAt: item.updatedAt } : {}),
+  }
+}
+function shareCardValidationError(card) {
+  if (!card.route) return '请选择有效的小程序页面路径'
+  if (String(card.image || '').trim() && !card.image) return '分享图片路径无效，请通过上传按钮重新选择图片'
+  return ''
+}
+function publicShareCards(data, imageUrl = (value) => value) {
+  return (Array.isArray(data.shareCards) ? data.shareCards : [])
+    .map((item, index) => normalizeShareCard(item, index + 1, index))
+    .filter((card) => card.status === 'published' && card.route)
+    .map((card) => ({
+      id: card.id,
+      route: card.route,
+      title: card.title,
+      titleTw: card.titleTw,
+      titleEn: card.titleEn,
+      description: card.description,
+      descriptionTw: card.descriptionTw,
+      descriptionEn: card.descriptionEn,
+      image: card.image ? imageUrl(card.image) : '',
+      sort: card.sort,
+      status: 'published',
+    }))
+    .sort((a, b) => a.sort - b.sort)
+}
 function normalizePublicDestination(item, cities, attractions) {
   const cityById = new Map(cities.map((city) => [city.id, city]))
   const explicitCityId = String(item.cityId || '').trim()
@@ -1456,24 +1522,46 @@ function publicHomeBanners(data) {
   const imageUrl = optimizedPublicImageUrl
   return homeSettings(data, (value) => miniProgramBannerImage(value, imageUrl)).banners.map((item) => ({ ...item, description: item.description || '', alt: item.alt || item.title, enabled: true, sort: Number(item.sort || 0) }))
 }
-function publicHomeAudioPreview(data) {
-  const preview = data.home?.audioPreview
-  if (!preview || preview.kind !== 'human-video-audio' || preview.attractionId !== 'acropolis' || preview.previewSeconds !== 60) return null
-  const source = (data.guideVideos || []).find((video) => video.id === preview.sourceVideoId && video.attractionId === preview.attractionId && video.status === 'published')
-  if (!source || Number(source.durationSeconds) < 60) return null
-  // Only publish the separate public audio excerpt; private video URLs never enter this contract.
-  if (typeof preview.previewUrl !== 'string') return null
-  let audioPath = preview.previewUrl
+const HOME_AUDIO_PREVIEW_PATH = /^\/audio\/[a-z0-9][a-z0-9._-]*\.(?:m4a|mp3|aac|wav)$/i
+function homeAudioPreviewPath(value) {
+  if (typeof value !== 'string') return ''
+  let audioPath = value.trim()
+  if (!audioPath) return ''
   if (audioPath.startsWith('https://')) {
     try {
       const url = new URL(audioPath)
-      if (!['https://sy-greece.com', 'https://www.sy-greece.com'].includes(url.origin) || url.username || url.password || url.search || url.hash) return null
+      if (!['https://sy-greece.com', 'https://www.sy-greece.com'].includes(url.origin) || url.username || url.password || url.search || url.hash) return ''
       audioPath = url.pathname
-    } catch { return null }
+    } catch { return '' }
   }
-  if (!/^\/audio\/[a-z0-9][a-z0-9._-]*\.(?:m4a|mp3)$/i.test(audioPath)) return null
-  if (!existsSync(resolve(root, 'public', audioPath.slice(1)))) return null
-  return { sourceVideoId: source.id, attractionId: source.attractionId, kind: 'human-video-audio', previewUrl: preview.previewUrl, previewSeconds: 60 }
+  if (!HOME_AUDIO_PREVIEW_PATH.test(audioPath)) return ''
+  if (!existsSync(resolve(root, 'public', audioPath.slice(1)))) return ''
+  return audioPath
+}
+function publicHomeAudioPreview(data) {
+  const preview = data.home?.audioPreview
+  if (!preview || preview.enabled === false) return null
+  const kind = String(preview.kind || '').trim()
+  const attractionId = String(preview.attractionId || '').trim()
+  const seconds = Number(preview.previewSeconds)
+  if (!attractionId || !Number.isInteger(seconds) || seconds < 1 || seconds > 60) return null
+  const audioPath = homeAudioPreviewPath(preview.previewUrl)
+  if (!audioPath) return null
+  // Private video URLs never enter this contract: only the separate public excerpt is published.
+  const previewUrl = /^https:\/\//i.test(String(preview.previewUrl || '')) ? `https://sy-greece.com${audioPath}` : audioPath
+  if (kind === 'human-video-audio') {
+    if (seconds !== 60) return null
+    const source = (data.guideVideos || []).find((video) => video.id === preview.sourceVideoId && video.attractionId === attractionId && video.status === 'published')
+    if (!source || Number(source.durationSeconds) < 60) return null
+    return { sourceVideoId: source.id, attractionId, kind, previewUrl, previewSeconds: 60 }
+  }
+  if (kind === 'guide-audio') {
+    const sourceAudioId = String(preview.sourceAudioId || preview.sourceVideoId || '').trim().slice(0, 120)
+    if (!sourceAudioId) return null
+    if (!(data.attractions || []).some((attraction) => attraction.id === attractionId)) return null
+    return { kind, attractionId, sourceAudioId, previewUrl, previewSeconds: seconds }
+  }
+  return null
 }
 function publicHome(data) {
   const audioPreview = publicHomeAudioPreview(data)
@@ -1573,6 +1661,7 @@ function publicContent(data, countryId = 'greece', { includeAttractionDetails = 
     attractionDetails: heritage.attractionDetails,
     heritageGuideBanners: publicHeritageGuideBanners(data, (value) => miniProgramBannerImage(value, imageUrl)),
     miniprogramServiceEntries: publicMiniprogramServiceEntries(data, imageUrl),
+    shareCards: publicShareCards(data, imageUrl),
     vehicleService: publicVehicleService(data),
     businessService: publicBusinessService(data),
     travelGuide: publicTravelGuide(data),
@@ -2323,6 +2412,18 @@ const server = http.createServer(async (req, res) => {
         const { homeBanners: _savedHomeBanners, ...settings } = data.settings
         return json(res, 200, settings)
       }
+      const homeAudioPreviewPathname = '/api/admin/home-audio-preview'
+      if (url.pathname === homeAudioPreviewPathname && ['GET', 'PATCH'].includes(method)) {
+        data.home = data.home && typeof data.home === 'object' ? data.home : {}
+        if (method === 'GET') return json(res, 200, { audioPreview: data.home.audioPreview || null, published: publicHomeAudioPreview(data) })
+        const input = await body(req)
+        const next = { ...(data.home.audioPreview || {}), ...input }
+        const published = publicHomeAudioPreview({ ...data, home: { ...data.home, audioPreview: next } })
+        if (!published) return json(res, 422, { code: 'CONTENT_VALIDATION_FAILED', error: '首页试听配置无效：需要 attractionId、有效的 /audio/ 片段（m4a/mp3/aac/wav）与 1–60 秒的 previewSeconds' })
+        data.home.audioPreview = next
+        await saveData(data)
+        return json(res, 200, { audioPreview: data.home.audioPreview, published })
+      }
       const miniProgramBannerMatch = url.pathname.match(/^\/api\/admin\/miniprogram-home-banners(?:\/([^/]+))?$/)
       if (miniProgramBannerMatch && ['GET', 'POST', 'PATCH', 'DELETE'].includes(method)) {
         data.home = data.home && typeof data.home === 'object' ? data.home : {}
@@ -2443,6 +2544,36 @@ const server = http.createServer(async (req, res) => {
         } catch (error) { return json(res, 422, { code: 'CONTENT_VALIDATION_FAILED', error: error.message }) }
         if (!payload.id || !payload.iconImage || ['zh-CN', 'zh-TW', 'en'].some((locale) => !payload.title[locale] || !payload.subtitle[locale])) return json(res, 422, { code: 'CONTENT_VALIDATION_FAILED', error: '请填写三种语言的标题、副标题并设置图标' })
         if (items.some((item, position) => (item.id === payload.id || item.key === payload.key) && (method === 'POST' || position !== index))) return json(res, 409, { code: 'DUPLICATE_SERVICE_ENTRY', error: '该入口已存在；每个小程序服务入口只能配置一条' })
+        if (method === 'POST') items.push(payload)
+        else items[index] = payload
+        await saveData(data)
+        return json(res, method === 'POST' ? 201 : 200, payload)
+      }
+      const shareCardMatch = url.pathname.match(/^\/api\/admin\/shareCards(?:\/([^/]+))?$/)
+      if (shareCardMatch && ['GET', 'POST', 'PATCH', 'DELETE'].includes(method)) {
+        data.shareCards = Array.isArray(data.shareCards) ? data.shareCards : []
+        const items = data.shareCards
+        const cardId = shareCardMatch[1] ? decodeURIComponent(shareCardMatch[1]) : ''
+        const sorted = () => items.map((item, index) => normalizeShareCard(item, index + 1, index)).sort((a, b) => a.sort - b.sort)
+        if (method === 'GET') {
+          if (!cardId) return json(res, 200, { items: sorted() })
+          const card = items.find((item) => item.id === cardId)
+          return card ? json(res, 200, normalizeShareCard(card, 1, items.indexOf(card))) : json(res, 404, { code: 'CONTENT_NOT_FOUND', error: '分享设置不存在' })
+        }
+        const index = items.findIndex((item) => item.id === cardId)
+        if (method === 'PATCH' && index < 0) return json(res, 404, { code: 'CONTENT_NOT_FOUND', error: '分享设置不存在' })
+        if (method === 'DELETE') {
+          if (index < 0) return json(res, 404, { code: 'CONTENT_NOT_FOUND', error: '分享设置不存在' })
+          items.splice(index, 1)
+          await saveData(data)
+          return res.writeHead(204).end()
+        }
+        const input = await body(req)
+        const previous = method === 'PATCH' ? items[index] : {}
+        const payload = normalizeShareCard({ ...previous, ...input, id: method === 'PATCH' ? cardId : input.id || `share-card-${Date.now().toString(36)}`, createdAt: previous.createdAt || new Date().toISOString(), updatedAt: new Date().toISOString() }, index + 1, method === 'PATCH' ? index : items.length)
+        const validationError = shareCardValidationError(payload) || (String(input.image ?? previous.image ?? '').trim() && !payload.image ? '分享图片路径无效，请通过上传按钮重新选择图片' : '')
+        if (validationError) return json(res, 422, { code: 'CONTENT_VALIDATION_FAILED', error: validationError })
+        if (items.some((item, position) => normalizeShareCardRoute(item.route) === payload.route && (method === 'POST' || position !== index))) return json(res, 409, { code: 'DUPLICATE_SHARE_ROUTE', error: '该小程序页面已配置分享卡片；每个页面只能有一条' })
         if (method === 'POST') items.push(payload)
         else items[index] = payload
         await saveData(data)
@@ -2811,6 +2942,7 @@ async function start() {
     data.home.banners = Array.isArray(data.home.banners) ? data.home.banners : []
     data.heritageGuideBanners = Array.isArray(data.heritageGuideBanners) ? data.heritageGuideBanners.map((item, index) => normalizeHeritageGuideBanner(item, index + 1)) : []
     if (!Array.isArray(data.miniprogramServiceEntries)) data.miniprogramServiceEntries = defaultMiniprogramServiceEntries()
+    if (!Array.isArray(data.shareCards)) data.shareCards = []
     if (!data.vehicleService || typeof data.vehicleService !== 'object' || Array.isArray(data.vehicleService)) data.vehicleService = defaultVehicleService()
     if (!data.businessService || typeof data.businessService !== 'object' || Array.isArray(data.businessService)) data.businessService = defaultBusinessService()
     if (!data.travelGuide || typeof data.travelGuide !== 'object' || Array.isArray(data.travelGuide)) data.travelGuide = defaultTravelGuide()

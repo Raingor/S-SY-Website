@@ -71,6 +71,7 @@ async function check(name, change, expected = null) {
   }
 }
 
+const guidePreview = { kind: 'guide-audio', attractionId: 'acropolis', sourceAudioId: 'acropolis-guide-30min', previewUrl: '/audio/human-video-preview-60s.m4a', previewSeconds: 30 }
 await check('verified human video excerpt', () => {}, preview)
 await check('public HTTPS excerpt URL', fixture => { fixture.home.audioPreview.previewUrl = 'https://sy-greece.com' + preview.previewUrl }, { ...preview, previewUrl: 'https://sy-greece.com' + preview.previewUrl })
 await check('missing metadata', fixture => { delete fixture.home.audioPreview })
@@ -80,3 +81,11 @@ await check('online audio cannot replace human video', fixture => { fixture.home
 await check('private signed video cannot be a public excerpt', fixture => { fixture.home.audioPreview.previewUrl = 'https://private.invalid/original.mp4?Signature=private' })
 await check('preview longer than one minute', fixture => { fixture.home.audioPreview.previewSeconds = 61 })
 await check('missing public excerpt', () => {})
+await check('guide audio excerpt', fixture => { fixture.home.audioPreview = { ...guidePreview } }, guidePreview)
+await check('guide audio falls back to sourceVideoId', fixture => { fixture.home.audioPreview = { ...guidePreview, sourceAudioId: '', sourceVideoId: 'acropolis-guide-30min' } }, guidePreview)
+await check('guide audio without source id', fixture => { fixture.home.audioPreview = { ...guidePreview, sourceAudioId: '' } })
+await check('guide audio longer than one minute', fixture => { fixture.home.audioPreview = { ...guidePreview, previewSeconds: 61 } })
+await check('guide audio needs existing excerpt', fixture => { fixture.home.audioPreview = { ...guidePreview, previewUrl: '/audio/missing-guide-preview.m4a' } })
+await check('guide audio rejects video original', fixture => { fixture.home.audioPreview = { ...guidePreview, previewUrl: '/audio/acropolis-30min.mp4' } })
+await check('guide audio unknown attraction', fixture => { fixture.home.audioPreview = { ...guidePreview, attractionId: 'unknown-city' } })
+await check('guide audio disabled', fixture => { fixture.home.audioPreview = { ...guidePreview, enabled: false } })

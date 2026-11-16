@@ -35,7 +35,8 @@
     "test:media-oss-upload": "node scripts/test-media-oss-upload.mjs",
     "test:admin-guide-videos-ui": "node scripts/test-admin-guide-videos-ui.mjs",
     "test:home-human-video-audio": "node scripts/test-home-human-video-audio.mjs",
-    "test:guide-video-albums": "node scripts/test-guide-video-albums.mjs"
+    "test:guide-video-albums": "node scripts/test-guide-video-albums.mjs",
+    "test:share-cards": "node scripts/test-share-cards.mjs"
   },
   "dependencies": {
     "@vitejs/plugin-react": "^5.1.1",
