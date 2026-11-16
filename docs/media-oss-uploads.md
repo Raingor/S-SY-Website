@@ -45,7 +45,7 @@
 
 上传不自动创建、发布或保存视频/音轨。原音频年会员权限、视频按 `videoId` 单独购买及私有签名播放沿用；公开内容不返回 OSS 路径或未鉴权播放地址。音频 OSS 代理保留 Range 的 206、416 及 Content-Range，兼容播放器请求。
 
-本次公开试听迁移已于 2026-11-16 上线：release `20261116-public-audio-f78381c`（commit `f78381c`）运行中，bucket `public/audio/` 已回填 4 个站内音频与 228 个历史试听片段，`/api/content`、`/api/miniprogram/home` 与 `access` 均返回 OSS 绝对 URL，公读对象实测 200 + immutable + Range 206。提交与推送状态以共享日志为准。发布须按仓库 Git 发布流程更新完整服务端源码及两份构建入口；新旧后台、服务端应同时发布。分片路径需允许 PUT，单次请求上限至少 5 MiB；无需提高到整部影片大小。服务重启会终止未完成上传，发布前应等待上传结束。
+本次公开试听迁移于 2026-11-16 上线，并在同日收紧了公读范围：release `20261116-oss-excerpt-ebed3f6`（commit `ebed3f6`）运行中，bucket `public/audio/` 已回填 4 个站内音频与 228 个历史试听片段，`/api/content`、`/api/miniprogram/home` 与 `access` 均返回 OSS 绝对 URL，公读对象实测 200 + immutable + Range 206；43 MB 完整正片 `acropolis-guide-30min-74cb88c5.mp3` 已转入私有前缀并删除公读对象（匿名 403）。站点磁盘 `public/audio/` 仍在，但客户端只使用 OSS 地址。提交与推送状态以共享日志为准。发布须按仓库 Git 发布流程更新完整服务端源码及两份构建入口；新旧后台、服务端应同时发布。分片路径需允许 PUT，单次请求上限至少 5 MiB；无需提高到整部影片大小。服务重启会终止未完成上传，发布前应等待上传结束。
 
 ## 验证与依据
 
