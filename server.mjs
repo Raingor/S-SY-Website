@@ -657,8 +657,8 @@ function normalizeGuideVideo(input, index) {
     sort: Number.isFinite(Number(source.sort)) ? Math.max(0, Math.round(Number(source.sort))) : 0,
     attractionId: text(source.attractionId, 120),
     albumId: text(source.albumId, 120),
-    section: text(source.section, 80),
-    episode: Number.isFinite(Number(source.episode)) && Number(source.episode) > 0 ? Math.round(Number(source.episode)) : 0,
+    section: text(source.section, 64),
+    episode: Number.isFinite(Number(source.episode)) ? Math.max(0, Math.round(Number(source.episode))) : 0,
     title: text(source.title, 200),
     description: text(source.description, 2000),
     cover: text(source.cover, 300),
@@ -681,30 +681,24 @@ function guideVideoValidationError(video) {
   if (video.status === 'published' && video.category === 'attraction' && !video.attractionId) return '景点讲解发布前需关联景点'
   return ''
 }
-function normalizeGuideVideoAlbumSections(input) {
-  if (!Array.isArray(input)) return []
-  const text = (value, max = 300) => String(value ?? '').trim().slice(0, max)
-  return input.slice(0, 50).map((item, index) => {
-    const source = item && typeof item === 'object' && !Array.isArray(item) ? item : {}
-    const section = {
-      key: text(source.key, 80) || `section-${index + 1}`,
-      title: text(source.title, 200),
-      sort: Number.isFinite(Number(source.sort)) ? Math.max(0, Math.round(Number(source.sort))) : index,
-    }
-    section.titleTw = text(source.titleTw, 200) || section.title
-    section.titleEn = text(source.titleEn, 200) || section.title
-    return section
-  }).filter((section) => section.title)
-}
 function normalizeGuideVideoAlbum(input, index) {
   const source = input && typeof input === 'object' && !Array.isArray(input) ? input : {}
   const text = (value, max = 300) => String(value ?? '').trim().slice(0, max)
+  const sections = (Array.isArray(source.sections) ? source.sections : []).map((section, position) => {
+    const item = section && typeof section === 'object' && !Array.isArray(section) ? section : {}
+    const normalized = {
+      key: text(item.key, 64),
+      title: text(item.title, 200),
+      sort: Number.isFinite(Number(item.sort)) ? Math.max(0, Math.round(Number(item.sort))) : position + 1,
+    }
+    return { ...normalized, titleTw: text(item.titleTw, 200) || normalized.title, titleEn: text(item.titleEn, 200) || normalized.title }
+  }).filter((section) => section.key)
   const album = {
     id: text(source.id, 120) || `guide-video-album-${index + 1}`,
     title: text(source.title, 200),
     description: text(source.description, 2000),
     cover: text(source.cover, 300),
-    sections: normalizeGuideVideoAlbumSections(source.sections),
+    sections,
     sort: Number.isFinite(Number(source.sort)) ? Math.max(0, Math.round(Number(source.sort))) : 0,
     status: source.status === 'published' ? 'published' : 'unpublished',
     createdAt: text(source.createdAt, 40) || new Date().toISOString(),
@@ -719,19 +713,11 @@ function guideVideoAlbumValidationError(album) {
   if (!album.title) return '请填写专辑名称'
   return ''
 }
-function publicGuideVideoItem(video) {
-  return { id: video.id, category: video.category, sort: video.sort, attractionId: video.attractionId, albumId: video.albumId, section: video.section, episode: video.episode, title: video.title, titleTw: video.titleTw, titleEn: video.titleEn, description: video.description, descriptionTw: video.descriptionTw, descriptionEn: video.descriptionEn, cover: video.cover, durationSeconds: video.durationSeconds, accessUrl: `/api/miniprogram/video/${encodeURIComponent(video.id)}/access` }
+function publicGuideVideoAlbums(data) {
+  return (data.guideVideoAlbums || []).filter((album) => album.status === 'published').map(normalizeGuideVideoAlbum).sort((a, b) => a.sort - b.sort).map((album) => ({ id: album.id, title: album.title, titleTw: album.titleTw, titleEn: album.titleEn, description: album.description, descriptionTw: album.descriptionTw, descriptionEn: album.descriptionEn, cover: album.cover, sort: album.sort, status: album.status, sections: album.sections }))
 }
 function publicGuideVideos(data) {
-  return (data.guideVideos || []).filter((video) => video.status === 'published').map(normalizeGuideVideo).sort((a, b) => a.sort - b.sort).map(publicGuideVideoItem)
-}
-function publicGuideVideoAlbums(data) {
-  const albums = (data.guideVideoAlbums || []).filter((album) => album.status === 'published').map((album, index) => normalizeGuideVideoAlbum(album, index)).sort((a, b) => a.sort - b.sort || a.id.localeCompare(b.id))
-  const videos = (data.guideVideos || []).filter((video) => video.status === 'published').map(normalizeGuideVideo)
-  return albums.map((album) => ({
-    ...album,
-    videos: videos.filter((video) => video.albumId === album.id).sort((a, b) => (a.section || '').localeCompare(b.section || '') || (a.episode - b.episode) || (a.sort - b.sort) || a.id.localeCompare(b.id)).map(publicGuideVideoItem),
-  }))
+  return (data.guideVideos || []).filter((video) => video.status === 'published').map(normalizeGuideVideo).sort((a, b) => a.sort - b.sort).map((video) => ({ id: video.id, category: video.category, sort: video.sort, attractionId: video.attractionId, albumId: video.albumId, section: video.section, episode: video.episode, title: video.title, titleTw: video.titleTw, titleEn: video.titleEn, description: video.description, descriptionTw: video.descriptionTw, descriptionEn: video.descriptionEn, cover: video.cover, durationSeconds: video.durationSeconds, accessUrl: `/api/miniprogram/video/${encodeURIComponent(video.id)}/access` }))
 }
 function normalizeTravelGuideDocs(input) {
   const source = input && typeof input === 'object' && !Array.isArray(input) ? input : {}
@@ -903,8 +889,13 @@ function videoEntitlements(data, paidOrders, member) {
   const purchased = [...new Set(paidOrders.filter((order) => order.productType === 'guideVideo' && order.videoId).map((order) => order.videoId))]
   return { unlockedVideos: all.filter((id) => purchased.includes(id)) }
 }
+function isFreeHumanitiesVideo(video) {
+  return video?.category === 'humanities'
+}
 function videoEntitled(video, entitlements) {
-  // Only an explicit per-video purchase unlocks playback (membership does not).
+  // Humanities films are free after login. Attraction guide videos still need an
+  // explicit per-video purchase (membership does not unlock them).
+  if (isFreeHumanitiesVideo(video)) return true
   return Boolean(video && entitlements?.unlockedVideos?.includes(video.id))
 }
 function commercePurchaseTarget(productType, input, data) {
@@ -914,6 +905,7 @@ function commercePurchaseTarget(productType, input, data) {
     if (!videoId) return { error: 'VIDEO_ID_REQUIRED', message: '请指定要购买的攻略视频' }
     const video = (data.guideVideos || []).find((item) => item.id === videoId && item.status === 'published')
     if (!video) return { error: 'VIDEO_NOT_FOUND', message: '攻略视频不存在或未发布' }
+    if (isFreeHumanitiesVideo(video)) return { error: 'VIDEO_NOT_PURCHASABLE', message: '希腊人文影集免费观看，无需购买' }
     return { label: video.title, videoId }
   }
   return { error: 'PAYMENT_PRODUCT_UNAVAILABLE', message: '仅售年会员（199元/365天）与游览攻略视频（168元），其他内容商品已停售' }
@@ -1902,7 +1894,7 @@ const server = http.createServer(async (req, res) => {
       if (!videoEntitled(video, entitlements)) return json(res, 200, { id: video.id, access: 'locked', reason: 'VIDEO_PURCHASE_REQUIRED', message: '购买后可观看完整视频', product: miniProgramKnowledgeConfig(data).products.guideVideo })
       const playUrl = ossSignedGetUrl(video.ossKey, 600)
       if (!playUrl) return json(res, 503, { code: 'VIDEO_STREAM_NOT_CONFIGURED', error: '视频服务未配置，请稍后再试' })
-      return json(res, 200, { id: video.id, access: 'full', playUrl, expiresIn: 600, unlockedVia: 'purchase' })
+      return json(res, 200, { id: video.id, access: 'full', playUrl, expiresIn: 600, unlockedVia: isFreeHumanitiesVideo(video) ? 'free' : 'purchase' })
     }
     if (url.pathname === '/api/miniprogram/entitlements' && method === 'GET') {
       if (miniProgramSimulationEnabled()) {
@@ -2446,33 +2438,6 @@ const server = http.createServer(async (req, res) => {
       if (url.pathname === `${audioUnlockBatchPath}/audits` && method === 'GET') return json(res, 200, { items: data.audioUnlockBatchAudits || [] })
       if ([`${audioUnlockBatchPath}/preview`, `${audioUnlockBatchPath}/apply`].includes(url.pathname) && method === 'POST') return json(res, 410, { code: 'AUDIO_UNLOCK_BATCH_RETIRED', error: '单景点解锁已取消，全部音频统一由有效年会员解锁' })
       const heritageAdmin = url.pathname.match(/^\/api\/admin\/(audioAlbums|audioRoutes|audioTracks)(?:\/([^/]+))?$/)
-      if (url.pathname === '/api/admin/guideVideoAlbums' && method === 'GET') return json(res, 200, (data.guideVideoAlbums || []).map((album, index) => normalizeGuideVideoAlbum(album, index)))
-      const guideVideoAlbumMatch = url.pathname.match(/^\/api\/admin\/guideVideoAlbums\/([^/]+)$/)
-      if (guideVideoAlbumMatch && ['PATCH', 'DELETE'].includes(method)) {
-        const albumId = decodeURIComponent(guideVideoAlbumMatch[1])
-        const index = (data.guideVideoAlbums || []).findIndex((album) => album.id === albumId)
-        if (index < 0) return json(res, 404, { code: 'CONTENT_NOT_FOUND', error: '视频专辑不存在' })
-        if (method === 'DELETE') {
-          data.guideVideoAlbums.splice(index, 1); await saveData(data)
-          return res.writeHead(204).end()
-        }
-        const input = await body(req)
-        const merged = normalizeGuideVideoAlbum({ ...data.guideVideoAlbums[index], ...input, id: albumId }, index)
-        const validationError = guideVideoAlbumValidationError(merged)
-        if (validationError) return json(res, 422, { code: 'CONTENT_VALIDATION_FAILED', error: validationError })
-        data.guideVideoAlbums[index] = merged; await saveData(data)
-        return json(res, 200, merged)
-      }
-      if (url.pathname === '/api/admin/guideVideoAlbums' && method === 'POST') {
-        const input = await body(req)
-        const album = normalizeGuideVideoAlbum(input, (data.guideVideoAlbums || []).length)
-        const validationError = guideVideoAlbumValidationError(album)
-        if (validationError) return json(res, 422, { code: 'CONTENT_VALIDATION_FAILED', error: validationError })
-        if ((data.guideVideoAlbums || []).some((item) => item.id === album.id)) return json(res, 409, { code: 'DUPLICATE_ID', error: '专辑 ID 已存在' })
-        data.guideVideoAlbums = Array.isArray(data.guideVideoAlbums) ? data.guideVideoAlbums : []
-        data.guideVideoAlbums.push(album); await saveData(data)
-        return json(res, 201, album)
-      }
       if (url.pathname === '/api/admin/guideVideos' && method === 'GET') return json(res, 200, (data.guideVideos || []).map(normalizeGuideVideo))
       const guideVideoMatch = url.pathname.match(/^\/api\/admin\/guideVideos\/([^/]+)$/)
       if (guideVideoMatch && ['PATCH', 'DELETE'].includes(method)) {
@@ -2499,6 +2464,33 @@ const server = http.createServer(async (req, res) => {
         data.guideVideos = Array.isArray(data.guideVideos) ? data.guideVideos : []
         data.guideVideos.push(video); await saveData(data)
         return json(res, 201, video)
+      }
+      if (url.pathname === '/api/admin/guideVideoAlbums' && method === 'GET') return json(res, 200, (data.guideVideoAlbums || []).map(normalizeGuideVideoAlbum))
+      const guideVideoAlbumMatch = url.pathname.match(/^\/api\/admin\/guideVideoAlbums\/([^/]+)$/)
+      if (guideVideoAlbumMatch && ['PATCH', 'DELETE'].includes(method)) {
+        const albumId = decodeURIComponent(guideVideoAlbumMatch[1])
+        const index = (data.guideVideoAlbums || []).findIndex((album) => album.id === albumId)
+        if (index < 0) return json(res, 404, { code: 'CONTENT_NOT_FOUND', error: '专辑不存在' })
+        if (method === 'DELETE') {
+          data.guideVideoAlbums.splice(index, 1); await saveData(data)
+          return res.writeHead(204).end()
+        }
+        const input = await body(req)
+        const merged = normalizeGuideVideoAlbum({ ...data.guideVideoAlbums[index], ...input, id: albumId }, index)
+        const validationError = guideVideoAlbumValidationError(merged)
+        if (validationError) return json(res, 422, { code: 'CONTENT_VALIDATION_FAILED', error: validationError })
+        data.guideVideoAlbums[index] = merged; await saveData(data)
+        return json(res, 200, merged)
+      }
+      if (url.pathname === '/api/admin/guideVideoAlbums' && method === 'POST') {
+        const input = await body(req)
+        const album = normalizeGuideVideoAlbum(input, (data.guideVideoAlbums || []).length)
+        const validationError = guideVideoAlbumValidationError(album)
+        if (validationError) return json(res, 422, { code: 'CONTENT_VALIDATION_FAILED', error: validationError })
+        if ((data.guideVideoAlbums || []).some((item) => item.id === album.id)) return json(res, 409, { code: 'DUPLICATE_ID', error: '专辑 ID 已存在' })
+        data.guideVideoAlbums = Array.isArray(data.guideVideoAlbums) ? data.guideVideoAlbums : []
+        data.guideVideoAlbums.push(album); await saveData(data)
+        return json(res, 201, album)
       }
       if (heritageAdmin && ['GET', 'POST', 'PATCH', 'DELETE'].includes(method)) {
         const collection = heritageAdmin[1]; const itemId = heritageAdmin[2] || ''
