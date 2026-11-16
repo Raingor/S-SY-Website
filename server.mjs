@@ -895,13 +895,14 @@ function videoEntitlements(data, paidOrders, member) {
   const purchased = [...new Set(paidOrders.filter((order) => order.productType === 'guideVideo' && order.videoId).map((order) => order.videoId))]
   return { unlockedVideos: all.filter((id) => purchased.includes(id)) }
 }
-function isFreeHumanitiesVideo(video) {
+function isHumanitiesVideo(video) {
   return video?.category === 'humanities'
 }
 function videoEntitled(video, entitlements) {
-  // Humanities films are free after login. Attraction guide videos still need an
-  // explicit per-video purchase (membership does not unlock them).
-  if (isFreeHumanitiesVideo(video)) return true
+  // 2026-11-16 rule change: 漫游希腊/人文影集 are annual-member only (no standalone
+  // purchase). Attraction guide videos still need an explicit per-video purchase,
+  // and membership does not unlock them.
+  if (isHumanitiesVideo(video)) return Boolean(entitlements?.member)
   return Boolean(video && entitlements?.unlockedVideos?.includes(video.id))
 }
 function commercePurchaseTarget(productType, input, data) {
@@ -911,7 +912,7 @@ function commercePurchaseTarget(productType, input, data) {
     if (!videoId) return { error: 'VIDEO_ID_REQUIRED', message: '请指定要购买的攻略视频' }
     const video = (data.guideVideos || []).find((item) => item.id === videoId && item.status === 'published')
     if (!video) return { error: 'VIDEO_NOT_FOUND', message: '攻略视频不存在或未发布' }
-    if (isFreeHumanitiesVideo(video)) return { error: 'VIDEO_NOT_PURCHASABLE', message: '希腊人文影集免费观看，无需购买' }
+    if (isHumanitiesVideo(video)) return { error: 'VIDEO_NOT_PURCHASABLE', message: '希腊人文影集需开通年会员观看，不单独出售' }
     return { label: video.title, videoId }
   }
   return { error: 'PAYMENT_PRODUCT_UNAVAILABLE', message: '仅售年会员（199元/365天）与游览攻略视频（168元），其他内容商品已停售' }
@@ -1897,10 +1898,17 @@ const server = http.createServer(async (req, res) => {
       let entitlements = null
       if (identity) entitlements = miniProgramSimulationEnabled() ? simulationEntitlements(data, identity) : realPaymentEntitlements(data, miniProgramUserFromRequest(req, data))
       if (!identity) return json(res, 200, { id: video.id, access: 'locked', reason: 'MINIPROGRAM_LOGIN_REQUIRED', message: '请先微信登录' })
+      if (isHumanitiesVideo(video) && !entitlements?.member) {
+        // 年会员专属内容：锁定提示不能携带商品价格，避免被当成单独购买。
+        return json(res, 200, { id: video.id, access: 'locked', reason: 'ANNUAL_MEMBERSHIP_REQUIRED', message: '开通年会员即可观看这部影集' })
+      }
       if (!videoEntitled(video, entitlements)) return json(res, 200, { id: video.id, access: 'locked', reason: 'VIDEO_PURCHASE_REQUIRED', message: '购买后可观看完整视频', product: miniProgramKnowledgeConfig(data).products.guideVideo })
       const playUrl = ossSignedGetUrl(video.ossKey, 600)
       if (!playUrl) return json(res, 503, { code: 'VIDEO_STREAM_NOT_CONFIGURED', error: '视频服务未配置，请稍后再试' })
-      return json(res, 200, { id: video.id, access: 'full', playUrl, expiresIn: 600, unlockedVia: isFreeHumanitiesVideo(video) ? 'free' : 'purchase' })
+      if (isHumanitiesVideo(video)) {
+        return json(res, 200, { id: video.id, access: 'full', playUrl, expiresIn: 600, unlockedVia: 'member', validUntil: entitlements?.memberExpiresAt || '' })
+      }
+      return json(res, 200, { id: video.id, access: 'full', playUrl, expiresIn: 600, unlockedVia: 'purchase' })
     }
     if (url.pathname === '/api/miniprogram/entitlements' && method === 'GET') {
       if (miniProgramSimulationEnabled()) {

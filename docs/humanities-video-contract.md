@@ -1,6 +1,6 @@
 # 希腊人文影集接口与后台
 
-本功能复用 `guideVideos` 内容。希腊人文影集（`category: humanities`）登录后免费观看；景点讲解视频仍走 ¥168 单独购买。以下为本地实现契约；不会自动把旧景点视频归入人文影集，不新增影片或迁移生产数据。
+本功能复用 `guideVideos` 内容。希腊人文影集（`category: humanities`）仅有效年会员可观看、不单独出售；景点讲解视频仍走 ¥168 单独购买，年会员不解锁。以下为本地实现契约；不会自动把旧景点视频归入人文影集，不新增影片或迁移生产数据。
 
 ## 内容接口
 
@@ -29,10 +29,10 @@ API 沿用 `GET/POST /api/admin/guideVideos`、`PATCH/DELETE /api/admin/guideVid
 - 详情页只需视频 `id`，无需景点 ID。
 - `GET /api/miniprogram/video/:id/access`：
   - 匿名一律返回 `access:'locked', reason:'MINIPROGRAM_LOGIN_REQUIRED'`（不返回 `playUrl` / `product`）。
-  - **人文影集**（`category === 'humanities'`）：登录后直接 `access:'full'` + 有效期 600 秒的私有 OSS 签名 `playUrl`，`unlockedVia:'free'`；不返回 `VIDEO_PURCHASE_REQUIRED`，不下发 `guideVideo` 商品。
-  - **景点讲解**（`category === 'attraction'` 或未设置）：登录未购买返回 `VIDEO_PURCHASE_REQUIRED` 并附带 `product`（¥168）；购买后返回签名 `playUrl`，`unlockedVia:'purchase'`。
-- `POST /api/miniprogram/orders` 的 `guideVideo` 仅适用于景点讲解；对人文影集返回 `VIDEO_NOT_PURCHASABLE`。景点讲解价格固定 CNY 168。
-- 年会员不包含景点讲解视频；人文影集与会员状态无关，登录即可看。封面公开不授予播放权限。
+  - **人文影集**（`category === 'humanities'`，含「漫游希腊」专辑内视频）：仅有效年会员可看。已登录但年会员无效返回 `access:'locked', reason:'ANNUAL_MEMBERSHIP_REQUIRED'` + 提示文案，**不返回 `product`/价格**（避免被当成单独购买）；年会员有效则返回 `access:'full'` + 600 秒私有 OSS 签名 `playUrl`、`unlockedVia:'member'` 和会员到期时间 `validUntil`。
+  - **景点讲解**（`category === 'attraction'` 或未设置）：登录未购买返回 `VIDEO_PURCHASE_REQUIRED` 并附带 `product`（¥168）；购买后返回签名 `playUrl`，`unlockedVia:'purchase'`。年会员不解除该限制。
+- `POST /api/miniprogram/orders` 的 `guideVideo` 仅适用于景点讲解；对人文影集返回 `VIDEO_NOT_PURCHASABLE`（提示开通年会员）。景点讲解价格固定 CNY 168。
+- 2026-11-16 规则变更（覆盖此前「人文影集登录免费」）：人文影集改为年会员专属、不单独出售；会员到期或未生效即回到锁定态。封面公开不授予播放权限。
 - 草稿或已下架视频不在公开列表中，播放权限接口返回 404。
 
 ## 专辑（guideVideoAlbums）
