@@ -169,6 +169,9 @@
 .el-admin .membership-level-heading span { color:#718086; font-size:12px; line-height:1.6; }
 .el-admin .membership-user-cell { display:flex; align-items:flex-start; flex-direction:column; gap:5px; }
 .el-admin .membership-user-cell small { color:#758187; font-size:11px; }
+.el-admin .table-user-cell { display:flex; align-items:center; gap:9px; min-width:0; }
+.el-admin .table-user-cell .el-avatar { flex:0 0 auto; background:#e6f1ef; color:#167f7a; font-size:13px; font-weight:600; }
+.el-admin .table-user-cell>span { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 .el-admin .membership-edit-form .el-select,.el-admin .membership-edit-form .el-date-editor { width:100%; }
 .el-admin .settings-structured { margin-top:22px; padding-top:20px; border-top:1px solid var(--ea-line); }
 .el-admin .settings-structured-head { display:flex; justify-content:space-between; align-items:center; gap:12px; margin-bottom:14px; }
