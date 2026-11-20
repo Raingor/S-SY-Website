@@ -28,7 +28,9 @@ fixture.guideVideoAlbums = [
 fixture.guideVideos = [
   { id: 'video-fixture', category: 'attraction', attractionId: 'acropolis', albumId: 'album-fixture', section: 'monuments', episode: 1, title: '雅典卫城：山顶上的古希腊文明密码', description: '合成描述', cover: '/images/guide-cover-fixture.webp', ossKey: 'video/guide-acropolis.mp4', durationSeconds: 2375, status: 'published' },
   { id: 'video-humanities', category: 'humanities', albumId: 'album-fixture', section: 'stories', episode: 1, title: '希腊雅典值得打卡的好去处', description: '合成描述', ossKey: 'video/humanities.mp4', durationSeconds: 557, status: 'published' },
+  { id: 'video-no-cover', category: 'attraction', attractionId: 'acropolis', title: '未上传封面的景点讲解', description: '合成描述', ossKey: 'video/no-cover.mp4', durationSeconds: 120, status: 'published' },
 ]
+fixture.attractions[0].image = './images/acropolis-main.webp'
 await writeFile(join(temp, 'seed/site-data.json'), JSON.stringify(fixture))
 
 const password = '{{SECRET_bltmqvjs}}'
@@ -77,6 +79,10 @@ try {
   assert.equal(humanities.albumId, 'album-fixture')
   assert.equal(humanities.section, 'stories')
   assert.equal(humanities.episode, 1)
+  // 景点讲解未上传封面时联动关联景点主图；已上传则保留独立封面。
+  const noCover = content.guideVideos.find((v) => v.id === 'video-no-cover')
+  assert.equal(noCover.cover, './images/acropolis-main.webp', 'attraction video without cover falls back to attraction image')
+  assert.equal(acropolis.cover, '/images/guide-cover-fixture.webp', 'uploaded cover wins over the attraction image')
   const attractionPatch = await json('/api/admin/guideVideos/video-fixture', { method: 'PATCH', body: JSON.stringify({ albumId: 'album-fixture', section: 'monuments', episode: 3 }) }, token)
   assert.equal(attractionPatch.status, 200)
   assert.equal(attractionPatch.body.albumId, '', 'admin save cannot reintroduce a cross-category join')
