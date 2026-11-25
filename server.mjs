@@ -6,7 +6,7 @@ import { fileURLToPath } from 'node:url'
 import crypto from 'node:crypto'
 import { setTimeout as delay } from 'node:timers/promises'
 import tls from 'node:tls'
-import { closeStorage, initStorage, readData, saveData, storageStatus } from './storage.mjs'
+import { closeStorage, initStorage, queryStorageAudit, readData, saveData, storageStatus } from './storage.mjs'
 import { audioEntitled, effectiveUnlockMode, isPublicAudioExcerpt, publicHeritage, signedAudioToken, streamPrivateAudio, uploadPrivateAudio, uploadPrivateAudioToOss, uploadPublicAudioToOss, copyPublicAudioFromPrivateOss, publicAudioUrl, ossPublicMediaBase, removePrivateAudioFiles, ossMediaRequest, validateAttraction, validateHeritageRecord, verifySignedAudioToken, ossAudioConfigured, ossAudioReadUrl, normalizeVisitorSections, sanitizeRichText, visibleTrack } from './heritage-content.mjs'
 import { privateMapUrl, removePrivateMap, streamPrivateMap, uploadPrivateMap } from './private-map.mjs'
 import { amountToFen, createMiniProgramPrepay, decryptWechatNotify, queryWechatTransaction, realPayNotifyReady, realPayRequestReady, verifyWechatNotify, wechatPayConfig } from './wechat-pay.mjs'
@@ -2372,6 +2372,12 @@ const server = http.createServer(async (req, res) => {
         data[collection][index] = { ...data[collection][index], ...(await body(req)), id: itemId }; await saveData(data); return json(res, 200, data[collection][index])
       }
       if (url.pathname === '/api/admin/stats' && method === 'GET') return json(res, 200, { routes: data.routes.filter((x) => x.status === 'published').length, destinations: data.destinations.filter((x) => x.status === 'published').length, leads: data.leads.length, pendingLeads: data.leads.filter((x) => x.status === 'new').length, customizationLeads: data.leads.filter((x) => x.leadType === 'customization').length, guideBookings: data.leads.filter(isGuideBooking).length, pendingGuideBookings: data.leads.filter((x) => isGuideBooking(x) && x.status === 'new').length, miniProgramBookings: data.leads.filter(isMiniProgramBooking).length, vehicleConsultations: data.leads.filter((x) => x.leadType === 'vehicle-consultation').length, knowledgeBaseLeads: data.leads.filter((x) => x.leadType === 'knowledge-base').length, businessTravelLeads: data.leads.filter((x) => x.leadType === 'business-travel').length, attractions: (data.attractions || []).filter((x) => x.status === 'published').length, sampleItineraries: (data.sampleItineraries || []).filter((x) => x.status === 'published').length, customTrips: (data.customTrips || []).filter((x) => x.status !== 'archived').length, commerce: adminCommerceStats(data) })
+      if (url.pathname === '/api/admin/storage-audit' && method === 'GET') {
+        const since = url.searchParams.get('since') || ''
+        const until = url.searchParams.get('until') || ''
+        const limit = url.searchParams.get('limit') || '100'
+        return json(res, 200, await queryStorageAudit({ since, until, limit }))
+      }
       if (url.pathname === '/api/admin/guide-bookings' && method === 'GET') return json(res, 200, data.leads.filter(isGuideBooking))
       if (url.pathname === '/api/admin/miniprogram-bookings' && method === 'GET') return json(res, 200, data.leads.filter(isMiniProgramBooking))
       if (url.pathname === '/api/admin/miniprogram-orders' && method === 'GET') return json(res, 200, adminPaymentSummary(data))

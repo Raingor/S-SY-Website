@@ -67,6 +67,16 @@ async function initMariaDb() {
       updated_at DATETIME(6) NOT NULL
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
   `)
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS sy_site_data_audit (
+      id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+      data_key VARCHAR(64) NOT NULL,
+      saved_at DATETIME(6) NOT NULL,
+      payload_bytes INT UNSIGNED NOT NULL,
+      payload_sha256 CHAR(64) NOT NULL,
+      INDEX idx_saved_at (saved_at)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+  `)
   const rows = await pool.query('SELECT payload_json FROM sy_site_data WHERE data_key = ? LIMIT 1', ['main'])
   if (!rows[0]) {
     const seed = readSeedData()
@@ -93,15 +103,52 @@ export function readData() {
 export function saveData(data) {
   dataCache = data
   if (storageMode === 'json') return Promise.resolve().then(() => writeJsonData(data))
-  saveQueue = saveQueue.then(() => pool.query(
-    'INSERT INTO sy_site_data (data_key, payload_json, updated_at) VALUES (?, ?, UTC_TIMESTAMP(6)) ON DUPLICATE KEY UPDATE payload_json = VALUES(payload_json), updated_at = UTC_TIMESTAMP(6)',
-    ['main', JSON.stringify(data)],
-  ))
+  const payload = JSON.stringify(data)
+  const payloadBytes = Buffer.byteLength(payload)
+  const payloadHash = crypto.createHash('sha256').update(payload).digest('hex')
+  saveQueue = saveQueue.then(async () => {
+    await pool.query(
+      'INSERT INTO sy_site_data (data_key, payload_json, updated_at) VALUES (?, ?, UTC_TIMESTAMP(6)) ON DUPLICATE KEY UPDATE payload_json = VALUES(payload_json), updated_at = UTC_TIMESTAMP(6)',
+      ['main', payload],
+    )
+    try {
+      await pool.query(
+        'INSERT INTO sy_site_data_audit (data_key, saved_at, payload_bytes, payload_sha256) VALUES (?, UTC_TIMESTAMP(6), ?, ?)',
+        ['main', payloadBytes, payloadHash],
+      )
+    } catch (error) {
+      console.error('storage audit write failed:', error.message)
+    }
+  })
   return saveQueue
 }
 
 export function storageStatus() {
   return { mode: storageMode, ready: storageReady }
+}
+
+export async function queryStorageAudit({ since = '', until = '', limit = 100 } = {}) {
+  if (storageMode !== 'mariadb' || !pool) return { mode: storageMode, items: [], supported: false }
+  const cap = Math.max(1, Math.min(1000, Number.isFinite(Number(limit)) ? Math.floor(Number(limit)) : 100))
+  const clauses = ['data_key = ?']
+  const params = ['main']
+  if (since && !Number.isNaN(Date.parse(since))) { clauses.push('saved_at >= ?'); params.push(new Date(since)) }
+  if (until && !Number.isNaN(Date.parse(until))) { clauses.push('saved_at <= ?'); params.push(new Date(until)) }
+  const items = await pool.query(
+    `SELECT id, data_key, saved_at, payload_bytes, payload_sha256 FROM sy_site_data_audit WHERE ${clauses.join(' AND ')} ORDER BY saved_at DESC LIMIT ?`,
+    [...params, cap],
+  )
+  return {
+    mode: storageMode,
+    supported: true,
+    items: items.map((row) => ({
+      id: Number(row.id),
+      dataKey: row.data_key,
+      savedAt: row.saved_at instanceof Date ? row.saved_at.toISOString() : String(row.saved_at),
+      payloadBytes: Number(row.payload_bytes),
+      payloadSha256: String(row.payload_sha256),
+    })),
+  }
 }
 
 export async function closeStorage() {
