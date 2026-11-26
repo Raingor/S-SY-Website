@@ -78,7 +78,6 @@ try {
   assert.equal((await json('/api/admin/work-tickets', { method: 'POST', body: JSON.stringify({ title: 'x', priority: 'urgent' }) }, token)).status, 422, '优先级白名单')
   assert.equal((await json('/api/admin/work-tickets', { method: 'POST', body: JSON.stringify({ title: 'x', status: 'closed' }) }, token)).status, 422, '状态白名单')
   assert.equal((await json('/api/admin/work-tickets', { method: 'POST', body: JSON.stringify({ title: 'x', expectedAt: '2026/11/30' }) }, token)).status, 422, '日期格式')
-  assert.equal((await json('/api/admin/work-tickets', { method: 'POST', body: JSON.stringify({ title: 'x', videoUrl: 'ftp://a/b.mp4' }) }, token)).status, 422, '视频链接协议')
 
   // 4) 附件校验：只收 https、最多 20 个、字段归一。
   assert.equal((await json('/api/admin/work-tickets', { method: 'POST', body: JSON.stringify({ title: 'x', attachments: [{ url: '/docs/a.pdf', kind: 'doc' }] }) }, token)).status, 422, '相对路径附件应拒绝')
@@ -104,7 +103,7 @@ try {
   assert.equal(withFiles.body.attachments[1].kind, 'doc')
   assert.equal(withFiles.body.attachments[1].size, 4096)
   assert.equal(withFiles.body.requesterName, 'Jenny', 'Jenny 自动补名')
-  assert.equal(withFiles.body.videoUrl, '')
+  assert.equal(Object.prototype.hasOwnProperty.call(withFiles.body, 'videoUrl'), false, '视频链接字段已下线')
 
   // 5) 列表顺序：待处理在前，同状态按创建时间。
   const list = await json('/api/admin/work-tickets', {}, token)

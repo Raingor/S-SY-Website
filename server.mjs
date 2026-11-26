@@ -833,7 +833,6 @@ function workTicketFeedItem(ticket, base) {
     status: ticket.status,
     expectedAt: ticket.expectedAt || '',
     attachments,
-    videoUrl: ticket.videoUrl || '',
     note: ticket.note || '',
     createdAt: ticket.createdAt,
     updatedAt: ticket.updatedAt,
@@ -847,9 +846,8 @@ function workTicketFeedMarkdown(items) {
     const head = `## [${label[ticket.status] || ticket.status}] ${ticket.title}`
     const meta = [`- ID：${ticket.id}`, `- 提出人：${ticket.requesterName || ticket.requester}`, `- 优先级：${priority[ticket.priority] || ticket.priority}`, `- 期望完成：${ticket.expectedAt || '未设置'}`, `- 更新时间：${ticket.updatedAt}`].join('\n')
     const att = ticket.attachments.length ? `\n\n附件：\n${ticket.attachments.map((entry) => `- ${entry.name}：${entry.url}`).join('\n')}` : ''
-    const video = ticket.videoUrl ? `\n\n视频链接：${ticket.videoUrl}` : ''
     const note = ticket.note ? `\n\n处理备注：${ticket.note}` : ''
-    return `${head}\n${meta}\n\n${ticket.body || '（未填写正文）'}${att}${video}${note}`
+    return `${head}\n${meta}\n\n${ticket.body || '（未填写正文）'}${att}${note}`
   })
   return `# SY 工单（${items.length}）\n\n${blocks.join('\n\n---\n\n')}\n`
 }
@@ -1982,8 +1980,6 @@ function normalizeWorkTicket(input, existing, operator) {
   if (!WORK_TICKET_STATUSES.includes(status)) throw Object.assign(new Error('状态无效'), { status: 422 })
   const expectedAt = workTicketText(pick('expectedAt'), 10)
   if (expectedAt && !/^\d{4}-\d{2}-\d{2}$/.test(expectedAt)) throw Object.assign(new Error('期望完成日期格式应为 YYYY-MM-DD'), { status: 422 })
-  const videoUrl = workTicketText(pick('videoUrl'), 500)
-  if (videoUrl && !/^https?:\/\//i.test(videoUrl)) throw Object.assign(new Error('视频链接必须是 http(s) 地址'), { status: 422 })
   const requesterName = workTicketText(pick('requesterName'), 40) || (requester === 'other' ? '' : requester === 'jenny' ? 'Jenny' : 'Zoey')
   return {
     id: base.id || workTicketText(input.id, 64) || id('ticket'),
@@ -1995,7 +1991,6 @@ function normalizeWorkTicket(input, existing, operator) {
     status,
     expectedAt,
     attachments: workTicketAttachments(pick('attachments') ?? []),
-    videoUrl,
     note: String(pick('note') ?? '').slice(0, 2000),
     createdAt: base.createdAt || now,
     updatedAt: now,
