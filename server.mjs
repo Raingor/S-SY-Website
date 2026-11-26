@@ -1279,7 +1279,14 @@ async function saveMiniProgramAvatar(data, req, image, mimeType) {
   const converted = await toWebpOrOriginal(image, mimeType)
   const filename = `mp-avatar-${Date.now().toString(36)}-${crypto.randomBytes(3).toString('hex')}.${converted.extension}`
   writeRuntimeImage(filename, converted.buffer)
-  return `${siteBase(data, req)}/images/${filename}`
+  // Avatars are public images too: publish to OSS and keep the local copy so a
+  // release rollback still has the file and legacy /images paths keep working.
+  const remoteUrl = await uploadPublicImageToOss(filename, converted.buffer)
+  if (!remoteUrl && ossAudioConfigured()) {
+    rmSync(join(runtimeImageDir, filename), { force: true })
+    throw new Error('头像上传 OSS 失败，请稍后重试')
+  }
+  return remoteUrl || `${siteBase(data, req)}/images/${filename}`
 }
 function destinationAttractionIds(item = {}) {
   if (Array.isArray(item.attractionIds)) return [...new Set(item.attractionIds.map((value) => String(value || '').trim()).filter(Boolean))]
