@@ -817,6 +817,7 @@ function ticketsFeedAuthorized(req) {
   return crypto.timingSafeEqual(given, expected)
 }
 function workTicketFeedItem(ticket, base) {
+  migrateWorkTicketNoteToThread(ticket)
   const attachments = (Array.isArray(ticket.attachments) ? ticket.attachments : []).map((entry) => ({
     name: entry.name,
     url: /^https:\/\//i.test(entry.url) ? entry.url : `${base}/${String(entry.url || '').replace(/^\.?\/+/, '')}`,
@@ -833,7 +834,15 @@ function workTicketFeedItem(ticket, base) {
     status: ticket.status,
     expectedAt: ticket.expectedAt || '',
     attachments,
-    note: ticket.note || '',
+    note: '',
+    thread: (Array.isArray(ticket.thread) ? ticket.thread : []).map((entry) => ({
+      ask: entry.ask || '',
+      askAt: entry.askAt || '',
+      askBy: entry.askBy || 'admin',
+      answer: entry.answer || '',
+      answerAt: entry.answerAt || '',
+      answerBy: entry.answerBy || '',
+    })),
     createdAt: ticket.createdAt,
     updatedAt: ticket.updatedAt,
   }
@@ -846,8 +855,17 @@ function workTicketFeedMarkdown(items) {
     const head = `## [${label[ticket.status] || ticket.status}] ${ticket.title}`
     const meta = [`- ID：${ticket.id}`, `- 提出人：${ticket.requesterName || ticket.requester}`, `- 优先级：${priority[ticket.priority] || ticket.priority}`, `- 期望完成：${ticket.expectedAt || '未设置'}`, `- 更新时间：${ticket.updatedAt}`].join('\n')
     const att = ticket.attachments.length ? `\n\n附件：\n${ticket.attachments.map((entry) => `- ${entry.name}：${entry.url}`).join('\n')}` : ''
-    const note = ticket.note ? `\n\n处理备注：${ticket.note}` : ''
-    return `${head}\n${meta}\n\n${ticket.body || '（未填写正文）'}${att}${note}`
+    const threadBlock = (Array.isArray(ticket.thread) ? ticket.thread : []).length
+      ? `\n\n处理对话：\n${ticket.thread.map((entry, index) => {
+        const askTime = entry.askAt ? `（${entry.askAt}）` : ''
+        const question = `Q${index + 1}${askTime}：${entry.ask || '（未填写）'}`
+        const answer = entry.answer
+          ? `A${index + 1}${entry.answerAt ? `（${entry.answerAt}）` : ''}：${entry.answer}`
+          : `A${index + 1}：（待处理）`
+        return `${question}\n${answer}`
+      }).join('\n\n')}`
+      : ''
+    return `${head}\n${meta}\n\n${ticket.body || '（未填写正文）'}${att}${threadBlock}`
   })
   return `# SY 工单（${items.length}）\n\n${blocks.join('\n\n---\n\n')}\n`
 }
@@ -1947,6 +1965,56 @@ const WORK_TICKET_STATUSES = ['pending', 'in_progress', 'done', 'cancelled']
 const WORK_TICKET_PRIORITIES = ['high', 'normal', 'low']
 const WORK_TICKET_REQUESTERS = ['jenny', 'zoey', 'other']
 const WORK_TICKET_STATUS_RANK = { pending: 0, in_progress: 1, done: 2, cancelled: 3 }
+// 工单处理对话（Q&A thread）：同一张工单可有多轮「调整需求 ↔ 处理回应」。
+const WORK_TICKET_THREAD_ASKERS = ['jenny', 'zoey', 'other', 'admin']
+const WORK_TICKET_THREAD_ANSWERERS = ['admin', 'ai']
+const WORK_TICKET_THREAD_MAX_ITEMS = 50
+const WORK_TICKET_THREAD_TEXT_MAX = 2000
+function workTicketThread(input) {
+  if (input == null) return []
+  if (!Array.isArray(input)) throw Object.assign(new Error('处理对话格式无效'), { status: 422 })
+  if (input.length > WORK_TICKET_THREAD_MAX_ITEMS) throw Object.assign(new Error(`处理对话最多 ${WORK_TICKET_THREAD_MAX_ITEMS} 轮`), { status: 422 })
+  return input.map((item) => {
+    if (!item || typeof item !== 'object') throw Object.assign(new Error('处理对话条目格式无效'), { status: 422 })
+    const ask = String(item?.ask ?? '')
+    const answer = String(item?.answer ?? '')
+    if (ask.length > WORK_TICKET_THREAD_TEXT_MAX) throw Object.assign(new Error('单轮提问最多 2000 字'), { status: 422 })
+    if (answer.length > WORK_TICKET_THREAD_TEXT_MAX) throw Object.assign(new Error('单轮回应最多 2000 字'), { status: 422 })
+    const askBy = item?.askBy ? String(item.askBy) : 'admin'
+    if (!WORK_TICKET_THREAD_ASKERS.includes(askBy)) throw Object.assign(new Error('提问人无效'), { status: 422 })
+    const answerBy = item?.answerBy ? String(item.answerBy) : ''
+    if (answerBy && !WORK_TICKET_THREAD_ANSWERERS.includes(answerBy)) throw Object.assign(new Error('回应人无效'), { status: 422 })
+    return {
+      ask,
+      askAt: workTicketText(item?.askAt, 40),
+      askBy,
+      answer,
+      answerAt: workTicketText(item?.answerAt, 40),
+      answerBy,
+    }
+  })
+}
+// 读取时迁移：历史工单只有 note 处理备注，统一在内存中折叠成第一轮 Q&A，
+// 不做批量 DB 改写；下一次后台保存会自然写成 thread 并清空 note。
+function migrateWorkTicketNoteToThread(ticket) {
+  if (!ticket || typeof ticket !== 'object') return ticket
+  const note = String(ticket.note || '')
+  if (!note) {
+    if (!Array.isArray(ticket.thread)) ticket.thread = []
+    return ticket
+  }
+  if (!Array.isArray(ticket.thread)) ticket.thread = []
+  ticket.thread.push({
+    ask: '（原始工单）',
+    askAt: ticket.createdAt || '',
+    askBy: WORK_TICKET_THREAD_ASKERS.includes(ticket.requester) ? ticket.requester : 'admin',
+    answer: note,
+    answerAt: ticket.updatedAt || '',
+    answerBy: 'admin',
+  })
+  ticket.note = ''
+  return ticket
+}
 function workTicketText(value, max) { return String(value ?? '').trim().slice(0, max) }
 function workTicketAttachments(input) {
   if (input == null) return []
@@ -1981,6 +2049,13 @@ function normalizeWorkTicket(input, existing, operator) {
   const expectedAt = workTicketText(pick('expectedAt'), 10)
   if (expectedAt && !/^\d{4}-\d{2}-\d{2}$/.test(expectedAt)) throw Object.assign(new Error('期望完成日期格式应为 YYYY-MM-DD'), { status: 422 })
   const requesterName = workTicketText(pick('requesterName'), 40) || (requester === 'other' ? '' : requester === 'jenny' ? 'Jenny' : 'Zoey')
+  // thread 为准：客户端显式提交 thread 则以提交内容为准；否则保留既有 thread。
+  // 历史 note 兼容读取后迁移进 thread 第一轮，写出的新数据不再回填 note。
+  migrateWorkTicketNoteToThread(base)
+  // POST 直接带 note 的调用同样按迁移规则折叠进 thread；显式提交 thread 时以 thread 为准。
+  const merged = { note: String(pick('note') ?? ''), thread: Object.prototype.hasOwnProperty.call(input, 'thread') ? input.thread : base.thread, createdAt: base.createdAt || now, updatedAt: now, requester }
+  migrateWorkTicketNoteToThread(merged)
+  const thread = workTicketThread(merged.thread)
   return {
     id: base.id || workTicketText(input.id, 64) || id('ticket'),
     title,
@@ -1991,7 +2066,8 @@ function normalizeWorkTicket(input, existing, operator) {
     status,
     expectedAt,
     attachments: workTicketAttachments(pick('attachments') ?? []),
-    note: String(pick('note') ?? '').slice(0, 2000),
+    note: '',
+    thread,
     createdAt: base.createdAt || now,
     updatedAt: now,
     createdBy: base.createdBy || operator,
@@ -2461,9 +2537,9 @@ const server = http.createServer(async (req, res) => {
         if (!Array.isArray(data.workTickets)) data.workTickets = []
         const itemId = url.pathname === '/api/admin/work-tickets' ? '' : decodeURIComponent(url.pathname.split('/').pop())
         if (method === 'GET') {
-          if (!itemId) return json(res, 200, { items: workTicketsSorted(data.workTickets) })
+          if (!itemId) return json(res, 200, { items: workTicketsSorted(data.workTickets).map((ticket) => migrateWorkTicketNoteToThread(ticket)) })
           const item = data.workTickets.find((ticket) => ticket.id === itemId)
-          return item ? json(res, 200, item) : json(res, 404, { error: 'not found' })
+          return item ? json(res, 200, migrateWorkTicketNoteToThread(item)) : json(res, 404, { error: 'not found' })
         }
         try {
           if (method === 'POST') {

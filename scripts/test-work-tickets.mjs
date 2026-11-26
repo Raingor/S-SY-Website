@@ -2,7 +2,7 @@
 // 运行：node scripts/test-work-tickets.mjs
 import assert from 'node:assert/strict'
 import { spawn } from 'node:child_process'
-import { cp, mkdir, mkdtemp, symlink, writeFile } from 'node:fs/promises'
+import { cp, mkdir, mkdtemp, readFile, symlink, writeFile } from 'node:fs/promises'
 import http from 'node:http'
 import net from 'node:net'
 import { tmpdir } from 'node:os'
@@ -23,6 +23,23 @@ for (const file of ['server.mjs', 'storage.mjs', 'admin-session.mjs', 'heritage-
 await symlink(join(root, 'node_modules'), join(temp, 'node_modules'), 'dir')
 
 const fixture = syntheticContentFixture()
+// 预置一条历史遗留工单：存储中只有 note、没有 thread，验证读取时迁移不批量改库。
+fixture.workTickets = [{
+  id: 'ticket-legacy-note-01',
+  title: '遗留备注工单',
+  body: '请检查首页文案。',
+  requester: 'jenny',
+  requesterName: 'Jenny',
+  priority: 'normal',
+  status: 'in_progress',
+  expectedAt: '',
+  attachments: [],
+  note: '第一轮已改完标题，待确认',
+  createdAt: '2026-11-20T08:00:00.000Z',
+  updatedAt: '2026-11-21T09:00:00.000Z',
+  createdBy: 'SY Admin',
+  updatedBy: 'SY Admin',
+}]
 await writeFile(join(temp, 'seed/site-data.json'), JSON.stringify(fixture))
 
 // webhook 接收端：本地临时 http server，记录所有 POST body。
@@ -128,11 +145,72 @@ try {
   assert.equal(withFiles.body.attachments[1].size, 4096)
   assert.equal(withFiles.body.requesterName, 'Jenny', 'Jenny 自动补名')
   assert.equal(Object.prototype.hasOwnProperty.call(withFiles.body, 'videoUrl'), false, '视频链接字段已下线')
+  assert.ok(Array.isArray(withFiles.body.thread), '创建响应应含 thread 数组')
+  // 遗留 note 创建后读取时迁移为第一轮 Q&A。
+  assert.equal(withFiles.body.thread.length, 1, 'note 应迁移为一轮对话')
+  assert.equal(withFiles.body.thread[0].ask, '（原始工单）', '迁移轮 ask 标记')
+  assert.equal(withFiles.body.thread[0].answer, '待确认色值', '迁移轮 answer 为原 note')
+  assert.equal(withFiles.body.thread[0].askBy, 'jenny', '迁移轮提问人')
+  assert.equal(withFiles.body.thread[0].answerBy, 'admin', '迁移轮回应人')
+  assert.equal(withFiles.body.note, '', '迁移后 note 应为空')
+  // 读取时迁移：遗留工单存储里仍保留原 note，不做批量 DB 改写。
+  const storedRaw = JSON.parse(await readFile(join(temp, 'seed/site-data.json'), 'utf8'))
+  const storedLegacy = (storedRaw.workTickets || []).find((item) => item.id === 'ticket-legacy-note-01')
+  assert.equal(storedLegacy.note, '第一轮已改完标题，待确认', '未再编辑前存储里仍保留原 note')
+  assert.equal(Boolean(storedLegacy.thread), false, '存储不应被批量补写 thread')
+  // GET 遗留工单响应含迁移后的 thread 且 note 为空。
+  const legacyRead = await json('/api/admin/work-tickets/ticket-legacy-note-01', {}, token)
+  assert.equal(legacyRead.status, 200)
+  assert.equal(legacyRead.body.note, '', '遗留工单读取后 note 为空')
+  assert.equal(legacyRead.body.thread.length, 1, '遗留工单迁移为一轮对话')
+  assert.equal(legacyRead.body.thread[0].ask, '（原始工单）')
+  assert.equal(legacyRead.body.thread[0].askAt, '2026-11-20T08:00:00.000Z', 'askAt 用 createdAt')
+  assert.equal(legacyRead.body.thread[0].askBy, 'jenny', 'askBy 用原 requester')
+  assert.equal(legacyRead.body.thread[0].answer, '第一轮已改完标题，待确认', 'answer 为原 note')
+  assert.equal(legacyRead.body.thread[0].answerAt, '2026-11-21T09:00:00.000Z', 'answerAt 用 updatedAt')
+  assert.equal(legacyRead.body.thread[0].answerBy, 'admin')
+  // 迁移幂等：再次读取不应追加第二轮。
+  const legacyReread = await json('/api/admin/work-tickets/ticket-legacy-note-01', {}, token)
+  assert.equal(legacyReread.body.thread.length, 1, '重复读取迁移幂等')
+  // GET 列表读取时也应迁移。
+  const listAfterNote = await json('/api/admin/work-tickets', {}, token)
+  const migratedInList = listAfterNote.body.items.find((item) => item.id === 'ticket-legacy-note-01')
+  assert.equal(migratedInList.thread.length, 1, '列表读取时应迁移 note')
+  assert.equal(migratedInList.note, '', '列表读取迁移后 note 为空')
 
+  // 4.5) thread 字段校验与 PATCH append。
+  const threaded = await json('/api/admin/work-tickets', {
+    method: 'POST',
+    body: JSON.stringify({
+      title: '多轮调整需求',
+      thread: [
+        { ask: '请把按钮改成绿色', askAt: '2026-11-27T10:00:00.000Z', askBy: 'jenny', answer: '已改，待确认', answerAt: '2026-11-27T11:00:00.000Z', answerBy: 'admin' },
+        { ask: '再改成蓝色', askAt: '2026-11-27T12:00:00.000Z', askBy: 'zoey', answer: '', answerAt: '', answerBy: '' },
+      ],
+    }),
+  }, token)
+  assert.equal(threaded.status, 201, '带 thread 创建应 201')
+  assert.equal(threaded.body.thread.length, 2, 'thread 两轮保留')
+  assert.equal(threaded.body.thread[1].answer, '', '未答轮 answer 为空')
+  assert.equal(threaded.body.note, '', '显式 thread 创建后 note 为空')
+  assert.equal((await json('/api/admin/work-tickets', { method: 'POST', body: JSON.stringify({ title: 'x', thread: [{ ask: 'x'.repeat(2001), askBy: 'admin' }] }) }, token)).status, 422, 'ask 超长 422')
+  assert.equal((await json('/api/admin/work-tickets', { method: 'POST', body: JSON.stringify({ title: 'x', thread: [{ ask: 'ok', answer: 'y'.repeat(2001), askBy: 'admin' }] }) }, token)).status, 422, 'answer 超长 422')
+  assert.equal((await json('/api/admin/work-tickets', { method: 'POST', body: JSON.stringify({ title: 'x', thread: [{ ask: 'ok', askBy: 'someone' }] }) }, token)).status, 422, '非法 askBy 422')
+  assert.equal((await json('/api/admin/work-tickets', { method: 'POST', body: JSON.stringify({ title: 'x', thread: [{ ask: 'ok', askBy: 'admin', answerBy: 'robot' }] }) }, token)).status, 422, '非法 answerBy 422')
+  const tooManyRounds = Array.from({ length: 51 }, (_, index) => ({ ask: `round-${index}`, askBy: 'admin' }))
+  assert.equal((await json('/api/admin/work-tickets', { method: 'POST', body: JSON.stringify({ title: 'x', thread: tooManyRounds }) }, token)).status, 422, '超过 50 轮 422')
+  const appendedThread = threaded.body.thread.concat([{ ask: '最终确认版本', askAt: '2026-11-27T13:00:00.000Z', askBy: 'jenny', answer: '蓝色已上线', answerAt: '2026-11-27T14:00:00.000Z', answerBy: 'admin' }])
+  const patchedThread = await json(`/api/admin/work-tickets/${threaded.body.id}`, { method: 'PATCH', body: JSON.stringify({ thread: appendedThread }) }, token)
+  assert.equal(patchedThread.status, 200, 'PATCH append thread 应 200')
+  assert.equal(patchedThread.body.thread.length, 3, 'PATCH 后三轮')
+  assert.equal(patchedThread.body.thread[2].answer, '蓝色已上线')
+  const reread = await json(`/api/admin/work-tickets/${threaded.body.id}`, {}, token)
+  assert.deepEqual(reread.body.thread, appendedThread, '读回 thread 与 PATCH 一致')
+  assert.equal(reread.body.note, '', '读回应答 note 为空')
   // 5) 列表顺序：待处理在前，同状态按创建时间。
   const list = await json('/api/admin/work-tickets', {}, token)
   assert.equal(list.status, 200)
-  assert.equal(list.body.items.length, 2)
+  assert.equal(list.body.items.length, 4)
   assert.equal(list.body.items[0].status, 'pending')
 
   // 6) 状态流转与 DELETE 规则。
@@ -157,17 +235,25 @@ try {
   const feed = await json('/api/tickets/feed', { headers: { Authorization: `Bearer ${botToken}` } })
   assert.equal(feed.status, 200)
   assert.equal(feed.headers.get('cache-control'), 'no-store')
-  assert.equal(feed.body.count, 1)
+  assert.equal(feed.body.count, 3)
   const feedItem = feed.body.items[0]
-  for (const key of ['id', 'title', 'body', 'requester', 'requesterName', 'priority', 'status', 'expectedAt', 'attachments', 'createdAt', 'updatedAt']) assert.ok(Object.prototype.hasOwnProperty.call(feedItem, key), 'feed 缺字段 ' + key)
+  for (const key of ['id', 'title', 'body', 'requester', 'requesterName', 'priority', 'status', 'expectedAt', 'attachments', 'thread', 'createdAt', 'updatedAt']) assert.ok(Object.prototype.hasOwnProperty.call(feedItem, key), 'feed 缺字段 ' + key)
   assert.equal(feedItem.attachments[0].url.startsWith('https://'), true)
   assert.equal(feedItem.createdBy, undefined, 'feed 不输出后台操作人字段')
+  assert.ok(Array.isArray(feedItem.thread), 'feed 应输出 thread 数组')
+  assert.equal(feedItem.thread[0].answer, '待确认色值', 'feed 含迁移后的对话')
+  const feedThreaded = feed.body.items.find((item) => item.id === threaded.body.id)
+  assert.ok(feedThreaded, 'feed 应包含多轮工单')
+  assert.equal(feedThreaded.thread.length, 3, 'feed 多轮完整')
 
   const md = await json('/api/tickets/feed?format=md', { headers: { Authorization: `Bearer ${botToken}` } })
   assert.equal(md.status, 200)
   assert.match(String(md.headers.get('content-type')), /text\/markdown/)
-  assert.match(md.body, /# SY 工单（1）/)
+  assert.match(md.body, /# SY 工单（3）/)
   assert.match(md.body, /带附件的需求/)
+  assert.match(md.body, /Q1（[^）]+）：请把按钮改成绿色/, 'markdown 输出第一轮问')
+  assert.match(md.body, /A1（[^）]+）：已改，待确认/, 'markdown 输出第一轮答')
+  assert.match(md.body, /A2：（待处理）/, 'markdown 未答轮标待处理')
 
   // 8) 已取消默认不出现在 feed；显式 status=cancelled 可查。
   const cancelledTicket = await json('/api/admin/work-tickets', { method: 'POST', body: JSON.stringify({ title: '会被取消', status: 'cancelled' }) }, token)
