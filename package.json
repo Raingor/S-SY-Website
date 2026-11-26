@@ -37,6 +37,7 @@
     "test:home-human-video-audio": "node scripts/test-home-human-video-audio.mjs",
     "test:guide-video-albums": "node scripts/test-guide-video-albums.mjs",
     "test:share-cards": "node scripts/test-share-cards.mjs",
+    "test:work-tickets": "node scripts/test-work-tickets.mjs",
     "test:public-audio-oss": "node scripts/test-public-audio-oss.mjs",
     "media:public-audio": "node scripts/migrate-public-audio-to-oss.mjs"
   },

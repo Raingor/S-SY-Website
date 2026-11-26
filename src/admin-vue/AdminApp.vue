@@ -348,9 +348,13 @@
                     <span v-else-if="column.type==='tags'" class="table-tags"><el-tag v-for="tag in tagValues(row[column.key]).slice(0,3)" :key="tag" size="mini" effect="plain">{{ tag }}</el-tag><span v-if="!tagValues(row[column.key]).length">—</span></span>
                     <span v-else-if="active==='guideVideos'&&column.key==='category'">{{ row.category==='humanities' ? '希腊人文影集' : '景点讲解' }}</span>
                     <div v-else-if="active==='miniprogramUsers'&&column.key==='nickname'" class="table-user-cell"><el-avatar :size="30" :src="userAvatarUrl(row.avatarUrl)" fit="cover">{{ (row.nickname||row.id||'用').slice(0,1) }}</el-avatar><span>{{ row.nickname || row.id }}</span></div>
+                    <el-tag v-else-if="column.type==='ticketPriority'" size="small" :type="row.priority==='high'?'danger':row.priority==='low'?'info':'warning'" effect="plain">{{ priorityLabel(row.priority) }}</el-tag>
+                    <span v-else-if="column.type==='ticketAttachments'">{{ (row.attachments||[]).length }}</span>
+                    <span v-else-if="column.type==='ticketTime'">{{ dateTime(row[column.key]) }}</span>
+                    <span v-else-if="active==='workTickets'&&column.key==='requesterName'">{{ row.requesterName || requesterLabel(row.requester) }}</span>
                     <span v-else-if="!(active==='destinations'&&column.key==='sort')">{{ column.key==='title'||column.key==='subtitle' ? localizedText(row[column.key]) : displayValue(row[column.key]) }}</span>
                   </template></el-table-column>
-                  <el-table-column v-if="currentMenu.editable" label="操作" :width="active==='guides'?210:active==='miniprogramUsers'?210:145" align="right"><template slot-scope="{row}"><el-button size="mini" @click="editRow(row)">编辑</el-button><el-button v-if="active==='miniprogramUsers'" size="mini" type="primary" plain @click="editMembership(row)">调整会员</el-button><el-button v-if="active==='guides'" size="mini" @click="copyGuide(row)">复制</el-button><el-button v-if="active!=='miniprogramUsers'" size="mini" type="danger" plain @click="deleteRow(row)">删除</el-button></template></el-table-column>
+                  <el-table-column v-if="currentMenu.editable" label="操作" :width="active==='workTickets'?330:active==='guides'?210:active==='miniprogramUsers'?210:145" align="right"><template slot-scope="{row}"><el-button size="mini" @click="editRow(row)">编辑</el-button><template v-if="active==='workTickets'"><el-button v-if="row.status==='pending'" size="mini" type="primary" plain @click="changeStatus(row,'in_progress')">开始处理</el-button><el-button v-if="row.status==='pending'||row.status==='in_progress'" size="mini" type="success" plain @click="changeStatus(row,'done')">完成</el-button><el-button v-if="row.status==='cancelled'" size="mini" type="danger" plain @click="deleteRow(row)">删除</el-button></template><el-button v-if="active==='miniprogramUsers'" size="mini" type="primary" plain @click="editMembership(row)">调整会员</el-button><el-button v-if="active==='guides'" size="mini" @click="copyGuide(row)">复制</el-button><el-button v-if="active!=='miniprogramUsers'&&active!=='workTickets'" size="mini" type="danger" plain @click="deleteRow(row)">删除</el-button></template></el-table-column>
                 </el-table><el-empty v-else description="暂无记录"/></div>
                 <div v-if="filteredItems.length&&!(active==='attractions'&&attractionView==='destination')&&!(active==='audioTracks'&&['heritage','online'].includes(audioTrackCategoryFilter))" class="list-pagination"><el-pagination :current-page="currentPage" :page-size="pageSize" :page-sizes="pageSizes" :total="filteredItems.length" layout="total, sizes, prev, pager, next, jumper" @current-change="page=$event" @size-change="changePageSize"/></div>
                 <div v-if="active==='cities'" class="pricing-hint"><i class="el-icon-info"></i>点击城市行上的编辑，使用独立编辑页调整小程序讲解定价。</div>
@@ -428,6 +432,7 @@
                   <small v-if="field.help" class="field-help">{{ field.help }}</small>
                 </el-form-item>
               </div>
+              <el-form-item v-if="active==='workTickets'" label="附件" class="full-field"><div class="attachment-editor"><div v-if="ticketAttachments.length" class="attachment-list"><div v-for="(file,index) in ticketAttachments" :key="file.url+index" class="attachment-entry"><img v-if="file.kind==='image'" :src="file.url" :alt="file.name"/><i v-else class="el-icon-document attachment-doc-icon"/><div class="attachment-meta"><a :href="file.url" target="_blank" rel="noopener">{{ file.name || '附件' }}</a><small>{{ file.size ? Math.max(1,Math.round(Number(file.size)/1024))+' KB' : '' }}<span v-if="file.uploadedAt"> · {{ dateTime(file.uploadedAt) }}</span></small></div><el-button size="mini" type="danger" plain icon="el-icon-delete" @click="removeTicketAttachment(index)">移除</el-button></div></div><div v-else class="attachment-empty">还没有附件</div><div class="attachment-actions"><el-upload action="#" multiple :show-file-list="false" accept="image/png,image/jpeg,image/webp" :disabled="ticketUploading||busy" :http-request="uploadTicketImage"><el-button icon="el-icon-picture" :loading="ticketUploading">上传图片</el-button></el-upload><el-upload action="#" :show-file-list="false" accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx" :disabled="ticketUploading||busy" :http-request="uploadTicketDoc"><el-button icon="el-icon-document" :loading="ticketUploading">上传文档</el-button></el-upload><span class="attachment-hint">可直接拖入或 Ctrl+V 粘贴截图；图片自动缩到 1920px 内；文档 ≤20MB（PDF / Word / Excel / PPT）。附件全部存 OSS。</span></div></div></el-form-item>
               <el-form-item v-if="active==='guideVideos'" label="上传视频到 OSS（MP4，≤2GB）">
                 <el-upload action="#" :show-file-list="false" :http-request="uploadVideo" accept=".mp4,video/mp4" :disabled="busy"><el-button icon="el-icon-upload" :loading="busy">{{ form.ossKey ? '重新上传视频到 OSS' : '选择视频上传到 OSS' }}</el-button></el-upload>
                 <el-progress v-if="busy&&mediaUploadProgress>0" :percentage="mediaUploadProgress"/>
@@ -677,7 +682,7 @@ const TOKEN = 'sy-greece-admin-token'
 const ACTIVE_MENU = 'sy-greece-admin-menu'
 const RECENTS_COLLAPSED_KEY = 'sy-greece-admin-recents-collapsed'
 const groups = [
-  { label:'共同数据', items:[['overview','总览','el-icon-s-data'],['countries','国家管理','el-icon-map-location'],['guides','导游管理','el-icon-user'],['leads','咨询 CRM','el-icon-chat-line-round'],['guideBookings','导游预约','el-icon-date']] },
+  { label:'共同数据', items:[['overview','总览','el-icon-s-data'],['workTickets','工单','el-icon-tickets'],['countries','国家管理','el-icon-map-location'],['guides','导游管理','el-icon-user'],['leads','咨询 CRM','el-icon-chat-line-round'],['guideBookings','导游预约','el-icon-date']] },
   { label:'路线与目的地', items:[['routes','路线管理','el-icon-document'],['cities','城市与价格','el-icon-location-outline'],['miniProgramCommerce','历史商品（已停售）','el-icon-s-goods'],['destinationTypes','目的地分类','el-icon-collection-tag'],['destinations','目的地','el-icon-map-location'],['attractions','景点管理','el-icon-school'],['sampleItineraries','甄选路线','el-icon-guide']] },
   { label:'网站管理', items:[['homeBanners','首页 Banner','el-icon-picture'],['settings','站点配置','el-icon-setting'],['attractionDetailPage','景点详情配置','el-icon-document']] },
   { label:'语音与文史', items:[['audioRoutes','路线导览','el-icon-location-information'],['audioTracks','导览音频 / 文史节目','el-icon-headset'],['audioAlbums','希腊文史专辑','el-icon-collection'],['heritageGuideBanners','古迹讲解 Banner','el-icon-picture-outline']] },
@@ -689,8 +694,8 @@ const groups = [
   ] },
 ]
 const MENU_IDS = new Set(groups.flatMap(group=>group.items).map(item=>item[0]))
-const emptyData = { audioRoutes:[],audioTracks:[],audioAlbums:[],routes:[],destinations:[],cities:[],attractions:[],sampleItineraries:[],customTrips:[],leads:[],guides:[],countries:[],destinationTypes:[],guideBookings:[],miniProgramBookings:[],miniprogramUsers:[],miniprogramOrders:[],miniprogramTravelers:[],miniprogramDocuments:[],miniprogramCoupons:[],homeBanners:[],miniprogramBanners:[],miniprogramServiceEntries:[],heritageGuideBanners:[],guideVideos:[],guideVideoAlbums:[],shareCards:[],settings:{} }
-const routes = { audioRoutes:'/admin/audioRoutes',audioTracks:'/admin/audioTracks',audioAlbums:'/admin/audioAlbums',stats:'/admin/stats',routes:'/admin/routes',destinations:'/admin/destinations',cities:'/admin/cities',attractions:'/admin/attractions',sampleItineraries:'/admin/sampleItineraries',customTrips:'/admin/customTrips',leads:'/admin/leads',guideBookings:'/admin/guide-bookings',miniProgramBookings:'/admin/miniprogram-bookings',settings:'/admin/settings',attractionDetailPage:'/admin/attraction-detail-page',miniprogramUsers:'/admin/miniprogram-users',miniprogramOrders:'/admin/miniprogram-orders',miniprogramTravelers:'/admin/miniprogram-travelers',miniprogramDocuments:'/admin/miniprogram-documents',miniprogramCoupons:'/admin/miniprogram-coupons',countries:'/admin/countries',guides:'/admin/guides',destinationTypes:'/admin/destinationCategories',homeBanners:'/admin/home-banners',miniprogramBanners:'/admin/miniprogram-home-banners',miniprogramServiceEntries:'/admin/miniprogram-service-entries',heritageGuideBanners:'/admin/heritage-guide-banners',guideVideos:'/admin/guideVideos',guideVideoAlbums:'/admin/guideVideoAlbums',shareCards:'/admin/share-cards' }
+const emptyData = { audioRoutes:[],audioTracks:[],audioAlbums:[],routes:[],destinations:[],cities:[],attractions:[],sampleItineraries:[],customTrips:[],leads:[],guides:[],countries:[],destinationTypes:[],guideBookings:[],miniProgramBookings:[],miniprogramUsers:[],miniprogramOrders:[],miniprogramTravelers:[],miniprogramDocuments:[],miniprogramCoupons:[],homeBanners:[],miniprogramBanners:[],miniprogramServiceEntries:[],heritageGuideBanners:[],guideVideos:[],guideVideoAlbums:[],shareCards:[],workTickets:[],settings:{} }
+const routes = { audioRoutes:'/admin/audioRoutes',audioTracks:'/admin/audioTracks',audioAlbums:'/admin/audioAlbums',stats:'/admin/stats',routes:'/admin/routes',destinations:'/admin/destinations',cities:'/admin/cities',attractions:'/admin/attractions',sampleItineraries:'/admin/sampleItineraries',customTrips:'/admin/customTrips',leads:'/admin/leads',guideBookings:'/admin/guide-bookings',miniProgramBookings:'/admin/miniprogram-bookings',settings:'/admin/settings',attractionDetailPage:'/admin/attraction-detail-page',miniprogramUsers:'/admin/miniprogram-users',miniprogramOrders:'/admin/miniprogram-orders',miniprogramTravelers:'/admin/miniprogram-travelers',miniprogramDocuments:'/admin/miniprogram-documents',miniprogramCoupons:'/admin/miniprogram-coupons',countries:'/admin/countries',guides:'/admin/guides',destinationTypes:'/admin/destinationCategories',homeBanners:'/admin/home-banners',miniprogramBanners:'/admin/miniprogram-home-banners',miniprogramServiceEntries:'/admin/miniprogram-service-entries',heritageGuideBanners:'/admin/heritage-guide-banners',guideVideos:'/admin/guideVideos',guideVideoAlbums:'/admin/guideVideoAlbums',shareCards:'/admin/share-cards',workTickets:'/admin/work-tickets' }
 const detailLocales = [{key:'zh',label:'简体'},{key:'tw',label:'繁体'},{key:'en',label:'英文'}]
 const vehicleOptionGroups = [{key:'vehicle',label:'车型'},{key:'duration',label:'时长'},{key:'people',label:'人数'}]
 const detailSectionKeys = [{key:'overview',label:'概览'},{key:'visitor',label:'参观指南'},{key:'highlights',label:'必看亮点'},{key:'audioHow',label:'语音导览使用指南'},{key:'route',label:'路线导览',hiddenToggle:true},{key:'online',label:'专业介绍',hiddenToggle:true},{key:'expert',label:'游览攻略',hiddenToggle:true}]
@@ -833,13 +838,14 @@ const imageGuidanceByField = {
 }
 const publish = [{label:'发布',value:'published'},{label:'下架',value:'unpublished'}]
 const listFilterKeys = {
+  workTickets:['status','requester','expectedAt','createdAt'],
   audioRoutes:['status','attractionId'], audioTracks:['status'], audioAlbums:['status'], guideVideos:['status'], guideVideoAlbums:['status'], shareCards:['status','route'],
   countries:['enabled'], guides:['enabled','countryId','featured'], routes:['status','days'], destinations:['status','type','sort'], cities:['status'], destinationTypes:['enabled'], attractions:['status','city','type','source'], sampleItineraries:['status','tag'], customTrips:['status','period'],
   leads:['status','leadType','createdAt'], guideBookings:['status','bookingDate','createdAt'], miniProgramBookings:['status','leadType','createdAt'], miniprogramTrips:['status','leadType','createdAt'], homeBanners:['enabled'], miniprogramBanners:['enabled'], miniprogramServiceEntries:['enabled','key'], heritageGuideBanners:['enabled'],
   miniprogramUsers:['member','createdAt'], miniprogramOrders:['status','productType','createdAt'], miniprogramTravelers:['relation'], miniprogramDocuments:['visaStatus','expiry'], miniprogramCoupons:['status','expiresAt']
 }
-const listFilterLabels = {enabled:'发布状态',featured:'首页推荐',countryId:'所属国家',status:'状态',unlockMode:'收听规则',days:'天数',type:'分类 / 类型',currency:'币种',priceCny:'讲解价格',city:'城市',tag:'标签',period:'出行日期',leadType:'记录类型',createdAt:'创建日期',vehicleDate:'用车日期',vehicleNeed:'用车场景',bookingDate:'预约日期',member:'会员类型',productType:'商品类型',relation:'关系',visaStatus:'签证状态',expiry:'证件到期日期',expiresAt:'优惠券有效期'}
-const listDateFilterKeys = ['period','createdAt','bookingDate','expiry','expiresAt','vehicleDate']
+const listFilterLabels = {enabled:'发布状态',featured:'首页推荐',countryId:'所属国家',status:'状态',requester:'提出人',expectedAt:'期望完成',unlockMode:'收听规则',days:'天数',type:'分类 / 类型',currency:'币种',priceCny:'讲解价格',city:'城市',tag:'标签',period:'出行日期',leadType:'记录类型',createdAt:'创建日期',vehicleDate:'用车日期',vehicleNeed:'用车场景',bookingDate:'预约日期',member:'会员类型',productType:'商品类型',relation:'关系',visaStatus:'签证状态',expiry:'证件到期日期',expiresAt:'优惠券有效期'}
+const listDateFilterKeys = ['period','createdAt','bookingDate','expiry','expiresAt','vehicleDate','expectedAt']
 const listNumberFilterKeys = ['priceCny']
 const translatableFieldGroups = {
   guideVideos: [
@@ -866,6 +872,17 @@ const translatableFieldGroups = {
 }
 
 const fields = {
+  workTickets:{label:'工单',endpoint:'work-tickets',addLabel:'新建工单',columns:[['title','标题'],['requesterName','提出人',null,110],['priority','优先级','ticketPriority',110],['status','状态','status',130],['expectedAt','期望完成',null,120],['attachments','附件','ticketAttachments',90],['updatedAt','更新时间','ticketTime',170]],fields:[
+    basic('title','标题','text',{required:true}),
+    basic('requester','提出人','select',{required:true,options:[{label:'Jenny',value:'jenny'},{label:'Zoey',value:'zoey'},{label:'其他',value:'other'}]}),
+    basic('requesterName','提出人名称','text',{help:'选「其他」或需要标注具体对接人时填写；Jenny / Zoey 留空会自动用名字。'}),
+    basic('priority','优先级','select',{options:[{label:'高',value:'high'},{label:'普通',value:'normal'},{label:'低',value:'low'}],help:'留空保存为「普通」。'}),
+    basic('status','状态','select',{options:[{label:'待处理',value:'pending'},{label:'处理中',value:'in_progress'},{label:'已完成',value:'done'},{label:'已取消',value:'cancelled'}],help:'留空保存为「待处理」；只有「已取消」的工单才能删除。'}),
+    basic('expectedAt','期望完成','date'),
+    basic('body','需求正文','textarea',{rows:8,help:'写清页面/字段、期望效果、验收方式；越具体越好。'}),
+    basic('videoUrl','视频链接（选填）','text',{help:'一期不接收视频上传；需要给参考视频时填 http(s) 链接。'}),
+    basic('note','处理备注','textarea',{rows:4,help:'处理进度、改动说明、留给下次的注意事项。'}),
+  ]},
   audioRoutes:{label:'路线导览',endpoint:'audioRoutes',addLabel:'新增路线',columns:[['title','路线'],['attractionId','所属景点'],['sort','排序'],['status','状态','status']],fields:[basic('title','路线名称','text',{required:true}),basic('titleTw','繁体名称'),basic('titleEn','英文名称'),basic('description','说明','textarea'),basic('attractionId','所属景点','select',{required:true,options:'attractions'}),basic('pointIds','点位顺序','multiselect',{options:'exhibits',help:'选择本景点讲解点，拖动排序暂不支持；顺序以当前选择顺序为准。'}),basic('sort','排序','number'),basic('status','发布状态','select',{options:'publish'})]},
   audioAlbums:{label:'希腊文史专辑',endpoint:'audioAlbums',addLabel:'新增专辑',singleColumn:true,columns:[['cover','封面','image'],['title','名称'],['sort','排序'],['status','状态','status']],fields:[basic('title','简体名称','text',{required:true}),basic('description','简体简介','textarea'),basic('cover','封面','image'),basic('sort','排序','number'),basic('status','发布状态','select',{options:'publish'})]},
   audioTracks:{label:'导览音频 / 文史节目',editorGroups:longEditorGroups.audioTracks,endpoint:'audioTracks',addLabel:'新增音频',singleColumn:true,columns:[['title','音频 / 节目'],['category','类别'],['attractionId','景点'],['isPinned','置顶','audioPin',110],['sort','排序'],['status','状态','status']],fields:[basic('title','简体标题','text',{required:true}),basic('description','简体简介','textarea'),basic('category','类别','select',{required:true,options:[{label:'路线导览',value:'route'},{label:'专业介绍',value:'online'},{label:'游览攻略',value:'expert'},{label:'希腊文史节目',value:'heritage'}]}),basic('attractionId','所属景点（文史节目留空）','select',{options:'attractions',filterable:true}),basic('exhibitId','所属讲解点（可选）','select',{options:'exhibits',filterable:true,clearable:true,noDataText:'请先选择所属景点',placeholder:'选择当前景点已发布讲解点'}),basic('routeId','路线 ID（路线导览必填）','select',{options:'audioRoutes',filterable:true,noDataText:'暂无路线导览，请先到「路线导览」新增'}),basic('albumId','专辑 ID（文史节目必填）','select',{options:'audioAlbums',filterable:true,noDataText:'暂无专辑，请先到「希腊文史专辑」新增'}),basic('language','音频语种','select',{options:[{label:'中文',value:'zh-CN'},{label:'繁体中文',value:'zh-TW'},{label:'英文',value:'en'}]}),basic('cover','封面','image'),basic('durationSeconds','音频秒数（上传后自动填入）','number'),basic('previewSeconds','试听秒数（1–60 秒）','number',{min:1,max:60,help:'非年会员只能播放此试听片段；有效年会员可播放整段。修改时长后，请重新上传音频以更新试听文件。'}),basic('unlockMode','小程序收听规则','select',{required:true,help:'全部已发布音频统一由有效年会员解锁完整收听。非年会员仅试听；历史购买或旧免费设置不授予完整收听权限。',options:[{label:'年会员完整收听 / 非会员试听',value:'membership'}]}),basic('isPinned','讲解置顶','switch',{categories:['online','expert'],activeText:'置顶',inactiveText:'普通',help:'在小程序专业介绍、游览攻略列表中优先展示；置顶组内沿用原有排序。'}),basic('sort','排序','number'),basic('status','发布状态','select',{options:'publish'})]},
@@ -933,6 +950,8 @@ export default {
   components:{VisitorGuideEditor},
   data(){return{token:sessionStorage.getItem(TOKEN)||'',password:'',error:'',active:MENU_IDS.has(sessionStorage.getItem(ACTIVE_MENU))?sessionStorage.getItem(ACTIVE_MENU):'overview',guideVisible:false,workflowGuideVisible:false,workflowOpenSections:[workflowGuide[0].title],workflowGuide,membershipDialogVisible:false,membershipSaving:false,membershipEditingUser:null,membershipForm:{type:'auto',expiresAt:''},guideGroups,settingsTab:'site',detailTab:'sections',detailPage:null,vehicleService:null,vehicleView:'list',recents:[],pendingRecent:[],recentsCollapsed:false,detailLocales,vehicleOptionGroups,detailSectionKeys,detailVisitorKeys,detailExhibitFields,detailHighlightFields,detailRouteFields,detailAudioFields,detailAudioCategoryLabels,translatableFieldGroups,attractionView:'list',attractionEditorTab:'basic',recordEditorTab:'basic',vehicleConfigTab:'page',businessService:null,travelGuide:null,travelGuideBaseline:'',businessConfigTab:'page',travelDocFiles:[],travelDocSelectedKey:'',sectionScanBusy:false,embeddedService:'',embeddedLoadingLabel:'',menuOpenSnapshot:(()=>{const saved=sessionStorage.getItem(ACTIVE_MENU);const group=groups.find(item=>item.items.some(entry=>entry[0]===saved));if(!group||group.label==='共同数据')return [];const opened=[group.label];const section=group.sections?.find(item=>item.items.some(entry=>entry[0]===saved));if(section)opened.push(section.index);return opened})(),businessOptionGroups:[{key:'cycle',label:'往返周期'},{key:'duration',label:'陪同时长'},{key:'language',label:'语言需求'},{key:'people',label:'随行人数'}],attractionDestinationFilter:'',audioTrackCategoryFilter:'',audioDestinationFilter:'',expandedAudioGroups:[],destinationLinkSaving:{},data:JSON.parse(JSON.stringify(emptyData)),stats:{},commerce:{},settings:this.defaultSettings(),loading:false,busy:false,mediaUploadProgress:0,mediaUploadKind:'',localAiEnabled:false,aiFillDialogVisible:false,aiFilling:false,aiTranslating:false,aiAttractionName:'',aiEntityType:'attraction',aiProgressMessage:'正在准备…',filterText:'',page:1,pageSize:10,pageSizes:[5,10,20,50,100],groupPages:{},filters:{enabled:'',featured:'',countryId:'',status:'',days:'',type:'',currency:'',priceCny:[null,null],city:'',tag:'',period:[],leadType:'',createdAt:[],bookingDate:[],member:'',productType:'',relation:'',visaStatus:'',expiry:[],expiresAt:[]},editor:null,editorListPosition:null,editorBaseline:'',destinationAttractionSearch:'',destinationShowAllCities:false,selectedAttractionIds:[],batchBusy:false,publicationResults:[],publicationChecking:false,publicationCheckedAt:'',apiOrigin:window.location.origin,form:{},jsonFields:{},dateRange:[],jsonError:'',confirmVisible:false,confirmText:'',confirmHandler:null,menuGroups:groups,rowStatusOptions:[{label:'发布',value:'published'},{label:'下架',value:'unpublished'}],settingTabs}},
   computed:{
+    ticketAttachments(){return Array.isArray(this.form?.attachments)?this.form.attachments:[]},
+    ticketUploading(){return this.busy},
     editorDirty(){return Boolean(this.editor)&&(this.editorState()!==this.editorBaseline||(this.active==='miniprogramServiceEntries'&&this.form.key==='travel-guide'&&Boolean(this.travelGuideBaseline)&&JSON.stringify(this.travelGuide)!==this.travelGuideBaseline))},
     destinationSortRank(){if(this.active!=='destinations')return{};const groups={};for(const row of this.filteredItems){const key=String(row.type||'__none__');(groups[key]=groups[key]||[]).push(row)}const rank={};for(const key of Object.keys(groups)){groups[key].sort((a,b)=>(Number.isFinite(Number(a.sort))?Number(a.sort):Number.MAX_SAFE_INTEGER)-(Number.isFinite(Number(b.sort))?Number(b.sort):Number.MAX_SAFE_INTEGER)||String(a.name||'').localeCompare(String(b.name||''),'zh-CN'));groups[key].forEach((row,index)=>{rank[row.id]=index+1})}return rank},
     attractionEditorFieldGroups(){return attractionEditorFieldGroups},
@@ -1030,8 +1049,8 @@ export default {
     active(value){sessionStorage.setItem(ACTIVE_MENU,value);this.selectedAttractionIds=[]},
   },
   created(){this.recents=readRecents(sessionStorage,MENU_IDS);this.pendingRecent=this.recents.slice();try{this.recentsCollapsed=sessionStorage.getItem(RECENTS_COLLAPSED_KEY)==='1'}catch{this.recentsCollapsed=false}if(this.token){this.loadAll();this.checkLocalAiAvailability();if(this.active==='attractionDetailPage')this.loadDetailPage();if(this.active==='miniprogramServiceEntries')this.preloadEmbeddedServices()}},
-  mounted(){window.addEventListener('beforeunload',this.handleBeforeUnload)},
-  beforeDestroy(){window.removeEventListener('beforeunload',this.handleBeforeUnload)},
+  mounted(){window.addEventListener('beforeunload',this.handleBeforeUnload);document.addEventListener('paste',this.handleTicketPaste)},
+  beforeDestroy(){window.removeEventListener('beforeunload',this.handleBeforeUnload);document.removeEventListener('paste',this.handleTicketPaste)},
   updated(){this.applyTagCaps()},
   methods:{
     // Records the visit for the NEXT page load only. The visible list is frozen for this
@@ -1267,12 +1286,12 @@ export default {
     columnSortable(column){if(!['destinations','attractions'].includes(this.active))return false;return ['name','en','type','category','sort','featured','cityName'].includes(column.key)},
     destinationCategoryName(key){const category=(this.data.destinationTypes||[]).find(item=>item.id===key);return category?category.name:(this.data.destinationCategories||[]).find(item=>item.key===key)?.name||key},
     attractionSource(row){if(this.active!=='attractions'&&this.active!=='destinations')return '';const id=String(row.id||'');if(id.startsWith('import-1020-'))return 'batch-1020';if(id.startsWith('import-'))return 'batch-import';return 'initial'},
-    filterOptionLabel(key,value){if(key==='sort')return '权重 '+value;if(key==='source')return({batch:'批量导入','batch-1020':'1020 批量导入','batch-import':'批量导入',initial:'初始内容'})[value]||value;if(key==='status'||key==='enabled')return this.statusLabel(value);if(key==='featured')return value?'首页推荐':'普通展示';if(key==='member')return value==='member'?'有效年会员':'普通用户';const labels={customization:'定制行程', 'business-travel':'商务出行','guide-booking':'导游预约','vehicle-consultation':'用车咨询','mini-program-booking':'小程序预约',landmark:'景点',museum:'博物馆',published:'发布',unpublished:'下架'};if(key==='leadType'||key==='type')return labels[value]||this.displayValue(value);return String(this.displayValue(value))},
+    filterOptionLabel(key,value){if(key==='sort')return '权重 '+value;if(key==='requester')return({jenny:'Jenny',zoey:'Zoey',other:'其他'})[value]||value;if(key==='priority')return({high:'高',normal:'普通',low:'低'})[value]||value;if(key==='source')return({batch:'批量导入','batch-1020':'1020 批量导入','batch-import':'批量导入',initial:'初始内容'})[value]||value;if(key==='status'||key==='enabled')return this.statusLabel(value);if(key==='featured')return value?'首页推荐':'普通展示';if(key==='member')return value==='member'?'有效年会员':'普通用户';const labels={customization:'定制行程', 'business-travel':'商务出行','guide-booking':'导游预约','vehicle-consultation':'用车咨询','mini-program-booking':'小程序预约',landmark:'景点',museum:'博物馆',published:'发布',unpublished:'下架'};if(key==='leadType'||key==='type')return labels[value]||this.displayValue(value);return String(this.displayValue(value))},
     matchesDateRange(row,key,range){const value=this.filterValue(row,key);if(!value)return false;const start=range[0],end=range[1];let from='',to='';if(key==='period'){const raw=String(value).trim();const compact=raw.match(/^(\d{4})(\d{2})(\d{2})\s*[~～至—–]\s*(?:(\d{4}))?(\d{2})(\d{2})$/);if(compact){from=`${compact[1]}-${compact[2]}-${compact[3]}`;const year=Number(compact[4]||compact[1])+(compact[4]?0:Number(compact[5]+compact[6])<Number(compact[2]+compact[3])?1:0);to=`${year}-${compact[5]}-${compact[6]}`}else{const parts=raw.split(/\s*[~～至—–]\s*/);from=String(parts[0]||'').slice(0,10);to=String(parts[1]||parts[0]||'').slice(0,10)}}else from=to=String(value).slice(0,10);return Boolean(from&&to&&from<=end&&to>=start)},
     async loadAll(){if(!this.token)return;this.selectedAttractionIds=[];this.loading=true;const keys=Object.keys(routes);const results=await Promise.allSettled(keys.map(key=>this.request(routes[key]).catch(error=>{const msg=error?.message||'';return /api route not found|请求失败（404）|请求失败（405）/.test(msg)?null:error})));results.forEach((res,i)=>{if(res.status!=='fulfilled')return;const key=keys[i],value=res.value;if(key==='stats'){this.stats=value||{};this.commerce=value?.commerce||{};return}if(key==='settings'){const defaults=this.defaultSettings();const tools=value?.travelTools&&typeof value.travelTools==='object'&&!Array.isArray(value.travelTools)?value.travelTools:{};const visa=tools.visa&&typeof tools.visa==='object'&&!Array.isArray(tools.visa)?tools.visa:{};this.settings={...defaults,...value,destinationBadges:this.destinationBadgeSettings(value?.destinationBadges),experiences:Array.isArray(value?.experiences)?value.experiences.map(item=>this.newExperience(item)):[],travelTools:{...defaults.travelTools,...tools,visa:{...defaults.travelTools.visa,...visa,checklist:Array.isArray(visa.checklist)?visa.checklist:[]},weatherCities:Array.isArray(tools.weatherCities)?tools.weatherCities.map(city=>({id:'',name:'',condition:'',...city})):[]},miniprogramKnowledge:{...defaults.miniprogramKnowledge,...(value?.miniprogramKnowledge||{}),products:{...defaults.miniprogramKnowledge.products,...(value?.miniprogramKnowledge?.products||{})}}};for(const product of ['attraction','membership','annualMembership'])this.settings.miniprogramKnowledge.products[product]={...defaults.miniprogramKnowledge.products[product],...(this.settings.miniprogramKnowledge.products[product]||{})};return}const rows=Array.isArray(value)?value:(value?.items||[]);if(key==='destinationTypes')this.data.destinationTypes=rows.map(x=>({...x,id:x.key||x.id,enabled:x.enabled!==false}));else this.data[key]=rows;if(key==='leads'){this.data.guideBookings=rows.filter(x=>x.leadType==='guide-booking'||Boolean(x.guideSlug));this.data.miniProgramBookings=rows.filter(x=>this.isMiniBooking(x))}});const failure=results.find(x=>x.status==='rejected');if(failure&&this.token)this.$message.error('部分数据加载失败：'+failure.reason.message);this.loading=false},
     openWebsite(){window.open('/','_blank','noopener')},
-    statusLabel(value){return({published:'发布',unpublished:'下架',active:'生效中',archived:'已停用',new:'待处理',contacted:'已联系',quoted:'已报价',closed:'已完成',paid:'已支付',pending:'待支付',failed:'失败',expired:'已过期',used:'已使用'})[value]||value||'—'},
-    statusTone(value){return value==='new'?'warning':(['published','active','paid','closed'].includes(value)?'success':'info')},
+    statusLabel(value){if(this.active==='workTickets')return({pending:'待处理',in_progress:'处理中',done:'已完成',cancelled:'已取消'})[value]||value||'—';return({published:'发布',unpublished:'下架',active:'生效中',archived:'已停用',new:'待处理',contacted:'已联系',quoted:'已报价',closed:'已完成',paid:'已支付',pending:'待支付',failed:'失败',expired:'已过期',used:'已使用'})[value]||value||'—'},
+    statusTone(value){if(this.active==='workTickets')return value==='pending'?'warning':value==='done'?'success':'info';return value==='new'?'warning':(['published','active','paid','closed'].includes(value)?'success':'info')},
     rowStatus(row){let value=row.status;if(this.active==='countries'||this.active==='guides'||this.active==='destinationTypes'||this.active==='homeBanners'||this.active==='miniprogramBanners'||this.active==='miniprogramServiceEntries'||this.active==='heritageGuideBanners')value=row.enabled===false?'unpublished':'published';if(['leads','guideBookings','miniProgramBookings','miniprogramTrips'].includes(this.active))return row.status||'new';return value||'unpublished'},
     listValue(value){return Array.isArray(value)?value:(typeof value==='string'?value.split(/[,，、\s]+/).filter(Boolean):[])},
     tagValues(value){const values=Array.isArray(value)?value:(typeof value==='string'?value.split(/[,，、·•‧\s]+/):[]);return values.map(tag=>String(tag??'').trim()).filter(tag=>tag&&!/^[·•‧]+$/.test(tag))},
@@ -1324,6 +1343,58 @@ export default {
     removeArrayEntry(key,index){this.form[key].splice(index,1)},
     addDeepDiveSection(key){if(!Array.isArray(this.form[key]?.locked))this.$set(this.form[key],'locked',[]);this.form[key].locked.push('')},
     removeDeepDiveSection(key,index){this.form[key]?.locked?.splice(index,1)},
+    priorityLabel(value){return({high:'高',normal:'普通',low:'低'})[value]||value||'—'},
+    requesterLabel(value){return({jenny:'Jenny',zoey:'Zoey',other:'其他'})[value]||value||'—'},
+    removeTicketAttachment(index){this.form.attachments?.splice(index,1)},
+    imageSize(file){return new Promise((resolve,reject)=>{const url=URL.createObjectURL(file);const img=new Image();img.onload=()=>{resolve({width:img.naturalWidth,height:img.naturalHeight});URL.revokeObjectURL(url)};img.onerror=()=>{URL.revokeObjectURL(url);reject(new Error('图片读取失败'))};img.src=url})},
+    async shrinkTicketImage(file){
+      if(!/^image\/(png|jpeg|webp)$/.test(file.type))throw new Error('仅支持 PNG、JPG 或 WebP 图片')
+      if(file.size<=5*1024*1024){
+        const size=await this.imageSize(file).catch(()=>null)
+        if(size&&Math.max(size.width,size.height)<=1920)return file
+      }
+      const bitmap=await createImageBitmap(file)
+      const scale=Math.min(1,1920/Math.max(bitmap.width,bitmap.height))
+      const canvas=document.createElement('canvas')
+      canvas.width=Math.max(1,Math.round(bitmap.width*scale))
+      canvas.height=Math.max(1,Math.round(bitmap.height*scale))
+      canvas.getContext('2d').drawImage(bitmap,0,0,canvas.width,canvas.height)
+      if(bitmap.close)bitmap.close()
+      const blob=await new Promise((resolve,reject)=>canvas.toBlob(result=>result?resolve(result):reject(new Error('图片压缩失败')),'image/webp',0.9))
+      return new File([blob],(file.name||'image').replace(/\.[^.]+$/,'')+'.webp',{type:'image/webp'})
+    },
+    async uploadTicketFile(file){
+      const data=await new Promise((resolve,reject)=>{const reader=new FileReader();reader.onload=()=>resolve(reader.result);reader.onerror=reject;reader.readAsDataURL(file)})
+      return this.request('/admin/work-ticket-files',{method:'POST',body:JSON.stringify({name:file.name,type:file.type||'application/octet-stream',data})})
+    },
+    addTicketAttachment(result){if(!Array.isArray(this.form.attachments))this.$set(this.form,'attachments',[]);this.form.attachments.push({name:result.name||result.originalName,url:result.url,kind:result.kind,size:result.size,uploadedAt:new Date().toISOString()})},
+    async uploadTicketImage(req){
+      this.busy=true
+      try{const file=await this.shrinkTicketImage(req.file);if(file.size>6*1024*1024)throw new Error('图片处理后仍超过 6MB，请换一张');this.addTicketAttachment(await this.uploadTicketFile(file));this.$message.success('图片已上传');req.onSuccess&&req.onSuccess({})}
+      catch(e){this.$message.error('图片上传失败：'+e.message);req.onError&&req.onError(e)}
+      finally{this.busy=false}
+    },
+    async uploadTicketDoc(req){
+      const name=String(req.file.name||'')
+      if(!/\.(pdf|doc|docx|xlsx?|pptx?)$/i.test(name)){this.$message.error('仅支持 PDF、Word、Excel、PPT 文档');req.onError&&req.onError(new Error('unsupported'));return}
+      if(req.file.size>20*1024*1024){this.$message.error('文档大小需在 20MB 以内');req.onError&&req.onError(new Error('too large'));return}
+      this.busy=true
+      try{this.addTicketAttachment(await this.uploadTicketFile(req.file));this.$message.success('文档已上传');req.onSuccess&&req.onSuccess({})}
+      catch(e){this.$message.error('文档上传失败：'+e.message);req.onError&&req.onError(e)}
+      finally{this.busy=false}
+    },
+    async handleTicketPaste(event){
+      if(this.active!=='workTickets'||!this.editor||this.busy)return
+      const files=Array.from(event.clipboardData?.files||[]).filter(file=>/^image\//i.test(file.type))
+      if(!files.length)return
+      event.preventDefault()
+      this.busy=true
+      try{
+        for(const file of files)this.addTicketAttachment(await this.uploadTicketFile(await this.shrinkTicketImage(file)))
+        this.$message.success('已粘贴上传 '+files.length+' 张图片')
+      }catch(e){this.$message.error('粘贴上传失败：'+e.message)}
+      finally{this.busy=false}
+    },
     updateDeepDiveSection(key,index,value){if(Array.isArray(this.form[key]?.locked))this.$set(this.form[key].locked,index,value)},
     removeSettingsImage(){this.settings.ogImage='';this.$message.success('图片已移除，请保存设置')},
     removeFormImage(key){this.$set(this.form,key,'');this.$message.success('图片已移除，请保存后生效')},
@@ -1538,4 +1609,15 @@ export default {
 .el-admin .image-list-actions{display:flex;align-content:center;align-items:center;flex-wrap:wrap;gap:6px}
 .el-admin .image-list-actions>b{width:100%;color:#486064;font-size:12px}
 @media(max-width:700px){.el-admin .image-list-entry{grid-template-columns:1fr}.el-admin .image-list-entry>.el-input{grid-column:auto}}
+.el-admin .attachment-editor{width:100%;display:grid;gap:10px}
+.el-admin .attachment-list{display:grid;gap:8px}
+.el-admin .attachment-entry{display:grid;grid-template-columns:72px minmax(0,1fr) auto;align-items:center;gap:10px;padding:8px;border:1px solid #e2eaea;border-radius:8px;background:#fbfdfd}
+.el-admin .attachment-entry img{width:72px;height:54px;object-fit:cover;border-radius:6px;border:1px solid #e2eaea;background:#fff}
+.el-admin .attachment-doc-icon{display:grid;place-items:center;width:72px;height:54px;border-radius:6px;border:1px solid #e2eaea;background:#fff;color:#07857e;font-size:22px}
+.el-admin .attachment-meta{display:grid;gap:2px;min-width:0}
+.el-admin .attachment-meta a{color:#087f7a;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.el-admin .attachment-meta small{color:#6b7d82;font-size:12px}
+.el-admin .attachment-actions{display:flex;align-items:center;flex-wrap:wrap;gap:8px}
+.el-admin .attachment-hint{color:#6b7d82;font-size:12px}
+.el-admin .attachment-empty{color:#8b9aa0;font-size:13px}
 </style>

@@ -7,7 +7,7 @@ import crypto from 'node:crypto'
 import { setTimeout as delay } from 'node:timers/promises'
 import tls from 'node:tls'
 import { closeStorage, initStorage, queryStorageAudit, readData, saveData, storageStatus } from './storage.mjs'
-import { audioEntitled, effectiveUnlockMode, isPublicAudioExcerpt, publicHeritage, signedAudioToken, streamPrivateAudio, uploadPrivateAudio, uploadPrivateAudioToOss, uploadPublicAudioToOss, uploadPublicImageToOss, copyPublicAudioFromPrivateOss, publicAudioUrl, ossPublicMediaBase, removePrivateAudioFiles, ossMediaRequest, validateAttraction, validateHeritageRecord, verifySignedAudioToken, ossAudioConfigured, ossAudioReadUrl, normalizeVisitorSections, sanitizeRichText, visibleTrack } from './heritage-content.mjs'
+import { audioEntitled, effectiveUnlockMode, isPublicAudioExcerpt, publicHeritage, signedAudioToken, streamPrivateAudio, uploadPrivateAudio, uploadPrivateAudioToOss, uploadPublicAudioToOss, uploadPublicDocumentToOss, uploadPublicImageToOss, copyPublicAudioFromPrivateOss, publicAudioUrl, ossPublicMediaBase, removePrivateAudioFiles, ossMediaRequest, validateAttraction, validateHeritageRecord, verifySignedAudioToken, ossAudioConfigured, ossAudioReadUrl, normalizeVisitorSections, sanitizeRichText, visibleTrack } from './heritage-content.mjs'
 import { privateMapUrl, removePrivateMap, streamPrivateMap, uploadPrivateMap } from './private-map.mjs'
 import { amountToFen, createMiniProgramPrepay, decryptWechatNotify, queryWechatTransaction, realPayNotifyReady, realPayRequestReady, verifyWechatNotify, wechatPayConfig } from './wechat-pay.mjs'
 import { requestAdminDraft, requestAudioTrackTranslation, requestDestinationTranslation, requestTextTranslation } from './attraction-ai-fill.mjs'
@@ -805,6 +805,53 @@ function isAdmin(req) {
   const auth = req.headers.authorization || ''
   if (!auth.startsWith('Bearer ')) return false
   return verifyAdminSessionToken(auth.slice(7), adminSessionSecret, adminTokenTtlMs)
+}
+const ticketsFeedToken = String(process.env.SY_TICKETS_BOT_TOKEN || '')
+// 机器人只读工单：长期令牌，不做会话；没配置就一律拒绝，避免接口裸奔。
+function ticketsFeedAuthorized(req) {
+  if (!ticketsFeedToken) return false
+  const auth = String(req.headers.authorization || '')
+  if (!auth.startsWith('Bearer ')) return false
+  const given = crypto.createHash('sha256').update(auth.slice(7).trim()).digest()
+  const expected = crypto.createHash('sha256').update(ticketsFeedToken).digest()
+  return crypto.timingSafeEqual(given, expected)
+}
+function workTicketFeedItem(ticket, base) {
+  const attachments = (Array.isArray(ticket.attachments) ? ticket.attachments : []).map((entry) => ({
+    name: entry.name,
+    url: /^https:\/\//i.test(entry.url) ? entry.url : `${base}/${String(entry.url || '').replace(/^\.?\/+/, '')}`,
+    kind: entry.kind === 'doc' ? 'doc' : 'image',
+    size: Number(entry.size) || 0,
+  }))
+  return {
+    id: ticket.id,
+    title: ticket.title,
+    body: ticket.body || '',
+    requester: ticket.requester,
+    requesterName: ticket.requesterName || '',
+    priority: ticket.priority,
+    status: ticket.status,
+    expectedAt: ticket.expectedAt || '',
+    attachments,
+    videoUrl: ticket.videoUrl || '',
+    note: ticket.note || '',
+    createdAt: ticket.createdAt,
+    updatedAt: ticket.updatedAt,
+  }
+}
+function workTicketFeedMarkdown(items) {
+  const label = { pending: '待处理', in_progress: '处理中', done: '已完成', cancelled: '已取消' }
+  const priority = { high: '高', normal: '普通', low: '低' }
+  if (!items.length) return '# SY 工单\n\n当前没有符合条件的工单。\n'
+  const blocks = items.map((ticket) => {
+    const head = `## [${label[ticket.status] || ticket.status}] ${ticket.title}`
+    const meta = [`- ID：${ticket.id}`, `- 提出人：${ticket.requesterName || ticket.requester}`, `- 优先级：${priority[ticket.priority] || ticket.priority}`, `- 期望完成：${ticket.expectedAt || '未设置'}`, `- 更新时间：${ticket.updatedAt}`].join('\n')
+    const att = ticket.attachments.length ? `\n\n附件：\n${ticket.attachments.map((entry) => `- ${entry.name}：${entry.url}`).join('\n')}` : ''
+    const video = ticket.videoUrl ? `\n\n视频链接：${ticket.videoUrl}` : ''
+    const note = ticket.note ? `\n\n处理备注：${ticket.note}` : ''
+    return `${head}\n${meta}\n\n${ticket.body || '（未填写正文）'}${att}${video}${note}`
+  })
+  return `# SY 工单（${items.length}）\n\n${blocks.join('\n\n---\n\n')}\n`
 }
 function attractionAiEnabled() {
   // Explicit opt-in so the same build can run in any environment; otherwise disabled.
@@ -1894,6 +1941,73 @@ function normalizeCityPayload(payload) {
   }
   return next
 }
+// 工单：后台共用登录，所有改动记录在 createdBy/updatedBy 上（当前只有 SY Admin）。
+// 附件只存 URL，二进制在 OSS；视频一期只接受链接。
+const WORK_TICKET_STATUSES = ['pending', 'in_progress', 'done', 'cancelled']
+const WORK_TICKET_PRIORITIES = ['high', 'normal', 'low']
+const WORK_TICKET_REQUESTERS = ['jenny', 'zoey', 'other']
+const WORK_TICKET_STATUS_RANK = { pending: 0, in_progress: 1, done: 2, cancelled: 3 }
+function workTicketText(value, max) { return String(value ?? '').trim().slice(0, max) }
+function workTicketAttachments(input) {
+  if (input == null) return []
+  if (!Array.isArray(input)) throw Object.assign(new Error('附件格式无效'), { status: 422 })
+  if (input.length > 20) throw Object.assign(new Error('附件最多 20 个'), { status: 422 })
+  return input.map((item) => {
+    const url = String(item?.url || '').trim()
+    if (!/^https:\/\//i.test(url) || url.length > 600) throw Object.assign(new Error('附件地址必须是 https 链接'), { status: 422 })
+    const kind = item?.kind === 'doc' ? 'doc' : 'image'
+    return {
+      name: workTicketText(item?.name, 120) || url.split('/').pop(),
+      url,
+      kind,
+      size: Number.isSafeInteger(Number(item?.size)) && Number(item?.size) >= 0 ? Number(item.size) : 0,
+      uploadedAt: workTicketText(item?.uploadedAt, 40),
+    }
+  })
+}
+function normalizeWorkTicket(input, existing, operator) {
+  const now = new Date().toISOString()
+  const base = existing || {}
+  const pick = (key) => (Object.prototype.hasOwnProperty.call(input, key) ? input[key] : base[key])
+  const title = workTicketText(pick('title'), 120)
+  if (!title) throw Object.assign(new Error('请填写工单标题'), { status: 422 })
+  const body = String(pick('body') ?? '').slice(0, 20000)
+  const requester = String(pick('requester') || 'other')
+  if (!WORK_TICKET_REQUESTERS.includes(requester)) throw Object.assign(new Error('提出人无效'), { status: 422 })
+  const priority = String(pick('priority') || 'normal')
+  if (!WORK_TICKET_PRIORITIES.includes(priority)) throw Object.assign(new Error('优先级无效'), { status: 422 })
+  const status = String(pick('status') || 'pending')
+  if (!WORK_TICKET_STATUSES.includes(status)) throw Object.assign(new Error('状态无效'), { status: 422 })
+  const expectedAt = workTicketText(pick('expectedAt'), 10)
+  if (expectedAt && !/^\d{4}-\d{2}-\d{2}$/.test(expectedAt)) throw Object.assign(new Error('期望完成日期格式应为 YYYY-MM-DD'), { status: 422 })
+  const videoUrl = workTicketText(pick('videoUrl'), 500)
+  if (videoUrl && !/^https?:\/\//i.test(videoUrl)) throw Object.assign(new Error('视频链接必须是 http(s) 地址'), { status: 422 })
+  const requesterName = workTicketText(pick('requesterName'), 40) || (requester === 'other' ? '' : requester === 'jenny' ? 'Jenny' : 'Zoey')
+  return {
+    id: base.id || workTicketText(input.id, 64) || id('ticket'),
+    title,
+    body,
+    requester,
+    requesterName,
+    priority,
+    status,
+    expectedAt,
+    attachments: workTicketAttachments(pick('attachments') ?? []),
+    videoUrl,
+    note: String(pick('note') ?? '').slice(0, 2000),
+    createdAt: base.createdAt || now,
+    updatedAt: now,
+    createdBy: base.createdBy || operator,
+    updatedBy: operator,
+  }
+}
+function workTicketsSorted(items) {
+  return [...items].sort((a, b) => {
+    const rank = (WORK_TICKET_STATUS_RANK[a.status] ?? 9) - (WORK_TICKET_STATUS_RANK[b.status] ?? 9)
+    if (rank) return rank
+    return String(a.createdAt || '').localeCompare(String(b.createdAt || ''))
+  })
+}
 async function collectionHandler(data, collection, method, pathname, payload) {
   const items = data[collection]
   // itemId 来自 URL 路径段：id 可能含空格/中文（如「Aegean Escapes」），需解码后再匹配。
@@ -1959,6 +2073,26 @@ const server = http.createServer(async (req, res) => {
       return json(res, 200, { token, tokenType: 'Bearer', expiresIn: Math.floor(adminTokenTtlMs / 1000), user: { name: 'SY Admin', role: 'editor' } })
     }
     if (url.pathname === '/api/content' && method === 'GET') return json(res, 200, publicContent(readData(), url.searchParams.get('country') || 'greece', { includeAttractionDetails: url.searchParams.get('includeAttractionDetails')?.toLowerCase() !== 'false' }))
+    if (url.pathname === '/api/tickets/feed' && method === 'GET') {
+      if (!ticketsFeedAuthorized(req)) return json(res, 401, { code: 'UNAUTHORIZED', error: '缺少或无效的工单读取令牌' })
+      const data = readData()
+      if (!Array.isArray(data.workTickets)) data.workTickets = []
+      const requested = String(url.searchParams.get('status') || '').trim()
+      const allowed = requested && requested !== 'all' ? new Set(requested.split(',').map((value) => value.trim()).filter((value) => WORK_TICKET_STATUSES.includes(value))) : null
+      const since = String(url.searchParams.get('since') || '').trim()
+      const sinceTime = since ? Date.parse(since) : NaN
+      const limit = Math.min(200, Math.max(1, Number.parseInt(url.searchParams.get('limit') || '50', 10) || 50))
+      const items = workTicketsSorted(data.workTickets)
+        .filter((ticket) => (allowed ? allowed.has(ticket.status) : ticket.status !== 'cancelled'))
+        .filter((ticket) => (Number.isFinite(sinceTime) ? Date.parse(ticket.updatedAt || '') >= sinceTime : true))
+        .slice(0, limit)
+        .map((ticket) => workTicketFeedItem(ticket, siteBase(data, req)))
+      if (String(url.searchParams.get('format') || '').toLowerCase() === 'md') {
+        res.writeHead(200, { ...corsHeaders(), 'Content-Type': 'text/markdown; charset=utf-8', 'Cache-Control': 'no-store' })
+        return res.end(workTicketFeedMarkdown(items))
+      }
+      return json(res, 200, { generatedAt: new Date().toISOString(), count: items.length, items })
+    }
     if (url.pathname === '/api/miniprogram/access' && method === 'GET') return json(res, 200, miniProgramAccessPayload(readData()))
     if (url.pathname === '/api/wechat/pay/notify' && method === 'POST') return handleWechatPayNotify(req, res)
     const mapRoute = url.pathname.match(/^\/api\/miniprogram\/attraction-map\/([a-f0-9]{32}\.(?:png|jpe?g|webp))$/i)
@@ -2265,6 +2399,77 @@ const server = http.createServer(async (req, res) => {
     }
     if (url.pathname.startsWith('/api/admin/')) {
       if (!isAdmin(req)) return json(res, 401, { error: '未授权，请先登录后台' })
+      if (url.pathname === '/api/admin/work-ticket-files' && method === 'POST') {
+        if (!ossAudioConfigured()) return json(res, 503, { code: 'OSS_NOT_CONFIGURED', error: 'OSS 未配置，工单附件不能上传' })
+        const input = await body(req, 28 * 1024 * 1024)
+        const match = String(input.data || '').match(/^data:([\w.+-]+\/[\w.+-]+);base64,(.+)$/)
+        if (!match) return json(res, 422, { error: '文件内容无效' })
+        const [, mimeType, base64Data] = match
+        const rawBuffer = Buffer.from(base64Data, 'base64')
+        const originalName = String(input.name || '')
+        const extension = extname(originalName).toLowerCase()
+        const prefix = `ticket-${Date.now().toString(36)}-${crypto.randomBytes(3).toString('hex')}`
+        if (/^image\//i.test(mimeType)) {
+          if (!/^image\/(png|jpeg|webp)$/.test(mimeType) || !['.png', '.jpg', '.jpeg', '.webp'].includes(extension)) return json(res, 422, { error: '仅支持 PNG、JPG 或 WebP 图片' })
+          if (!rawBuffer.length || rawBuffer.length > 6 * 1024 * 1024) return json(res, 413, { error: '图片大小需在 6MB 以内' })
+          const converted = await toWebpOrOriginal(rawBuffer, mimeType)
+          const filename = `${prefix}.${converted.extension}`
+          writeRuntimeImage(filename, converted.buffer)
+          const remoteUrl = await uploadPublicImageToOss(filename, converted.buffer)
+          if (!remoteUrl) {
+            rmSync(join(runtimeImageDir, filename), { force: true })
+            return json(res, 502, { code: 'OSS_PUBLIC_IMAGE_SYNC_FAILED', error: '图片上传 OSS 失败，请稍后重试' })
+          }
+          return json(res, 201, { name: filename, originalName, url: remoteUrl, kind: 'image', size: converted.buffer.length })
+        }
+        if (!ALLOWED_DOC_EXTENSIONS.has(extension)) return json(res, 422, { error: '仅支持 PDF、Word、Excel、PPT 文档' })
+        const expectedMime = DOC_MIME_BY_EXTENSION[extension]
+        if (mimeType !== 'application/octet-stream' && mimeType !== expectedMime && !expectedMime.includes(mimeType)) return json(res, 422, { error: `文件类型与扩展名不一致（${mimeType} ≠ ${extension}）` })
+        if (!rawBuffer.length || rawBuffer.length > DOC_MAX_BYTES) return json(res, 413, { error: '文档大小需在 20MB 以内' })
+        const filename = `${prefix}${extension}`
+        const url = await uploadPublicDocumentToOss(filename, rawBuffer)
+        if (!url) return json(res, 502, { code: 'OSS_PUBLIC_DOCUMENT_SYNC_FAILED', error: '文档上传 OSS 失败，请稍后重试' })
+        // 本地副本只作回滚兜底；public/docs 断链时写入失败不影响上传结果。
+        try { mkdirSync(runtimeDocDir, { recursive: true }); writeFileSync(join(runtimeDocDir, filename), rawBuffer) } catch (error) { console.error('work ticket doc local copy skipped:', error.message) }
+        return json(res, 201, { name: filename, originalName, url, kind: 'doc', size: rawBuffer.length })
+      }
+      if (url.pathname === '/api/admin/work-tickets' || /^\/api\/admin\/work-tickets\/[^/]+$/.test(url.pathname)) {
+        const data = readData()
+        if (!Array.isArray(data.workTickets)) data.workTickets = []
+        const itemId = url.pathname === '/api/admin/work-tickets' ? '' : decodeURIComponent(url.pathname.split('/').pop())
+        if (method === 'GET') {
+          if (!itemId) return json(res, 200, { items: workTicketsSorted(data.workTickets) })
+          const item = data.workTickets.find((ticket) => ticket.id === itemId)
+          return item ? json(res, 200, item) : json(res, 404, { error: 'not found' })
+        }
+        try {
+          if (method === 'POST') {
+            if (itemId) return json(res, 405, { error: 'method not allowed' })
+            const ticket = normalizeWorkTicket(await body(req), null, 'SY Admin')
+            data.workTickets.push(ticket)
+            await saveData(data)
+            return json(res, 201, ticket)
+          }
+          const index = data.workTickets.findIndex((ticket) => ticket.id === itemId)
+          if (index < 0) return json(res, 404, { error: 'not found' })
+          if (method === 'PATCH') {
+            const next = normalizeWorkTicket(await body(req), data.workTickets[index], 'SY Admin')
+            next.id = data.workTickets[index].id
+            data.workTickets[index] = next
+            await saveData(data)
+            return json(res, 200, next)
+          }
+          if (method === 'DELETE') {
+            if (data.workTickets[index].status !== 'cancelled') return json(res, 409, { code: 'TICKET_NOT_CANCELLED', error: '只能删除已取消的工单，请先把状态改为已取消' })
+            data.workTickets.splice(index, 1)
+            await saveData(data)
+            return json(res, 204, null)
+          }
+          return json(res, 405, { error: 'method not allowed' })
+        } catch (error) {
+          return json(res, error.status || 422, { error: error.message || '工单保存失败' })
+        }
+      }
       if (url.pathname === '/api/admin/media-uploads' && method === 'POST') {
         if (!ossAudioConfigured()) return json(res, 503, { code: 'OSS_NOT_CONFIGURED', error: 'OSS 未配置，媒体不能上传到本机，请联系管理员配置 OSS' })
         try { return json(res, 201, await startMediaUpload(await body(req))) }
