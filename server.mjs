@@ -1994,26 +1994,29 @@ function workTicketThread(input) {
     }
   })
 }
-// 读取时迁移：历史工单只有 note 处理备注，统一在内存中折叠成第一轮 Q&A，
+// 读取时迁移：历史工单只有 note 处理备注，统一折叠成第一轮 Q&A，
 // 不做批量 DB 改写；下一次后台保存会自然写成 thread 并清空 note。
-function migrateWorkTicketNoteToThread(ticket) {
+// 纯读取（GET/feed）必须克隆后迁移：否则会污染内存缓存，导致下一次无关写入
+// 把未编辑工单的迁移结果意外刷入数据库。
+function migrateWorkTicketNoteToThread(ticket, { mutate = false } = {}) {
   if (!ticket || typeof ticket !== 'object') return ticket
-  const note = String(ticket.note || '')
+  const target = mutate ? ticket : { ...ticket, thread: Array.isArray(ticket.thread) ? [...ticket.thread] : ticket.thread }
+  const note = String(target.note || '')
   if (!note) {
-    if (!Array.isArray(ticket.thread)) ticket.thread = []
-    return ticket
+    if (!Array.isArray(target.thread)) target.thread = []
+    return target
   }
-  if (!Array.isArray(ticket.thread)) ticket.thread = []
-  ticket.thread.push({
+  if (!Array.isArray(target.thread)) target.thread = []
+  target.thread.push({
     ask: '（原始工单）',
-    askAt: ticket.createdAt || '',
-    askBy: WORK_TICKET_THREAD_ASKERS.includes(ticket.requester) ? ticket.requester : 'admin',
+    askAt: target.createdAt || '',
+    askBy: WORK_TICKET_THREAD_ASKERS.includes(target.requester) ? target.requester : 'admin',
     answer: note,
-    answerAt: ticket.updatedAt || '',
+    answerAt: target.updatedAt || '',
     answerBy: 'admin',
   })
-  ticket.note = ''
-  return ticket
+  target.note = ''
+  return target
 }
 function workTicketText(value, max) { return String(value ?? '').trim().slice(0, max) }
 function workTicketAttachments(input) {
@@ -2051,10 +2054,10 @@ function normalizeWorkTicket(input, existing, operator) {
   const requesterName = workTicketText(pick('requesterName'), 40) || (requester === 'other' ? '' : requester === 'jenny' ? 'Jenny' : 'Zoey')
   // thread 为准：客户端显式提交 thread 则以提交内容为准；否则保留既有 thread。
   // 历史 note 兼容读取后迁移进 thread 第一轮，写出的新数据不再回填 note。
-  migrateWorkTicketNoteToThread(base)
+  migrateWorkTicketNoteToThread(base, { mutate: true })
   // POST 直接带 note 的调用同样按迁移规则折叠进 thread；显式提交 thread 时以 thread 为准。
   const merged = { note: String(pick('note') ?? ''), thread: Object.prototype.hasOwnProperty.call(input, 'thread') ? input.thread : base.thread, createdAt: base.createdAt || now, updatedAt: now, requester }
-  migrateWorkTicketNoteToThread(merged)
+  migrateWorkTicketNoteToThread(merged, { mutate: true })
   const thread = workTicketThread(merged.thread)
   return {
     id: base.id || workTicketText(input.id, 64) || id('ticket'),

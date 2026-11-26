@@ -172,6 +172,25 @@ try {
   // 迁移幂等：再次读取不应追加第二轮。
   const legacyReread = await json('/api/admin/work-tickets/ticket-legacy-note-01', {}, token)
   assert.equal(legacyReread.body.thread.length, 1, '重复读取迁移幂等')
+  // 纯读取不得污染缓存：后续无关写入后，未编辑遗留工单的存储仍保留原 note、无 thread。
+  const unrelated = await json('/api/admin/work-tickets', { method: 'POST', body: JSON.stringify({ title: '无关写入验证单' }) }, token)
+  assert.equal(unrelated.status, 201)
+  const storedAfterUnrelated = JSON.parse(await readFile(join(temp, 'seed/site-data.json'), 'utf8'))
+  const storedLegacy2 = (storedAfterUnrelated.workTickets || []).find((item) => item.id === 'ticket-legacy-note-01')
+  assert.equal(storedLegacy2.note, '第一轮已改完标题，待确认', '无关写入不得把读取迁移刷入存储')
+  assert.equal(Boolean(storedLegacy2.thread), false, '无关写入不得补写 thread')
+  // 直接编辑遗留工单本身时，保存自然迁移为 thread、note 清空。
+  const legacyPatch = await json('/api/admin/work-tickets/ticket-legacy-note-01', { method: 'PATCH', body: JSON.stringify({ status: 'done' }) }, token)
+  assert.equal(legacyPatch.status, 200)
+  assert.equal(legacyPatch.body.thread.length, 1, '编辑遗留工单保存迁移轮')
+  assert.equal(legacyPatch.body.note, '', '保存后 note 清空')
+  const storedAfterPatch = JSON.parse(await readFile(join(temp, 'seed/site-data.json'), 'utf8'))
+  const storedLegacy3 = (storedAfterPatch.workTickets || []).find((item) => item.id === 'ticket-legacy-note-01')
+  assert.equal(storedLegacy3.note, '', '编辑保存后存储 note 清空')
+  assert.equal(storedLegacy3.thread.length, 1, '编辑保存后存储写入 thread')
+  // 清理无关验证单。
+  await json(`/api/admin/work-tickets/${unrelated.body.id}`, { method: 'PATCH', body: JSON.stringify({ status: 'cancelled' }) }, token)
+  assert.equal((await json(`/api/admin/work-tickets/${unrelated.body.id}`, { method: 'DELETE' }, token)).status, 204)
   // GET 列表读取时也应迁移。
   const listAfterNote = await json('/api/admin/work-tickets', {}, token)
   const migratedInList = listAfterNote.body.items.find((item) => item.id === 'ticket-legacy-note-01')

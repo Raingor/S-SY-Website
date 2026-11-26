@@ -217,6 +217,8 @@
 .el-admin .ticket-thread-editor .array-fields { grid-template-columns:1fr; }
 .el-admin .ticket-thread-editor .array-entry-head span.ticket-thread-meta { display:flex; align-items:center; gap:6px; flex-wrap:wrap; }
 .el-admin .ticket-thread-editor .field-help { margin-top:6px; }
+.el-admin .ticket-thread-answer { width:100%; min-height:54px; padding:8px 12px; border:1px solid #e2eaea; border-radius:4px; background:#f4f7f7; color:#3d5260; font-size:13px; line-height:1.6; white-space:pre-wrap; word-break:break-word; }
+.el-admin .ticket-thread-answer.is-pending { color:#9aa8ad; font-style:italic; }
 .el-admin .array-fields .el-form-item { margin-bottom:8px; min-width:0; }
 .el-admin .settings-structured .array-fields .full-field { grid-column:1/-1; }
 .el-admin .settings-structured .el-select,.el-admin .settings-structured .el-input-number { width:100%; }
