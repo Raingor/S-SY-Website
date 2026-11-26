@@ -62,6 +62,33 @@ export function publicAudioUrl(name) {
   return `${base}/audio/${value}`
 }
 export const PUBLIC_AUDIO_CACHE_CONTROL = 'public, max-age=31536000, immutable'
+export const PUBLIC_IMAGE_CACHE_CONTROL = 'public, max-age=31536000, immutable'
+const publicImageNamePattern = /^[a-z0-9][a-z0-9._-]*\.(?:webp|jpe?g|png)$/i
+const publicImageContentTypes = { '.webp': 'image/webp', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.png': 'image/png' }
+// Images published through the admin console live on the bucket's public prefix,
+// next to the public audio excerpts, so both the site and the mini program can
+// load them without signed URLs.
+export function publicImageUrl(name) {
+  const base = ossPublicMediaBase()
+  const value = String(name || '')
+  if (!base || !publicImageNamePattern.test(value) || value.includes('..')) return null
+  return `${base}/images/${value}`
+}
+export async function uploadPublicImageToOss(name, body) {
+  const value = String(name || '')
+  if (!ossAudioConfigured() || !publicImageNamePattern.test(value) || value.includes('..') || !body?.length) return null
+  const contentType = publicImageContentTypes[extname(value).toLowerCase()]
+  if (!contentType) return null
+  try {
+    const response = await ossMediaRequest(`public/images/${value}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': contentType, 'Content-MD5': crypto.createHash('md5').update(body).digest('base64'), 'Cache-Control': PUBLIC_IMAGE_CACHE_CONTROL, 'x-oss-object-acl': 'public-read' },
+      body,
+    })
+    await response.arrayBuffer()
+    return response.ok ? publicImageUrl(value) : null
+  } catch { return null }
+}
 // Only short excerpts (and this explicit promo intro) may live on the public
 // prefix; full recordings stay private behind 600s signed URLs.
 const publicExcerptNames = new Set(['selected-routes-intro.m4a'])
@@ -102,7 +129,7 @@ export async function copyPublicAudioFromPrivateOss(name) {
 export async function ossMediaRequest(key, { method = 'GET', query = {}, headers = {}, body } = {}) {
   const config = ossAudioConfig()
   if (!config) throw new Error('OSS 未配置，无法上传媒体')
-  if (!/^(?:audio|video|public\/(?:audio|video))\/[a-zA-Z0-9._/-]+$/.test(key) || key.split('/').includes('..')) throw new Error('OSS 文件路径无效')
+  if (!/^(?:audio|video|public\/(?:audio|video|images))\/[a-zA-Z0-9._/-]+$/.test(key) || key.split('/').includes('..')) throw new Error('OSS 文件路径无效')
   const requestHeaders = Object.fromEntries(Object.entries(headers).map(([name, value]) => [name.toLowerCase(), String(value).trim()]))
   const date = new Date().toUTCString()
   const parameters = Object.keys(query).sort()

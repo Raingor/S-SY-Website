@@ -4,6 +4,7 @@
 
 - 视频：在「开发配置 → 攻略视频」编辑记录，使用「上传视频到 OSS」。支持 MP4、最大 2 GiB，上传完成自动回填 OSS 路径、时长与大小。
 - 音频：在音频编辑页上传 MP3/M4A，最大 30 MiB。服务器验证音频并生成 1–60 秒内的试听片段；完整音频写入私有前缀，试听同时写入 OSS 公读前缀 `public/audio/`。
+- 图片：后台所有 `POST /api/admin/upload-image` 上传统一转 WebP 后写入 OSS 公读前缀 `public/images/`，返回 OSS 绝对 URL；本机 `public/images/` 保留同一文件的副本，供回滚与旧相对路径兼容。
 - 两者都通过最多 5 MiB 的分片请求上传，显示上传进度，单片暂时失败最多重试两次。成功后仍需点击「保存」，才会绑定内容记录。上传失败保留原表单中的媒体引用。
 - 未配置 OSS 返回 503；OSS 上传或合并失败返回 502。不会将仅保存到本机的文件当作上传成功。
 
@@ -16,6 +17,8 @@
 所有付费媒体对象写入时显式设为 private。RAM 权限需允许该 bucket 下 `video/`、`audio/` 的读取、写入、私有 ACL 设置及中止分片；失败清理还需删除本次随机生成对象的权限。代码不会修改 bucket 策略。分片由网站后端转发，不要求浏览器直连 OSS 或新增 OSS CORS 规则。
 
 公开试听对象写入 `public/audio/` 前缀，写入时显式设置对象级 `public-read` 与 `Cache-Control: public, max-age=31536000, immutable`，不依赖 bucket 默认 ACL。RAM 需额外允许 `public/` 前缀的 PUT（含 `x-oss-object-acl`、`Cache-Control` 头）以及以 `x-oss-copy-source` 复制私有对象。公读域名默认 `<SY_OSS_ENDPOINT>/public`，可用 `SY_OSS_PUBLIC_BASE` 覆盖为自有 CDN 域名。
+
+后台图片同样写入 `public/images/`，对象级 `public-read` 与 immutable 缓存；文件名使用小写字母、数字、连字符，扩展名为 `.webp`（或原始 `.jpg`/`.png` 回退）。返回的 `path` 为 OSS 绝对 URL，`storage:'oss'`；OSS 未配置的本地开发/测试回退为 `images/<name>` 相对路径。OSS 已配置但写入失败返回 502 `OSS_PUBLIC_IMAGE_SYNC_FAILED`，不保存引用。
 
 ## 上传 API
 
@@ -51,6 +54,7 @@
 
 - `npm run test:media-oss-upload`：隔离 OSS 签名模拟服务验证私有上传、分片大小、完整性、重试/中止/重复完成、错误 XML、大小核验、音频试听、临时清理、无配置拒绝；同时断言只有 `public/audio/` 可为 `public-read` 且带 immutable，完整音频永不进入公读前缀。
 - `npm run test:public-audio-oss`：模拟 OSS（公读前缀、copy-source、Range）验证绝对 URL 契约、后台站内路径自动发布、幂等、`access` 试听地址、私有不泄露、copy 迁移与 206 透传；并断言完整录音被拒（422）且不会进入公读前缀。
+- `npm run test:image-upload-webp`：模拟 OSS 验证 PNG/JPEG 转 WebP、WebP 原样写入、OSS `public/images/` 公读对象、immutable 缓存、绝对 URL 匿名 200、字节一致及本地回滚副本；无 OSS 时回退 `images/` 相对路径。
 - `npm run test:audio-oss-migration`、`node scripts/test-heritage-content.mjs`：旧音频读取、OSS 试听及完整播放、权限、Range 与历史内容兼容。
 - `npm run test:admin-guide-videos-ui`：真实组件方法验证上传回填、失败保留旧引用、重试和必须单独保存。
 - OSS 协议依据：[分片上传](https://www.alibabacloud.com/help/en/oss/user-guide/multipart-upload)、[V1 请求签名](https://www.alibabacloud.com/help/en/oss/developer-reference/include-signatures-in-the-authorization-header)、[合并分片](https://www.alibabacloud.com/help/en/oss/developer-reference/completemultipartupload)。

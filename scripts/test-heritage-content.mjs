@@ -32,6 +32,10 @@ function mediaUrl(url) {
   assert.match(String(url), /^https?:\/\//, `media URL must be absolute: ${url}`)
   return new URL(url).toString()
 }
+function persistableImage(value, prefix, extension) {
+  const name = `${prefix}-[\\w-]+\\.${extension}`
+  return new RegExp(`^images/${name}$`).test(String(value)) || new RegExp(`^https?://[^\\s]+/public/images/${name}$`).test(String(value))
+}
 let logs = ''
 const base = `http://127.0.0.1:${port}`
 async function request(path, { token, method = 'GET', body, headers } = {}) {
@@ -140,13 +144,16 @@ async function main() {
   assert.equal((await adminRequest(`/api/admin/attractions/${encodeURIComponent(emptyAttractionId)}`, { method: 'PATCH', body: { summary: '', highlights: [], exhibits: [], guide: {} } })).response.status, 200)
   const mapUpload = await adminRequest('/api/admin/upload-image', { method: 'POST', body: { name: 'TEST-ONLY-map.png', type: 'image/png', data: 'data:image/png;base64,iVBORw0KGgo=', prefix: 'mapImage', updateSettings: false } })
   assert.equal(mapUpload.response.status, 201)
-  assert.match(mapUpload.data.path, /^images\/mapImage-[\w-]+\.png$/, 'admin image uploads must return a persistable images/ path')
-  const savedMap = await adminRequest(`/api/admin/attractions/${encodeURIComponent(existingAttractionIdForMap)}`, { method: 'PATCH', body: { guide: { mapImage: mapUpload.data.path } } })
+  assert.ok(persistableImage(mapUpload.data.path, 'mapImage', 'png'), `admin image uploads must return a persistable image reference, got ${mapUpload.data.path}`)
+  // The fixture OSS runs on loopback http; production returns https. Visitor-map validation
+  // only accepts https for external links, so persist the equivalent https form here.
+  const mapPersistedPath = String(mapUpload.data.path).replace(/^http:/, 'https:')
+  const savedMap = await adminRequest(`/api/admin/attractions/${encodeURIComponent(existingAttractionIdForMap)}`, { method: 'PATCH', body: { guide: { mapImage: mapPersistedPath } } })
   assert.equal(savedMap.response.status, 200, JSON.stringify(savedMap.data))
-  assert.equal(savedMap.data.guide.mapImage, mapUpload.data.path, 'uploaded visitor map must pass validation and persist')
+  assert.equal(savedMap.data.guide.mapImage, mapPersistedPath, 'uploaded visitor map must pass validation and persist')
   assert.equal(savedMap.data.guide.hours, preservedGuide.hours, 'saving the map must preserve existing visitor guide content')
   const persistedMappedAttraction = JSON.parse(readFileSync(fixturePath, 'utf8')).attractions.find((item) => item.id === existingAttractionIdForMap)
-  assert.equal(persistedMappedAttraction.guide.mapImage, mapUpload.data.path, 'uploaded map reference must persist outside seed defaults')
+  assert.equal(persistedMappedAttraction.guide.mapImage, mapPersistedPath, 'uploaded map reference must persist outside seed defaults')
   assert.equal(persistedMappedAttraction.guide.hours, preservedGuide.hours, 'saving the map must not require re-entering existing guide data')
   const removedMap = await adminRequest(`/api/admin/attractions/${encodeURIComponent(existingAttractionIdForMap)}`, { method: 'PATCH', body: { guide: { mapImage: '' } } })
   assert.equal(removedMap.response.status, 200)
@@ -154,18 +161,20 @@ async function main() {
   assert.equal(removedMap.data.guide.hours, preservedGuide.hours, 'removing the map must preserve existing visitor guide content')
   const highlightUpload = await adminRequest('/api/admin/upload-image', { method: 'POST', body: { name: 'TEST-ONLY-highlight.webp', type: 'image/webp', data: 'data:image/webp;base64,UklGRg==', prefix: 'highlights', updateSettings: false } })
   assert.equal(highlightUpload.response.status, 201)
-  assert.match(highlightUpload.data.path, /^images\/highlights-[\w-]+\.webp$/, 'highlight upload must return a persistable public image path')
+  assert.ok(persistableImage(highlightUpload.data.path, 'highlights', 'webp'), `highlight upload must return a persistable public image reference, got ${highlightUpload.data.path}`)
+  // Public highlight images are https-only; store the https form of the loopback fixture URL.
+  const highlightPersistedPath = String(highlightUpload.data.path).replace(/^http:/, 'https:')
   const currentAttraction = JSON.parse(readFileSync(fixturePath, 'utf8')).attractions.find((item) => item.id === existingAttractionIdForMap)
-  const highlightsWithUploadedImage = currentAttraction.highlights.map((entry, index) => index === 0 ? { ...entry, image: highlightUpload.data.path } : entry)
+  const highlightsWithUploadedImage = currentAttraction.highlights.map((entry, index) => index === 0 ? { ...entry, image: highlightPersistedPath } : entry)
   const savedHighlights = await adminRequest(`/api/admin/attractions/${encodeURIComponent(existingAttractionIdForMap)}`, { method: 'PATCH', body: { highlights: highlightsWithUploadedImage } })
   assert.equal(savedHighlights.response.status, 200, JSON.stringify(savedHighlights.data))
-  assert.equal(savedHighlights.data.highlights[0].image, highlightUpload.data.path, 'uploaded highlight image reference must be accepted and saved')
+  assert.equal(savedHighlights.data.highlights[0].image, highlightPersistedPath, 'uploaded highlight image reference must be accepted and saved')
   const reopenedAttractions = await adminRequest('/api/admin/attractions')
   assert.equal(reopenedAttractions.response.status, 200)
-  assert.equal(reopenedAttractions.data.find((item) => item.id === existingAttractionIdForMap).highlights[0].image, highlightUpload.data.path, 'reopening the editor must retain the highlight image')
-  assert.equal(JSON.parse(readFileSync(fixturePath, 'utf8')).attractions.find((item) => item.id === existingAttractionIdForMap).highlights[0].image, highlightUpload.data.path, 'highlight image path must persist in storage')
+  assert.equal(reopenedAttractions.data.find((item) => item.id === existingAttractionIdForMap).highlights[0].image, highlightPersistedPath, 'reopening the editor must retain the highlight image')
+  assert.equal(JSON.parse(readFileSync(fixturePath, 'utf8')).attractions.find((item) => item.id === existingAttractionIdForMap).highlights[0].image, highlightPersistedPath, 'highlight image path must persist in storage')
   const publishedHighlightData = (await request('/api/content?country=greece')).data
-  const expectedPublicHighlightPath = `./${highlightUpload.data.path}`
+  const expectedPublicHighlightPath = highlightPersistedPath
   assert.equal(publishedHighlightData.attractions.find((item) => item.id === existingAttractionIdForMap).highlights[0].image, expectedPublicHighlightPath, 'published attraction highlights must expose normalized image path')
   assert.equal(publishedHighlightData.attractionDetails[existingAttractionIdForMap].highlights[0].image, expectedPublicHighlightPath, 'attractionDetails API must expose the MpApp-consumable highlight image path')
   const demoAttraction = (await request('/api/content')).data.attractions.find((item) => item.id === emptyAttractionId)

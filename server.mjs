@@ -1,13 +1,13 @@
 import http from 'node:http'
 import { createAdminSessionToken, verifyAdminSessionToken } from './admin-session.mjs'
-import { createReadStream, existsSync, mkdirSync, readdirSync, readFileSync, statSync, writeFileSync } from 'node:fs'
+import { createReadStream, existsSync, mkdirSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs'
 import { dirname, extname, join, normalize, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import crypto from 'node:crypto'
 import { setTimeout as delay } from 'node:timers/promises'
 import tls from 'node:tls'
 import { closeStorage, initStorage, queryStorageAudit, readData, saveData, storageStatus } from './storage.mjs'
-import { audioEntitled, effectiveUnlockMode, isPublicAudioExcerpt, publicHeritage, signedAudioToken, streamPrivateAudio, uploadPrivateAudio, uploadPrivateAudioToOss, uploadPublicAudioToOss, copyPublicAudioFromPrivateOss, publicAudioUrl, ossPublicMediaBase, removePrivateAudioFiles, ossMediaRequest, validateAttraction, validateHeritageRecord, verifySignedAudioToken, ossAudioConfigured, ossAudioReadUrl, normalizeVisitorSections, sanitizeRichText, visibleTrack } from './heritage-content.mjs'
+import { audioEntitled, effectiveUnlockMode, isPublicAudioExcerpt, publicHeritage, signedAudioToken, streamPrivateAudio, uploadPrivateAudio, uploadPrivateAudioToOss, uploadPublicAudioToOss, uploadPublicImageToOss, copyPublicAudioFromPrivateOss, publicAudioUrl, ossPublicMediaBase, removePrivateAudioFiles, ossMediaRequest, validateAttraction, validateHeritageRecord, verifySignedAudioToken, ossAudioConfigured, ossAudioReadUrl, normalizeVisitorSections, sanitizeRichText, visibleTrack } from './heritage-content.mjs'
 import { privateMapUrl, removePrivateMap, streamPrivateMap, uploadPrivateMap } from './private-map.mjs'
 import { amountToFen, createMiniProgramPrepay, decryptWechatNotify, queryWechatTransaction, realPayNotifyReady, realPayRequestReady, verifyWechatNotify, wechatPayConfig } from './wechat-pay.mjs'
 import { requestAdminDraft, requestAudioTrackTranslation, requestDestinationTranslation, requestTextTranslation } from './attraction-ai-fill.mjs'
@@ -2734,11 +2734,19 @@ const server = http.createServer(async (req, res) => {
         const converted = await toWebpOrOriginal(rawBuffer, match[1])
         const filename = `${prefix}-${Date.now().toString(36)}-${crypto.randomBytes(3).toString('hex')}.${converted.extension}`
         writeRuntimeImage(filename, converted.buffer)
+        // Public images live on OSS; the local copy is kept so a release rollback
+        // still has the file and legacy local references keep resolving.
+        const remoteUrl = await uploadPublicImageToOss(filename, converted.buffer)
+        if (!remoteUrl && ossAudioConfigured()) {
+          rmSync(join(runtimeImageDir, filename), { force: true })
+          return json(res, 502, { code: 'OSS_PUBLIC_IMAGE_SYNC_FAILED', error: '图片上传 OSS 失败，请稍后重试' })
+        }
+        const publicPath = remoteUrl || `images/${filename}`
         if (input.updateSettings !== false) {
-          data.settings = { ...data.settings, ogImage: `images/${filename}` }
+          data.settings = { ...data.settings, ogImage: publicPath }
           await saveData(data)
         }
-        return json(res, 201, { path: `images/${filename}`, url: `/images/${filename}` })
+        return json(res, 201, { path: publicPath, url: remoteUrl || `/images/${filename}`, storage: remoteUrl ? 'oss' : 'local' })
       }
       if (url.pathname === '/api/admin/upload-doc' && method === 'POST') {
         const input = await body(req, DOC_MAX_BYTES + 1024 * 1024)
