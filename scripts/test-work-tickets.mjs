@@ -3,6 +3,7 @@
 import assert from 'node:assert/strict'
 import { spawn } from 'node:child_process'
 import { cp, mkdir, mkdtemp, symlink, writeFile } from 'node:fs/promises'
+import http from 'node:http'
 import net from 'node:net'
 import { tmpdir } from 'node:os'
 import { join, resolve } from 'node:path'
@@ -24,11 +25,34 @@ await symlink(join(root, 'node_modules'), join(temp, 'node_modules'), 'dir')
 const fixture = syntheticContentFixture()
 await writeFile(join(temp, 'seed/site-data.json'), JSON.stringify(fixture))
 
+// webhook 接收端：本地临时 http server，记录所有 POST body。
+const webhookHits = []
+const hook = http.createServer((req, res) => {
+  if (req.method !== 'POST') { res.writeHead(405).end(); return }
+  let raw = ''
+  req.on('data', (chunk) => { raw += chunk })
+  req.on('end', () => {
+    try { webhookHits.push(JSON.parse(raw)) } catch { webhookHits.push({ raw }) }
+    res.writeHead(200, { 'Content-Type': 'application/json' }).end('{"ok":true}')
+  })
+})
+await new Promise((r) => hook.listen(0, '127.0.0.1', r))
+const hookPort = hook.address().port
+const webhookUrl = `http://127.0.0.1:${hookPort}/hooks/ticket`
+async function waitForHit(id) {
+  for (let attempt = 0; attempt < 50; attempt += 1) {
+    const hit = webhookHits.find((item) => item.id === id)
+    if (hit) return hit
+    await sleep(100)
+  }
+  return null
+}
+
 const password = 'tickets-test-password'
 const botToken = 'tickets-bot-token-for-test-only'
 const server = spawn(process.execPath, ['server.mjs'], {
   cwd: temp,
-  env: { PATH: process.env.PATH, HOME: process.env.HOME, PORT: String(port), SY_STORAGE: 'json', SY_ADMIN_PASSWORD: password, SY_TICKETS_BOT_TOKEN: botToken },
+  env: { PATH: process.env.PATH, HOME: process.env.HOME, PORT: String(port), SY_STORAGE: 'json', SY_ADMIN_PASSWORD: password, SY_TICKETS_BOT_TOKEN: botToken, SY_TICKETS_WEBHOOK_URL: webhookUrl },
   stdio: ['ignore', 'pipe', 'pipe'],
 })
 let log = ''
@@ -156,7 +180,61 @@ try {
   assert.equal(Object.prototype.hasOwnProperty.call(content.body, 'workTickets'), false, '/api/content 不应输出 workTickets')
   assert.equal(JSON.stringify(content.body).includes('带附件的需求'), false, '/api/content 不应出现工单标题')
 
+  // 10) webhook：已创建的工单应触发 POST，字段与事件名正确。
+  const hit = await waitForHit(ticket.id)
+  assert.ok(hit, '创建工单应触发 webhook POST')
+  assert.equal(hit.event, 'ticket.created')
+  assert.equal(hit.title, '修复首页 Banner')
+  assert.equal(hit.priority, 'normal')
+  assert.equal(typeof hit.requesterName, 'string')
+  assert.equal(typeof hit.createdAt, 'string')
+  assert.ok(Object.prototype.hasOwnProperty.call(hit, 'expectedAt'), 'webhook 应带 expectedAt')
+  const filesHit = await waitForHit(withFiles.body.id)
+  assert.ok(filesHit, '带附件工单应触发 webhook')
+  assert.equal(filesHit.requesterName, 'Jenny')
+  assert.equal(filesHit.priority, 'high')
+  assert.equal(filesHit.expectedAt, '2026-11-30')
+  assert.equal(webhookHits.some((item) => item.event !== 'ticket.created'), false, '不应出现其他事件')
+
+  // 11) 未配置 SY_TICKETS_WEBHOOK_URL 的实例：创建工单仍 201、不报错、不外发。
+  const noHookPort = await new Promise((resolvePort) => {
+    const probe = net.createServer()
+    probe.listen(0, '127.0.0.1', () => { const p = probe.address().port; probe.close(() => resolvePort(p)) })
+  })
+  const temp2 = await mkdtemp(join(tmpdir(), 'sy-work-tickets-nohook-'))
+  await mkdir(join(temp2, 'seed'), { recursive: true })
+  for (const file of ['server.mjs', 'storage.mjs', 'admin-session.mjs', 'heritage-content.mjs', 'private-map.mjs', 'attraction-ai-fill.mjs', 'wechat-pay.mjs']) await cp(join(root, file), join(temp2, file))
+  await symlink(join(root, 'node_modules'), join(temp2, 'node_modules'), 'dir')
+  await writeFile(join(temp2, 'seed/site-data.json'), JSON.stringify(fixture))
+  const noHookServer = spawn(process.execPath, ['server.mjs'], {
+    cwd: temp2,
+    env: { PATH: process.env.PATH, HOME: process.env.HOME, PORT: String(noHookPort), SY_STORAGE: 'json', SY_ADMIN_PASSWORD: password, SY_TICKETS_BOT_TOKEN: botToken },
+    stdio: ['ignore', 'pipe', 'pipe'],
+  })
+  let noHookLog = ''
+  noHookServer.stderr.on('data', (chunk) => { noHookLog += chunk })
+  try {
+    const noHookBase = `http://127.0.0.1:${noHookPort}`
+    for (let attempt = 0; attempt < 100; attempt += 1) {
+      try { if ((await fetch(`${noHookBase}/api/health`)).ok) break } catch {}
+      await sleep(100)
+    }
+    const noHookLogin = await fetch(`${noHookBase}/api/auth/login`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ password }) })
+    const noHookToken = (await noHookLogin.json()).token
+    const hitsBefore = webhookHits.length
+    const createdNoHook = await fetch(`${noHookBase}/api/admin/work-tickets`, { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${noHookToken}` }, body: JSON.stringify({ title: '无 webhook 配置' }) })
+    assert.equal(createdNoHook.status, 201, '未配置 webhook 创建仍应 201')
+    const noHookTicket = await createdNoHook.json()
+    await sleep(600)
+    assert.equal(await waitForHit(noHookTicket.id), null, '未配置时不应外发')
+    assert.equal(webhookHits.length, hitsBefore, '接收端不应新增请求')
+    assert.equal(/webhook/i.test(noHookLog), false, '未配置时日志不应出现 webhook 报错')
+  } finally {
+    noHookServer.kill('SIGTERM')
+  }
+
   console.log('workTickets contract PASS')
 } finally {
   server.kill('SIGTERM')
+  hook.close()
 }

@@ -2005,6 +2005,32 @@ function workTicketsSorted(items) {
     return String(a.createdAt || '').localeCompare(String(b.createdAt || ''))
   })
 }
+// 工单创建 webhook：fire-and-forget，未配置 SY_TICKETS_WEBHOOK_URL 则跳过；
+// 5s 超时，任何失败只记日志，绝不影响工单接口响应。
+function notifyTicketCreatedWebhook(ticket) {
+  const target = String(process.env.SY_TICKETS_WEBHOOK_URL || '').trim()
+  if (!target) return
+  const payload = {
+    event: 'ticket.created',
+    id: ticket.id,
+    title: ticket.title,
+    requesterName: ticket.requesterName || '',
+    priority: ticket.priority,
+    expectedAt: ticket.expectedAt || '',
+    createdAt: ticket.createdAt,
+  }
+  Promise.resolve()
+    .then(() => fetch(target, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+      signal: AbortSignal.timeout(5000),
+    }))
+    .then((response) => {
+      if (!response.ok) console.error(`ticket webhook ${ticket.id} responded ${response.status}`)
+    })
+    .catch((error) => console.error('ticket webhook failed:', error.message))
+}
 async function collectionHandler(data, collection, method, pathname, payload) {
   const items = data[collection]
   // itemId 来自 URL 路径段：id 可能含空格/中文（如「Aegean Escapes」），需解码后再匹配。
@@ -2445,6 +2471,7 @@ const server = http.createServer(async (req, res) => {
             const ticket = normalizeWorkTicket(await body(req), null, 'SY Admin')
             data.workTickets.push(ticket)
             await saveData(data)
+            notifyTicketCreatedWebhook(ticket)
             return json(res, 201, ticket)
           }
           const index = data.workTickets.findIndex((ticket) => ticket.id === itemId)
