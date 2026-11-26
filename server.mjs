@@ -1905,8 +1905,10 @@ function normalizeAttractionPayload(data, payload) {
   }
   if (!Object.prototype.hasOwnProperty.call(normalized, 'city')) return normalized
   const cityId = String(normalized.city || '').trim()
+  if (!cityId) return { ...normalized, cityName: '' }
   const city = (data.cities || []).find((item) => item.id === cityId)
-  return { ...normalized, cityName: city ? city.name : '' }
+  if (!city) throw new Error(`城市 ID 无效：${cityId}，请从城市与价格里选择`)
+  return { ...normalized, cityName: city.name }
 }
 function normalizeDestinationPayload(payload, method) {
   const next = { ...payload }
