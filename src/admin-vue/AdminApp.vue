@@ -102,7 +102,7 @@
                             <el-form-item label="繁体文案"><el-input v-model="settings.destinationBadges[badge.key].textTw" :label="badge.label+'繁体文案'" placeholder="留空回退简体文案"/></el-form-item>
                             <el-form-item label="英文文案"><el-input v-model="settings.destinationBadges[badge.key].textEn" :label="badge.label+'英文文案'" placeholder="留空回退简体文案"/></el-form-item>
                             <el-form-item label="图标路径或 HTTPS 地址" class="full-field">
-                              <el-input v-model="settings.destinationBadges[badge.key].icon" :label="badge.label+'图标路径'" clearable placeholder="./images/badge.webp 或 https://..."/>
+                              <el-input v-model="settings.destinationBadges[badge.key].icon" :label="badge.label+'图标路径'" clearable placeholder="https://... 或 images/badge.webp"/>
                               <div class="image-editor">
                                 <div v-if="settings.destinationBadges[badge.key].icon" class="image-preview"><img :src="assetUrl(settings.destinationBadges[badge.key].icon)" :alt="badge.label+'角标图标预览'"/></div>
                                 <div class="image-actions"><el-upload action="#" accept="image/png,image/jpeg,image/webp" :show-file-list="false" :http-request="req=>uploadImage(req,'destination-badge-'+badge.key,settings.destinationBadges[badge.key],'icon')"><el-button icon="el-icon-upload">上传图标</el-button></el-upload><el-button v-if="settings.destinationBadges[badge.key].icon" plain size="small" @click="settings.destinationBadges[badge.key].icon=''">清空图标</el-button></div>
@@ -916,7 +916,7 @@ const settingTabs = [
   {name:'knowledge',label:'景点讲解',description:'统一设置所有景点的试听时长、单篇讲解价格和商品状态。',fields:[]},
 ]
 const templates = {
-  country:{title:'国家资料模板',tip:'示例以希腊为例；请按实际国家名称、主图与排序修改。',values:{id:'greece',name:'希腊',nameTw:'希臘',nameEn:'Greece',sort:1,enabled:true,heroImage:'greece.webp'}},
+  country:{title:'国家资料模板',tip:'示例以希腊为例；请按实际国家名称、主图与排序修改。',values:{id:'greece',name:'希腊',nameTw:'希臘',nameEn:'Greece',sort:1,enabled:true,heroImage:'https://sy-mpapp.oss-cn-shenzhen.aliyuncs.com/public/images/santorini.webp'}},
   guide:{title:'导游资料模板',tip:'填写三种语言的姓名、职位与简介，并补齐资质、擅长方向和客户评价。',values:{id:'guide-demo',countryId:'greece',name:'李安娜',nameTw:'李安娜',nameEn:'Anna Li',role:'中文金牌导游',roleTw:'中文金牌導遊',roleEn:'Licensed Chinese-speaking guide',intro:'常驻雅典，专注古典文明与亲子文化体验。',introTw:'常駐雅典，專注古典文明與親子文化體驗。',introEn:'Athens-based guide specializing in classical history and family experiences.',location:'雅典及周边',wechat:'anna-greece',avatar:'guide-demo.webp',fullImage:'guide-demo.webp',eyebrow:'LOCAL EXPERT',proof:'希腊国家持证导游 · 中文服务 10 年',credentials:[{title:'国家持证导游',desc:'希腊官方导游资格，熟悉雅典卫城及国家考古博物馆。'}],directions:[{title:'古典文明深度讲解',subtitle:'雅典卫城与古 Agora',desc:'结合城邦历史与建筑细节，让遗址参观更有脉络。',suitable:'历史爱好者 / 首次到访',duration:'3 小时'}],reviews:[{quote:'讲解生动细致，孩子一路听得很投入。',name:'王女士',meta:'雅典亲子文化之旅'}],featured:true,enabled:false,sort:1}},
   route:{title:'路线填写模板',tip:'先确定目的地、天数和适合人群，再写路线亮点。',values:{title:'雅典 · 圣托里尼经典 8 日',kicker:'古典文明与爱琴海慢旅',days:8,tags:'首次到访 · 亲子 · 文化',desc:'从雅典卫城到圣托里尼日落，串联希腊文明与海岛风景。',image:'santorini.webp',status:'published'}},
   destination:{title:'目的地填写模板',tip:'中英文名称用于多语言页面，请保持拼写一致。',values:{name:'圣托里尼',en:'Santorini',type:'island',image:'santorini.webp',status:'published'}},

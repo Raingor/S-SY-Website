@@ -745,13 +745,16 @@ const DEFAULT_HOME_EYEBROW = 'GREECE TRAVEL BUTLER · TAILOR-MADE JOURNEYS'
 const DEFAULT_HOME_TITLE = '只为一生美好回忆'
 const DEFAULT_HOME_DESCRIPTION = '希腊在地人文与行程咨询服务。雅典在地团队，一对一中文顾问，提供文化、行程与语言陪同咨询。'
 const MINIPROGRAM_SERVICE_ACTIONS = ['customization', 'guide', 'vehicle', 'knowledge', 'business', 'travel-guide']
+// Service icons live on the public OSS prefix; the keys match the ones the
+// media migration uploaded (and must keep matching batch C's defaults).
+const MINIPROGRAM_SERVICE_ICON = 'https://sy-mpapp.oss-cn-shenzhen.aliyuncs.com/public/images/miniprogram-service-icons/'
 const DEFAULT_MINIPROGRAM_SERVICE_ENTRIES = [
-  { key: 'customization', title: { 'zh-CN': '行程定制', 'zh-TW': '行程定製', en: 'Trip planning' }, subtitle: { 'zh-CN': '资讯咨询', 'zh-TW': '資訊諮詢', en: 'Trip advice' }, iconImage: 'miniprogram-service-icons/entry-customization.png' },
-  { key: 'guide', title: { 'zh-CN': '古迹讲解', 'zh-TW': '古蹟講解', en: 'Heritage guide' }, subtitle: { 'zh-CN': '预约咨询', 'zh-TW': '預約諮詢', en: 'Booking advice' }, iconImage: 'miniprogram-service-icons/entry-guide.png' },
-  { key: 'vehicle', title: { 'zh-CN': '在地用车', 'zh-TW': '在地用車', en: 'Local transport' }, subtitle: { 'zh-CN': '资源对接', 'zh-TW': '資源對接', en: 'Local resources' }, iconImage: 'miniprogram-service-icons/entry-vehicle.png' },
-  { key: 'knowledge', title: { 'zh-CN': '文史知识库', 'zh-TW': '文史知識庫', en: 'Cultural knowledge' }, subtitle: { 'zh-CN': '免费预览', 'zh-TW': '免費預覽', en: 'Free preview' }, iconImage: 'miniprogram-service-icons/entry-knowledge.png' },
-  { key: 'business', title: { 'zh-CN': '希腊商旅', 'zh-TW': '希臘商旅', en: 'Business travel' }, subtitle: { 'zh-CN': '随行咨询', 'zh-TW': '隨行諮詢', en: 'Travel support' }, iconImage: 'miniprogram-service-icons/entry-business.png' },
-  { key: 'travel-guide', title: { 'zh-CN': '出行指南', 'zh-TW': '出行指南', en: 'Travel guide' }, subtitle: { 'zh-CN': '实用攻略', 'zh-TW': '實用攻略', en: 'Practical guide' }, iconImage: 'miniprogram-service-icons/entry-travel-guide.svg' },
+  { key: 'customization', title: { 'zh-CN': '行程定制', 'zh-TW': '行程定製', en: 'Trip planning' }, subtitle: { 'zh-CN': '资讯咨询', 'zh-TW': '資訊諮詢', en: 'Trip advice' }, iconImage: `${MINIPROGRAM_SERVICE_ICON}entry-customization.opt.webp` },
+  { key: 'guide', title: { 'zh-CN': '古迹讲解', 'zh-TW': '古蹟講解', en: 'Heritage guide' }, subtitle: { 'zh-CN': '预约咨询', 'zh-TW': '預約諮詢', en: 'Booking advice' }, iconImage: `${MINIPROGRAM_SERVICE_ICON}entry-guide.opt.webp` },
+  { key: 'vehicle', title: { 'zh-CN': '在地用车', 'zh-TW': '在地用車', en: 'Local transport' }, subtitle: { 'zh-CN': '资源对接', 'zh-TW': '資源對接', en: 'Local resources' }, iconImage: `${MINIPROGRAM_SERVICE_ICON}entry-vehicle.opt.webp` },
+  { key: 'knowledge', title: { 'zh-CN': '文史知识库', 'zh-TW': '文史知識庫', en: 'Cultural knowledge' }, subtitle: { 'zh-CN': '免费预览', 'zh-TW': '免費預覽', en: 'Free preview' }, iconImage: `${MINIPROGRAM_SERVICE_ICON}entry-knowledge.opt.webp` },
+  { key: 'business', title: { 'zh-CN': '希腊商旅', 'zh-TW': '希臘商旅', en: 'Business travel' }, subtitle: { 'zh-CN': '随行咨询', 'zh-TW': '隨行諮詢', en: 'Travel support' }, iconImage: `${MINIPROGRAM_SERVICE_ICON}entry-business.opt.webp` },
+  { key: 'travel-guide', title: { 'zh-CN': '出行指南', 'zh-TW': '出行指南', en: 'Travel guide' }, subtitle: { 'zh-CN': '实用攻略', 'zh-TW': '實用攻略', en: 'Practical guide' }, iconImage: `${MINIPROGRAM_SERVICE_ICON}entry-travel-guide.svg` },
 ]
 
 function writeRuntimeImage(filename, buffer) {

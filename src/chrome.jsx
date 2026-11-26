@@ -16,25 +16,29 @@ export function assetPath(source) {
   return isRootPortableFile ? `./public/images/${filename}` : `/images/${filename}`
 }
 
+// Static marketing images live on the public OSS prefix next to the media the
+// admin uploads, so the site never depends on local files in the release.
+const OSS_IMAGES = 'https://sy-mpapp.oss-cn-shenzhen.aliyuncs.com/public/images/'
+
 export const images = {
-  santorini: `${IMG}santorini.webp?rev=webp-20261009`,
-  athens: `${IMG}athens.webp?rev=webp-20261009`,
-  plaka: `${IMG}plaka.webp?rev=webp-20261009`,
-  delphi: `${IMG}delphi.webp?rev=webp-20261009`,
-  meteora: `${IMG}meteora.webp?rev=webp-20261009`,
-  meteoraSquare: `${IMG}meteora-square.webp?rev=webp-20261009`,
-  nafplio: `${IMG}nafplio.webp?rev=webp-20261009`,
-  couple: `${IMG}couple.webp?rev=webp-20261009`,
-  jet: `${IMG}jet.webp?rev=webp-20261009`,
-  yacht: `${IMG}yacht.webp?rev=webp-20261009`,
-  mykonos: `${IMG}mykonos.webp?rev=webp-20261009`,
-  zakynthos: `${IMG}zakynthos.webp?rev=webp-20261009`,
-  richardAvatar: `${IMG}richard-avatar.webp?rev=webp-20261009`,
-  richardProfile: `${IMG}richard-profile.webp?rev=webp-20261009`,
-  consultantAvatar: `${IMG}jenny-avatar.jpg?rev=webp-20261009`,
-  consultantQr: `${IMG}jenny-wechat-qr.png?rev=webp-20261009`,
-  crete: `${IMG}crete.webp?rev=webp-20261009`,
-  corinth: `${IMG}corinth.webp?rev=webp-20261009`,
+  santorini: `${OSS_IMAGES}santorini.webp?rev=webp-20261009`,
+  athens: `${OSS_IMAGES}athens.webp?rev=webp-20261009`,
+  plaka: `${OSS_IMAGES}plaka.webp?rev=webp-20261009`,
+  delphi: `${OSS_IMAGES}delphi.webp?rev=webp-20261009`,
+  meteora: `${OSS_IMAGES}meteora.webp?rev=webp-20261009`,
+  meteoraSquare: `${OSS_IMAGES}meteora-square.webp?rev=webp-20261009`,
+  nafplio: `${OSS_IMAGES}nafplio.webp?rev=webp-20261009`,
+  couple: `${OSS_IMAGES}couple.webp?rev=webp-20261009`,
+  jet: `${OSS_IMAGES}jet.webp?rev=webp-20261009`,
+  yacht: `${OSS_IMAGES}yacht.webp?rev=webp-20261009`,
+  mykonos: `${OSS_IMAGES}mykonos.webp?rev=webp-20261009`,
+  zakynthos: `${OSS_IMAGES}zakynthos.webp?rev=webp-20261009`,
+  richardAvatar: `${OSS_IMAGES}richard-avatar.webp?rev=webp-20261009`,
+  richardProfile: `${OSS_IMAGES}richard-profile.webp?rev=webp-20261009`,
+  consultantAvatar: `${OSS_IMAGES}jenny-avatar.jpg?rev=webp-20261009`,
+  consultantQr: `${OSS_IMAGES}jenny-wechat-qr.png?rev=webp-20261009`,
+  crete: `${OSS_IMAGES}crete.webp?rev=webp-20261009`,
+  corinth: `${OSS_IMAGES}corinth.webp?rev=webp-20261009`,
 }
 
 export function ContentActions({ contentType, contentId, title = '' }) {
