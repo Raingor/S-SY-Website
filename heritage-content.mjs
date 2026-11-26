@@ -63,8 +63,19 @@ export function publicAudioUrl(name) {
 }
 export const PUBLIC_AUDIO_CACHE_CONTROL = 'public, max-age=31536000, immutable'
 export const PUBLIC_IMAGE_CACHE_CONTROL = 'public, max-age=31536000, immutable'
+export const PUBLIC_DOCUMENT_CACHE_CONTROL = 'public, max-age=31536000, immutable'
 const publicImageNamePattern = /^[a-z0-9][a-z0-9._-]*\.(?:webp|jpe?g|png)$/i
 const publicImageContentTypes = { '.webp': 'image/webp', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.png': 'image/png' }
+const publicDocumentNamePattern = /^[a-z0-9][a-z0-9._-]*\.(?:pdf|docx?|xlsx?|pptx?)$/i
+const publicDocumentContentTypes = {
+  '.pdf': 'application/pdf',
+  '.doc': 'application/msword',
+  '.docx': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+  '.xls': 'application/vnd.ms-excel',
+  '.xlsx': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+  '.ppt': 'application/vnd.ms-powerpoint',
+  '.pptx': 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+}
 // Images published through the admin console live on the bucket's public prefix,
 // next to the public audio excerpts, so both the site and the mini program can
 // load them without signed URLs.
@@ -87,6 +98,31 @@ export async function uploadPublicImageToOss(name, body) {
     })
     await response.arrayBuffer()
     return response.ok ? publicImageUrl(value) : null
+  } catch { return null }
+}
+// Public documents (travel-guide PDFs, ticket attachments) use the same public
+// prefix as images so the site, the admin console and the mini program can link
+// them without signed URLs; the local public/docs copy is only a fallback after
+// a release rollback.
+export function publicDocumentUrl(name) {
+  const base = ossPublicMediaBase()
+  const value = String(name || '')
+  if (!base || !publicDocumentNamePattern.test(value) || value.includes('..')) return null
+  return `${base}/docs/${value}`
+}
+export async function uploadPublicDocumentToOss(name, body) {
+  const value = String(name || '')
+  if (!ossAudioConfigured() || !publicDocumentNamePattern.test(value) || value.includes('..') || !body?.length) return null
+  const contentType = publicDocumentContentTypes[extname(value).toLowerCase()]
+  if (!contentType) return null
+  try {
+    const response = await ossMediaRequest(`public/docs/${value}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': contentType, 'Content-MD5': crypto.createHash('md5').update(body).digest('base64'), 'Cache-Control': PUBLIC_DOCUMENT_CACHE_CONTROL, 'x-oss-object-acl': 'public-read' },
+      body,
+    })
+    await response.arrayBuffer()
+    return response.ok ? publicDocumentUrl(value) : null
   } catch { return null }
 }
 // Only short excerpts (and this explicit promo intro) may live on the public
@@ -129,7 +165,7 @@ export async function copyPublicAudioFromPrivateOss(name) {
 export async function ossMediaRequest(key, { method = 'GET', query = {}, headers = {}, body } = {}) {
   const config = ossAudioConfig()
   if (!config) throw new Error('OSS 未配置，无法上传媒体')
-  if (!/^(?:audio|video|public\/(?:audio|video|images))\/[a-zA-Z0-9._/-]+$/.test(key) || key.split('/').includes('..')) throw new Error('OSS 文件路径无效')
+  if (!/^(?:audio|video|public\/(?:audio|video|images|docs))\/[a-zA-Z0-9._/-]+$/.test(key) || key.split('/').includes('..')) throw new Error('OSS 文件路径无效')
   const requestHeaders = Object.fromEntries(Object.entries(headers).map(([name, value]) => [name.toLowerCase(), String(value).trim()]))
   const date = new Date().toUTCString()
   const parameters = Object.keys(query).sort()
