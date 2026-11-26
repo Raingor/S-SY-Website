@@ -2626,18 +2626,46 @@ const server = http.createServer(async (req, res) => {
       }
       if (url.pathname === '/api/admin/travel-guide' && method === 'GET') return json(res, 200, { ...normalizeTravelGuide(data.travelGuide), docs: normalizeTravelGuideDocs(data.settings?.travelGuideDocs) })
       if (url.pathname === '/api/admin/travel-guide-docs' && method === 'GET') {
+        // 文档库以「配置里已引用的链接」为准，本地目录只补充未引用的历史文件；
+        // 这样文档搬到 OSS 后不再依赖本地 runtimeDocDir，也避免调用 OSS ListObjects。
         const files = []
+        const seen = new Set()
+        const configured = { ...(data.settings?.travelGuideDocs || {}), ...(data.travelGuide?.docs || {}) }
+        for (const [key, value] of Object.entries(configured)) {
+          const link = String(value || '').trim()
+          if (!link || seen.has(link)) continue
+          seen.add(link)
+          const rawName = link.split('?')[0].split('/').pop() || link
+          let name = rawName
+          try { name = decodeURIComponent(rawName) } catch {}
+          files.push({ name, url: link, key, storage: /^https?:/i.test(link) ? 'oss' : 'local', size: 0, updatedAt: '' })
+        }
         try {
           for (const entry of readdirSync(runtimeDocDir)) {
             const extension = extname(entry).toLowerCase()
             if (!ALLOWED_DOC_EXTENSIONS.has(extension)) continue
             const stat = statSync(join(runtimeDocDir, entry))
             if (!stat.isFile()) continue
-            files.push({ name: entry, url: `/docs/${entry}`, size: stat.size, updatedAt: stat.mtime.toISOString() })
+            const localUrl = `/docs/${entry}`
+            if (seen.has(localUrl)) continue
+            seen.add(localUrl)
+            files.push({ name: entry, url: localUrl, key: '', storage: 'local', size: stat.size, updatedAt: stat.mtime.toISOString() })
           }
         } catch {}
-        files.sort((a, b) => b.updatedAt.localeCompare(a.updatedAt))
-        return json(res, 200, { files })
+        // 同一文件既上了 OSS 又留有本地副本时，按文件名只留一条并优先 OSS，
+        // 否则 Jenny 把新上传文档写进配置后，列表会同时出现 oss 与 local 两条同名项。
+        const byName = new Map()
+        for (const file of files) {
+          const previous = byName.get(file.name)
+          if (!previous || (previous.storage !== 'oss' && file.storage === 'oss')) byName.set(file.name, file)
+        }
+        const uniqueFiles = [...byName.values()]
+        uniqueFiles.sort((a, b) => {
+          if (Boolean(a.updatedAt) !== Boolean(b.updatedAt)) return a.updatedAt ? 1 : -1
+          if (a.updatedAt && b.updatedAt) return b.updatedAt.localeCompare(a.updatedAt)
+          return a.name.localeCompare(b.name, 'zh-CN')
+        })
+        return json(res, 200, { files: uniqueFiles })
       }
       if (url.pathname === '/api/admin/travel-guide' && method === 'PATCH') {
         let input
@@ -2978,9 +3006,16 @@ const server = http.createServer(async (req, res) => {
         if (mimeType !== 'application/octet-stream' && mimeType !== expectedMime && !expectedMime.includes(mimeType)) return json(res, 422, { error: `文件类型与扩展名不一致（${mimeType} ≠ ${extension}）` })
         const prefix = String(input.prefix || 'doc').replace(/[^a-z0-9-]/gi, '').slice(0, 20) || 'doc'
         const filename = `${prefix}-${Date.now().toString(36)}-${crypto.randomBytes(3).toString('hex')}${extension}`
-        mkdirSync(runtimeDocDir, { recursive: true })
-        writeFileSync(join(runtimeDocDir, filename), rawBuffer)
-        return json(res, 201, { path: `docs/${filename}`, url: `/docs/${filename}` })
+        // 本地副本只作回滚兜底：目录不可写时忽略，不能让上传失败。
+        try {
+          mkdirSync(runtimeDocDir, { recursive: true })
+          writeFileSync(join(runtimeDocDir, filename), rawBuffer)
+        } catch (error) {
+          console.error('upload-doc local copy skipped:', error.message)
+        }
+        const remoteUrl = await uploadPublicDocumentToOss(filename, rawBuffer)
+        if (!remoteUrl && ossAudioConfigured()) return json(res, 502, { code: 'OSS_PUBLIC_DOCUMENT_SYNC_FAILED', error: '文档上传 OSS 失败，请稍后重试' })
+        return json(res, 201, { path: remoteUrl || `docs/${filename}`, url: remoteUrl || `/docs/${filename}`, storage: remoteUrl ? 'oss' : 'local' })
       }
       if (url.pathname === '/api/admin/miniprogram-users' && method === 'GET') return json(res, 200, { items: (data.miniprogramUsers || []).map((user) => adminMiniUserSummary(data, user)) })
       const miniUserMembershipMatch = url.pathname.match(/^\/api\/admin\/miniprogram-users\/([^/]+)\/membership$/)
