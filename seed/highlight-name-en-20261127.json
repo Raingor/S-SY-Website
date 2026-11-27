@@ -1,0 +1,3889 @@
+{
+  "format": "中文（English）",
+  "parentheses": "fullwidth U+FF08/U+FF09, no space; same as live Acropolis cards and the source document",
+  "sourceDocument": "希伴旅-必看亮点修改1126.docx",
+  "match": "attractionId + from. highlightId is the public content id and may be synthesized by the API.",
+  "preserve": [
+    "desc",
+    "descTw",
+    "descEn",
+    "image",
+    "sort",
+    "exhibitId",
+    "nameTw",
+    "nameEn",
+    "attraction name"
+  ],
+  "updates": [
+    {
+      "attractionId": "import-9f11f5de7e1a520d",
+      "attractionName": "克诺索斯王宫",
+      "highlightId": "import-9f11f5de7e1a520d-highlight-1",
+      "sort": 1,
+      "from": "王座室",
+      "to": "王座室（Throne Room）",
+      "english": "Throne Room"
+    },
+    {
+      "attractionId": "import-9f11f5de7e1a520d",
+      "attractionName": "克诺索斯王宫",
+      "highlightId": "import-9f11f5de7e1a520d-highlight-2",
+      "sort": 2,
+      "from": "红色柱子",
+      "to": "红色柱子（Red Columns）",
+      "english": "Red Columns"
+    },
+    {
+      "attractionId": "import-9f11f5de7e1a520d",
+      "attractionName": "克诺索斯王宫",
+      "highlightId": "import-9f11f5de7e1a520d-highlight-3",
+      "sort": 3,
+      "from": "公牛壁画",
+      "to": "公牛壁画（Bull-Leaping Fresco）",
+      "english": "Bull-Leaping Fresco"
+    },
+    {
+      "attractionId": "import-9f11f5de7e1a520d",
+      "attractionName": "克诺索斯王宫",
+      "highlightId": "import-9f11f5de7e1a520d-highlight-4",
+      "sort": 4,
+      "from": "双斧符号",
+      "to": "双斧符号（Labrys / Double Axe Symbol）",
+      "english": "Labrys / Double Axe Symbol"
+    },
+    {
+      "attractionId": "import-9f11f5de7e1a520d",
+      "attractionName": "克诺索斯王宫",
+      "highlightId": "import-9f11f5de7e1a520d-highlight-5",
+      "sort": 5,
+      "from": "大阶梯",
+      "to": "大阶梯（Grand Staircase）",
+      "english": "Grand Staircase"
+    },
+    {
+      "attractionId": "import-9f11f5de7e1a520d",
+      "attractionName": "克诺索斯王宫",
+      "highlightId": "import-9f11f5de7e1a520d-highlight-6",
+      "sort": 6,
+      "from": "中央庭院",
+      "to": "中央庭院（Central Court）",
+      "english": "Central Court"
+    },
+    {
+      "attractionId": "import-9f11f5de7e1a520d",
+      "attractionName": "克诺索斯王宫",
+      "highlightId": "import-9f11f5de7e1a520d-highlight-7",
+      "sort": 7,
+      "from": "储藏室与巨型陶罐",
+      "to": "储藏室与巨型陶罐（Storage Rooms and Pithoi）",
+      "english": "Storage Rooms and Pithoi"
+    },
+    {
+      "attractionId": "import-8a7a6909ba1c24e2",
+      "attractionName": "伊拉克利翁考古博物馆",
+      "highlightId": "import-8a7a6909ba1c24e2-highlight-1",
+      "sort": 1,
+      "from": "蛇女神像",
+      "to": "蛇女神像（Snake Goddess Figurines）",
+      "english": "Snake Goddess Figurines"
+    },
+    {
+      "attractionId": "import-8a7a6909ba1c24e2",
+      "attractionName": "伊拉克利翁考古博物馆",
+      "highlightId": "import-8a7a6909ba1c24e2-highlight-2",
+      "sort": 2,
+      "from": "法伊斯托斯圆盘",
+      "to": "法伊斯托斯圆盘（Phaistos Disc）",
+      "english": "Phaistos Disc"
+    },
+    {
+      "attractionId": "import-8a7a6909ba1c24e2",
+      "attractionName": "伊拉克利翁考古博物馆",
+      "highlightId": "import-8a7a6909ba1c24e2-highlight-3",
+      "sort": 3,
+      "from": "公牛跳跃壁画",
+      "to": "公牛跳跃壁画（Bull-Leaping Fresco）",
+      "english": "Bull-Leaping Fresco"
+    },
+    {
+      "attractionId": "import-8a7a6909ba1c24e2",
+      "attractionName": "伊拉克利翁考古博物馆",
+      "highlightId": "import-8a7a6909ba1c24e2-highlight-4",
+      "sort": 4,
+      "from": "巴黎妇人壁画",
+      "to": "巴黎妇人壁画（La Parisienne Fresco）",
+      "english": "La Parisienne Fresco"
+    },
+    {
+      "attractionId": "import-8a7a6909ba1c24e2",
+      "attractionName": "伊拉克利翁考古博物馆",
+      "highlightId": "import-8a7a6909ba1c24e2-highlight-5",
+      "sort": 5,
+      "from": "米诺斯黄金珠宝",
+      "to": "米诺斯黄金珠宝（Minoan Gold Jewellery）",
+      "english": "Minoan Gold Jewellery"
+    },
+    {
+      "attractionId": "import-8a7a6909ba1c24e2",
+      "attractionName": "伊拉克利翁考古博物馆",
+      "highlightId": "import-8a7a6909ba1c24e2-highlight-6",
+      "sort": 6,
+      "from": "双斧祭祀文物",
+      "to": "双斧祭祀文物（Double Axe Ritual Objects）",
+      "english": "Double Axe Ritual Objects"
+    },
+    {
+      "attractionId": "import-8a7a6909ba1c24e2",
+      "attractionName": "伊拉克利翁考古博物馆",
+      "highlightId": "import-8a7a6909ba1c24e2-highlight-7",
+      "sort": 7,
+      "from": "阿吉亚特里亚达石棺",
+      "to": "阿吉亚特里亚达石棺（Hagia Triada Sarcophagus）",
+      "english": "Hagia Triada Sarcophagus"
+    },
+    {
+      "attractionId": "import-4175f340c70990b2",
+      "attractionName": "伊拉克利翁老城",
+      "highlightId": "import-4175f340c70990b2-highlight-1",
+      "sort": 1,
+      "from": "莫罗西尼狮子喷泉",
+      "to": "莫罗西尼狮子喷泉（Morosini Fountain）",
+      "english": "Morosini Fountain"
+    },
+    {
+      "attractionId": "import-4175f340c70990b2",
+      "attractionName": "伊拉克利翁老城",
+      "highlightId": "import-4175f340c70990b2-highlight-2",
+      "sort": 2,
+      "from": "库勒斯威尼斯堡垒",
+      "to": "库勒斯威尼斯堡垒（Koules Fortress）",
+      "english": "Koules Fortress"
+    },
+    {
+      "attractionId": "import-4175f340c70990b2",
+      "attractionName": "伊拉克利翁老城",
+      "highlightId": "import-4175f340c70990b2-highlight-3",
+      "sort": 3,
+      "from": "圣提多教堂",
+      "to": "圣提多教堂（Agios Titos Church）",
+      "english": "Agios Titos Church"
+    },
+    {
+      "attractionId": "import-4175f340c70990b2",
+      "attractionName": "伊拉克利翁老城",
+      "highlightId": "import-4175f340c70990b2-highlight-4",
+      "sort": 4,
+      "from": "威尼斯凉廊",
+      "to": "威尼斯凉廊（Venetian Loggia）",
+      "english": "Venetian Loggia"
+    },
+    {
+      "attractionId": "import-4175f340c70990b2",
+      "attractionName": "伊拉克利翁老城",
+      "highlightId": "import-4175f340c70990b2-highlight-5",
+      "sort": 5,
+      "from": "圣米纳斯大教堂",
+      "to": "圣米纳斯大教堂（Agios Minas Cathedral）",
+      "english": "Agios Minas Cathedral"
+    },
+    {
+      "attractionId": "import-5b938c19610e7ca7",
+      "attractionName": "伊亚小镇",
+      "highlightId": "import-5b938c19610e7ca7-highlight-1",
+      "sort": 1,
+      "from": "蓝顶教堂",
+      "to": "蓝顶教堂（Blue-Domed Churches）",
+      "english": "Blue-Domed Churches"
+    },
+    {
+      "attractionId": "import-5b938c19610e7ca7",
+      "attractionName": "伊亚小镇",
+      "highlightId": "import-5b938c19610e7ca7-highlight-2",
+      "sort": 2,
+      "from": "伊亚城堡遗址",
+      "to": "伊亚城堡遗址（Oia Castle / Byzantine Castle Ruins）",
+      "english": "Oia Castle / Byzantine Castle Ruins"
+    },
+    {
+      "attractionId": "import-5b938c19610e7ca7",
+      "attractionName": "伊亚小镇",
+      "highlightId": "import-5b938c19610e7ca7-highlight-3",
+      "sort": 3,
+      "from": "风车建筑",
+      "to": "风车建筑（Oia Windmills）",
+      "english": "Oia Windmills"
+    },
+    {
+      "attractionId": "import-5b938c19610e7ca7",
+      "attractionName": "伊亚小镇",
+      "highlightId": "import-5b938c19610e7ca7-highlight-4",
+      "sort": 4,
+      "from": "火山口悬崖民居",
+      "to": "火山口悬崖民居（Caldera Cliffside Houses）",
+      "english": "Caldera Cliffside Houses"
+    },
+    {
+      "attractionId": "import-5b938c19610e7ca7",
+      "attractionName": "伊亚小镇",
+      "highlightId": "import-5b938c19610e7ca7-highlight-5",
+      "sort": 5,
+      "from": "伊亚日落观景点",
+      "to": "伊亚日落观景点（Oia Sunset Viewpoint）",
+      "english": "Oia Sunset Viewpoint"
+    },
+    {
+      "attractionId": "import-6a932e2126c3d411",
+      "attractionName": "费拉小镇",
+      "highlightId": "import-6a932e2126c3d411-highlight-1",
+      "sort": 1,
+      "from": "三钟教堂",
+      "to": "三钟教堂（Three Bells of Fira / Church of the Resurrection of the Virgin Mary）",
+      "english": "Three Bells of Fira / Church of the Resurrection of the Virgin Mary"
+    },
+    {
+      "attractionId": "import-6a932e2126c3d411",
+      "attractionName": "费拉小镇",
+      "highlightId": "import-6a932e2126c3d411-highlight-2",
+      "sort": 2,
+      "from": "大都会圣母报喜主教堂",
+      "to": "大都会圣母报喜主教堂（Metropolitan Cathedral of Ypapanti）",
+      "english": "Metropolitan Cathedral of Ypapanti"
+    },
+    {
+      "attractionId": "import-6a932e2126c3d411",
+      "attractionName": "费拉小镇",
+      "highlightId": "import-6a932e2126c3d411-highlight-3",
+      "sort": 3,
+      "from": "火山口悬崖步道",
+      "to": "火山口悬崖步道（Caldera Cliff Walk）",
+      "english": "Caldera Cliff Walk"
+    },
+    {
+      "attractionId": "import-6a932e2126c3d411",
+      "attractionName": "费拉小镇",
+      "highlightId": "import-6a932e2126c3d411-highlight-4",
+      "sort": 4,
+      "from": "费拉缆车",
+      "to": "费拉缆车（Santorini Cable Car）",
+      "english": "Santorini Cable Car"
+    },
+    {
+      "attractionId": "import-6a932e2126c3d411",
+      "attractionName": "费拉小镇",
+      "highlightId": "import-6a932e2126c3d411-highlight-5",
+      "sort": 5,
+      "from": "费拉老港",
+      "to": "费拉老港（Old Port of Fira）",
+      "english": "Old Port of Fira"
+    },
+    {
+      "attractionId": "import-8927257f087f5462",
+      "attractionName": "阿克罗蒂里考古遗址",
+      "highlightId": "import-8927257f087f5462-highlight-1",
+      "sort": 1,
+      "from": "史前城市遗址",
+      "to": "史前城市遗址（Prehistoric City of Akrotiri）",
+      "english": "Prehistoric City of Akrotiri"
+    },
+    {
+      "attractionId": "import-8927257f087f5462",
+      "attractionName": "阿克罗蒂里考古遗址",
+      "highlightId": "import-8927257f087f5462-highlight-2",
+      "sort": 2,
+      "from": "多层建筑遗址",
+      "to": "多层建筑遗址（Multi-storey Buildings）",
+      "english": "Multi-storey Buildings"
+    },
+    {
+      "attractionId": "import-8927257f087f5462",
+      "attractionName": "阿克罗蒂里考古遗址",
+      "highlightId": "import-8927257f087f5462-highlight-3",
+      "sort": 3,
+      "from": "壁画遗迹",
+      "to": "壁画遗迹（Minoan Frescoes）",
+      "english": "Minoan Frescoes"
+    },
+    {
+      "attractionId": "import-8927257f087f5462",
+      "attractionName": "阿克罗蒂里考古遗址",
+      "highlightId": "import-8927257f087f5462-highlight-4",
+      "sort": 4,
+      "from": "古代排水系统",
+      "to": "古代排水系统（Ancient Drainage System）",
+      "english": "Ancient Drainage System"
+    },
+    {
+      "attractionId": "import-8927257f087f5462",
+      "attractionName": "阿克罗蒂里考古遗址",
+      "highlightId": "import-8927257f087f5462-highlight-5",
+      "sort": 5,
+      "from": "火山掩埋遗迹",
+      "to": "火山掩埋遗迹（Volcanic Burial Layers）",
+      "english": "Volcanic Burial Layers"
+    },
+    {
+      "attractionId": "import-e1a8cb5a617c44ee",
+      "attractionName": "红沙滩与黑沙滩",
+      "highlightId": "import-e1a8cb5a617c44ee-highlight-1",
+      "sort": 1,
+      "from": "红沙滩",
+      "to": "红沙滩（Red Beach）",
+      "english": "Red Beach"
+    },
+    {
+      "attractionId": "import-e1a8cb5a617c44ee",
+      "attractionName": "红沙滩与黑沙滩",
+      "highlightId": "import-e1a8cb5a617c44ee-highlight-2",
+      "sort": 2,
+      "from": "卡马利黑沙滩",
+      "to": "卡马利黑沙滩（Kamari Black Beach）",
+      "english": "Kamari Black Beach"
+    },
+    {
+      "attractionId": "import-e1a8cb5a617c44ee",
+      "attractionName": "红沙滩与黑沙滩",
+      "highlightId": "import-e1a8cb5a617c44ee-highlight-3",
+      "sort": 3,
+      "from": "佩里萨黑沙滩",
+      "to": "佩里萨黑沙滩（Perissa Black Beach）",
+      "english": "Perissa Black Beach"
+    },
+    {
+      "attractionId": "import-e1a8cb5a617c44ee",
+      "attractionName": "红沙滩与黑沙滩",
+      "highlightId": "import-e1a8cb5a617c44ee-highlight-4",
+      "sort": 4,
+      "from": "火山岩海岸地貌",
+      "to": "火山岩海岸地貌（Volcanic Coastal Landscape）",
+      "english": "Volcanic Coastal Landscape"
+    },
+    {
+      "attractionId": "import-84e757b84732d1f8",
+      "attractionName": "埃皮达鲁斯古剧场",
+      "highlightId": "import-84e757b84732d1f8-highlight-1",
+      "sort": 1,
+      "from": "半圆形观众席",
+      "to": "半圆形观众席（Semicircular Auditorium）",
+      "english": "Semicircular Auditorium"
+    },
+    {
+      "attractionId": "import-84e757b84732d1f8",
+      "attractionName": "埃皮达鲁斯古剧场",
+      "highlightId": "import-84e757b84732d1f8-highlight-2",
+      "sort": 2,
+      "from": "圆形乐池",
+      "to": "圆形乐池（Orchestra）",
+      "english": "Orchestra"
+    },
+    {
+      "attractionId": "import-84e757b84732d1f8",
+      "attractionName": "埃皮达鲁斯古剧场",
+      "highlightId": "import-84e757b84732d1f8-highlight-3",
+      "sort": 3,
+      "from": "舞台建筑遗址",
+      "to": "舞台建筑遗址（Stage Building）",
+      "english": "Stage Building"
+    },
+    {
+      "attractionId": "import-84e757b84732d1f8",
+      "attractionName": "埃皮达鲁斯古剧场",
+      "highlightId": "import-84e757b84732d1f8-highlight-4",
+      "sort": 4,
+      "from": "自然声学效果",
+      "to": "自然声学效果（Acoustic Design）",
+      "english": "Acoustic Design"
+    },
+    {
+      "attractionId": "import-84e757b84732d1f8",
+      "attractionName": "埃皮达鲁斯古剧场",
+      "highlightId": "import-84e757b84732d1f8-highlight-5",
+      "sort": 5,
+      "from": "夏季古典戏剧节",
+      "to": "夏季古典戏剧节（Epidaurus Festival）",
+      "english": "Epidaurus Festival"
+    },
+    {
+      "attractionId": "import-9545b38632ae0097",
+      "attractionName": "阿斯克勒庇俄斯圣地",
+      "highlightId": "import-9545b38632ae0097-highlight-1",
+      "sort": 1,
+      "from": "阿斯克勒庇俄斯神庙",
+      "to": "阿斯克勒庇俄斯神庙（Temple of Asklepios）",
+      "english": "Temple of Asklepios"
+    },
+    {
+      "attractionId": "import-9545b38632ae0097",
+      "attractionName": "阿斯克勒庇俄斯圣地",
+      "highlightId": "import-9545b38632ae0097-highlight-2",
+      "sort": 2,
+      "from": "圆形建筑托洛斯",
+      "to": "圆形建筑托洛斯（Tholos of Epidaurus）",
+      "english": "Tholos of Epidaurus"
+    },
+    {
+      "attractionId": "import-9545b38632ae0097",
+      "attractionName": "阿斯克勒庇俄斯圣地",
+      "highlightId": "import-9545b38632ae0097-highlight-3",
+      "sort": 3,
+      "from": "阿巴顿疗养大厅",
+      "to": "阿巴顿疗养大厅（Abaton / Enkoimeterion）",
+      "english": "Abaton / Enkoimeterion"
+    },
+    {
+      "attractionId": "import-9545b38632ae0097",
+      "attractionName": "阿斯克勒庇俄斯圣地",
+      "highlightId": "import-9545b38632ae0097-highlight-4",
+      "sort": 4,
+      "from": "体育场",
+      "to": "体育场（Ancient Stadium）",
+      "english": "Ancient Stadium"
+    },
+    {
+      "attractionId": "import-9545b38632ae0097",
+      "attractionName": "阿斯克勒庇俄斯圣地",
+      "highlightId": "import-9545b38632ae0097-highlight-5",
+      "sort": 5,
+      "from": "宾客招待建筑",
+      "to": "宾客招待建筑（Katagogion）",
+      "english": "Katagogion"
+    },
+    {
+      "attractionId": "import-9545b38632ae0097",
+      "attractionName": "阿斯克勒庇俄斯圣地",
+      "highlightId": "import-9545b38632ae0097-highlight-6",
+      "sort": 6,
+      "from": "阿斯克勒庇俄斯神圣泉水",
+      "to": "阿斯克勒庇俄斯神圣泉水（Sacred Springs）",
+      "english": "Sacred Springs"
+    },
+    {
+      "attractionId": "import-20fe1527cf8e745a",
+      "attractionName": "埃皮达鲁斯考古博物馆",
+      "highlightId": "import-20fe1527cf8e745a-highlight-1",
+      "sort": 1,
+      "from": "神庙建筑构件",
+      "to": "神庙建筑构件（Temple Architectural Fragments）",
+      "english": "Temple Architectural Fragments"
+    },
+    {
+      "attractionId": "import-20fe1527cf8e745a",
+      "attractionName": "埃皮达鲁斯考古博物馆",
+      "highlightId": "import-20fe1527cf8e745a-highlight-2",
+      "sort": 2,
+      "from": "古代医疗器具",
+      "to": "古代医疗器具（Ancient Medical Instruments）",
+      "english": "Ancient Medical Instruments"
+    },
+    {
+      "attractionId": "import-20fe1527cf8e745a",
+      "attractionName": "埃皮达鲁斯考古博物馆",
+      "highlightId": "import-20fe1527cf8e745a-highlight-3",
+      "sort": 3,
+      "from": "雕塑与宗教祭品",
+      "to": "雕塑与宗教祭品（Sculptures and Votive Offerings）",
+      "english": "Sculptures and Votive Offerings"
+    },
+    {
+      "attractionId": "import-20fe1527cf8e745a",
+      "attractionName": "埃皮达鲁斯考古博物馆",
+      "highlightId": "import-20fe1527cf8e745a-highlight-4",
+      "sort": 4,
+      "from": "古剧场建筑模型",
+      "to": "古剧场建筑模型（Theatre Architectural Models）",
+      "english": "Theatre Architectural Models"
+    },
+    {
+      "attractionId": "import-d12bf8898f2b1012",
+      "attractionName": "白塔",
+      "highlightId": "import-d12bf8898f2b1012-highlight-1",
+      "sort": 1,
+      "from": "白塔主体建筑",
+      "to": "白塔主体建筑（White Tower Structure）",
+      "english": "White Tower Structure"
+    },
+    {
+      "attractionId": "import-d12bf8898f2b1012",
+      "attractionName": "白塔",
+      "highlightId": "import-d12bf8898f2b1012-highlight-2",
+      "sort": 2,
+      "from": "塔内历史展览",
+      "to": "塔内历史展览（Historical Exhibition）",
+      "english": "Historical Exhibition"
+    },
+    {
+      "attractionId": "import-d12bf8898f2b1012",
+      "attractionName": "白塔",
+      "highlightId": "import-d12bf8898f2b1012-highlight-3",
+      "sort": 3,
+      "from": "塔顶观景平台",
+      "to": "塔顶观景平台（White Tower Viewpoint）",
+      "english": "White Tower Viewpoint"
+    },
+    {
+      "attractionId": "import-1d5c0d423b6d93ed",
+      "attractionName": "加莱里乌斯拱门（卡马拉）",
+      "highlightId": "import-1d5c0d423b6d93ed-highlight-1",
+      "sort": 1,
+      "from": "大理石浮雕",
+      "to": "大理石浮雕（Marble Reliefs）",
+      "english": "Marble Reliefs"
+    },
+    {
+      "attractionId": "import-1d5c0d423b6d93ed",
+      "attractionName": "加莱里乌斯拱门（卡马拉）",
+      "highlightId": "import-1d5c0d423b6d93ed-highlight-2",
+      "sort": 2,
+      "from": "罗马凯旋拱门结构",
+      "to": "罗马凯旋拱门结构（Roman Triumphal Arch）",
+      "english": "Roman Triumphal Arch"
+    },
+    {
+      "attractionId": "import-1d5c0d423b6d93ed",
+      "attractionName": "加莱里乌斯拱门（卡马拉）",
+      "highlightId": "import-1d5c0d423b6d93ed-highlight-3",
+      "sort": 3,
+      "from": "古代城市轴线",
+      "to": "古代城市轴线（Ancient Urban Axis）",
+      "english": "Ancient Urban Axis"
+    },
+    {
+      "attractionId": "import-b89a6c62f3062d26",
+      "attractionName": "塞萨洛尼基考古博物馆",
+      "highlightId": "import-b89a6c62f3062d26-highlight-1",
+      "sort": 1,
+      "from": "德尔维尼克拉特火葬器皿",
+      "to": "德尔维尼克拉特火葬器皿（Derveni Krater）",
+      "english": "Derveni Krater"
+    },
+    {
+      "attractionId": "import-b89a6c62f3062d26",
+      "attractionName": "塞萨洛尼基考古博物馆",
+      "highlightId": "import-b89a6c62f3062d26-highlight-2",
+      "sort": 2,
+      "from": "黄金马其顿王冠",
+      "to": "黄金马其顿王冠（Gold Macedonian Wreaths）",
+      "english": "Gold Macedonian Wreaths"
+    },
+    {
+      "attractionId": "import-b89a6c62f3062d26",
+      "attractionName": "塞萨洛尼基考古博物馆",
+      "highlightId": "import-b89a6c62f3062d26-highlight-3",
+      "sort": 3,
+      "from": "马其顿墓葬文物",
+      "to": "马其顿墓葬文物（Macedonian Tomb Finds）",
+      "english": "Macedonian Tomb Finds"
+    },
+    {
+      "attractionId": "import-b89a6c62f3062d26",
+      "attractionName": "塞萨洛尼基考古博物馆",
+      "highlightId": "import-b89a6c62f3062d26-highlight-4",
+      "sort": 4,
+      "from": "哈尔基季基青铜器",
+      "to": "哈尔基季基青铜器（Chalcidice Bronze Finds）",
+      "english": "Chalcidice Bronze Finds"
+    },
+    {
+      "attractionId": "import-b89a6c62f3062d26",
+      "attractionName": "塞萨洛尼基考古博物馆",
+      "highlightId": "import-b89a6c62f3062d26-highlight-5",
+      "sort": 5,
+      "from": "古希腊雕塑收藏",
+      "to": "古希腊雕塑收藏（Ancient Greek Sculpture Collection）",
+      "english": "Ancient Greek Sculpture Collection"
+    },
+    {
+      "attractionId": "import-007138d77391d478",
+      "attractionName": "伽勒里乌斯宫遗址与Rotunda",
+      "highlightId": "import-007138d77391d478-highlight-1",
+      "sort": 1,
+      "from": "伽勒里乌斯宫殿遗址",
+      "to": "伽勒里乌斯宫殿遗址（Palace of Galerius）",
+      "english": "Palace of Galerius"
+    },
+    {
+      "attractionId": "import-007138d77391d478",
+      "attractionName": "伽勒里乌斯宫遗址与Rotunda",
+      "highlightId": "import-007138d77391d478-highlight-2",
+      "sort": 2,
+      "from": "圆形大厅",
+      "to": "圆形大厅（Rotunda）",
+      "english": "Rotunda"
+    },
+    {
+      "attractionId": "import-007138d77391d478",
+      "attractionName": "伽勒里乌斯宫遗址与Rotunda",
+      "highlightId": "import-007138d77391d478-highlight-3",
+      "sort": 3,
+      "from": "拜占庭马赛克",
+      "to": "拜占庭马赛克（Byzantine Mosaics）",
+      "english": "Byzantine Mosaics"
+    },
+    {
+      "attractionId": "import-007138d77391d478",
+      "attractionName": "伽勒里乌斯宫遗址与Rotunda",
+      "highlightId": "import-007138d77391d478-highlight-4",
+      "sort": 4,
+      "from": "加莱里乌斯拱门周边遗址",
+      "to": "加莱里乌斯拱门周边遗址（Galerius Arch Complex）",
+      "english": "Galerius Arch Complex"
+    },
+    {
+      "attractionId": "import-56871bb4ca8254c4",
+      "attractionName": "塞萨洛尼基老城区（阿诺波利斯）",
+      "highlightId": "import-56871bb4ca8254c4-highlight-1",
+      "sort": 1,
+      "from": "拜占庭城墙",
+      "to": "拜占庭城墙（Byzantine Walls）",
+      "english": "Byzantine Walls"
+    },
+    {
+      "attractionId": "import-56871bb4ca8254c4",
+      "attractionName": "塞萨洛尼基老城区（阿诺波利斯）",
+      "highlightId": "import-56871bb4ca8254c4-highlight-2",
+      "sort": 2,
+      "from": "特里戈尼翁塔",
+      "to": "特里戈尼翁塔（Trigonion Tower）",
+      "english": "Trigonion Tower"
+    },
+    {
+      "attractionId": "import-56871bb4ca8254c4",
+      "attractionName": "塞萨洛尼基老城区（阿诺波利斯）",
+      "highlightId": "import-56871bb4ca8254c4-highlight-3",
+      "sort": 3,
+      "from": "奥斯曼时期传统民居",
+      "to": "奥斯曼时期传统民居（Ottoman-era Houses）",
+      "english": "Ottoman-era Houses"
+    },
+    {
+      "attractionId": "import-56871bb4ca8254c4",
+      "attractionName": "塞萨洛尼基老城区（阿诺波利斯）",
+      "highlightId": "import-56871bb4ca8254c4-highlight-4",
+      "sort": 4,
+      "from": "圣尼古拉斯奥尔法诺斯教堂",
+      "to": "圣尼古拉斯奥尔法诺斯教堂（Church of Saint Nicholas Orphanos）",
+      "english": "Church of Saint Nicholas Orphanos"
+    },
+    {
+      "attractionId": "import-56871bb4ca8254c4",
+      "attractionName": "塞萨洛尼基老城区（阿诺波利斯）",
+      "highlightId": "import-56871bb4ca8254c4-highlight-5",
+      "sort": 5,
+      "from": "瓦拉特修道院",
+      "to": "瓦拉特修道院（Vlatadon Monastery）",
+      "english": "Vlatadon Monastery"
+    },
+    {
+      "attractionId": "import-fce37eea168231d4",
+      "attractionName": "奥林匹亚考古遗址",
+      "highlightId": "import-fce37eea168231d4-highlight-1",
+      "sort": 1,
+      "from": "宙斯神庙",
+      "to": "宙斯神庙（Temple of Zeus）",
+      "english": "Temple of Zeus"
+    },
+    {
+      "attractionId": "import-fce37eea168231d4",
+      "attractionName": "奥林匹亚考古遗址",
+      "highlightId": "import-fce37eea168231d4-highlight-2",
+      "sort": 2,
+      "from": "赫拉神庙",
+      "to": "赫拉神庙（Temple of Hera）",
+      "english": "Temple of Hera"
+    },
+    {
+      "attractionId": "import-fce37eea168231d4",
+      "attractionName": "奥林匹亚考古遗址",
+      "highlightId": "import-fce37eea168231d4-highlight-3",
+      "sort": 3,
+      "from": "古体育场",
+      "to": "古体育场（Ancient Stadium）",
+      "english": "Ancient Stadium"
+    },
+    {
+      "attractionId": "import-fce37eea168231d4",
+      "attractionName": "奥林匹亚考古遗址",
+      "highlightId": "import-fce37eea168231d4-highlight-4",
+      "sort": 4,
+      "from": "腓迪亚斯雕塑作坊",
+      "to": "腓迪亚斯雕塑作坊（Workshop of Pheidias）",
+      "english": "Workshop of Pheidias"
+    },
+    {
+      "attractionId": "import-fce37eea168231d4",
+      "attractionName": "奥林匹亚考古遗址",
+      "highlightId": "import-fce37eea168231d4-highlight-5",
+      "sort": 5,
+      "from": "宙斯神像基座遗迹",
+      "to": "宙斯神像基座遗迹（Base of the Statue of Zeus）",
+      "english": "Base of the Statue of Zeus"
+    },
+    {
+      "attractionId": "import-fce37eea168231d4",
+      "attractionName": "奥林匹亚考古遗址",
+      "highlightId": "import-fce37eea168231d4-highlight-6",
+      "sort": 6,
+      "from": "菲利普宫殿式圆形建筑",
+      "to": "菲利普宫殿式圆形建筑（Philippeion）",
+      "english": "Philippeion"
+    },
+    {
+      "attractionId": "import-fce37eea168231d4",
+      "attractionName": "奥林匹亚考古遗址",
+      "highlightId": "import-fce37eea168231d4-highlight-7",
+      "sort": 7,
+      "from": "古议事厅",
+      "to": "古议事厅（Bouleuterion）",
+      "english": "Bouleuterion"
+    },
+    {
+      "attractionId": "import-8411046d4acc2b47",
+      "attractionName": "宙斯神庙",
+      "highlightId": "import-8411046d4acc2b47-highlight-1",
+      "sort": 1,
+      "from": "神庙多立克式柱廊",
+      "to": "神庙多立克式柱廊（Doric Colonnade）",
+      "english": "Doric Colonnade"
+    },
+    {
+      "attractionId": "import-8411046d4acc2b47",
+      "attractionName": "宙斯神庙",
+      "highlightId": "import-8411046d4acc2b47-highlight-2",
+      "sort": 2,
+      "from": "东山墙雕塑",
+      "to": "东山墙雕塑（East Pediment）",
+      "english": "East Pediment"
+    },
+    {
+      "attractionId": "import-8411046d4acc2b47",
+      "attractionName": "宙斯神庙",
+      "highlightId": "import-8411046d4acc2b47-highlight-3",
+      "sort": 3,
+      "from": "西山墙雕塑",
+      "to": "西山墙雕塑（West Pediment）",
+      "english": "West Pediment"
+    },
+    {
+      "attractionId": "import-8411046d4acc2b47",
+      "attractionName": "宙斯神庙",
+      "highlightId": "import-8411046d4acc2b47-highlight-4",
+      "sort": 4,
+      "from": "宙斯黄金象牙神像",
+      "to": "宙斯黄金象牙神像（Statue of Zeus at Olympia）",
+      "english": "Statue of Zeus at Olympia"
+    },
+    {
+      "attractionId": "import-69c9ba6967eff469",
+      "attractionName": "古体育场",
+      "highlightId": "import-69c9ba6967eff469-highlight-1",
+      "sort": 1,
+      "from": "原始跑道",
+      "to": "原始跑道（Ancient Track）",
+      "english": "Ancient Track"
+    },
+    {
+      "attractionId": "import-69c9ba6967eff469",
+      "attractionName": "古体育场",
+      "highlightId": "import-69c9ba6967eff469-highlight-2",
+      "sort": 2,
+      "from": "起跑石线",
+      "to": "起跑石线（Starting Line）",
+      "english": "Starting Line"
+    },
+    {
+      "attractionId": "import-69c9ba6967eff469",
+      "attractionName": "古体育场",
+      "highlightId": "import-69c9ba6967eff469-highlight-3",
+      "sort": 3,
+      "from": "运动员入口通道",
+      "to": "运动员入口通道（Krypte Entrance）",
+      "english": "Krypte Entrance"
+    },
+    {
+      "attractionId": "import-69c9ba6967eff469",
+      "attractionName": "古体育场",
+      "highlightId": "import-69c9ba6967eff469-highlight-4",
+      "sort": 4,
+      "from": "观众席",
+      "to": "观众席（Spectator Embankments）",
+      "english": "Spectator Embankments"
+    },
+    {
+      "attractionId": "import-9c494f54a23b1176",
+      "attractionName": "奥林匹亚考古博物馆",
+      "highlightId": "import-9c494f54a23b1176-highlight-1",
+      "sort": 1,
+      "from": "赫尔墨斯抱幼童狄俄尼索斯像",
+      "to": "赫尔墨斯抱幼童狄俄尼索斯像（Hermes of Praxiteles）",
+      "english": "Hermes of Praxiteles"
+    },
+    {
+      "attractionId": "import-9c494f54a23b1176",
+      "attractionName": "奥林匹亚考古博物馆",
+      "highlightId": "import-9c494f54a23b1176-highlight-2",
+      "sort": 2,
+      "from": "尼刻女神像",
+      "to": "尼刻女神像（Nike of Paionios）",
+      "english": "Nike of Paionios"
+    },
+    {
+      "attractionId": "import-9c494f54a23b1176",
+      "attractionName": "奥林匹亚考古博物馆",
+      "highlightId": "import-9c494f54a23b1176-highlight-3",
+      "sort": 3,
+      "from": "宙斯神庙山墙雕塑",
+      "to": "宙斯神庙山墙雕塑（Zeus Temple Pediment Sculptures）",
+      "english": "Zeus Temple Pediment Sculptures"
+    },
+    {
+      "attractionId": "import-9c494f54a23b1176",
+      "attractionName": "奥林匹亚考古博物馆",
+      "highlightId": "import-9c494f54a23b1176-highlight-4",
+      "sort": 4,
+      "from": "宙斯神庙浮雕饰板",
+      "to": "宙斯神庙浮雕饰板（Metopes of the Temple of Zeus）",
+      "english": "Metopes of the Temple of Zeus"
+    },
+    {
+      "attractionId": "import-9c494f54a23b1176",
+      "attractionName": "奥林匹亚考古博物馆",
+      "highlightId": "import-9c494f54a23b1176-highlight-5",
+      "sort": 5,
+      "from": "青铜头盔与武器",
+      "to": "青铜头盔与武器（Bronze Helmets and Weapons）",
+      "english": "Bronze Helmets and Weapons"
+    },
+    {
+      "attractionId": "import-9c494f54a23b1176",
+      "attractionName": "奥林匹亚考古博物馆",
+      "highlightId": "import-9c494f54a23b1176-highlight-6",
+      "sort": 6,
+      "from": "祭祀陶器与雕塑",
+      "to": "祭祀陶器与雕塑（Votive Pottery and Sculptures）",
+      "english": "Votive Pottery and Sculptures"
+    },
+    {
+      "attractionId": "import-ddac8ad33be432dd",
+      "attractionName": "赫拉神庙",
+      "highlightId": "import-ddac8ad33be432dd-highlight-1",
+      "sort": 1,
+      "from": "多立克式柱基",
+      "to": "多立克式柱基（Doric Column Foundations）",
+      "english": "Doric Column Foundations"
+    },
+    {
+      "attractionId": "import-ddac8ad33be432dd",
+      "attractionName": "赫拉神庙",
+      "highlightId": "import-ddac8ad33be432dd-highlight-2",
+      "sort": 2,
+      "from": "奥运圣火采集地",
+      "to": "奥运圣火采集地（Olympic Flame Lighting Site）",
+      "english": "Olympic Flame Lighting Site"
+    },
+    {
+      "attractionId": "import-ddac8ad33be432dd",
+      "attractionName": "赫拉神庙",
+      "highlightId": "import-ddac8ad33be432dd-highlight-3",
+      "sort": 3,
+      "from": "赫拉祭祀遗址",
+      "to": "赫拉祭祀遗址（Sanctuary of Hera）",
+      "english": "Sanctuary of Hera"
+    },
+    {
+      "attractionId": "import-047c005baee4ab6e",
+      "attractionName": "帕特雷城堡",
+      "highlightId": "import-047c005baee4ab6e-highlight-1",
+      "sort": 1,
+      "from": "拜占庭城堡主体",
+      "to": "拜占庭城堡主体（Byzantine Castle）",
+      "english": "Byzantine Castle"
+    },
+    {
+      "attractionId": "import-047c005baee4ab6e",
+      "attractionName": "帕特雷城堡",
+      "highlightId": "import-047c005baee4ab6e-highlight-2",
+      "sort": 2,
+      "from": "城堡城墙与塔楼",
+      "to": "城堡城墙与塔楼（Castle Walls and Towers）",
+      "english": "Castle Walls and Towers"
+    },
+    {
+      "attractionId": "import-047c005baee4ab6e",
+      "attractionName": "帕特雷城堡",
+      "highlightId": "import-047c005baee4ab6e-highlight-3",
+      "sort": 3,
+      "from": "城堡庭院",
+      "to": "城堡庭院（Castle Courtyard）",
+      "english": "Castle Courtyard"
+    },
+    {
+      "attractionId": "import-047c005baee4ab6e",
+      "attractionName": "帕特雷城堡",
+      "highlightId": "import-047c005baee4ab6e-highlight-4",
+      "sort": 4,
+      "from": "城堡观景台",
+      "to": "城堡观景台（Castle Viewpoint）",
+      "english": "Castle Viewpoint"
+    },
+    {
+      "attractionId": "import-666b00f8ba57d4d9",
+      "attractionName": "古罗马剧场（Odeon）",
+      "highlightId": "import-666b00f8ba57d4d9-highlight-1",
+      "sort": 1,
+      "from": "半圆形观众席",
+      "to": "半圆形观众席（Semicircular Seating）",
+      "english": "Semicircular Seating"
+    },
+    {
+      "attractionId": "import-666b00f8ba57d4d9",
+      "attractionName": "古罗马剧场（Odeon）",
+      "highlightId": "import-666b00f8ba57d4d9-highlight-2",
+      "sort": 2,
+      "from": "舞台区域",
+      "to": "舞台区域（Stage Area）",
+      "english": "Stage Area"
+    },
+    {
+      "attractionId": "import-666b00f8ba57d4d9",
+      "attractionName": "古罗马剧场（Odeon）",
+      "highlightId": "import-666b00f8ba57d4d9-highlight-3",
+      "sort": 3,
+      "from": "罗马建筑装饰",
+      "to": "罗马建筑装饰（Roman Architectural Decoration）",
+      "english": "Roman Architectural Decoration"
+    },
+    {
+      "attractionId": "import-666b00f8ba57d4d9",
+      "attractionName": "古罗马剧场（Odeon）",
+      "highlightId": "import-666b00f8ba57d4d9-highlight-4",
+      "sort": 4,
+      "from": "夏季文化演出",
+      "to": "夏季文化演出（Summer Cultural Performances）",
+      "english": "Summer Cultural Performances"
+    },
+    {
+      "attractionId": "import-0a2a06eb17534126",
+      "attractionName": "圣安德烈亚斯大教堂",
+      "highlightId": "import-0a2a06eb17534126-highlight-1",
+      "sort": 1,
+      "from": "大教堂主穹顶",
+      "to": "大教堂主穹顶（Main Dome）",
+      "english": "Main Dome"
+    },
+    {
+      "attractionId": "import-0a2a06eb17534126",
+      "attractionName": "圣安德烈亚斯大教堂",
+      "highlightId": "import-0a2a06eb17534126-highlight-2",
+      "sort": 2,
+      "from": "圣安德烈亚斯十字架",
+      "to": "圣安德烈亚斯十字架（Cross of Saint Andrew）",
+      "english": "Cross of Saint Andrew"
+    },
+    {
+      "attractionId": "import-0a2a06eb17534126",
+      "attractionName": "圣安德烈亚斯大教堂",
+      "highlightId": "import-0a2a06eb17534126-highlight-3",
+      "sort": 3,
+      "from": "圣安德烈亚斯圣髑",
+      "to": "圣安德烈亚斯圣髑（Relics of Saint Andrew）",
+      "english": "Relics of Saint Andrew"
+    },
+    {
+      "attractionId": "import-0a2a06eb17534126",
+      "attractionName": "圣安德烈亚斯大教堂",
+      "highlightId": "import-0a2a06eb17534126-highlight-4",
+      "sort": 4,
+      "from": "拜占庭风格马赛克",
+      "to": "拜占庭风格马赛克（Byzantine-style Mosaics）",
+      "english": "Byzantine-style Mosaics"
+    },
+    {
+      "attractionId": "import-845e3a5013298515",
+      "attractionName": "德尔斐考古遗址",
+      "highlightId": "import-845e3a5013298515-highlight-1",
+      "sort": 1,
+      "from": "圣道",
+      "to": "圣道（Sacred Way）",
+      "english": "Sacred Way"
+    },
+    {
+      "attractionId": "import-845e3a5013298515",
+      "attractionName": "德尔斐考古遗址",
+      "highlightId": "import-845e3a5013298515-highlight-2",
+      "sort": 2,
+      "from": "阿波罗神庙",
+      "to": "阿波罗神庙（Temple of Apollo）",
+      "english": "Temple of Apollo"
+    },
+    {
+      "attractionId": "import-845e3a5013298515",
+      "attractionName": "德尔斐考古遗址",
+      "highlightId": "import-845e3a5013298515-highlight-3",
+      "sort": 3,
+      "from": "雅典人金库",
+      "to": "雅典人金库（Athenian Treasury）",
+      "english": "Athenian Treasury"
+    },
+    {
+      "attractionId": "import-845e3a5013298515",
+      "attractionName": "德尔斐考古遗址",
+      "highlightId": "import-845e3a5013298515-highlight-4",
+      "sort": 4,
+      "from": "德尔斐古剧场",
+      "to": "德尔斐古剧场（Ancient Theatre of Delphi）",
+      "english": "Ancient Theatre of Delphi"
+    },
+    {
+      "attractionId": "import-845e3a5013298515",
+      "attractionName": "德尔斐考古遗址",
+      "highlightId": "import-845e3a5013298515-highlight-5",
+      "sort": 5,
+      "from": "德尔斐古体育场",
+      "to": "德尔斐古体育场（Ancient Stadium of Delphi）",
+      "english": "Ancient Stadium of Delphi"
+    },
+    {
+      "attractionId": "import-845e3a5013298515",
+      "attractionName": "德尔斐考古遗址",
+      "highlightId": "import-845e3a5013298515-highlight-6",
+      "sort": 6,
+      "from": "卡斯塔利亚泉",
+      "to": "卡斯塔利亚泉（Castalian Spring）",
+      "english": "Castalian Spring"
+    },
+    {
+      "attractionId": "import-845e3a5013298515",
+      "attractionName": "德尔斐考古遗址",
+      "highlightId": "import-845e3a5013298515-highlight-7",
+      "sort": 7,
+      "from": "世界之脐石",
+      "to": "世界之脐石（Omphalos Stone）",
+      "english": "Omphalos Stone"
+    },
+    {
+      "attractionId": "import-aa00c627f4813751",
+      "attractionName": "德尔斐考古博物馆",
+      "highlightId": "import-aa00c627f4813751-highlight-1",
+      "sort": 1,
+      "from": "德尔斐战车御者像",
+      "to": "德尔斐战车御者像（Charioteer of Delphi）",
+      "english": "Charioteer of Delphi"
+    },
+    {
+      "attractionId": "import-aa00c627f4813751",
+      "attractionName": "德尔斐考古博物馆",
+      "highlightId": "import-aa00c627f4813751-highlight-2",
+      "sort": 2,
+      "from": "纳克索斯狮身人面像",
+      "to": "纳克索斯狮身人面像（Sphinx of Naxos）",
+      "english": "Sphinx of Naxos"
+    },
+    {
+      "attractionId": "import-aa00c627f4813751",
+      "attractionName": "德尔斐考古博物馆",
+      "highlightId": "import-aa00c627f4813751-highlight-3",
+      "sort": 3,
+      "from": "阿波罗与雅典娜的金银器收藏",
+      "to": "阿波罗与雅典娜的金银器收藏（Chryselephantine Statues and Gold Objects）",
+      "english": "Chryselephantine Statues and Gold Objects"
+    },
+    {
+      "attractionId": "import-aa00c627f4813751",
+      "attractionName": "德尔斐考古博物馆",
+      "highlightId": "import-aa00c627f4813751-highlight-4",
+      "sort": 4,
+      "from": "阿吉亚斯雕像",
+      "to": "阿吉亚斯雕像（Statue of Agias）",
+      "english": "Statue of Agias"
+    },
+    {
+      "attractionId": "import-aa00c627f4813751",
+      "attractionName": "德尔斐考古博物馆",
+      "highlightId": "import-aa00c627f4813751-highlight-5",
+      "sort": 5,
+      "from": "锡弗诺斯人金库浮雕",
+      "to": "锡弗诺斯人金库浮雕（Siphnians' Treasury Frieze）",
+      "english": "Siphnians' Treasury Frieze"
+    },
+    {
+      "attractionId": "import-aa00c627f4813751",
+      "attractionName": "德尔斐考古博物馆",
+      "highlightId": "import-aa00c627f4813751-highlight-6",
+      "sort": 6,
+      "from": "青铜供奉品",
+      "to": "青铜供奉品（Bronze Dedications）",
+      "english": "Bronze Dedications"
+    },
+    {
+      "attractionId": "import-5e3c89c38de81933",
+      "attractionName": "雅典人金库",
+      "highlightId": "import-5e3c89c38de81933-highlight-1",
+      "sort": 1,
+      "from": "多立克式建筑立面",
+      "to": "多立克式建筑立面（Doric Facade）",
+      "english": "Doric Facade"
+    },
+    {
+      "attractionId": "import-5e3c89c38de81933",
+      "attractionName": "雅典人金库",
+      "highlightId": "import-5e3c89c38de81933-highlight-2",
+      "sort": 2,
+      "from": "大理石浮雕",
+      "to": "大理石浮雕（Marble Metopes）",
+      "english": "Marble Metopes"
+    },
+    {
+      "attractionId": "import-5e3c89c38de81933",
+      "attractionName": "雅典人金库",
+      "highlightId": "import-5e3c89c38de81933-highlight-3",
+      "sort": 3,
+      "from": "胜利纪念建筑",
+      "to": "胜利纪念建筑（Victory Monument）",
+      "english": "Victory Monument"
+    },
+    {
+      "attractionId": "import-7f6c3ef0a996107b",
+      "attractionName": "德尔斐古剧场",
+      "highlightId": "import-7f6c3ef0a996107b-highlight-1",
+      "sort": 1,
+      "from": "半圆形观众席",
+      "to": "半圆形观众席（Semicircular Seating）",
+      "english": "Semicircular Seating"
+    },
+    {
+      "attractionId": "import-7f6c3ef0a996107b",
+      "attractionName": "德尔斐古剧场",
+      "highlightId": "import-7f6c3ef0a996107b-highlight-2",
+      "sort": 2,
+      "from": "舞台区域",
+      "to": "舞台区域（Orchestra and Stage Area）",
+      "english": "Orchestra and Stage Area"
+    },
+    {
+      "attractionId": "import-7f6c3ef0a996107b",
+      "attractionName": "德尔斐古剧场",
+      "highlightId": "import-7f6c3ef0a996107b-highlight-3",
+      "sort": 3,
+      "from": "山谷全景",
+      "to": "山谷全景（Parnassus Valley View）",
+      "english": "Parnassus Valley View"
+    },
+    {
+      "attractionId": "import-7691eafb5e4cd370",
+      "attractionName": "德尔斐运动场",
+      "highlightId": "import-7691eafb5e4cd370-highlight-1",
+      "sort": 1,
+      "from": "古代跑道",
+      "to": "古代跑道（Ancient Running Track）",
+      "english": "Ancient Running Track"
+    },
+    {
+      "attractionId": "import-7691eafb5e4cd370",
+      "attractionName": "德尔斐运动场",
+      "highlightId": "import-7691eafb5e4cd370-highlight-2",
+      "sort": 2,
+      "from": "起跑线",
+      "to": "起跑线（Starting Line）",
+      "english": "Starting Line"
+    },
+    {
+      "attractionId": "import-7691eafb5e4cd370",
+      "attractionName": "德尔斐运动场",
+      "highlightId": "import-7691eafb5e4cd370-highlight-3",
+      "sort": 3,
+      "from": "石质观众席",
+      "to": "石质观众席（Stone Spectator Stands）",
+      "english": "Stone Spectator Stands"
+    },
+    {
+      "attractionId": "import-9ac7e0031b56d6de",
+      "attractionName": "沉船湾（Navagio）",
+      "highlightId": "import-9ac7e0031b56d6de-highlight-1",
+      "sort": 1,
+      "from": "沉船遗迹",
+      "to": "沉船遗迹（MV Panagiotis Shipwreck）",
+      "english": "MV Panagiotis Shipwreck"
+    },
+    {
+      "attractionId": "import-9ac7e0031b56d6de",
+      "attractionName": "沉船湾（Navagio）",
+      "highlightId": "import-9ac7e0031b56d6de-highlight-2",
+      "sort": 2,
+      "from": "白色石灰岩悬崖",
+      "to": "白色石灰岩悬崖（White Limestone Cliffs）",
+      "english": "White Limestone Cliffs"
+    },
+    {
+      "attractionId": "import-9ac7e0031b56d6de",
+      "attractionName": "沉船湾（Navagio）",
+      "highlightId": "import-9ac7e0031b56d6de-highlight-3",
+      "sort": 3,
+      "from": "蓝色海湾",
+      "to": "蓝色海湾（Turquoise Bay）",
+      "english": "Turquoise Bay"
+    },
+    {
+      "attractionId": "import-9ac7e0031b56d6de",
+      "attractionName": "沉船湾（Navagio）",
+      "highlightId": "import-9ac7e0031b56d6de-highlight-4",
+      "sort": 4,
+      "from": "沉船湾观景台",
+      "to": "沉船湾观景台（Navagio Viewpoint）",
+      "english": "Navagio Viewpoint"
+    },
+    {
+      "attractionId": "import-7436fe5b3c2b13d9",
+      "attractionName": "蓝洞",
+      "highlightId": "import-7436fe5b3c2b13d9-highlight-1",
+      "sort": 1,
+      "from": "海蚀洞穴",
+      "to": "海蚀洞穴（Sea Caves）",
+      "english": "Sea Caves"
+    },
+    {
+      "attractionId": "import-7436fe5b3c2b13d9",
+      "attractionName": "蓝洞",
+      "highlightId": "import-7436fe5b3c2b13d9-highlight-2",
+      "sort": 2,
+      "from": "蓝色海水光影",
+      "to": "蓝色海水光影（Blue Water Reflections）",
+      "english": "Blue Water Reflections"
+    },
+    {
+      "attractionId": "import-7436fe5b3c2b13d9",
+      "attractionName": "蓝洞",
+      "highlightId": "import-7436fe5b3c2b13d9-highlight-3",
+      "sort": 3,
+      "from": "天然岩石拱门",
+      "to": "天然岩石拱门（Natural Rock Arches）",
+      "english": "Natural Rock Arches"
+    },
+    {
+      "attractionId": "import-13ed5ff11186b5a9",
+      "attractionName": "扎金索斯镇",
+      "highlightId": "import-13ed5ff11186b5a9-highlight-1",
+      "sort": 1,
+      "from": "圣狄奥尼修斯教堂",
+      "to": "圣狄奥尼修斯教堂（Church of Agios Dionysios）",
+      "english": "Church of Agios Dionysios"
+    },
+    {
+      "attractionId": "import-13ed5ff11186b5a9",
+      "attractionName": "扎金索斯镇",
+      "highlightId": "import-13ed5ff11186b5a9-highlight-2",
+      "sort": 2,
+      "from": "索洛莫斯广场",
+      "to": "索洛莫斯广场（Solomos Square）",
+      "english": "Solomos Square"
+    },
+    {
+      "attractionId": "import-13ed5ff11186b5a9",
+      "attractionName": "扎金索斯镇",
+      "highlightId": "import-13ed5ff11186b5a9-highlight-3",
+      "sort": 3,
+      "from": "圣马可广场",
+      "to": "圣马可广场（St. Mark's Square）",
+      "english": "St. Mark's Square"
+    },
+    {
+      "attractionId": "import-13ed5ff11186b5a9",
+      "attractionName": "扎金索斯镇",
+      "highlightId": "import-13ed5ff11186b5a9-highlight-4",
+      "sort": 4,
+      "from": "拜占庭博物馆",
+      "to": "拜占庭博物馆（Byzantine Museum of Zakynthos）",
+      "english": "Byzantine Museum of Zakynthos"
+    },
+    {
+      "attractionId": "import-13ed5ff11186b5a9",
+      "attractionName": "扎金索斯镇",
+      "highlightId": "import-13ed5ff11186b5a9-highlight-5",
+      "sort": 5,
+      "from": "海滨大道",
+      "to": "海滨大道（Waterfront Promenade）",
+      "english": "Waterfront Promenade"
+    },
+    {
+      "attractionId": "import-1efd639a2bf00ab3",
+      "attractionName": "斯巴达考古遗址",
+      "highlightId": "import-1efd639a2bf00ab3-highlight-1",
+      "sort": 1,
+      "from": "雅典娜铜屋神庙",
+      "to": "雅典娜铜屋神庙（Sanctuary of Athena Chalkioikos）",
+      "english": "Sanctuary of Athena Chalkioikos"
+    },
+    {
+      "attractionId": "import-1efd639a2bf00ab3",
+      "attractionName": "斯巴达考古遗址",
+      "highlightId": "import-1efd639a2bf00ab3-highlight-2",
+      "sort": 2,
+      "from": "古代剧场",
+      "to": "古代剧场（Ancient Theatre of Sparta）",
+      "english": "Ancient Theatre of Sparta"
+    },
+    {
+      "attractionId": "import-1efd639a2bf00ab3",
+      "attractionName": "斯巴达考古遗址",
+      "highlightId": "import-1efd639a2bf00ab3-highlight-3",
+      "sort": 3,
+      "from": "斯巴达古卫城",
+      "to": "斯巴达古卫城（Acropolis of Ancient Sparta）",
+      "english": "Acropolis of Ancient Sparta"
+    },
+    {
+      "attractionId": "import-1efd639a2bf00ab3",
+      "attractionName": "斯巴达考古遗址",
+      "highlightId": "import-1efd639a2bf00ab3-highlight-4",
+      "sort": 4,
+      "from": "列奥尼达雕像",
+      "to": "列奥尼达雕像（Statue of Leonidas）",
+      "english": "Statue of Leonidas"
+    },
+    {
+      "attractionId": "import-1efd639a2bf00ab3",
+      "attractionName": "斯巴达考古遗址",
+      "highlightId": "import-1efd639a2bf00ab3-highlight-5",
+      "sort": 5,
+      "from": "梅嫩莱翁圣地",
+      "to": "梅嫩莱翁圣地（Menelaion Sanctuary）",
+      "english": "Menelaion Sanctuary"
+    },
+    {
+      "attractionId": "import-9a418c76f57b8b0a",
+      "attractionName": "大梅黛奥拉修道院",
+      "highlightId": "import-9a418c76f57b8b0a-highlight-1",
+      "sort": 1,
+      "from": "主教堂",
+      "to": "主教堂（Katholikon of the Transfiguration）",
+      "english": "Katholikon of the Transfiguration"
+    },
+    {
+      "attractionId": "import-9a418c76f57b8b0a",
+      "attractionName": "大梅黛奥拉修道院",
+      "highlightId": "import-9a418c76f57b8b0a-highlight-2",
+      "sort": 2,
+      "from": "古代厨房与餐厅",
+      "to": "古代厨房与餐厅（Old Kitchen and Refectory）",
+      "english": "Old Kitchen and Refectory"
+    },
+    {
+      "attractionId": "import-9a418c76f57b8b0a",
+      "attractionName": "大梅黛奥拉修道院",
+      "highlightId": "import-9a418c76f57b8b0a-highlight-3",
+      "sort": 3,
+      "from": "博物馆收藏",
+      "to": "博物馆收藏（Monastery Museum）",
+      "english": "Monastery Museum"
+    },
+    {
+      "attractionId": "import-9a418c76f57b8b0a",
+      "attractionName": "大梅黛奥拉修道院",
+      "highlightId": "import-9a418c76f57b8b0a-highlight-4",
+      "sort": 4,
+      "from": "悬崖修道院建筑",
+      "to": "悬崖修道院建筑（Cliff-top Monastery Architecture）",
+      "english": "Cliff-top Monastery Architecture"
+    },
+    {
+      "attractionId": "import-5cb2ecbda5ce3ca3",
+      "attractionName": "瓦尔拉姆修道院",
+      "highlightId": "import-5cb2ecbda5ce3ca3-highlight-1",
+      "sort": 1,
+      "from": "圣徒诸圣教堂",
+      "to": "圣徒诸圣教堂（Church of All Saints）",
+      "english": "Church of All Saints"
+    },
+    {
+      "attractionId": "import-5cb2ecbda5ce3ca3",
+      "attractionName": "瓦尔拉姆修道院",
+      "highlightId": "import-5cb2ecbda5ce3ca3-highlight-2",
+      "sort": 2,
+      "from": "巨型木质绞盘",
+      "to": "巨型木质绞盘（Old Rope-Winch System）",
+      "english": "Old Rope-Winch System"
+    },
+    {
+      "attractionId": "import-5cb2ecbda5ce3ca3",
+      "attractionName": "瓦尔拉姆修道院",
+      "highlightId": "import-5cb2ecbda5ce3ca3-highlight-3",
+      "sort": 3,
+      "from": "古代厨房",
+      "to": "古代厨房（Old Kitchen）",
+      "english": "Old Kitchen"
+    },
+    {
+      "attractionId": "import-5cb2ecbda5ce3ca3",
+      "attractionName": "瓦尔拉姆修道院",
+      "highlightId": "import-5cb2ecbda5ce3ca3-highlight-4",
+      "sort": 4,
+      "from": "岩顶观景平台",
+      "to": "岩顶观景平台（Monastery Viewpoint）",
+      "english": "Monastery Viewpoint"
+    },
+    {
+      "attractionId": "import-37c4df74a1bf7904",
+      "attractionName": "卢萨诺斯修道院",
+      "highlightId": "import-37c4df74a1bf7904-highlight-1",
+      "sort": 1,
+      "from": "圣芭芭拉教堂",
+      "to": "圣芭芭拉教堂（Church of Saint Barbara）",
+      "english": "Church of Saint Barbara"
+    },
+    {
+      "attractionId": "import-37c4df74a1bf7904",
+      "attractionName": "卢萨诺斯修道院",
+      "highlightId": "import-37c4df74a1bf7904-highlight-2",
+      "sort": 2,
+      "from": "壁画与圣像",
+      "to": "壁画与圣像（Byzantine Frescoes and Icons）",
+      "english": "Byzantine Frescoes and Icons"
+    },
+    {
+      "attractionId": "import-37c4df74a1bf7904",
+      "attractionName": "卢萨诺斯修道院",
+      "highlightId": "import-37c4df74a1bf7904-highlight-3",
+      "sort": 3,
+      "from": "岩顶修道院建筑",
+      "to": "岩顶修道院建筑（Cliff-top Monastery Complex）",
+      "english": "Cliff-top Monastery Complex"
+    },
+    {
+      "attractionId": "import-a8d99fb2b79cf191",
+      "attractionName": "圣三位一体修道院",
+      "highlightId": "import-a8d99fb2b79cf191-highlight-1",
+      "sort": 1,
+      "from": "山顶主教堂",
+      "to": "山顶主教堂（Main Church）",
+      "english": "Main Church"
+    },
+    {
+      "attractionId": "import-a8d99fb2b79cf191",
+      "attractionName": "圣三位一体修道院",
+      "highlightId": "import-a8d99fb2b79cf191-highlight-2",
+      "sort": 2,
+      "from": "天然岩柱平台",
+      "to": "天然岩柱平台（Natural Rock Summit）",
+      "english": "Natural Rock Summit"
+    },
+    {
+      "attractionId": "import-a8d99fb2b79cf191",
+      "attractionName": "圣三位一体修道院",
+      "highlightId": "import-a8d99fb2b79cf191-highlight-3",
+      "sort": 3,
+      "from": "攀登石阶",
+      "to": "攀登石阶（Rock Stairway）",
+      "english": "Rock Stairway"
+    },
+    {
+      "attractionId": "import-a8d99fb2b79cf191",
+      "attractionName": "圣三位一体修道院",
+      "highlightId": "import-a8d99fb2b79cf191-highlight-4",
+      "sort": 4,
+      "from": "梅黛奥拉全景",
+      "to": "梅黛奥拉全景（Meteora Panoramic View）",
+      "english": "Meteora Panoramic View"
+    },
+    {
+      "attractionId": "import-b68b29f698ec674a",
+      "attractionName": "圣斯蒂芬修道院",
+      "highlightId": "import-b68b29f698ec674a-highlight-1",
+      "sort": 1,
+      "from": "圣斯蒂芬教堂",
+      "to": "圣斯蒂芬教堂（Church of Saint Stephen）",
+      "english": "Church of Saint Stephen"
+    },
+    {
+      "attractionId": "import-b68b29f698ec674a",
+      "attractionName": "圣斯蒂芬修道院",
+      "highlightId": "import-b68b29f698ec674a-highlight-2",
+      "sort": 2,
+      "from": "圣查拉兰波斯教堂",
+      "to": "圣查拉兰波斯教堂（Church of Saint Charalambos）",
+      "english": "Church of Saint Charalambos"
+    },
+    {
+      "attractionId": "import-b68b29f698ec674a",
+      "attractionName": "圣斯蒂芬修道院",
+      "highlightId": "import-b68b29f698ec674a-highlight-3",
+      "sort": 3,
+      "from": "修道院庭院",
+      "to": "修道院庭院（Monastery Courtyard）",
+      "english": "Monastery Courtyard"
+    },
+    {
+      "attractionId": "import-5ca012cb72c5b614",
+      "attractionName": "Psaropetra日落观景台",
+      "highlightId": "import-5ca012cb72c5b614-highlight-1",
+      "sort": 1,
+      "from": "梅黛奥拉岩柱群",
+      "to": "梅黛奥拉岩柱群（Meteora Rock Formations）",
+      "english": "Meteora Rock Formations"
+    },
+    {
+      "attractionId": "import-5ca012cb72c5b614",
+      "attractionName": "Psaropetra日落观景台",
+      "highlightId": "import-5ca012cb72c5b614-highlight-2",
+      "sort": 2,
+      "from": "修道院群全景",
+      "to": "修道院群全景（Monastery Panorama）",
+      "english": "Monastery Panorama"
+    },
+    {
+      "attractionId": "import-5ca012cb72c5b614",
+      "attractionName": "Psaropetra日落观景台",
+      "highlightId": "import-5ca012cb72c5b614-highlight-3",
+      "sort": 3,
+      "from": "日落景观",
+      "to": "日落景观（Sunset View）",
+      "english": "Sunset View"
+    },
+    {
+      "attractionId": "import-71ac976768b1e95a",
+      "attractionName": "卡兰巴卡小镇",
+      "highlightId": "import-71ac976768b1e95a-highlight-1",
+      "sort": 1,
+      "from": "圣母升天教堂",
+      "to": "圣母升天教堂（Church of the Dormition of the Virgin Mary）",
+      "english": "Church of the Dormition of the Virgin Mary"
+    },
+    {
+      "attractionId": "import-71ac976768b1e95a",
+      "attractionName": "卡兰巴卡小镇",
+      "highlightId": "import-71ac976768b1e95a-highlight-2",
+      "sort": 2,
+      "from": "老城区",
+      "to": "老城区（Old Town of Kalambaka）",
+      "english": "Old Town of Kalambaka"
+    },
+    {
+      "attractionId": "import-71ac976768b1e95a",
+      "attractionName": "卡兰巴卡小镇",
+      "highlightId": "import-71ac976768b1e95a-highlight-3",
+      "sort": 3,
+      "from": "梅黛奥拉山景",
+      "to": "梅黛奥拉山景（Meteora Mountain View）",
+      "english": "Meteora Mountain View"
+    },
+    {
+      "attractionId": "import-30c168a0c3ae3b3a",
+      "attractionName": "米克诺斯风车群",
+      "highlightId": "import-30c168a0c3ae3b3a-highlight-1",
+      "sort": 1,
+      "from": "卡托米利风车群",
+      "to": "卡托米利风车群（Kato Mili Windmills）",
+      "english": "Kato Mili Windmills"
+    },
+    {
+      "attractionId": "import-30c168a0c3ae3b3a",
+      "attractionName": "米克诺斯风车群",
+      "highlightId": "import-30c168a0c3ae3b3a-highlight-2",
+      "sort": 2,
+      "from": "茅草屋顶与木质结构",
+      "to": "茅草屋顶与木质结构（Traditional Windmill Roofs and Wooden Structures）",
+      "english": "Traditional Windmill Roofs and Wooden Structures"
+    },
+    {
+      "attractionId": "import-30c168a0c3ae3b3a",
+      "attractionName": "米克诺斯风车群",
+      "highlightId": "import-30c168a0c3ae3b3a-highlight-3",
+      "sort": 3,
+      "from": "爱琴海观景点",
+      "to": "爱琴海观景点（Aegean Sea Viewpoint）",
+      "english": "Aegean Sea Viewpoint"
+    },
+    {
+      "attractionId": "import-c988c0669893d807",
+      "attractionName": "小威尼斯",
+      "highlightId": "import-c988c0669893d807-highlight-1",
+      "sort": 1,
+      "from": "海边彩色民居",
+      "to": "海边彩色民居（Seafront Colourful Houses）",
+      "english": "Seafront Colourful Houses"
+    },
+    {
+      "attractionId": "import-c988c0669893d807",
+      "attractionName": "小威尼斯",
+      "highlightId": "import-c988c0669893d807-highlight-2",
+      "sort": 2,
+      "from": "木质阳台",
+      "to": "木质阳台（Wooden Balconies）",
+      "english": "Wooden Balconies"
+    },
+    {
+      "attractionId": "import-c988c0669893d807",
+      "attractionName": "小威尼斯",
+      "highlightId": "import-c988c0669893d807-highlight-3",
+      "sort": 3,
+      "from": "海边咖啡馆与酒吧",
+      "to": "海边咖啡馆与酒吧（Seafront Cafés and Bars）",
+      "english": "Seafront Cafés and Bars"
+    },
+    {
+      "attractionId": "import-eb30108a8172aefd",
+      "attractionName": "帕拉波尔蒂阿尼教堂",
+      "highlightId": "import-eb30108a8172aefd-highlight-1",
+      "sort": 1,
+      "from": "白色不规则建筑群",
+      "to": "白色不规则建筑群（Whitewashed Architectural Complex）",
+      "english": "Whitewashed Architectural Complex"
+    },
+    {
+      "attractionId": "import-eb30108a8172aefd",
+      "attractionName": "帕拉波尔蒂阿尼教堂",
+      "highlightId": "import-eb30108a8172aefd-highlight-2",
+      "sort": 2,
+      "from": "圣母教堂主体",
+      "to": "圣母教堂主体（Church of Panagia Paraportiani）",
+      "english": "Church of Panagia Paraportiani"
+    },
+    {
+      "attractionId": "import-eb30108a8172aefd",
+      "attractionName": "帕拉波尔蒂阿尼教堂",
+      "highlightId": "import-eb30108a8172aefd-highlight-3",
+      "sort": 3,
+      "from": "拱形入口与屋顶结构",
+      "to": "拱形入口与屋顶结构（Arched Entrances and Roof Forms）",
+      "english": "Arched Entrances and Roof Forms"
+    },
+    {
+      "attractionId": "import-5b4021e30f0418a8",
+      "attractionName": "米克诺斯镇小巷迷宫",
+      "highlightId": "import-5b4021e30f0418a8-highlight-1",
+      "sort": 1,
+      "from": "马托伊安尼街",
+      "to": "马托伊安尼街（Matogianni Street）",
+      "english": "Matogianni Street"
+    },
+    {
+      "attractionId": "import-5b4021e30f0418a8",
+      "attractionName": "米克诺斯镇小巷迷宫",
+      "highlightId": "import-5b4021e30f0418a8-highlight-2",
+      "sort": 2,
+      "from": "白色石板小巷",
+      "to": "白色石板小巷（Whitewashed Alleys）",
+      "english": "Whitewashed Alleys"
+    },
+    {
+      "attractionId": "import-5b4021e30f0418a8",
+      "attractionName": "米克诺斯镇小巷迷宫",
+      "highlightId": "import-5b4021e30f0418a8-highlight-3",
+      "sort": 3,
+      "from": "三井水广场",
+      "to": "三井水广场（Manto Mavrogenous Square）",
+      "english": "Manto Mavrogenous Square"
+    },
+    {
+      "attractionId": "import-5b4021e30f0418a8",
+      "attractionName": "米克诺斯镇小巷迷宫",
+      "highlightId": "import-5b4021e30f0418a8-highlight-4",
+      "sort": 4,
+      "from": "帕拉波尔蒂阿尼教堂周边",
+      "to": "帕拉波尔蒂阿尼教堂周边（Paraportiani Church Area）",
+      "english": "Paraportiani Church Area"
+    },
+    {
+      "attractionId": "import-d636d7908a289d0e",
+      "attractionName": "帕拉米蒂城堡",
+      "highlightId": "import-d636d7908a289d0e-highlight-1",
+      "sort": 1,
+      "from": "威尼斯防御工事",
+      "to": "威尼斯防御工事（Venetian Fortifications）",
+      "english": "Venetian Fortifications"
+    },
+    {
+      "attractionId": "import-d636d7908a289d0e",
+      "attractionName": "帕拉米蒂城堡",
+      "highlightId": "import-d636d7908a289d0e-highlight-2",
+      "sort": 2,
+      "from": "圣安德鲁堡垒",
+      "to": "圣安德鲁堡垒（Bastion of Saint Andrew）",
+      "english": "Bastion of Saint Andrew"
+    },
+    {
+      "attractionId": "import-d636d7908a289d0e",
+      "attractionName": "帕拉米蒂城堡",
+      "highlightId": "import-d636d7908a289d0e-highlight-3",
+      "sort": 3,
+      "from": "999级台阶",
+      "to": "999级台阶（999 Steps）",
+      "english": "999 Steps"
+    },
+    {
+      "attractionId": "import-d636d7908a289d0e",
+      "attractionName": "帕拉米蒂城堡",
+      "highlightId": "import-d636d7908a289d0e-highlight-4",
+      "sort": 4,
+      "from": "城堡观景台",
+      "to": "城堡观景台（Palamidi Viewpoint）",
+      "english": "Palamidi Viewpoint"
+    },
+    {
+      "attractionId": "import-87a6692eee99611c",
+      "attractionName": "布尔齐城堡",
+      "highlightId": "import-87a6692eee99611c-highlight-1",
+      "sort": 1,
+      "from": "海上堡垒",
+      "to": "海上堡垒（Sea Fortress）",
+      "english": "Sea Fortress"
+    },
+    {
+      "attractionId": "import-87a6692eee99611c",
+      "attractionName": "布尔齐城堡",
+      "highlightId": "import-87a6692eee99611c-highlight-2",
+      "sort": 2,
+      "from": "威尼斯防御建筑",
+      "to": "威尼斯防御建筑（Venetian Defensive Architecture）",
+      "english": "Venetian Defensive Architecture"
+    },
+    {
+      "attractionId": "import-87a6692eee99611c",
+      "attractionName": "布尔齐城堡",
+      "highlightId": "import-87a6692eee99611c-highlight-3",
+      "sort": 3,
+      "from": "海湾观景区域",
+      "to": "海湾观景区域（Harbour Viewpoint）",
+      "english": "Harbour Viewpoint"
+    },
+    {
+      "attractionId": "import-f9ca7f4e9f67b13c",
+      "attractionName": "纳夫普利翁老城",
+      "highlightId": "import-f9ca7f4e9f67b13c-highlight-1",
+      "sort": 1,
+      "from": "宪法广场",
+      "to": "宪法广场（Syntagma Square）",
+      "english": "Syntagma Square"
+    },
+    {
+      "attractionId": "import-f9ca7f4e9f67b13c",
+      "attractionName": "纳夫普利翁老城",
+      "highlightId": "import-f9ca7f4e9f67b13c-highlight-2",
+      "sort": 2,
+      "from": "威尼斯建筑群",
+      "to": "威尼斯建筑群（Venetian Architecture）",
+      "english": "Venetian Architecture"
+    },
+    {
+      "attractionId": "import-f9ca7f4e9f67b13c",
+      "attractionName": "纳夫普利翁老城",
+      "highlightId": "import-f9ca7f4e9f67b13c-highlight-3",
+      "sort": 3,
+      "from": "三位海军上将广场",
+      "to": "三位海军上将广场（Three Admirals Square）",
+      "english": "Three Admirals Square"
+    },
+    {
+      "attractionId": "import-f9ca7f4e9f67b13c",
+      "attractionName": "纳夫普利翁老城",
+      "highlightId": "import-f9ca7f4e9f67b13c-highlight-4",
+      "sort": 4,
+      "from": "大街与石板巷道",
+      "to": "大街与石板巷道（Historic Streets and Alleys）",
+      "english": "Historic Streets and Alleys"
+    },
+    {
+      "attractionId": "import-7bd5a830a6767dfe",
+      "attractionName": "阿尔瓦尼提亚海滨长廊",
+      "highlightId": "import-7bd5a830a6767dfe-highlight-1",
+      "sort": 1,
+      "from": "海岸步行道",
+      "to": "海岸步行道（Coastal Walking Path）",
+      "english": "Coastal Walking Path"
+    },
+    {
+      "attractionId": "import-7bd5a830a6767dfe",
+      "attractionName": "阿尔瓦尼提亚海滨长廊",
+      "highlightId": "import-7bd5a830a6767dfe-highlight-2",
+      "sort": 2,
+      "from": "岩石海岸景观",
+      "to": "岩石海岸景观（Rocky Coastline）",
+      "english": "Rocky Coastline"
+    },
+    {
+      "attractionId": "import-7bd5a830a6767dfe",
+      "attractionName": "阿尔瓦尼提亚海滨长廊",
+      "highlightId": "import-7bd5a830a6767dfe-highlight-3",
+      "sort": 3,
+      "from": "阿尔瓦尼提亚海滩",
+      "to": "阿尔瓦尼提亚海滩（Arvanitia Beach）",
+      "english": "Arvanitia Beach"
+    },
+    {
+      "attractionId": "import-adc5c871b84350c7",
+      "attractionName": "莫奈姆瓦夏古城堡",
+      "highlightId": "import-adc5c871b84350c7-highlight-1",
+      "sort": 1,
+      "from": "城堡上城区",
+      "to": "城堡上城区（Upper Town）",
+      "english": "Upper Town"
+    },
+    {
+      "attractionId": "import-adc5c871b84350c7",
+      "attractionName": "莫奈姆瓦夏古城堡",
+      "highlightId": "import-adc5c871b84350c7-highlight-2",
+      "sort": 2,
+      "from": "城堡下城区",
+      "to": "城堡下城区（Lower Town）",
+      "english": "Lower Town"
+    },
+    {
+      "attractionId": "import-adc5c871b84350c7",
+      "attractionName": "莫奈姆瓦夏古城堡",
+      "highlightId": "import-adc5c871b84350c7-highlight-3",
+      "sort": 3,
+      "from": "城墙与古代防御工事",
+      "to": "城墙与古代防御工事（Medieval Walls and Fortifications）",
+      "english": "Medieval Walls and Fortifications"
+    },
+    {
+      "attractionId": "import-adc5c871b84350c7",
+      "attractionName": "莫奈姆瓦夏古城堡",
+      "highlightId": "import-adc5c871b84350c7-highlight-4",
+      "sort": 4,
+      "from": "城堡入口与石板街",
+      "to": "城堡入口与石板街（Castle Gate and Cobblestone Streets）",
+      "english": "Castle Gate and Cobblestone Streets"
+    },
+    {
+      "attractionId": "import-adc5c871b84350c7",
+      "attractionName": "莫奈姆瓦夏古城堡",
+      "highlightId": "import-adc5c871b84350c7-highlight-5",
+      "sort": 5,
+      "from": "海边观景平台",
+      "to": "海边观景平台（Sea Viewpoints）",
+      "english": "Sea Viewpoints"
+    },
+    {
+      "attractionId": "import-6f57dd54aa18326e",
+      "attractionName": "下城区",
+      "highlightId": "import-6f57dd54aa18326e-highlight-1",
+      "sort": 1,
+      "from": "中央广场",
+      "to": "中央广场（Central Square）",
+      "english": "Central Square"
+    },
+    {
+      "attractionId": "import-6f57dd54aa18326e",
+      "attractionName": "下城区",
+      "highlightId": "import-6f57dd54aa18326e-highlight-2",
+      "sort": 2,
+      "from": "传统石屋",
+      "to": "传统石屋（Traditional Stone Houses）",
+      "english": "Traditional Stone Houses"
+    },
+    {
+      "attractionId": "import-6f57dd54aa18326e",
+      "attractionName": "下城区",
+      "highlightId": "import-6f57dd54aa18326e-highlight-3",
+      "sort": 3,
+      "from": "拱形通道",
+      "to": "拱形通道（Medieval Arches）",
+      "english": "Medieval Arches"
+    },
+    {
+      "attractionId": "import-6f57dd54aa18326e",
+      "attractionName": "下城区",
+      "highlightId": "import-6f57dd54aa18326e-highlight-4",
+      "sort": 4,
+      "from": "海滨石墙",
+      "to": "海滨石墙（Seafront Stone Walls）",
+      "english": "Seafront Stone Walls"
+    },
+    {
+      "attractionId": "import-8b839057fbb26e99",
+      "attractionName": "阿伊亚索菲亚教堂",
+      "highlightId": "import-8b839057fbb26e99-highlight-1",
+      "sort": 1,
+      "from": "拜占庭式圆顶建筑",
+      "to": "拜占庭式圆顶建筑（Byzantine Dome）",
+      "english": "Byzantine Dome"
+    },
+    {
+      "attractionId": "import-8b839057fbb26e99",
+      "attractionName": "阿伊亚索菲亚教堂",
+      "highlightId": "import-8b839057fbb26e99-highlight-2",
+      "sort": 2,
+      "from": "悬崖教堂位置",
+      "to": "悬崖教堂位置（Cliffside Location）",
+      "english": "Cliffside Location"
+    },
+    {
+      "attractionId": "import-8b839057fbb26e99",
+      "attractionName": "阿伊亚索菲亚教堂",
+      "highlightId": "import-8b839057fbb26e99-highlight-3",
+      "sort": 3,
+      "from": "中世纪宗教遗迹",
+      "to": "中世纪宗教遗迹（Medieval Religious Remains）",
+      "english": "Medieval Religious Remains"
+    },
+    {
+      "attractionId": "import-48eaa3398680f346",
+      "attractionName": "马尔瓦西亚酒庄",
+      "highlightId": "import-48eaa3398680f346-highlight-1",
+      "sort": 1,
+      "from": "马尔瓦西亚葡萄酒",
+      "to": "马尔瓦西亚葡萄酒（Malvasia Wine）",
+      "english": "Malvasia Wine"
+    },
+    {
+      "attractionId": "import-48eaa3398680f346",
+      "attractionName": "马尔瓦西亚酒庄",
+      "highlightId": "import-48eaa3398680f346-highlight-2",
+      "sort": 2,
+      "from": "希腊葡萄品种",
+      "to": "希腊葡萄品种（Greek Grape Varieties）",
+      "english": "Greek Grape Varieties"
+    },
+    {
+      "attractionId": "import-48eaa3398680f346",
+      "attractionName": "马尔瓦西亚酒庄",
+      "highlightId": "import-48eaa3398680f346-highlight-3",
+      "sort": 3,
+      "from": "葡萄酒酿造过程",
+      "to": "葡萄酒酿造过程（Wine Production Process）",
+      "english": "Wine Production Process"
+    },
+    {
+      "attractionId": "import-48eaa3398680f346",
+      "attractionName": "马尔瓦西亚酒庄",
+      "highlightId": "import-48eaa3398680f346-highlight-4",
+      "sort": 4,
+      "from": "葡萄酒品鉴",
+      "to": "葡萄酒品鉴（Wine Tasting）",
+      "english": "Wine Tasting"
+    },
+    {
+      "attractionId": "import-7ae346311ec06092",
+      "attractionName": "迈锡尼考古遗址",
+      "highlightId": "import-7ae346311ec06092-highlight-1",
+      "sort": 1,
+      "from": "狮子门",
+      "to": "狮子门（Lion Gate）",
+      "english": "Lion Gate"
+    },
+    {
+      "attractionId": "import-7ae346311ec06092",
+      "attractionName": "迈锡尼考古遗址",
+      "highlightId": "import-7ae346311ec06092-highlight-2",
+      "sort": 2,
+      "from": "圆形墓圈A",
+      "to": "圆形墓圈A（Grave Circle A）",
+      "english": "Grave Circle A"
+    },
+    {
+      "attractionId": "import-7ae346311ec06092",
+      "attractionName": "迈锡尼考古遗址",
+      "highlightId": "import-7ae346311ec06092-highlight-3",
+      "sort": 3,
+      "from": "王宫遗址",
+      "to": "王宫遗址（Palace of Mycenae）",
+      "english": "Palace of Mycenae"
+    },
+    {
+      "attractionId": "import-7ae346311ec06092",
+      "attractionName": "迈锡尼考古遗址",
+      "highlightId": "import-7ae346311ec06092-highlight-4",
+      "sort": 4,
+      "from": "巨石城墙",
+      "to": "巨石城墙（Cyclopean Walls）",
+      "english": "Cyclopean Walls"
+    },
+    {
+      "attractionId": "import-7ae346311ec06092",
+      "attractionName": "迈锡尼考古遗址",
+      "highlightId": "import-7ae346311ec06092-highlight-5",
+      "sort": 5,
+      "from": "地下蓄水池",
+      "to": "地下蓄水池（Underground Cistern）",
+      "english": "Underground Cistern"
+    },
+    {
+      "attractionId": "import-7ae346311ec06092",
+      "attractionName": "迈锡尼考古遗址",
+      "highlightId": "import-7ae346311ec06092-highlight-6",
+      "sort": 6,
+      "from": "圆形墓圈B",
+      "to": "圆形墓圈B（Grave Circle B）",
+      "english": "Grave Circle B"
+    },
+    {
+      "attractionId": "import-27adfd63a25c9c4d",
+      "attractionName": "阿特柔斯宝库（阿伽门农墓）",
+      "highlightId": "import-27adfd63a25c9c4d-highlight-1",
+      "sort": 1,
+      "from": "巨型蜂巢墓室",
+      "to": "巨型蜂巢墓室（Tholos Tomb Chamber）",
+      "english": "Tholos Tomb Chamber"
+    },
+    {
+      "attractionId": "import-27adfd63a25c9c4d",
+      "attractionName": "阿特柔斯宝库（阿伽门农墓）",
+      "highlightId": "import-27adfd63a25c9c4d-highlight-2",
+      "sort": 2,
+      "from": "高耸墓道",
+      "to": "高耸墓道（Dromos）",
+      "english": "Dromos"
+    },
+    {
+      "attractionId": "import-27adfd63a25c9c4d",
+      "attractionName": "阿特柔斯宝库（阿伽门农墓）",
+      "highlightId": "import-27adfd63a25c9c4d-highlight-3",
+      "sort": 3,
+      "from": "三角形减重结构",
+      "to": "三角形减重结构（Relieving Triangle）",
+      "english": "Relieving Triangle"
+    },
+    {
+      "attractionId": "import-27adfd63a25c9c4d",
+      "attractionName": "阿特柔斯宝库（阿伽门农墓）",
+      "highlightId": "import-27adfd63a25c9c4d-highlight-4",
+      "sort": 4,
+      "from": "巨型石门",
+      "to": "巨型石门（Monumental Entrance）",
+      "english": "Monumental Entrance"
+    },
+    {
+      "attractionId": "import-7d54f0ca40695ea1",
+      "attractionName": "狮子门",
+      "highlightId": "import-7d54f0ca40695ea1-highlight-1",
+      "sort": 1,
+      "from": "狮子浮雕",
+      "to": "狮子浮雕（Lion Relief）",
+      "english": "Lion Relief"
+    },
+    {
+      "attractionId": "import-7d54f0ca40695ea1",
+      "attractionName": "狮子门",
+      "highlightId": "import-7d54f0ca40695ea1-highlight-2",
+      "sort": 2,
+      "from": "巨石门框",
+      "to": "巨石门框（Cyclopean Doorway）",
+      "english": "Cyclopean Doorway"
+    },
+    {
+      "attractionId": "import-7d54f0ca40695ea1",
+      "attractionName": "狮子门",
+      "highlightId": "import-7d54f0ca40695ea1-highlight-3",
+      "sort": 3,
+      "from": "卫城入口通道",
+      "to": "卫城入口通道（Citadel Entrance Passage）",
+      "english": "Citadel Entrance Passage"
+    },
+    {
+      "attractionId": "acropolis-museum",
+      "attractionName": "卫城博物馆",
+      "highlightId": "acropolis-museum-highlight-1",
+      "sort": 1,
+      "from": "少女像柱原件",
+      "to": "少女像柱原件（Original Caryatids）",
+      "english": "Original Caryatids"
+    },
+    {
+      "attractionId": "acropolis-museum",
+      "attractionName": "卫城博物馆",
+      "highlightId": "acropolis-museum-highlight-2",
+      "sort": 2,
+      "from": "帕特农神庙雕塑",
+      "to": "帕特农神庙雕塑（Parthenon Sculptures）",
+      "english": "Parthenon Sculptures"
+    },
+    {
+      "attractionId": "acropolis-museum",
+      "attractionName": "卫城博物馆",
+      "highlightId": "acropolis-museum-highlight-3",
+      "sort": 3,
+      "from": "帕特农神庙东山墙雕塑",
+      "to": "帕特农神庙东山墙雕塑（East Pediment）",
+      "english": "East Pediment"
+    },
+    {
+      "attractionId": "acropolis-museum",
+      "attractionName": "卫城博物馆",
+      "highlightId": "acropolis-museum-highlight-4",
+      "sort": 4,
+      "from": "帕特农神庙西山墙雕塑",
+      "to": "帕特农神庙西山墙雕塑（West Pediment）",
+      "english": "West Pediment"
+    },
+    {
+      "attractionId": "acropolis-museum",
+      "attractionName": "卫城博物馆",
+      "highlightId": "acropolis-museum-highlight-5",
+      "sort": 5,
+      "from": "帕特农神庙浮雕饰带",
+      "to": "帕特农神庙浮雕饰带（Parthenon Frieze）",
+      "english": "Parthenon Frieze"
+    },
+    {
+      "attractionId": "acropolis-museum",
+      "attractionName": "卫城博物馆",
+      "highlightId": "acropolis-museum-highlight-6",
+      "sort": 6,
+      "from": "古卫城考古遗址",
+      "to": "古卫城考古遗址（Archaeological Excavation）",
+      "english": "Archaeological Excavation"
+    },
+    {
+      "attractionId": "national-archaeological-museum",
+      "attractionName": "雅典国家考古博物馆",
+      "highlightId": "national-archaeological-museum-highlight-1",
+      "sort": 1,
+      "from": "阿伽门农黄金面具",
+      "to": "阿伽门农黄金面具（Mask of Agamemnon）",
+      "english": "Mask of Agamemnon"
+    },
+    {
+      "attractionId": "national-archaeological-museum",
+      "attractionName": "雅典国家考古博物馆",
+      "highlightId": "national-archaeological-museum-highlight-2",
+      "sort": 2,
+      "from": "阿尔忒弥西翁青铜像",
+      "to": "阿尔忒弥西翁青铜像（Artemision Bronze）",
+      "english": "Artemision Bronze"
+    },
+    {
+      "attractionId": "national-archaeological-museum",
+      "attractionName": "雅典国家考古博物馆",
+      "highlightId": "national-archaeological-museum-highlight-3",
+      "sort": 3,
+      "from": "安提基特拉机械装置",
+      "to": "安提基特拉机械装置（Antikythera Mechanism）",
+      "english": "Antikythera Mechanism"
+    },
+    {
+      "attractionId": "national-archaeological-museum",
+      "attractionName": "雅典国家考古博物馆",
+      "highlightId": "national-archaeological-museum-highlight-4",
+      "sort": 4,
+      "from": "阿纳维索斯青年像",
+      "to": "阿纳维索斯青年像（Kouros of Anavyssos）",
+      "english": "Kouros of Anavyssos"
+    },
+    {
+      "attractionId": "national-archaeological-museum",
+      "attractionName": "雅典国家考古博物馆",
+      "highlightId": "national-archaeological-museum-highlight-5",
+      "sort": 5,
+      "from": "迈锡尼黄金文物",
+      "to": "迈锡尼黄金文物（Mycenaean Gold Collection）",
+      "english": "Mycenaean Gold Collection"
+    },
+    {
+      "attractionId": "national-archaeological-museum",
+      "attractionName": "雅典国家考古博物馆",
+      "highlightId": "national-archaeological-museum-highlight-6",
+      "sort": 6,
+      "from": "圣托里尼壁画",
+      "to": "圣托里尼壁画（Thera Frescoes）",
+      "english": "Thera Frescoes"
+    },
+    {
+      "attractionId": "attraction-mudrlsph-58caad",
+      "attractionName": "古市集",
+      "highlightId": "attraction-mudrlsph-58caad-highlight-1",
+      "sort": 1,
+      "from": "赫菲斯托斯神庙",
+      "to": "赫菲斯托斯神庙（Temple of Hephaestus）",
+      "english": "Temple of Hephaestus"
+    },
+    {
+      "attractionId": "attraction-mudrlsph-58caad",
+      "attractionName": "古市集",
+      "highlightId": "attraction-mudrlsph-58caad-highlight-2",
+      "sort": 2,
+      "from": "阿塔罗斯柱廊",
+      "to": "阿塔罗斯柱廊（Stoa of Attalos）",
+      "english": "Stoa of Attalos"
+    },
+    {
+      "attractionId": "attraction-mudrlsph-58caad",
+      "attractionName": "古市集",
+      "highlightId": "attraction-mudrlsph-58caad-highlight-3",
+      "sort": 3,
+      "from": "古市集博物馆",
+      "to": "古市集博物馆（Museum of the Ancient Agora）",
+      "english": "Museum of the Ancient Agora"
+    },
+    {
+      "attractionId": "attraction-mudrlsph-58caad",
+      "attractionName": "古市集",
+      "highlightId": "attraction-mudrlsph-58caad-highlight-4",
+      "sort": 4,
+      "from": "十二神祭坛",
+      "to": "十二神祭坛（Altar of the Twelve Gods）",
+      "english": "Altar of the Twelve Gods"
+    },
+    {
+      "attractionId": "attraction-mudrlsph-58caad",
+      "attractionName": "古市集",
+      "highlightId": "attraction-mudrlsph-58caad-highlight-5",
+      "sort": 5,
+      "from": "民主制度遗址",
+      "to": "民主制度遗址（Democratic Institutions of Ancient Athens）",
+      "english": "Democratic Institutions of Ancient Athens"
+    },
+    {
+      "attractionId": "import-b49864582f93e247",
+      "attractionName": "普拉卡老城",
+      "highlightId": "import-b49864582f93e247-highlight-1",
+      "sort": 1,
+      "from": "阿纳菲奥提卡街区",
+      "to": "阿纳菲奥提卡街区（Anafiotika）",
+      "english": "Anafiotika"
+    },
+    {
+      "attractionId": "import-b49864582f93e247",
+      "attractionName": "普拉卡老城",
+      "highlightId": "import-b49864582f93e247-highlight-2",
+      "sort": 2,
+      "from": "阿德里亚努街",
+      "to": "阿德里亚努街（Adrianou Street）",
+      "english": "Adrianou Street"
+    },
+    {
+      "attractionId": "import-b49864582f93e247",
+      "attractionName": "普拉卡老城",
+      "highlightId": "import-b49864582f93e247-highlight-3",
+      "sort": 3,
+      "from": "利西克拉底纪念碑",
+      "to": "利西克拉底纪念碑（Choragic Monument of Lysicrates）",
+      "english": "Choragic Monument of Lysicrates"
+    },
+    {
+      "attractionId": "import-b49864582f93e247",
+      "attractionName": "普拉卡老城",
+      "highlightId": "import-b49864582f93e247-highlight-4",
+      "sort": 4,
+      "from": "基克拉泽斯风格传统民居",
+      "to": "基克拉泽斯风格传统民居（Cycladic-style Houses）",
+      "english": "Cycladic-style Houses"
+    },
+    {
+      "attractionId": "likavitos",
+      "attractionName": "吕卡维多斯山",
+      "highlightId": "likavitos-highlight-1",
+      "sort": 1,
+      "from": "圣乔治小教堂",
+      "to": "圣乔治小教堂（Chapel of St. George）",
+      "english": "Chapel of St. George"
+    },
+    {
+      "attractionId": "likavitos",
+      "attractionName": "吕卡维多斯山",
+      "highlightId": "likavitos-highlight-2",
+      "sort": 2,
+      "from": "山顶观景台",
+      "to": "山顶观景台（Lycabettus Viewpoint）",
+      "english": "Lycabettus Viewpoint"
+    },
+    {
+      "attractionId": "likavitos",
+      "attractionName": "吕卡维多斯山",
+      "highlightId": "likavitos-highlight-3",
+      "sort": 3,
+      "from": "缆车登山路线",
+      "to": "缆车登山路线（Lycabettus Funicular）",
+      "english": "Lycabettus Funicular"
+    },
+    {
+      "attractionId": "import-caede8ae14e20389",
+      "attractionName": "苏尼翁角波塞冬神庙",
+      "highlightId": "import-caede8ae14e20389-highlight-1",
+      "sort": 1,
+      "from": "波塞冬神庙大理石柱廊",
+      "to": "波塞冬神庙大理石柱廊（Marble Colonnades）",
+      "english": "Marble Colonnades"
+    },
+    {
+      "attractionId": "import-caede8ae14e20389",
+      "attractionName": "苏尼翁角波塞冬神庙",
+      "highlightId": "import-caede8ae14e20389-highlight-2",
+      "sort": 2,
+      "from": "神庙遗址平台",
+      "to": "神庙遗址平台（Temple Sanctuary）",
+      "english": "Temple Sanctuary"
+    },
+    {
+      "attractionId": "import-caede8ae14e20389",
+      "attractionName": "苏尼翁角波塞冬神庙",
+      "highlightId": "import-caede8ae14e20389-highlight-3",
+      "sort": 3,
+      "from": "爱琴海悬崖观景点",
+      "to": "爱琴海悬崖观景点（Aegean Sea Viewpoint）",
+      "english": "Aegean Sea Viewpoint"
+    },
+    {
+      "attractionId": "import-caede8ae14e20389",
+      "attractionName": "苏尼翁角波塞冬神庙",
+      "highlightId": "import-caede8ae14e20389-highlight-4",
+      "sort": 4,
+      "from": "苏尼翁角日落",
+      "to": "苏尼翁角日落（Cape Sounion Sunset）",
+      "english": "Cape Sounion Sunset"
+    },
+    {
+      "attractionId": "import-2d35003b2c6bc8f3",
+      "attractionName": "奥林匹亚宙斯神庙",
+      "highlightId": "import-2d35003b2c6bc8f3-highlight-1",
+      "sort": 1,
+      "from": "宙斯神庙遗存石柱",
+      "to": "宙斯神庙遗存石柱（Surviving Columns）",
+      "english": "Surviving Columns"
+    },
+    {
+      "attractionId": "import-2d35003b2c6bc8f3",
+      "attractionName": "奥林匹亚宙斯神庙",
+      "highlightId": "import-2d35003b2c6bc8f3-highlight-2",
+      "sort": 2,
+      "from": "科林斯式柱头",
+      "to": "科林斯式柱头（Corinthian Capitals）",
+      "english": "Corinthian Capitals"
+    },
+    {
+      "attractionId": "import-2d35003b2c6bc8f3",
+      "attractionName": "奥林匹亚宙斯神庙",
+      "highlightId": "import-2d35003b2c6bc8f3-highlight-3",
+      "sort": 3,
+      "from": "神庙建筑遗址",
+      "to": "神庙建筑遗址（Temple Foundations）",
+      "english": "Temple Foundations"
+    },
+    {
+      "attractionId": "import-688320065b2eded8",
+      "attractionName": "泛雅典娜体育场",
+      "highlightId": "import-688320065b2eded8-highlight-1",
+      "sort": 1,
+      "from": "全大理石看台",
+      "to": "全大理石看台（Marble Grandstands）",
+      "english": "Marble Grandstands"
+    },
+    {
+      "attractionId": "import-688320065b2eded8",
+      "attractionName": "泛雅典娜体育场",
+      "highlightId": "import-688320065b2eded8-highlight-2",
+      "sort": 2,
+      "from": "奥运会跑道",
+      "to": "奥运会跑道（Olympic Track）",
+      "english": "Olympic Track"
+    },
+    {
+      "attractionId": "import-688320065b2eded8",
+      "attractionName": "泛雅典娜体育场",
+      "highlightId": "import-688320065b2eded8-highlight-3",
+      "sort": 3,
+      "from": "运动员入口",
+      "to": "运动员入口（Athletes' Entrance）",
+      "english": "Athletes' Entrance"
+    },
+    {
+      "attractionId": "import-688320065b2eded8",
+      "attractionName": "泛雅典娜体育场",
+      "highlightId": "import-688320065b2eded8-highlight-4",
+      "sort": 4,
+      "from": "奥林匹克纪念展区",
+      "to": "奥林匹克纪念展区（Olympic Memorabilia Exhibition）",
+      "english": "Olympic Memorabilia Exhibition"
+    },
+    {
+      "attractionId": "import-d588bed05dfdcf37",
+      "attractionName": "宪法广场",
+      "highlightId": "import-d588bed05dfdcf37-highlight-1",
+      "sort": 1,
+      "from": "希腊议会大厦",
+      "to": "希腊议会大厦（Hellenic Parliament）",
+      "english": "Hellenic Parliament"
+    },
+    {
+      "attractionId": "import-d588bed05dfdcf37",
+      "attractionName": "宪法广场",
+      "highlightId": "import-d588bed05dfdcf37-highlight-2",
+      "sort": 2,
+      "from": "无名战士纪念碑",
+      "to": "无名战士纪念碑（Tomb of the Unknown Soldier）",
+      "english": "Tomb of the Unknown Soldier"
+    },
+    {
+      "attractionId": "import-d588bed05dfdcf37",
+      "attractionName": "宪法广场",
+      "highlightId": "import-d588bed05dfdcf37-highlight-3",
+      "sort": 3,
+      "from": "总统卫队换岗仪式",
+      "to": "总统卫队换岗仪式（Changing of the Presidential Guard）",
+      "english": "Changing of the Presidential Guard"
+    },
+    {
+      "attractionId": "attraction-mukxszcv-103b6c",
+      "attractionName": "哈尼亚老城",
+      "highlightId": "attraction-mukxszcv-103b6c-highlight-1",
+      "sort": 1,
+      "from": "威尼斯港口",
+      "to": "威尼斯港口（Venetian Harbour）",
+      "english": "Venetian Harbour"
+    },
+    {
+      "attractionId": "attraction-mukxszcv-103b6c",
+      "attractionName": "哈尼亚老城",
+      "highlightId": "attraction-mukxszcv-103b6c-highlight-2",
+      "sort": 2,
+      "from": "埃及灯塔",
+      "to": "埃及灯塔（Egyptian Lighthouse）",
+      "english": "Egyptian Lighthouse"
+    },
+    {
+      "attractionId": "attraction-mukxszcv-103b6c",
+      "attractionName": "哈尼亚老城",
+      "highlightId": "attraction-mukxszcv-103b6c-highlight-3",
+      "sort": 3,
+      "from": "威尼斯军械库",
+      "to": "威尼斯军械库（Venetian Shipyards）",
+      "english": "Venetian Shipyards"
+    },
+    {
+      "attractionId": "attraction-mukxszcv-103b6c",
+      "attractionName": "哈尼亚老城",
+      "highlightId": "attraction-mukxszcv-103b6c-highlight-4",
+      "sort": 4,
+      "from": "圣尼古拉斯教堂",
+      "to": "圣尼古拉斯教堂（Church of Agios Nikolaos）",
+      "english": "Church of Agios Nikolaos"
+    },
+    {
+      "attractionId": "attraction-mukxszcv-103b6c",
+      "attractionName": "哈尼亚老城",
+      "highlightId": "attraction-mukxszcv-103b6c-highlight-5",
+      "sort": 5,
+      "from": "老城土耳其区",
+      "to": "老城土耳其区（Splantzia Quarter）",
+      "english": "Splantzia Quarter"
+    },
+    {
+      "attractionId": "attraction-muupxyxh-62cc08",
+      "attractionName": "科林斯运河",
+      "highlightId": "attraction-muupxyxh-62cc08-highlight-1",
+      "sort": 1,
+      "from": "运河垂直岩壁",
+      "to": "运河垂直岩壁（Vertical Canal Walls）",
+      "english": "Vertical Canal Walls"
+    },
+    {
+      "attractionId": "attraction-muupxyxh-62cc08",
+      "attractionName": "科林斯运河",
+      "highlightId": "attraction-muupxyxh-62cc08-highlight-2",
+      "sort": 2,
+      "from": "运河水道",
+      "to": "运河水道（Canal Waterway）",
+      "english": "Canal Waterway"
+    },
+    {
+      "attractionId": "attraction-muupxyxh-62cc08",
+      "attractionName": "科林斯运河",
+      "highlightId": "attraction-muupxyxh-62cc08-highlight-3",
+      "sort": 3,
+      "from": "旧式桥梁与观景平台",
+      "to": "旧式桥梁与观景平台（Canal Bridges and Viewpoints）",
+      "english": "Canal Bridges and Viewpoints"
+    },
+    {
+      "attractionId": "attraction-muupxyxh-62cc08",
+      "attractionName": "科林斯运河",
+      "highlightId": "attraction-muupxyxh-62cc08-highlight-4",
+      "sort": 4,
+      "from": "沉降式桥梁",
+      "to": "沉降式桥梁（Submersible Bridges）",
+      "english": "Submersible Bridges"
+    },
+    {
+      "attractionId": "attraction-muuqq9y6-4d82d9",
+      "attractionName": "古科林斯遗址",
+      "highlightId": "attraction-muuqq9y6-4d82d9-highlight-1",
+      "sort": 1,
+      "from": "阿波罗神庙",
+      "to": "阿波罗神庙（Temple of Apollo）",
+      "english": "Temple of Apollo"
+    },
+    {
+      "attractionId": "attraction-muuqq9y6-4d82d9",
+      "attractionName": "古科林斯遗址",
+      "highlightId": "attraction-muuqq9y6-4d82d9-highlight-2",
+      "sort": 2,
+      "from": "佩雷涅泉",
+      "to": "佩雷涅泉（Peirene Fountain）",
+      "english": "Peirene Fountain"
+    },
+    {
+      "attractionId": "attraction-muuqq9y6-4d82d9",
+      "attractionName": "古科林斯遗址",
+      "highlightId": "attraction-muuqq9y6-4d82d9-highlight-3",
+      "sort": 3,
+      "from": "古市集",
+      "to": "古市集（Ancient Agora）",
+      "english": "Ancient Agora"
+    },
+    {
+      "attractionId": "attraction-muuqq9y6-4d82d9",
+      "attractionName": "古科林斯遗址",
+      "highlightId": "attraction-muuqq9y6-4d82d9-highlight-4",
+      "sort": 4,
+      "from": "格劳克泉",
+      "to": "格劳克泉（Glauke Fountain）",
+      "english": "Glauke Fountain"
+    },
+    {
+      "attractionId": "attraction-muuqq9y6-4d82d9",
+      "attractionName": "古科林斯遗址",
+      "highlightId": "attraction-muuqq9y6-4d82d9-highlight-5",
+      "sort": 5,
+      "from": "朱利叶斯·凯撒神庙遗址",
+      "to": "朱利叶斯·凯撒神庙遗址（Temple of Octavia）",
+      "english": "Temple of Octavia"
+    },
+    {
+      "attractionId": "attraction-muuqq9y6-4d82d9",
+      "attractionName": "古科林斯遗址",
+      "highlightId": "attraction-muuqq9y6-4d82d9-highlight-6",
+      "sort": 6,
+      "from": "古剧场",
+      "to": "古剧场（Ancient Theatre of Corinth）",
+      "english": "Ancient Theatre of Corinth"
+    },
+    {
+      "attractionId": "attraction-muuqq9y6-4d82d9",
+      "attractionName": "古科林斯遗址",
+      "highlightId": "attraction-muuqq9y6-4d82d9-highlight-7",
+      "sort": 7,
+      "from": "罗马商店与柱廊",
+      "to": "罗马商店与柱廊（Roman Shops and Colonnades）",
+      "english": "Roman Shops and Colonnades"
+    },
+    {
+      "attractionId": "attraction-muuqttcy-f6e4d5",
+      "attractionName": "科林斯卫城",
+      "highlightId": "attraction-muuqttcy-f6e4d5-highlight-1",
+      "sort": 1,
+      "from": "古代卫城城墙",
+      "to": "古代卫城城墙（Acrocorinth Fortifications）",
+      "english": "Acrocorinth Fortifications"
+    },
+    {
+      "attractionId": "attraction-muuqttcy-f6e4d5",
+      "attractionName": "科林斯卫城",
+      "highlightId": "attraction-muuqttcy-f6e4d5-highlight-2",
+      "sort": 2,
+      "from": "阿芙罗狄忒神庙遗址",
+      "to": "阿芙罗狄忒神庙遗址（Temple of Aphrodite Ruins）",
+      "english": "Temple of Aphrodite Ruins"
+    },
+    {
+      "attractionId": "attraction-muuqttcy-f6e4d5",
+      "attractionName": "科林斯卫城",
+      "highlightId": "attraction-muuqttcy-f6e4d5-highlight-3",
+      "sort": 3,
+      "from": "山顶堡垒",
+      "to": "山顶堡垒（Hilltop Fortress）",
+      "english": "Hilltop Fortress"
+    },
+    {
+      "attractionId": "attraction-muuqttcy-f6e4d5",
+      "attractionName": "科林斯卫城",
+      "highlightId": "attraction-muuqttcy-f6e4d5-highlight-4",
+      "sort": 4,
+      "from": "佩雷涅泉水系统",
+      "to": "佩雷涅泉水系统（Peirene Water System）",
+      "english": "Peirene Water System"
+    },
+    {
+      "attractionId": "attraction-muuqttcy-f6e4d5",
+      "attractionName": "科林斯卫城",
+      "highlightId": "attraction-muuqttcy-f6e4d5-highlight-5",
+      "sort": 5,
+      "from": "全景观景台",
+      "to": "全景观景台（Panoramic Viewpoint）",
+      "english": "Panoramic Viewpoint"
+    },
+    {
+      "attractionId": "attraction-muurnwxs-0f76f9",
+      "attractionName": "哈德良拱门",
+      "highlightId": "attraction-muurnwxs-0f76f9-highlight-1",
+      "sort": 1,
+      "from": "拱门主体",
+      "to": "拱门主体（Main Arch）",
+      "english": "Main Arch"
+    },
+    {
+      "attractionId": "attraction-muurnwxs-0f76f9",
+      "attractionName": "哈德良拱门",
+      "highlightId": "attraction-muurnwxs-0f76f9-highlight-2",
+      "sort": 2,
+      "from": "大理石铭文",
+      "to": "大理石铭文（Marble Inscriptions）",
+      "english": "Marble Inscriptions"
+    },
+    {
+      "attractionId": "attraction-mv0fkw5j-1e0f18",
+      "attractionName": "圣斯彼利当教堂",
+      "highlightId": "attraction-mv0fkw5j-1e0f18-highlight-1",
+      "sort": 1,
+      "from": "教堂主体建筑",
+      "to": "教堂主体建筑（Main Church Building）",
+      "english": "Main Church Building"
+    },
+    {
+      "attractionId": "attraction-mv0fkw5j-1e0f18",
+      "attractionName": "圣斯彼利当教堂",
+      "highlightId": "attraction-mv0fkw5j-1e0f18-highlight-2",
+      "sort": 2,
+      "from": "历史纪念地点",
+      "to": "历史纪念地点（Historic Assassination Site）",
+      "english": "Historic Assassination Site"
+    },
+    {
+      "attractionId": "attraction-mv0fkw5j-1e0f18",
+      "attractionName": "圣斯彼利当教堂",
+      "highlightId": "attraction-mv0fkw5j-1e0f18-highlight-3",
+      "sort": 3,
+      "from": "宗教圣像与壁画",
+      "to": "宗教圣像与壁画（Religious Icons and Frescoes）",
+      "english": "Religious Icons and Frescoes"
+    },
+    {
+      "attractionId": "attraction-mvaca4mt-c62dde",
+      "attractionName": "贝纳基博物馆",
+      "highlightId": "attraction-mvaca4mt-c62dde-highlight-1",
+      "sort": 1,
+      "from": "史前与古希腊艺术收藏",
+      "to": "史前与古希腊艺术收藏（Prehistoric and Ancient Greek Collection）",
+      "english": "Prehistoric and Ancient Greek Collection"
+    },
+    {
+      "attractionId": "attraction-mvaca4mt-c62dde",
+      "attractionName": "贝纳基博物馆",
+      "highlightId": "attraction-mvaca4mt-c62dde-highlight-2",
+      "sort": 2,
+      "from": "拜占庭艺术收藏",
+      "to": "拜占庭艺术收藏（Byzantine Art Collection）",
+      "english": "Byzantine Art Collection"
+    },
+    {
+      "attractionId": "attraction-mvaca4mt-c62dde",
+      "attractionName": "贝纳基博物馆",
+      "highlightId": "attraction-mvaca4mt-c62dde-highlight-3",
+      "sort": 3,
+      "from": "希腊传统服饰",
+      "to": "希腊传统服饰（Traditional Greek Costumes）",
+      "english": "Traditional Greek Costumes"
+    },
+    {
+      "attractionId": "attraction-mvaca4mt-c62dde",
+      "attractionName": "贝纳基博物馆",
+      "highlightId": "attraction-mvaca4mt-c62dde-highlight-4",
+      "sort": 4,
+      "from": "希腊银器与珠宝",
+      "to": "希腊银器与珠宝（Greek Silverware and Jewellery）",
+      "english": "Greek Silverware and Jewellery"
+    },
+    {
+      "attractionId": "attraction-mvaca4mt-c62dde",
+      "attractionName": "贝纳基博物馆",
+      "highlightId": "attraction-mvaca4mt-c62dde-highlight-5",
+      "sort": 5,
+      "from": "奥斯曼时期艺术收藏",
+      "to": "奥斯曼时期艺术收藏（Ottoman-era Art Collection）",
+      "english": "Ottoman-era Art Collection"
+    },
+    {
+      "attractionId": "attraction-mvacju6w-6153fe",
+      "attractionName": "扎皮翁宫",
+      "highlightId": "attraction-mvacju6w-6153fe-highlight-1",
+      "sort": 1,
+      "from": "新古典主义柱廊",
+      "to": "新古典主义柱廊（Neoclassical Colonnades）",
+      "english": "Neoclassical Colonnades"
+    },
+    {
+      "attractionId": "attraction-mvacju6w-6153fe",
+      "attractionName": "扎皮翁宫",
+      "highlightId": "attraction-mvacju6w-6153fe-highlight-2",
+      "sort": 2,
+      "from": "中央圆形大厅",
+      "to": "中央圆形大厅（Central Rotunda）",
+      "english": "Central Rotunda"
+    },
+    {
+      "attractionId": "attraction-mvacju6w-6153fe",
+      "attractionName": "扎皮翁宫",
+      "highlightId": "attraction-mvacju6w-6153fe-highlight-3",
+      "sort": 3,
+      "from": "奥林匹克历史区域",
+      "to": "奥林匹克历史区域（Olympic Heritage Area）",
+      "english": "Olympic Heritage Area"
+    },
+    {
+      "attractionId": "attraction-mvadrgua-53d9e4",
+      "attractionName": "阿拉霍瓦老城",
+      "highlightId": "attraction-mvadrgua-53d9e4-highlight-1",
+      "sort": 1,
+      "from": "石板街道",
+      "to": "石板街道（Cobblestone Streets）",
+      "english": "Cobblestone Streets"
+    },
+    {
+      "attractionId": "attraction-mvadrgua-53d9e4",
+      "attractionName": "阿拉霍瓦老城",
+      "highlightId": "attraction-mvadrgua-53d9e4-highlight-2",
+      "sort": 2,
+      "from": "传统石屋",
+      "to": "传统石屋（Traditional Stone Houses）",
+      "english": "Traditional Stone Houses"
+    },
+    {
+      "attractionId": "attraction-mvadrgua-53d9e4",
+      "attractionName": "阿拉霍瓦老城",
+      "highlightId": "attraction-mvadrgua-53d9e4-highlight-3",
+      "sort": 3,
+      "from": "钟塔",
+      "to": "钟塔（Clock Tower）",
+      "english": "Clock Tower"
+    },
+    {
+      "attractionId": "attraction-mvadrgua-53d9e4",
+      "attractionName": "阿拉霍瓦老城",
+      "highlightId": "attraction-mvadrgua-53d9e4-highlight-4",
+      "sort": 4,
+      "from": "当地手工艺品市场",
+      "to": "当地手工艺品市场（Traditional Handicraft Market）",
+      "english": "Traditional Handicraft Market"
+    },
+    {
+      "attractionId": "attraction-mvadrgua-53d9e4",
+      "attractionName": "阿拉霍瓦老城",
+      "highlightId": "attraction-mvadrgua-53d9e4-highlight-5",
+      "sort": 5,
+      "from": "山谷观景点",
+      "to": "山谷观景点（Mountain Valley Viewpoints）",
+      "english": "Mountain Valley Viewpoints"
+    },
+    {
+      "attractionId": "attraction-mvadvys8-3fed3e",
+      "attractionName": "圣乔治教堂",
+      "highlightId": "attraction-mvadvys8-3fed3e-highlight-1",
+      "sort": 1,
+      "from": "教堂主体建筑",
+      "to": "教堂主体建筑（Main Church Building）",
+      "english": "Main Church Building"
+    },
+    {
+      "attractionId": "attraction-mvadvys8-3fed3e",
+      "attractionName": "圣乔治教堂",
+      "highlightId": "attraction-mvadvys8-3fed3e-highlight-2",
+      "sort": 2,
+      "from": "钟楼",
+      "to": "钟楼（Bell Tower）",
+      "english": "Bell Tower"
+    },
+    {
+      "attractionId": "attraction-mvadvys8-3fed3e",
+      "attractionName": "圣乔治教堂",
+      "highlightId": "attraction-mvadvys8-3fed3e-highlight-3",
+      "sort": 3,
+      "from": "宗教圣像",
+      "to": "宗教圣像（Orthodox Icons）",
+      "english": "Orthodox Icons"
+    },
+    {
+      "attractionId": "attraction-mvaeap09-45b6f1",
+      "attractionName": "钟塔",
+      "highlightId": "attraction-mvaeap09-45b6f1-highlight-1",
+      "sort": 1,
+      "from": "石质塔身",
+      "to": "石质塔身（Stone Clock Tower）",
+      "english": "Stone Clock Tower"
+    },
+    {
+      "attractionId": "attraction-mvaeap09-45b6f1",
+      "attractionName": "钟塔",
+      "highlightId": "attraction-mvaeap09-45b6f1-highlight-2",
+      "sort": 2,
+      "from": "古钟与钟面",
+      "to": "古钟与钟面（Clock Face and Bell）",
+      "english": "Clock Face and Bell"
+    },
+    {
+      "attractionId": "attraction-mvaeap09-45b6f1",
+      "attractionName": "钟塔",
+      "highlightId": "attraction-mvaeap09-45b6f1-highlight-3",
+      "sort": 3,
+      "from": "全镇观景平台",
+      "to": "全镇观景平台（Town Viewpoint）",
+      "english": "Town Viewpoint"
+    },
+    {
+      "attractionId": "attraction-mvaedct7-728d14",
+      "attractionName": "帕纳索斯滑雪中心",
+      "highlightId": "attraction-mvaedct7-728d14-highlight-1",
+      "sort": 1,
+      "from": "凯拉里亚滑雪区",
+      "to": "凯拉里亚滑雪区（Kellaria Ski Area）",
+      "english": "Kellaria Ski Area"
+    },
+    {
+      "attractionId": "attraction-mvaedct7-728d14",
+      "attractionName": "帕纳索斯滑雪中心",
+      "highlightId": "attraction-mvaedct7-728d14-highlight-2",
+      "sort": 2,
+      "from": "弗拉霍里莫纳滑雪区",
+      "to": "弗拉霍里莫纳滑雪区（Fterolakka Ski Area）",
+      "english": "Fterolakka Ski Area"
+    },
+    {
+      "attractionId": "attraction-mvaedct7-728d14",
+      "attractionName": "帕纳索斯滑雪中心",
+      "highlightId": "attraction-mvaedct7-728d14-highlight-3",
+      "sort": 3,
+      "from": "山地缆车",
+      "to": "山地缆车（Mountain Lifts）",
+      "english": "Mountain Lifts"
+    },
+    {
+      "attractionId": "attraction-mvaedct7-728d14",
+      "attractionName": "帕纳索斯滑雪中心",
+      "highlightId": "attraction-mvaedct7-728d14-highlight-4",
+      "sort": 4,
+      "from": "帕纳索斯山景",
+      "to": "帕纳索斯山景（Mount Parnassus Scenery）",
+      "english": "Mount Parnassus Scenery"
+    },
+    {
+      "attractionId": "attraction-mvg4dwai-5f9f70",
+      "attractionName": "埃伊纳岛",
+      "highlightId": "attraction-mvg4dwai-5f9f70-highlight-1",
+      "sort": 1,
+      "from": "埃伊纳镇港口",
+      "to": "埃伊纳镇港口（Aegina Town Harbour）",
+      "english": "Aegina Town Harbour"
+    },
+    {
+      "attractionId": "attraction-mvg4dwai-5f9f70",
+      "attractionName": "埃伊纳岛",
+      "highlightId": "attraction-mvg4dwai-5f9f70-highlight-2",
+      "sort": 2,
+      "from": "卡普里卡门斯遗址",
+      "to": "卡普里卡门斯遗址（Kolona Archaeological Site）",
+      "english": "Kolona Archaeological Site"
+    },
+    {
+      "attractionId": "attraction-mvg4dwai-5f9f70",
+      "attractionName": "埃伊纳岛",
+      "highlightId": "attraction-mvg4dwai-5f9f70-highlight-3",
+      "sort": 3,
+      "from": "圣尼古拉斯教堂",
+      "to": "圣尼古拉斯教堂（Church of Agios Nikolaos）",
+      "english": "Church of Agios Nikolaos"
+    },
+    {
+      "attractionId": "attraction-mvg4dwai-5f9f70",
+      "attractionName": "埃伊纳岛",
+      "highlightId": "attraction-mvg4dwai-5f9f70-highlight-4",
+      "sort": 4,
+      "from": "渔港与传统市场",
+      "to": "渔港与传统市场（Fishing Harbour and Local Market）",
+      "english": "Fishing Harbour and Local Market"
+    },
+    {
+      "attractionId": "attraction-mvg4dwai-5f9f70",
+      "attractionName": "埃伊纳岛",
+      "highlightId": "attraction-mvg4dwai-5f9f70-highlight-5",
+      "sort": 5,
+      "from": "开心果种植园",
+      "to": "开心果种植园（Pistachio Groves）",
+      "english": "Pistachio Groves"
+    },
+    {
+      "attractionId": "attraction-mvg57o88-afaab0",
+      "attractionName": "科孚岛",
+      "highlightId": "attraction-mvg57o88-afaab0-highlight-1",
+      "sort": 1,
+      "from": "科孚古镇",
+      "to": "科孚古镇（Corfu Old Town）",
+      "english": "Corfu Old Town"
+    },
+    {
+      "attractionId": "attraction-mvg57o88-afaab0",
+      "attractionName": "科孚岛",
+      "highlightId": "attraction-mvg57o88-afaab0-highlight-2",
+      "sort": 2,
+      "from": "利斯顿拱廊",
+      "to": "利斯顿拱廊（Liston Promenade）",
+      "english": "Liston Promenade"
+    },
+    {
+      "attractionId": "attraction-mvg57o88-afaab0",
+      "attractionName": "科孚岛",
+      "highlightId": "attraction-mvg57o88-afaab0-highlight-3",
+      "sort": 3,
+      "from": "斯皮亚纳达广场",
+      "to": "斯皮亚纳达广场（Spianada Square）",
+      "english": "Spianada Square"
+    },
+    {
+      "attractionId": "attraction-mvg57o88-afaab0",
+      "attractionName": "科孚岛",
+      "highlightId": "attraction-mvg57o88-afaab0-highlight-4",
+      "sort": 4,
+      "from": "旧城堡",
+      "to": "旧城堡（Old Fortress）",
+      "english": "Old Fortress"
+    },
+    {
+      "attractionId": "attraction-mvg57o88-afaab0",
+      "attractionName": "科孚岛",
+      "highlightId": "attraction-mvg57o88-afaab0-highlight-5",
+      "sort": 5,
+      "from": "新城堡",
+      "to": "新城堡（New Fortress）",
+      "english": "New Fortress"
+    },
+    {
+      "attractionId": "attraction-mvg5qwuw-f7193e",
+      "attractionName": "有机开心果园",
+      "highlightId": "attraction-mvg5qwuw-f7193e-highlight-1",
+      "sort": 1,
+      "from": "埃伊纳开心果树",
+      "to": "埃伊纳开心果树（Aegina Pistachio Trees）",
+      "english": "Aegina Pistachio Trees"
+    },
+    {
+      "attractionId": "attraction-mvg5qwuw-f7193e",
+      "attractionName": "有机开心果园",
+      "highlightId": "attraction-mvg5qwuw-f7193e-highlight-2",
+      "sort": 2,
+      "from": "开心果采摘与加工",
+      "to": "开心果采摘与加工（Pistachio Harvesting and Processing）",
+      "english": "Pistachio Harvesting and Processing"
+    },
+    {
+      "attractionId": "attraction-mvg5qwuw-f7193e",
+      "attractionName": "有机开心果园",
+      "highlightId": "attraction-mvg5qwuw-f7193e-highlight-3",
+      "sort": 3,
+      "from": "开心果制品",
+      "to": "开心果制品（Pistachio Products）",
+      "english": "Pistachio Products"
+    },
+    {
+      "attractionId": "attraction-mvg67zlr-784576",
+      "attractionName": "圣三位一体修道院",
+      "highlightId": "attraction-mvg67zlr-784576-highlight-1",
+      "sort": 1,
+      "from": "修道院主教堂",
+      "to": "修道院主教堂（Main Monastery Church）",
+      "english": "Main Monastery Church"
+    },
+    {
+      "attractionId": "attraction-mvg67zlr-784576",
+      "attractionName": "圣三位一体修道院",
+      "highlightId": "attraction-mvg67zlr-784576-highlight-2",
+      "sort": 2,
+      "from": "修道院庭院",
+      "to": "修道院庭院（Monastery Courtyard）",
+      "english": "Monastery Courtyard"
+    },
+    {
+      "attractionId": "attraction-mvg67zlr-784576",
+      "attractionName": "圣三位一体修道院",
+      "highlightId": "attraction-mvg67zlr-784576-highlight-3",
+      "sort": 3,
+      "from": "圣像与宗教壁画",
+      "to": "圣像与宗教壁画（Icons and Religious Frescoes）",
+      "english": "Icons and Religious Frescoes"
+    },
+    {
+      "attractionId": "attraction-mvg6bzlk-38531b",
+      "attractionName": "阿法亚神庙",
+      "highlightId": "attraction-mvg6bzlk-38531b-highlight-1",
+      "sort": 1,
+      "from": "多立克式柱廊",
+      "to": "多立克式柱廊（Doric Colonnade）",
+      "english": "Doric Colonnade"
+    },
+    {
+      "attractionId": "attraction-mvg6bzlk-38531b",
+      "attractionName": "阿法亚神庙",
+      "highlightId": "attraction-mvg6bzlk-38531b-highlight-2",
+      "sort": 2,
+      "from": "东山墙雕塑",
+      "to": "东山墙雕塑（East Pediment）",
+      "english": "East Pediment"
+    },
+    {
+      "attractionId": "attraction-mvg6bzlk-38531b",
+      "attractionName": "阿法亚神庙",
+      "highlightId": "attraction-mvg6bzlk-38531b-highlight-3",
+      "sort": 3,
+      "from": "西山墙雕塑",
+      "to": "西山墙雕塑（West Pediment）",
+      "english": "West Pediment"
+    },
+    {
+      "attractionId": "attraction-mvg6bzlk-38531b",
+      "attractionName": "阿法亚神庙",
+      "highlightId": "attraction-mvg6bzlk-38531b-highlight-4",
+      "sort": 4,
+      "from": "神庙祭祀区域",
+      "to": "神庙祭祀区域（Sanctuary of Aphaia）",
+      "english": "Sanctuary of Aphaia"
+    },
+    {
+      "attractionId": "attraction-mvg6bzlk-38531b",
+      "attractionName": "阿法亚神庙",
+      "highlightId": "attraction-mvg6bzlk-38531b-highlight-5",
+      "sort": 5,
+      "from": "萨罗尼克湾观景点",
+      "to": "萨罗尼克湾观景点（Saronic Gulf Viewpoint）",
+      "english": "Saronic Gulf Viewpoint"
+    },
+    {
+      "attractionId": "attraction-mvg6gvwh-56457f",
+      "attractionName": "阿吉纳渔港",
+      "highlightId": "attraction-mvg6gvwh-56457f-highlight-1",
+      "sort": 1,
+      "from": "传统渔船",
+      "to": "传统渔船（Traditional Fishing Boats）",
+      "english": "Traditional Fishing Boats"
+    },
+    {
+      "attractionId": "attraction-mvg6gvwh-56457f",
+      "attractionName": "阿吉纳渔港",
+      "highlightId": "attraction-mvg6gvwh-56457f-highlight-2",
+      "sort": 2,
+      "from": "海鲜市场",
+      "to": "海鲜市场（Seafood Market）",
+      "english": "Seafood Market"
+    },
+    {
+      "attractionId": "attraction-mvg6gvwh-56457f",
+      "attractionName": "阿吉纳渔港",
+      "highlightId": "attraction-mvg6gvwh-56457f-highlight-3",
+      "sort": 3,
+      "from": "海滨餐厅",
+      "to": "海滨餐厅（Seafront Taverns）",
+      "english": "Seafront Taverns"
+    },
+    {
+      "attractionId": "attraction-mvg6gvwh-56457f",
+      "attractionName": "阿吉纳渔港",
+      "highlightId": "attraction-mvg6gvwh-56457f-highlight-4",
+      "sort": 4,
+      "from": "日落港湾",
+      "to": "日落港湾（Harbour Sunset）",
+      "english": "Harbour Sunset"
+    },
+    {
+      "attractionId": "attraction-mvg6o6oh-e998e7",
+      "attractionName": "斯皮亚纳达广场",
+      "highlightId": "attraction-mvg6o6oh-e998e7-highlight-1",
+      "sort": 1,
+      "from": "法国风格拱廊",
+      "to": "法国风格拱廊（French-style Arcades）",
+      "english": "French-style Arcades"
+    },
+    {
+      "attractionId": "attraction-mvg6o6oh-e998e7",
+      "attractionName": "斯皮亚纳达广场",
+      "highlightId": "attraction-mvg6o6oh-e998e7-highlight-2",
+      "sort": 2,
+      "from": "板球场",
+      "to": "板球场（Cricket Ground）",
+      "english": "Cricket Ground"
+    },
+    {
+      "attractionId": "attraction-mvg6o6oh-e998e7",
+      "attractionName": "斯皮亚纳达广场",
+      "highlightId": "attraction-mvg6o6oh-e998e7-highlight-3",
+      "sort": 3,
+      "from": "音乐亭",
+      "to": "音乐亭（Music Pavilion）",
+      "english": "Music Pavilion"
+    },
+    {
+      "attractionId": "attraction-mvg6o6oh-e998e7",
+      "attractionName": "斯皮亚纳达广场",
+      "highlightId": "attraction-mvg6o6oh-e998e7-highlight-4",
+      "sort": 4,
+      "from": "英国宫殿建筑群",
+      "to": "英国宫殿建筑群（Palace of St. Michael and St. George）",
+      "english": "Palace of St. Michael and St. George"
+    },
+    {
+      "attractionId": "attraction-mvg6qb9v-522e92",
+      "attractionName": "阿喀琉斯宫",
+      "highlightId": "attraction-mvg6qb9v-522e92-highlight-1",
+      "sort": 1,
+      "from": "阿喀琉斯胜利雕像",
+      "to": "阿喀琉斯胜利雕像（Achilles Triumphant）",
+      "english": "Achilles Triumphant"
+    },
+    {
+      "attractionId": "attraction-mvg6qb9v-522e92",
+      "attractionName": "阿喀琉斯宫",
+      "highlightId": "attraction-mvg6qb9v-522e92-highlight-2",
+      "sort": 2,
+      "from": "受伤的阿喀琉斯雕像",
+      "to": "受伤的阿喀琉斯雕像（Dying Achilles）",
+      "english": "Dying Achilles"
+    },
+    {
+      "attractionId": "attraction-mvg6qb9v-522e92",
+      "attractionName": "阿喀琉斯宫",
+      "highlightId": "attraction-mvg6qb9v-522e92-highlight-3",
+      "sort": 3,
+      "from": "皇后伊丽莎白的私人空间",
+      "to": "皇后伊丽莎白的私人空间（Empress Elisabeth's Private Apartments）",
+      "english": "Empress Elisabeth's Private Apartments"
+    },
+    {
+      "attractionId": "attraction-mvg6qb9v-522e92",
+      "attractionName": "阿喀琉斯宫",
+      "highlightId": "attraction-mvg6qb9v-522e92-highlight-4",
+      "sort": 4,
+      "from": "希腊神话壁画",
+      "to": "希腊神话壁画（Greek Mythology Frescoes）",
+      "english": "Greek Mythology Frescoes"
+    },
+    {
+      "attractionId": "attraction-mvg6qb9v-522e92",
+      "attractionName": "阿喀琉斯宫",
+      "highlightId": "attraction-mvg6qb9v-522e92-highlight-5",
+      "sort": 5,
+      "from": "宫殿花园",
+      "to": "宫殿花园（Palace Gardens）",
+      "english": "Palace Gardens"
+    },
+    {
+      "attractionId": "attraction-mvg6xd4e-4b817c",
+      "attractionName": "老城堡",
+      "highlightId": "attraction-mvg6xd4e-4b817c-highlight-1",
+      "sort": 1,
+      "from": "圣乔治教堂",
+      "to": "圣乔治教堂（Church of St. George）",
+      "english": "Church of St. George"
+    },
+    {
+      "attractionId": "attraction-mvg6xd4e-4b817c",
+      "attractionName": "老城堡",
+      "highlightId": "attraction-mvg6xd4e-4b817c-highlight-2",
+      "sort": 2,
+      "from": "威尼斯防御城墙",
+      "to": "威尼斯防御城墙（Venetian Fortifications）",
+      "english": "Venetian Fortifications"
+    },
+    {
+      "attractionId": "attraction-mvg6xd4e-4b817c",
+      "attractionName": "老城堡",
+      "highlightId": "attraction-mvg6xd4e-4b817c-highlight-3",
+      "sort": 3,
+      "from": "海上防御通道",
+      "to": "海上防御通道（Sea Defence Passage）",
+      "english": "Sea Defence Passage"
+    },
+    {
+      "attractionId": "attraction-mvg6xd4e-4b817c",
+      "attractionName": "老城堡",
+      "highlightId": "attraction-mvg6xd4e-4b817c-highlight-4",
+      "sort": 4,
+      "from": "城堡灯塔与观景台",
+      "to": "城堡灯塔与观景台（Fortress Lighthouse and Viewpoints）",
+      "english": "Fortress Lighthouse and Viewpoints"
+    },
+    {
+      "attractionId": "attraction-mvg6z7hu-db8ac8",
+      "attractionName": "科孚古镇",
+      "highlightId": "attraction-mvg6z7hu-db8ac8-highlight-1",
+      "sort": 1,
+      "from": "坎帕涅洛广场",
+      "to": "坎帕涅洛广场（Campiello District）",
+      "english": "Campiello District"
+    },
+    {
+      "attractionId": "attraction-mvg6z7hu-db8ac8",
+      "attractionName": "科孚古镇",
+      "highlightId": "attraction-mvg6z7hu-db8ac8-highlight-2",
+      "sort": 2,
+      "from": "圣斯皮里东教堂",
+      "to": "圣斯皮里东教堂（Church of Saint Spyridon）",
+      "english": "Church of Saint Spyridon"
+    },
+    {
+      "attractionId": "attraction-mvg6z7hu-db8ac8",
+      "attractionName": "科孚古镇",
+      "highlightId": "attraction-mvg6z7hu-db8ac8-highlight-3",
+      "sort": 3,
+      "from": "威尼斯风格建筑",
+      "to": "威尼斯风格建筑（Venetian Architecture）",
+      "english": "Venetian Architecture"
+    },
+    {
+      "attractionId": "attraction-mvg6z7hu-db8ac8",
+      "attractionName": "科孚古镇",
+      "highlightId": "attraction-mvg6z7hu-db8ac8-highlight-4",
+      "sort": 4,
+      "from": "老城市场",
+      "to": "老城市场（Old Town Market）",
+      "english": "Old Town Market"
+    },
+    {
+      "attractionId": "attraction-mvg72oh5-6e12b2",
+      "attractionName": "利斯顿拱廊",
+      "highlightId": "attraction-mvg72oh5-6e12b2-highlight-1",
+      "sort": 1,
+      "from": "拱廊建筑",
+      "to": "拱廊建筑（Arcaded Architecture）",
+      "english": "Arcaded Architecture"
+    },
+    {
+      "attractionId": "attraction-mvg72oh5-6e12b2",
+      "attractionName": "利斯顿拱廊",
+      "highlightId": "attraction-mvg72oh5-6e12b2-highlight-2",
+      "sort": 2,
+      "from": "咖啡馆露台",
+      "to": "咖啡馆露台（Café Terraces）",
+      "english": "Café Terraces"
+    },
+    {
+      "attractionId": "attraction-mvg72oh5-6e12b2",
+      "attractionName": "利斯顿拱廊",
+      "highlightId": "attraction-mvg72oh5-6e12b2-highlight-3",
+      "sort": 3,
+      "from": "夜间灯光景观",
+      "to": "夜间灯光景观（Evening Illuminations）",
+      "english": "Evening Illuminations"
+    },
+    {
+      "attractionId": "import-1020-43048516",
+      "attractionName": "三钟教堂",
+      "highlightId": "import-1020-43048516-highlight-1",
+      "sort": 1,
+      "from": "蓝色圆顶",
+      "to": "蓝色圆顶（Blue Dome）",
+      "english": "Blue Dome"
+    },
+    {
+      "attractionId": "import-1020-43048516",
+      "attractionName": "三钟教堂",
+      "highlightId": "import-1020-43048516-highlight-2",
+      "sort": 2,
+      "from": "三口钟楼",
+      "to": "三口钟楼（Three Bells Tower）",
+      "english": "Three Bells Tower"
+    },
+    {
+      "attractionId": "import-1020-43048516",
+      "attractionName": "三钟教堂",
+      "highlightId": "import-1020-43048516-highlight-3",
+      "sort": 3,
+      "from": "火山口海景",
+      "to": "火山口海景（Caldera View）",
+      "english": "Caldera View"
+    },
+    {
+      "attractionId": "import-1020-46156687",
+      "attractionName": "风车观景台",
+      "highlightId": "import-1020-46156687-highlight-1",
+      "sort": 1,
+      "from": "传统风车群",
+      "to": "传统风车群（Traditional Windmills）",
+      "english": "Traditional Windmills"
+    },
+    {
+      "attractionId": "import-1020-46156687",
+      "attractionName": "风车观景台",
+      "highlightId": "import-1020-46156687-highlight-2",
+      "sort": 2,
+      "from": "火山口全景",
+      "to": "火山口全景（Caldera Panorama）",
+      "english": "Caldera Panorama"
+    },
+    {
+      "attractionId": "import-1020-46156687",
+      "attractionName": "风车观景台",
+      "highlightId": "import-1020-46156687-highlight-3",
+      "sort": 3,
+      "from": "日落拍摄点",
+      "to": "日落拍摄点（Sunset Photography Point）",
+      "english": "Sunset Photography Point"
+    },
+    {
+      "attractionId": "import-1020-84743472",
+      "attractionName": "伊莫洛维里小镇",
+      "highlightId": "import-1020-84743472-highlight-1",
+      "sort": 1,
+      "from": "斯卡罗斯岩",
+      "to": "斯卡罗斯岩（Skaros Rock）",
+      "english": "Skaros Rock"
+    },
+    {
+      "attractionId": "import-1020-84743472",
+      "attractionName": "伊莫洛维里小镇",
+      "highlightId": "import-1020-84743472-highlight-2",
+      "sort": 2,
+      "from": "圣母玛利亚狄奥斯科普斯教堂",
+      "to": "圣母玛利亚狄奥斯科普斯教堂（Panagia Theoskepasti Church）",
+      "english": "Panagia Theoskepasti Church"
+    },
+    {
+      "attractionId": "import-1020-84743472",
+      "attractionName": "伊莫洛维里小镇",
+      "highlightId": "import-1020-84743472-highlight-3",
+      "sort": 3,
+      "from": "火山口悬崖步道",
+      "to": "火山口悬崖步道（Caldera Walking Trail）",
+      "english": "Caldera Walking Trail"
+    },
+    {
+      "attractionId": "import-1020-84743472",
+      "attractionName": "伊莫洛维里小镇",
+      "highlightId": "import-1020-84743472-highlight-4",
+      "sort": 4,
+      "from": "悬崖日落观景台",
+      "to": "悬崖日落观景台（Imerovigli Sunset Viewpoints）",
+      "english": "Imerovigli Sunset Viewpoints"
+    },
+    {
+      "attractionId": "import-1020-61958709",
+      "attractionName": "大都会圣母报喜主教堂",
+      "highlightId": "import-1020-61958709-highlight-1",
+      "sort": 1,
+      "from": "白色主教堂建筑",
+      "to": "白色主教堂建筑（White Cathedral Building）",
+      "english": "White Cathedral Building"
+    },
+    {
+      "attractionId": "import-1020-61958709",
+      "attractionName": "大都会圣母报喜主教堂",
+      "highlightId": "import-1020-61958709-highlight-2",
+      "sort": 2,
+      "from": "钟楼",
+      "to": "钟楼（Bell Tower）",
+      "english": "Bell Tower"
+    },
+    {
+      "attractionId": "import-1020-61958709",
+      "attractionName": "大都会圣母报喜主教堂",
+      "highlightId": "import-1020-61958709-highlight-3",
+      "sort": 3,
+      "from": "宗教壁画与内部装饰",
+      "to": "宗教壁画与内部装饰（Religious Frescoes and Interior Decoration）",
+      "english": "Religious Frescoes and Interior Decoration"
+    },
+    {
+      "attractionId": "import-1020-41536457",
+      "attractionName": "圆形圣殿",
+      "highlightId": "import-1020-41536457-highlight-1",
+      "sort": 1,
+      "from": "圆形建筑柱廊",
+      "to": "圆形建筑柱廊（Circular Colonnade）",
+      "english": "Circular Colonnade"
+    },
+    {
+      "attractionId": "import-1020-41536457",
+      "attractionName": "圆形圣殿",
+      "highlightId": "import-1020-41536457-highlight-2",
+      "sort": 2,
+      "from": "大理石建筑遗迹",
+      "to": "大理石建筑遗迹（Marble Architectural Remains）",
+      "english": "Marble Architectural Remains"
+    },
+    {
+      "attractionId": "import-1020-41536457",
+      "attractionName": "圆形圣殿",
+      "highlightId": "import-1020-41536457-highlight-3",
+      "sort": 3,
+      "from": "雅典娜圣地",
+      "to": "雅典娜圣地（Sanctuary of Athena Pronaia）",
+      "english": "Sanctuary of Athena Pronaia"
+    },
+    {
+      "attractionId": "import-1020-57916595",
+      "attractionName": "阿波罗神庙",
+      "highlightId": "import-1020-57916595-highlight-1",
+      "sort": 1,
+      "from": "神庙遗存柱基",
+      "to": "神庙遗存柱基（Temple Foundations and Columns）",
+      "english": "Temple Foundations and Columns"
+    },
+    {
+      "attractionId": "import-1020-57916595",
+      "attractionName": "阿波罗神庙",
+      "highlightId": "import-1020-57916595-highlight-2",
+      "sort": 2,
+      "from": "德尔斐神谕圣所",
+      "to": "德尔斐神谕圣所（Oracle Sanctuary）",
+      "english": "Oracle Sanctuary"
+    },
+    {
+      "attractionId": "import-1020-57916595",
+      "attractionName": "阿波罗神庙",
+      "highlightId": "import-1020-57916595-highlight-3",
+      "sort": 3,
+      "from": "神圣内殿",
+      "to": "神圣内殿（Adyton）",
+      "english": "Adyton"
+    },
+    {
+      "attractionId": "import-1020-11316008",
+      "attractionName": "哈德良图书馆",
+      "highlightId": "import-1020-11316008-highlight-1",
+      "sort": 1,
+      "from": "西侧入口与柱廊",
+      "to": "西侧入口与柱廊（Western Entrance and Colonnade）",
+      "english": "Western Entrance and Colonnade"
+    },
+    {
+      "attractionId": "import-1020-11316008",
+      "attractionName": "哈德良图书馆",
+      "highlightId": "import-1020-11316008-highlight-2",
+      "sort": 2,
+      "from": "中央庭院",
+      "to": "中央庭院（Central Courtyard）",
+      "english": "Central Courtyard"
+    },
+    {
+      "attractionId": "import-1020-11316008",
+      "attractionName": "哈德良图书馆",
+      "highlightId": "import-1020-11316008-highlight-3",
+      "sort": 3,
+      "from": "图书馆阅览空间遗址",
+      "to": "图书馆阅览空间遗址（Library Reading Rooms）",
+      "english": "Library Reading Rooms"
+    },
+    {
+      "attractionId": "import-1020-20712725",
+      "attractionName": "雅典国家科学院",
+      "highlightId": "import-1020-20712725-highlight-1",
+      "sort": 1,
+      "from": "雅典娜雕像",
+      "to": "雅典娜雕像（Statue of Athena）",
+      "english": "Statue of Athena"
+    },
+    {
+      "attractionId": "import-1020-20712725",
+      "attractionName": "雅典国家科学院",
+      "highlightId": "import-1020-20712725-highlight-2",
+      "sort": 2,
+      "from": "阿波罗雕像",
+      "to": "阿波罗雕像（Statue of Apollo）",
+      "english": "Statue of Apollo"
+    },
+    {
+      "attractionId": "import-1020-20712725",
+      "attractionName": "雅典国家科学院",
+      "highlightId": "import-1020-20712725-highlight-3",
+      "sort": 3,
+      "from": "新古典主义建筑立面",
+      "to": "新古典主义建筑立面（Neoclassical Facade）",
+      "english": "Neoclassical Facade"
+    },
+    {
+      "attractionId": "import-1020-20712725",
+      "attractionName": "雅典国家科学院",
+      "highlightId": "import-1020-20712725-highlight-4",
+      "sort": 4,
+      "from": "希腊学术象征壁画",
+      "to": "希腊学术象征壁画（Academic Murals）",
+      "english": "Academic Murals"
+    },
+    {
+      "attractionId": "import-1020-31435380",
+      "attractionName": "神遇·孔子与苏格拉底雕像",
+      "highlightId": "import-1020-31435380-highlight-1",
+      "sort": 1,
+      "from": "孔子雕像",
+      "to": "孔子雕像（Statue of Confucius）",
+      "english": "Statue of Confucius"
+    },
+    {
+      "attractionId": "import-1020-31435380",
+      "attractionName": "神遇·孔子与苏格拉底雕像",
+      "highlightId": "import-1020-31435380-highlight-2",
+      "sort": 2,
+      "from": "苏格拉底雕像",
+      "to": "苏格拉底雕像（Statue of Socrates）",
+      "english": "Statue of Socrates"
+    },
+    {
+      "attractionId": "import-1020-31435380",
+      "attractionName": "神遇·孔子与苏格拉底雕像",
+      "highlightId": "import-1020-31435380-highlight-3",
+      "sort": 3,
+      "from": "中西哲学对话主题",
+      "to": "中西哲学对话主题（Dialogue Between Eastern and Western Philosophy）",
+      "english": "Dialogue Between Eastern and Western Philosophy"
+    },
+    {
+      "attractionId": "import-1020-90763870",
+      "attractionName": "比雷埃夫斯港",
+      "highlightId": "import-1020-90763870-highlight-1",
+      "sort": 1,
+      "from": "中央客运港区",
+      "to": "中央客运港区（Central Passenger Port）",
+      "english": "Central Passenger Port"
+    },
+    {
+      "attractionId": "import-1020-90763870",
+      "attractionName": "比雷埃夫斯港",
+      "highlightId": "import-1020-90763870-highlight-2",
+      "sort": 2,
+      "from": "米克罗利马诺港湾",
+      "to": "米克罗利马诺港湾（Mikrolimano Harbour）",
+      "english": "Mikrolimano Harbour"
+    },
+    {
+      "attractionId": "import-1020-90763870",
+      "attractionName": "比雷埃夫斯港",
+      "highlightId": "import-1020-90763870-highlight-3",
+      "sort": 3,
+      "from": "洋伽尼亚港湾",
+      "to": "洋伽尼亚港湾（Pasalimani / Zea Marina）",
+      "english": "Pasalimani / Zea Marina"
+    },
+    {
+      "attractionId": "import-1020-74401066",
+      "attractionName": "沃立歌美尼湖",
+      "highlightId": "import-1020-74401066-highlight-1",
+      "sort": 1,
+      "from": "天然温泉湖",
+      "to": "天然温泉湖（Thermal Lake）",
+      "english": "Thermal Lake"
+    },
+    {
+      "attractionId": "import-1020-74401066",
+      "attractionName": "沃立歌美尼湖",
+      "highlightId": "import-1020-74401066-highlight-2",
+      "sort": 2,
+      "from": "石灰岩洞穴景观",
+      "to": "石灰岩洞穴景观（Limestone Cave Formations）",
+      "english": "Limestone Cave Formations"
+    },
+    {
+      "attractionId": "import-1020-74401066",
+      "attractionName": "沃立歌美尼湖",
+      "highlightId": "import-1020-74401066-highlight-3",
+      "sort": 3,
+      "from": "天然鱼疗体验",
+      "to": "天然鱼疗体验（Natural Fish Spa）",
+      "english": "Natural Fish Spa"
+    },
+    {
+      "attractionId": "import-1020-25635465",
+      "attractionName": "希腊总理府",
+      "highlightId": "import-1020-25635465-highlight-1",
+      "sort": 1,
+      "from": "新古典主义建筑外观",
+      "to": "新古典主义建筑外观（Neoclassical Architecture）",
+      "english": "Neoclassical Architecture"
+    },
+    {
+      "attractionId": "import-1020-25635465",
+      "attractionName": "希腊总理府",
+      "highlightId": "import-1020-25635465-highlight-2",
+      "sort": 2,
+      "from": "总理府历史庭院",
+      "to": "总理府历史庭院（Historic Courtyard）",
+      "english": "Historic Courtyard"
+    },
+    {
+      "attractionId": "import-1020-62184194",
+      "attractionName": "希腊总统府",
+      "highlightId": "import-1020-62184194-highlight-1",
+      "sort": 1,
+      "from": "总统府建筑",
+      "to": "总统府建筑（Presidential Mansion）",
+      "english": "Presidential Mansion"
+    },
+    {
+      "attractionId": "import-1020-62184194",
+      "attractionName": "希腊总统府",
+      "highlightId": "import-1020-62184194-highlight-2",
+      "sort": 2,
+      "from": "总统卫队",
+      "to": "总统卫队（Presidential Guard）",
+      "english": "Presidential Guard"
+    },
+    {
+      "attractionId": "import-1020-62184194",
+      "attractionName": "希腊总统府",
+      "highlightId": "import-1020-62184194-highlight-3",
+      "sort": 3,
+      "from": "宫殿花园",
+      "to": "宫殿花园（Presidential Garden）",
+      "english": "Presidential Garden"
+    },
+    {
+      "attractionId": "import-1020-76666333",
+      "attractionName": "国家花园",
+      "highlightId": "import-1020-76666333-highlight-1",
+      "sort": 1,
+      "from": "棕榈树与百年古树",
+      "to": "棕榈树与百年古树（Palm Trees and Ancient Trees）",
+      "english": "Palm Trees and Ancient Trees"
+    },
+    {
+      "attractionId": "import-1020-76666333",
+      "attractionName": "国家花园",
+      "highlightId": "import-1020-76666333-highlight-2",
+      "sort": 2,
+      "from": "小型湖泊与池塘",
+      "to": "小型湖泊与池塘（Ponds and Small Lakes）",
+      "english": "Ponds and Small Lakes"
+    },
+    {
+      "attractionId": "import-1020-76666333",
+      "attractionName": "国家花园",
+      "highlightId": "import-1020-76666333-highlight-3",
+      "sort": 3,
+      "from": "古代遗迹与雕塑",
+      "to": "古代遗迹与雕塑（Ancient Ruins and Sculptures）",
+      "english": "Ancient Ruins and Sculptures"
+    },
+    {
+      "attractionId": "import-1020-68568567",
+      "attractionName": "阿纳菲奥提卡街区",
+      "highlightId": "import-1020-68568567-highlight-1",
+      "sort": 1,
+      "from": "白色阶梯巷道",
+      "to": "白色阶梯巷道（Whitewashed Stairways）",
+      "english": "Whitewashed Stairways"
+    },
+    {
+      "attractionId": "import-1020-68568567",
+      "attractionName": "阿纳菲奥提卡街区",
+      "highlightId": "import-1020-68568567-highlight-2",
+      "sort": 2,
+      "from": "蓝色门窗与花卉庭院",
+      "to": "蓝色门窗与花卉庭院（Blue Doors and Flower Courtyards）",
+      "english": "Blue Doors and Flower Courtyards"
+    },
+    {
+      "attractionId": "import-1020-68568567",
+      "attractionName": "阿纳菲奥提卡街区",
+      "highlightId": "import-1020-68568567-highlight-3",
+      "sort": 3,
+      "from": "卫城观景角度",
+      "to": "卫城观景角度（Acropolis Viewpoints）",
+      "english": "Acropolis Viewpoints"
+    },
+    {
+      "attractionId": "attraction-mvgen1ks-96492e",
+      "attractionName": "维尔吉纳皇家陵墓（大墓群）",
+      "highlightId": "attraction-mvgen1ks-96492e-highlight-1",
+      "sort": 1,
+      "from": "腓力二世皇家陵墓",
+      "to": "腓力二世皇家陵墓（Tomb of Philip II）",
+      "english": "Tomb of Philip II"
+    },
+    {
+      "attractionId": "attraction-mvgen1ks-96492e",
+      "attractionName": "维尔吉纳皇家陵墓（大墓群）",
+      "highlightId": "attraction-mvgen1ks-96492e-highlight-2",
+      "sort": 2,
+      "from": "黄金棺盒与太阳星芒",
+      "to": "黄金棺盒与太阳星芒（Golden Larnax and Vergina Sun）",
+      "english": "Golden Larnax and Vergina Sun"
+    },
+    {
+      "attractionId": "attraction-mvgen1ks-96492e",
+      "attractionName": "维尔吉纳皇家陵墓（大墓群）",
+      "highlightId": "attraction-mvgen1ks-96492e-highlight-3",
+      "sort": 3,
+      "from": "黄金橡树叶王冠",
+      "to": "黄金橡树叶王冠（Golden Oak Wreath）",
+      "english": "Golden Oak Wreath"
+    },
+    {
+      "attractionId": "attraction-mvgen1ks-96492e",
+      "attractionName": "维尔吉纳皇家陵墓（大墓群）",
+      "highlightId": "attraction-mvgen1ks-96492e-highlight-4",
+      "sort": 4,
+      "from": "黄金头盔与武器",
+      "to": "黄金头盔与武器（Golden Helmet and Weapons）",
+      "english": "Golden Helmet and Weapons"
+    },
+    {
+      "attractionId": "attraction-mvgen1ks-96492e",
+      "attractionName": "维尔吉纳皇家陵墓（大墓群）",
+      "highlightId": "attraction-mvgen1ks-96492e-highlight-5",
+      "sort": 5,
+      "from": "墓室壁画",
+      "to": "墓室壁画（Tomb Frescoes）",
+      "english": "Tomb Frescoes"
+    },
+    {
+      "attractionId": "attraction-mvgen1ks-96492e",
+      "attractionName": "维尔吉纳皇家陵墓（大墓群）",
+      "highlightId": "attraction-mvgen1ks-96492e-highlight-6",
+      "sort": 6,
+      "from": "其他王室墓葬",
+      "to": "其他王室墓葬（Other Royal Tombs）",
+      "english": "Other Royal Tombs"
+    },
+    {
+      "attractionId": "attraction-mvgen1zc-8a8f5a",
+      "attractionName": "腓力普二世宫",
+      "highlightId": "attraction-mvgen1zc-8a8f5a-highlight-1",
+      "sort": 1,
+      "from": "宫殿中央庭院",
+      "to": "宫殿中央庭院（Central Courtyard）",
+      "english": "Central Courtyard"
+    },
+    {
+      "attractionId": "attraction-mvgen1zc-8a8f5a",
+      "attractionName": "腓力普二世宫",
+      "highlightId": "attraction-mvgen1zc-8a8f5a-highlight-2",
+      "sort": 2,
+      "from": "多立克式柱廊",
+      "to": "多立克式柱廊（Doric Colonnade）",
+      "english": "Doric Colonnade"
+    },
+    {
+      "attractionId": "attraction-mvgen1zc-8a8f5a",
+      "attractionName": "腓力普二世宫",
+      "highlightId": "attraction-mvgen1zc-8a8f5a-highlight-3",
+      "sort": 3,
+      "from": "宫殿宴会厅",
+      "to": "宫殿宴会厅（Banqueting Halls）",
+      "english": "Banqueting Halls"
+    },
+    {
+      "attractionId": "attraction-mvgen1zc-8a8f5a",
+      "attractionName": "腓力普二世宫",
+      "highlightId": "attraction-mvgen1zc-8a8f5a-highlight-4",
+      "sort": 4,
+      "from": "宫殿马赛克",
+      "to": "宫殿马赛克（Palace Mosaics）",
+      "english": "Palace Mosaics"
+    },
+    {
+      "attractionId": "attraction-mvgen1zc-8a8f5a",
+      "attractionName": "腓力普二世宫",
+      "highlightId": "attraction-mvgen1zc-8a8f5a-highlight-5",
+      "sort": 5,
+      "from": "宫殿剧场区域",
+      "to": "宫殿剧场区域（Palace Theatre Area）",
+      "english": "Palace Theatre Area"
+    },
+    {
+      "attractionId": "attraction-mvgen2bn-2359f3",
+      "attractionName": "埃盖古城剧场",
+      "highlightId": "attraction-mvgen2bn-2359f3-highlight-1",
+      "sort": 1,
+      "from": "半圆形观众席",
+      "to": "半圆形观众席（Semicircular Seating）",
+      "english": "Semicircular Seating"
+    },
+    {
+      "attractionId": "attraction-mvgen2bn-2359f3",
+      "attractionName": "埃盖古城剧场",
+      "highlightId": "attraction-mvgen2bn-2359f3-highlight-2",
+      "sort": 2,
+      "from": "舞台区域",
+      "to": "舞台区域（Stage Area）",
+      "english": "Stage Area"
+    },
+    {
+      "attractionId": "attraction-mvgen2bn-2359f3",
+      "attractionName": "埃盖古城剧场",
+      "highlightId": "attraction-mvgen2bn-2359f3-highlight-3",
+      "sort": 3,
+      "from": "腓力二世遇刺历史地点",
+      "to": "腓力二世遇刺历史地点（Site of the Assassination of Philip II）",
+      "english": "Site of the Assassination of Philip II"
+    },
+    {
+      "attractionId": "attraction-mvgen2bn-2359f3",
+      "attractionName": "埃盖古城剧场",
+      "highlightId": "attraction-mvgen2bn-2359f3-highlight-4",
+      "sort": 4,
+      "from": "宫殿与剧场关系",
+      "to": "宫殿与剧场关系（Palace and Theatre Complex）",
+      "english": "Palace and Theatre Complex"
+    },
+    {
+      "attractionId": "attraction-mvivp3vf-5d9303",
+      "attractionName": "雷西姆农老城",
+      "highlightId": "attraction-mvivp3vf-5d9303-highlight-1",
+      "sort": 1,
+      "from": "福尔泰扎威尼斯城堡",
+      "to": "福尔泰扎威尼斯城堡（Fortezza of Rethymno）",
+      "english": "Fortezza of Rethymno"
+    },
+    {
+      "attractionId": "attraction-mvivp3vf-5d9303",
+      "attractionName": "雷西姆农老城",
+      "highlightId": "attraction-mvivp3vf-5d9303-highlight-2",
+      "sort": 2,
+      "from": "威尼斯喷泉",
+      "to": "威尼斯喷泉（Rimondi Fountain）",
+      "english": "Rimondi Fountain"
+    },
+    {
+      "attractionId": "attraction-mvivp3vf-5d9303",
+      "attractionName": "雷西姆农老城",
+      "highlightId": "attraction-mvivp3vf-5d9303-highlight-3",
+      "sort": 3,
+      "from": "威尼斯港口",
+      "to": "威尼斯港口（Venetian Harbour）",
+      "english": "Venetian Harbour"
+    },
+    {
+      "attractionId": "attraction-mvivp3vf-5d9303",
+      "attractionName": "雷西姆农老城",
+      "highlightId": "attraction-mvivp3vf-5d9303-highlight-4",
+      "sort": 4,
+      "from": "内拉采清真寺",
+      "to": "内拉采清真寺（Neratze Mosque）",
+      "english": "Neratze Mosque"
+    },
+    {
+      "attractionId": "attraction-mvivp3vf-5d9303",
+      "attractionName": "雷西姆农老城",
+      "highlightId": "attraction-mvivp3vf-5d9303-highlight-5",
+      "sort": 5,
+      "from": "老城石板街",
+      "to": "老城石板街（Historic Cobblestone Streets）",
+      "english": "Historic Cobblestone Streets"
+    },
+    {
+      "attractionId": "attraction-mvivthfs-2345f3",
+      "attractionName": "巴洛斯海滩与泻湖",
+      "highlightId": "attraction-mvivthfs-2345f3-highlight-1",
+      "sort": 1,
+      "from": "巴洛斯泻湖",
+      "to": "巴洛斯泻湖（Balos Lagoon）",
+      "english": "Balos Lagoon"
+    },
+    {
+      "attractionId": "attraction-mvivthfs-2345f3",
+      "attractionName": "巴洛斯海滩与泻湖",
+      "highlightId": "attraction-mvivthfs-2345f3-highlight-2",
+      "sort": 2,
+      "from": "粉色沙滩",
+      "to": "粉色沙滩（Pink Sand）",
+      "english": "Pink Sand"
+    },
+    {
+      "attractionId": "attraction-mvivthfs-2345f3",
+      "attractionName": "巴洛斯海滩与泻湖",
+      "highlightId": "attraction-mvivthfs-2345f3-highlight-3",
+      "sort": 3,
+      "from": "格拉姆武萨岛",
+      "to": "格拉姆武萨岛（Gramvousa Island）",
+      "english": "Gramvousa Island"
+    },
+    {
+      "attractionId": "attraction-mvivthfs-2345f3",
+      "attractionName": "巴洛斯海滩与泻湖",
+      "highlightId": "attraction-mvivthfs-2345f3-highlight-4",
+      "sort": 4,
+      "from": "海岸观景高地",
+      "to": "海岸观景高地（Balos Viewpoint）",
+      "english": "Balos Viewpoint"
+    }
+  ]
+}

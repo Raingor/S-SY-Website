@@ -292,27 +292,27 @@
       "summary": "西方文明最重要的人类遗产，2500 年间始终矗立在雅典之上，是理解古希腊的第一站。",
       "highlights": [
         {
-          "name": "山门 Propylaea",
+          "name": "山门（Propylaea）",
           "desc": "进入圣山的仪式性大门，公元前 437 年始建，多立克与爱奥尼柱式在这里完成过渡。"
         },
         {
-          "name": "帕特农神庙 Parthenon",
+          "name": "帕特农神庙（Parthenon）",
           "desc": "献给雅典娜的主神庙，菲狄亚斯主持建造，古典建筑与雕塑的巅峰之作。"
         },
         {
-          "name": "伊瑞克提翁神庙 Erechtheion",
+          "name": "伊瑞克提翁神庙（Erechtheion）",
           "desc": "六尊女像柱支撑的南柱廊，传说中雅典娜与波塞冬争夺守护权之地。"
         },
         {
-          "name": "雅典娜胜利神庙 Temple of Athena Nike",
+          "name": "雅典娜胜利神庙（Temple of Athena Nike）",
           "desc": "卫城西南角的小型爱奥尼神庙，纪念波斯战争中的胜利。"
         },
         {
-          "name": "狄俄尼索斯剧场 Theatre of Dionysus",
+          "name": "狄俄尼索斯剧场（Theatre of Dionysus）",
           "desc": "西方戏剧的诞生地，埃斯库罗斯与索福克勒斯的首演舞台。"
         },
         {
-          "name": "希罗德·阿提库斯剧场 Odeon of Herodes Atticus",
+          "name": "希罗德·阿提库斯剧场（Odeon of Herodes Atticus）",
           "desc": "公元 161 年建成的罗马式音乐厅，今天仍是雅典音乐节的舞台。"
         }
       ],
@@ -1007,15 +1007,15 @@
       "summary": "圣岛中部制高点上的中世纪山村，Kasteli 城堡俯瞰全岛葡萄园，是本地人偏爱的安静去处。",
       "highlights": [
         {
-          "name": "Kasteli 城堡遗址",
+          "name": "Kasteli 城堡遗址（Kasteli Castle）",
           "desc": "威尼斯人修建的山顶要塞，环绕的古老民居保存完好，登顶可 360° 俯瞰全岛。"
         },
         {
-          "name": "传统酒庄环带",
+          "name": "传统酒庄环带（Traditional Winery Belt）",
           "desc": "小镇四周被藤蔓编织的低棚葡萄园包围，圣岛最古老的葡萄酒传统在这里延续。"
         },
         {
-          "name": "蓝色穹顶与钟塔",
+          "name": "蓝色穹顶与钟塔（Blue Dome and Bell Tower）",
           "desc": "小镇制高点的东正教堂与钟塔，是俯瞰构图里的点睛之笔。"
         }
       ],
@@ -1153,19 +1153,19 @@
       "summary": "火山造就的黑色沙滩。东南岛黑沙滩海滩游泳、躺椅休闲、近海划船等海滩活动和休闲，是蓝白小镇之外另一种圣岛打开方式。",
       "highlights": [
         {
-          "name": "黑色火山沙滩",
+          "name": "黑色火山沙滩（Black Volcanic Beach）",
           "desc": "火山碎屑形成的细黑沙滩，海水清澈见底。"
         },
         {
-          "name": "Mesa Vouno 岩山",
+          "name": "Mesa Vouno 岩山（Mesa Vouno）",
           "desc": "沙滩尽头的巨岩山体，山顶有古阿波罗神庙遗址。"
         },
         {
-          "name": "海滩俱乐部",
+          "name": "海滩俱乐部（Beach Clubs）",
           "desc": "躺椅、水上运动与沙滩酒吧一线排开，躺平一下午。"
         },
         {
-          "name": "近海划船与桨板",
+          "name": "近海划船与桨板（Nearshore Boating and Paddleboarding）",
           "desc": "平静的近海水域适合划船、SUP 等水上活动。"
         }
       ],
@@ -1370,12 +1370,12 @@
           "desc": "建筑紧贴狭窄岩柱顶部，四周被高耸岩石包围，是梅黛奥拉极具特色的修道院之一。"
         },
         {
-          "name": "岛上最古老修道院",
+          "name": "岛上最古老修道院（Oldest Monastery）",
           "desc": "岛上最古老最宁静的宗教遗址之一，建筑古朴，宛如隐藏的历史宝石。",
           "image": ""
         },
         {
-          "name": "拜占庭壁画与木雕",
+          "name": "拜占庭壁画与木雕（Byzantine Frescoes and Woodcarvings）",
           "desc": "修道院内部壁画与木雕保存良好，是了解拜占庭历史与艺术的好去处。",
           "image": ""
         },
