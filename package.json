@@ -39,7 +39,8 @@
     "test:share-cards": "node scripts/test-share-cards.mjs",
     "test:work-tickets": "node scripts/test-work-tickets.mjs",
     "test:public-audio-oss": "node scripts/test-public-audio-oss.mjs",
-    "media:public-audio": "node scripts/migrate-public-audio-to-oss.mjs"
+    "media:public-audio": "node scripts/migrate-public-audio-to-oss.mjs",
+    "test:media-origin-override": "node scripts/test-media-origin-override.mjs"
   },
   "dependencies": {
     "@vitejs/plugin-react": "^5.1.1",

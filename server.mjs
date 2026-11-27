@@ -774,7 +774,29 @@ async function toWebpOrOriginal(buffer, contentType) {
   }
 }
 function corsHeaders() { return { ...(allowedOrigin ? { 'Access-Control-Allow-Origin': allowedOrigin, Vary: 'Origin' } : {}), 'Access-Control-Allow-Methods': 'GET,POST,PATCH,DELETE,OPTIONS', 'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Mini-Program-Env' } }
-function json(res, status, body) { res.writeHead(status, { ...corsHeaders(), 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' }); res.end(JSON.stringify(body)) }
+// 应急媒体域改写：阿里云 OSS bucket 停用时，把响应里公开图片/文档的 OSS URL
+// 在序列化输出时改写为官网自身域名（本地 public/images|docs 已有一一对应的文件）。
+// 仅输出改写，存储不动；未配置 SY_MEDIA_ORIGIN_OVERRIDE 时零行为变化；public/audio 不改写。
+const mediaOriginOverride = String(process.env.SY_MEDIA_ORIGIN_OVERRIDE || '').trim().replace(/\/+$/, '')
+const OSS_PUBLIC_IMAGES_PREFIX = 'https://sy-mpapp.oss-cn-shenzhen.aliyuncs.com/public/images/'
+const OSS_PUBLIC_DOCS_PREFIX = 'https://sy-mpapp.oss-cn-shenzhen.aliyuncs.com/public/docs/'
+function rewriteMediaText(value) {
+  if (!mediaOriginOverride || typeof value !== 'string' || !value.includes('sy-mpapp.oss-cn-shenzhen.aliyuncs.com/public/')) return value
+  return value.split(OSS_PUBLIC_IMAGES_PREFIX).join(`${mediaOriginOverride}/images/`).split(OSS_PUBLIC_DOCS_PREFIX).join(`${mediaOriginOverride}/docs/`)
+}
+function rewriteMediaUrlsDeep(value) {
+  if (!mediaOriginOverride) return value
+  if (typeof value === 'string') return rewriteMediaText(value)
+  if (Array.isArray(value)) return value.map((entry) => rewriteMediaUrlsDeep(entry))
+  if (value && typeof value === 'object') {
+    // 克隆而非原地改写：payload 常是内存缓存里的同一对象，原地改会污染存储源。
+    const out = {}
+    for (const [key, entry] of Object.entries(value)) out[key] = rewriteMediaUrlsDeep(entry)
+    return out
+  }
+  return value
+}
+function json(res, status, body) { res.writeHead(status, { ...corsHeaders(), 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' }); res.end(JSON.stringify(rewriteMediaUrlsDeep(body))) }
 function text(res, status, body, contentType) { res.writeHead(status, { 'Content-Type': contentType, 'Cache-Control': 'public, max-age=300' }); res.end(body) }
 // After the OSS migration audio files may no longer live on disk; stream them through
 // from OSS (signed, short-TTL) so every deployed client keeps its byte-level contract.
@@ -2191,7 +2213,7 @@ const server = http.createServer(async (req, res) => {
         .map((ticket) => workTicketFeedItem(ticket, siteBase(data, req)))
       if (String(url.searchParams.get('format') || '').toLowerCase() === 'md') {
         res.writeHead(200, { ...corsHeaders(), 'Content-Type': 'text/markdown; charset=utf-8', 'Cache-Control': 'no-store' })
-        return res.end(workTicketFeedMarkdown(items))
+        return res.end(rewriteMediaText(workTicketFeedMarkdown(items)))
       }
       return json(res, 200, { generatedAt: new Date().toISOString(), count: items.length, items })
     }
